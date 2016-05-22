@@ -32,7 +32,6 @@ def _get_space(arr):
 	try:             return arr.flags['SPACE']
 	except KeyError: return 'system' # TODO: Dangerous to assume?
 
-# TODO: Any use for these two?
 def raw_malloc(size, space):
 	return _get(_bf.Malloc(size=size, space=_string2space(space)), retarg=0)
 def raw_free(ptr, space='auto'):
