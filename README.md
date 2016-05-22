@@ -18,7 +18,7 @@ A stream processing framework for high-throughput applications.
 
 ## Installation
 
-Edit config.mk to suit your system, then run:
+Edit user.mk to suit your system, then run:
 
     $ make -j
     $ sudo make install

@@ -1,24 +1,29 @@
 
-CXX           ?= g++
-NVCC          ?= nvcc
-LINKER        ?= g++
-CXX_FLAGS     ?= -O3 -Wall
-NVCC_FLAGS    ?= -O3 -Xcompiler "-Wall" -Xptxas -v
-LINKER_FLAGS  ?=
+ifndef OS
+  OS := $(shell uname -s)
+endif
 
-#GPU_ARCHS     ?= 30 32 35 37 50 52 53 # Nap time!
-#GPU_ARCHS     ?= 35 52
-#GPU_ARCHS     ?= 52
-GPU_ARCHS     ?= 35
-#GPU_ARCHS     ?=
+ifeq ($(OS),Linux)
+  SO_EXT      = .so
+  SHARED_FLAG = -shared
+  SONAME_FLAG = -soname
+else ifeq ($(OS),Darwin)
+  SO_EXT = .dylib
+  SHARED_FLAG = -dynamiclib
+  SONAME_FLAG = -install_name
+#else ifeq ($(OS),Windows_NT)
+#  SO_EXT = .dll
+else
+  $(error Unsupported OS)
+endif
 
-CUDA_HOME     ?= /usr/local/cuda
-CUDA_LIBDIR   ?= $(CUDA_HOME)/lib
-CUDA_LIBDIR64 ?= $(CUDA_HOME)/lib64
-CUDA_INCDIR   ?= $(CUDA_HOME)/include
+INSTALL_LIB_DIR = /usr/local/lib
+INSTALL_INC_DIR = /usr/local/include
 
-ALIGNMENT ?= 4096 # Memory allocation alignment
-
-#NODEBUG  = 1 # Disable debugging mode (use this for production releases)
-#NOCUDA   = 1 # Disable CUDA support
-#ANY_ARCH = 1 # Disable native architecture compilation
+BIFROST_NAME          = bifrost
+LIBBIFROST_NAME       = lib$(BIFROST_NAME)
+LIBBIFROST_MAJOR      = 0
+LIBBIFROST_MINOR      = 6
+LIBBIFROST_SO         = $(LIBBIFROST_NAME)$(SO_EXT)
+LIBBIFROST_SO_MAJ     = $(LIBBIFROST_SO).$(LIBBIFROST_MAJOR)
+LIBBIFROST_SO_MAJ_MIN = $(LIBBIFROST_SO_MAJ).$(LIBBIFROST_MINOR)
