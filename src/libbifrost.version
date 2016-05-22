@@ -1,0 +1,97 @@
+VERS_0.6 {
+         global:
+                bfGetStatusString;
+                bfGetDebugEnabled;
+                bfGetCudaEnabled;
+
+                bfMalloc;
+                bfFree;
+                bfGetSpace;
+                bfMemcpy;
+                bfMemcpy2D;
+                bfMemset;
+                bfMemset2D;
+                bfGetAlignment;
+
+                bfAffinitySetCore;
+                bfAffinityGetCore;
+                bfAffinitySetOpenMPCores;
+
+                bfTranspose;
+
+                bfAddressCreate;
+                bfAddressDestroy;
+                bfAddressGetFamily;
+                bfAddressGetPort;
+                bfAddressGetMTU;
+                bfAddressGetString;
+
+                bfUdpSocketCreate;
+                bfUdpSocketDestroy;
+                bfUdpSocketConnect;
+                bfUdpSocketBind;
+                bfUdpSocketShutdown;
+                bfUdpSocketGetMTU;
+                bfUdpSocketGetFD;
+                bfUdpSocketRecv;
+                bfUdpSocketSend;
+
+                bfChipsCaptureCreate;
+                bfChipsCaptureDestroy;
+                bfChipsCaptureRecv;
+                bfChipsCaptureFlush;
+                bfChipsCaptureEnd;
+
+                bfUdpStreamCreate;
+                bfUdpStreamRecv;
+                bfUdpStreamFlush;
+
+                bfRingCreate;
+                bfRingDestroy;
+                bfRingResize;
+                bfRingGetSpace;
+                bfRingLock;
+                bfRingUnlock;
+                bfRingLockedGetData;
+                bfRingLockedGetContiguousSpan;
+                bfRingLockedGetTotalSpan;
+                bfRingLockedGetNRinglet;
+                bfRingLockedGetStride;
+                bfRingBeginWriting;
+                bfRingEndWriting;
+
+                bfRingSequenceOpen;
+                bfRingSequenceOpenLatest;
+                bfRingSequenceOpenEarliest;
+                bfRingSequenceNext;
+                bfRingSequenceOpenSame;
+                bfRingSequenceOpenAt;
+                bfRingSequenceClose;
+
+                bfRingSequenceBegin;
+                bfRingSequenceEnd;
+
+                bfRingSequenceGetRing;
+                bfRingSequenceGetName;
+                bfRingSequenceGetTimeTag;
+                bfRingSequenceGetHeader;
+                bfRingSequenceGetHeaderSize;
+                bfRingSequenceGetNRinglet;
+
+                bfRingSpanReserve;
+                bfRingSpanCommit;
+
+                bfRingSpanAcquire;
+                bfRingSpanAdvance;
+                bfRingSpanRelease;
+                bfRingSpanStillValid;
+
+                bfRingSpanGetRing;
+                bfRingSpanGetData;
+                bfRingSpanGetSize;
+                bfRingSpanGetStride;
+                bfRingSpanGetOffset;
+                bfRingSpanGetNRinglet;
+         local:
+                *;
+};
