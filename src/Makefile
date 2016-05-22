@@ -1,5 +1,6 @@
 
 include ../config.mk
+include ../user.mk
 
 NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS), \
   -gencode arch=compute_$(arch),\"code=sm_$(arch),compute_$(arch)\")
@@ -8,24 +9,6 @@ NVCC_FLAGS += -std=c++11 -Xcompiler "-fPIC" $(NVCC_GENCODE)
 
 LIB_DIR = ../lib
 INC_DIR = .
-
-ifndef OS
-  OS := $(shell uname -s)
-endif
-
-ifeq ($(OS),Linux)
-  SO_EXT      = .so
-  SHARED_FLAG = -shared
-  SONAME_FLAG = -soname
-else ifeq ($(OS),Darwin)
-  SO_EXT = .dylib
-  SHARED_FLAG = -dynamiclib
-  SONAME_FLAG = -install_name
-#else ifeq ($(OS),Windows_NT)
-#  SO_EXT = .dll
-else
-  $(error Unsupported OS)
-endif
 
 INC = -I. -I$(INC_DIR) -I$(CUDA_INCDIR)
 LIB = -lgomp
@@ -70,12 +53,9 @@ ifndef NOCUDA
   #apsynth.o
 endif
 #LIBBIFROST_HEADERS = bfcommon.h bfmemory.h bfaffinity.h bfring.h bfring_impl.hpp bftranspose.h bfudp.h Socket.hpp
-LIBBIFROST_NAME    = libbifrost
-LIBBIFROST_MAJOR   = 0
-LIBBIFROST_MINOR   = 6
-LIBBIFROST_VERSION_FILE = libbifrost.version
-LIBBIFROST_SO_STEM = $(LIB_DIR)/$(LIBBIFROST_NAME)$(SO_EXT)
-LIBBIFROST_SO      = $(LIBBIFROST_SO_STEM).$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR)
+LIBBIFROST_VERSION_FILE = $(LIBBIFROST_NAME).version
+LIBBIFROST_SO_STEM      = $(LIB_DIR)/$(LIBBIFROST_NAME)$(SO_EXT)
+LIBBIFROST_SO           = $(LIBBIFROST_SO_STEM).$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR)
 
 #LIBBIFROST_HEADERS =  $(addprefix $(INC_DIR)/,$(LIBBIFROST_HEADERS))
 
