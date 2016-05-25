@@ -17,6 +17,8 @@
 // TODO: This code is a bit of a mess in some areas; consider tidying/refactoring
 //         E.g., the abundant use of friend is probably a bad thing
 
+// WARNING: Must recompile ring.cpp after modifying this file due to inlines!
+
 #pragma once
 
 #include <bifrost/ring.h>
@@ -324,17 +326,26 @@ class BFrsequence_impl : public BFsequence_wrapper {
 	friend class BFring_impl;
 	BFbool   _guaranteed;
 	BFoffset _guarantee_begin;
+	BFbool   _is_open;
 	void set_guarantee_begin(BFoffset b) { _guarantee_begin = b; }
 	//BFrsequence_impl(BFrsequence_impl const& )            = delete;
 	BFrsequence_impl& operator=(BFrsequence_impl const& ) = delete;
 	BFrsequence_impl(BFrsequence_impl&& )                 = delete;
 	BFrsequence_impl& operator=(BFrsequence_impl&& )      = delete;
 	inline void open() {
+		if( _is_open ) {
+			throw BFexception(BF_STATUS_INTERNAL_ERROR);
+		}
+		_is_open = true;
 		this->sequence()->ring()->open_sequence(this->sequence(),
 		                                        _guaranteed,
 		                                        &_guarantee_begin);
 	}
 	inline void close() {
+		if( !_is_open ) {
+			throw BFexception(BF_STATUS_INTERNAL_ERROR);
+		}
+		_is_open = false;
 		this->sequence()->ring()->close_sequence(this->sequence(), _guaranteed, _guarantee_begin);
 	}
 	inline BFsequence_sptr get_next() {
@@ -343,8 +354,7 @@ class BFrsequence_impl : public BFsequence_wrapper {
 	}
 public:
 	inline BFrsequence_impl(BFsequence_sptr sequence, BFbool guarantee)
-		: BFsequence_wrapper(sequence), _guaranteed(guarantee) {
-		
+		: BFsequence_wrapper(sequence), _guaranteed(guarantee), _is_open(false) {
 		//this->sequence()->ring()->open_sequence(sequence,
 		//                                      _guaranteed, &_guarantee_begin);
 		this->open();
@@ -364,7 +374,7 @@ public:
 	inline BFrsequence_impl(BFrsequence_impl const& other)
 		: BFsequence_wrapper(other.sequence()),
 		  _guaranteed(other._guaranteed),
-		  _guarantee_begin(other._guarantee_begin) {
+		  _guarantee_begin(other._guarantee_begin), _is_open(false) {
 		//this->sequence()->ring()->open_sequence(this->sequence(),
 		//                                        _guaranteed, &_guarantee_begin);
 		this->open();
@@ -374,7 +384,9 @@ public:
 		//}
 	}
 	inline ~BFrsequence_impl() {
-		this->close();
+		if( _is_open ) {
+			this->close();
+		}
 		//if( _guaranteed ) {
 		//	BFsize size = 0;
 		//	this->sequence()->ring()->_guarantees.erase(this->sequence()->ring()->_guarantees.find(std::make_pair(this->sequence()->begin(), size)));

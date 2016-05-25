@@ -82,7 +82,7 @@ using std::endl;
 #define BF_ASSERT_EXCEPTION(pred, err) \
 	do { \
 		if( !(pred) ) { \
-			/*if( err != BF_STATUS_END_OF_DATA )*/ { \
+			if( err != BF_STATUS_END_OF_DATA ) { \
 				BF_REPORT_ERROR(err); \
 			} \
 			throw BFexception(err); \
