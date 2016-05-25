@@ -26,5 +26,5 @@ __maintainer__ = "Ben Barsdell"
 __email__      = "benbarsdell@gmail.com"
 __status__     = "Development"
 
-import core, memory, affinity
+import core, memory, affinity, ring
 from GPUArray import GPUArray
