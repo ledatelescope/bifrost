@@ -28,6 +28,10 @@
 
 # This file provides a direct interface to libbifrost.so
 
+# PYCLIBRARY ISSUE: Passing the wrong handle type to a function gives this meaningless error:
+#  ArgumentError: argument 1: <type 'exceptions.TypeError'>: expected LP_s instance instead of LP_s
+#  E.g., _bf.RingSequenceGetName(<BFspan>) [should be <BFsequence>]
+
 def _load_bifrost_lib():
 	import os
 	# TODO: Keep these up-to-date

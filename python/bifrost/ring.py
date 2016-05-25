@@ -127,7 +127,7 @@ class SequenceBase(object):
 		self._ring = ring
 	@property
 	def _base_obj(self):
-		return ctypes.cast(self.obj, _bf.BFspan)
+		return ctypes.cast(self.obj, _bf.BFsequence)
 	@property
 	def ring(self):
 		return self._ring
@@ -155,7 +155,7 @@ class SequenceBase(object):
 			hdr_array.flags['WRITEABLE'] = False
 			return hdr_array
 		BufferType = ctypes.c_byte*size
-		hdr_buffer_ptr = ctypes.cast(self.hdr_ptr, ctypes.POINTER(BufferType))
+		hdr_buffer_ptr = ctypes.cast(self._header_ptr, ctypes.POINTER(BufferType))
 		hdr_buffer = hdr_buffer_ptr.contents
 		#hdr_array = memoryview(hdr_buffer)
 		# WAR for ctypes producing an invalid type code that numpy fails on
@@ -323,7 +323,6 @@ class WriteSpan(SpanBase):
 class ReadSpan(SpanBase):
 	def __init__(self, sequence, offset, size):
 		SpanBase.__init__(self, sequence.ring, writeable=False)
-		self.obj = self.lib.BFrspan()
 		self.obj = _get(_bf.RingSpanAcquire(sequence=sequence.obj,
 		                                    offset=offset, size=size), retarg=0)
 	def __enter__(self):
