@@ -90,9 +90,11 @@ class GPUArray(object):
 	def ndim(self):
 		return len(self.shape)
 	def get(self, dst=None):
-		#hdata = dst if dst is not None else np.empty(self.shape, self.dtype)
-		hdata = dst if dst is not None else np.zeros(self.shape, self.dtype)
-		if self.flags['C_CONTIGUOUS']:
+		hdata = dst if dst is not None else np.empty(self.shape, self.dtype)
+		#hdata = dst if dst is not None else np.zeros(self.shape, self.dtype)
+		assert(hdata.shape == self.shape)
+		assert(hdata.dtype == self.dtype)
+		if self.flags['C_CONTIGUOUS'] and hdata.flags['C_CONTIGUOUS']:
 			memcpy(hdata, self)
 		elif self.ndim == 2:
 			memcpy2D(hdata, self)
@@ -101,6 +103,7 @@ class GPUArray(object):
 		return hdata
 	def set(self, hdata):
 		assert(hdata.shape == self.shape)
+		hdata = hdata.astype(self.dtype)
 		if self.flags['C_CONTIGUOUS'] and hdata.flags['C_CONTIGUOUS']:
 			memcpy(self, hdata)
 		elif self.ndim == 2:

@@ -47,13 +47,13 @@ TODO: New feature: mipmap-ringlets
 extern "C" {
 #endif
 
-typedef struct BFring_impl*      BFring;
+typedef struct BFring_impl*        BFring;
 typedef struct BFsequence_wrapper* BFsequence;
-typedef struct BFrsequence_impl* BFrsequence;
-typedef struct BFwsequence_impl* BFwsequence;
-typedef struct BFspan_impl*      BFspan;
-typedef struct BFrspan_impl*     BFrspan;
-typedef struct BFwspan_impl*     BFwspan;
+typedef struct BFrsequence_impl*   BFrsequence;
+typedef struct BFwsequence_impl*   BFwsequence;
+typedef struct BFspan_impl*        BFspan;
+typedef struct BFrspan_impl*       BFrspan;
+typedef struct BFwspan_impl*       BFwspan;
 
 // TODO: bfCudaEnabled
 

@@ -33,7 +33,8 @@ def _get_space(arr):
 	except KeyError: return 'system' # TODO: Dangerous to assume?
 
 def raw_malloc(size, space):
-	return _get(_bf.Malloc(size=size, space=_string2space(space)), retarg=0)
+	ptr = _get(_bf.Malloc(size=size, space=_string2space(space)), retarg=0)
+	return ptr
 def raw_free(ptr, space='auto'):
 	_check(_bf.Free(ptr, _string2space(space)))
 def raw_get_space(ptr):

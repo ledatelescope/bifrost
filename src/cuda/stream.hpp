@@ -164,7 +164,7 @@ class scoped_stream : public cuda::stream {
 	typedef cuda::stream super_type;
 public:
 	inline explicit scoped_stream(int      priority=0,
-	                                   unsigned flags=cudaStreamNonBlocking)
+	                              unsigned flags=cudaStreamNonBlocking)
 		: super_type(priority, flags) {}
 	inline ~scoped_stream() { this->synchronize(); }
 };
