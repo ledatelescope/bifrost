@@ -30,27 +30,27 @@ public:
 	BFstatus status() const { return _status; }
 };
 
-#if defined(BF_DEBUG) && BF_DEBUG
 #include <iostream>
 using std::cout;
 using std::endl;
-#define BF_REPORT_ERROR(err) do { \
-		std::cerr << __FILE__ << ":" << __LINE__ \
-		          << " error " << err << ": " \
-		          << bfGetStatusString(err) << std::endl; \
-	} while(0)
+#if defined(BF_DEBUG) && BF_DEBUG
+  #define BF_REPORT_ERROR(err) do { \
+  		std::cerr << __FILE__ << ":" << __LINE__ \
+  		          << " error " << err << ": " \
+  		          << bfGetStatusString(err) << std::endl; \
+  	} while(0)
+  #define BF_DEBUG_PRINT(x) \
+  	std::cout << __FILE__ << ":" << __LINE__ \
+  	<< " " #x << "\t=\t" << (x) << std::endl
+  #else
+  #define BF_REPORT_ERROR(err)
+  #define BF_DEBUG_PRINT(x)
+#endif // BF_DEBUG
 #define BF_REPORT_INTERNAL_ERROR(msg) do { \
 		std::cerr << __FILE__ << ":" << __LINE__ \
 		          << " internal error: " \
 		          << msg << std::endl; \
 	} while(0)
-#define BF_DEBUG_PRINT(x) \
-	std::cout << __FILE__ << ":" << __LINE__ \
-	<< " " #x << "\t=\t" << (x) << std::endl
-#else
-#define BF_REPORT_ERROR(err)
-#define BF_DEBUG_PRINT(x)
-#endif // BF_DEBUG
 
 #define BF_ASSERT(pred, err) do { \
 		if( !(pred) ) { \
