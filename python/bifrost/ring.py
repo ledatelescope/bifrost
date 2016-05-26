@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 from libbifrost import _bf, _check, _get, _string2space, _space2string
+from GPUArray import GPUArray
 
 import ctypes
 import numpy as np
@@ -268,15 +269,15 @@ class SpanBase(object):
 		data_buffer_ptr = ctypes.cast(data_ptr, ctypes.POINTER(BufferType))
 		data_buffer     = data_buffer_ptr.contents
 		#print len(data_buffer), (nringlet, span_size), (self.stride, 1)
-		shape   = (nringlet, span_size//itemsize)
+		_shape   = (nringlet, span_size//itemsize)
 		strides = (self.stride, itemsize) if nringlet > 1 else None
 		#space   = self.sequence.ring.space
 		space   = self.ring.space
 		if space != 'cuda':
-			data_array = np.ndarray(shape=shape, strides=strides,
+			data_array = np.ndarray(shape=_shape, strides=strides,
 			                        buffer=data_buffer, dtype=dtype)
 		else:
-			data_array = GPUArray(shape=shape, strides=strides,
+			data_array = GPUArray(shape=_shape, strides=strides,
 			                      buffer=data_ptr, dtype=dtype)
 			data_array.flags['SPACE'] = space
 		# Note: This is a non-standard attribute
