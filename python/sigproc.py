@@ -1,4 +1,3 @@
-
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
@@ -25,6 +24,23 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#This program is for reading and writing sigproc filterbank files.
+
+#  Copyright 2015 Ben Barsdell
+#  Copyright 2016 NVIDIA Corporation
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 
 """
 telescope_id:  0 (FAKE)
@@ -55,8 +71,10 @@ import struct
 import numpy as np
 from collections import defaultdict
 
+#header parameter names which precede strings
 _string_values = ['source_name',
                   'rawdatafile']
+#header parameter names which precede doubles
 _double_values = ['az_start',
                   'za_start',
                   'src_raj',
@@ -67,6 +85,7 @@ _double_values = ['az_start',
                   'fch1',
                   'foff',
                   'refdm']
+#header parameter names which precede integers
 _integer_values = ['nchans',
                    'telescope_id',
                    'machine_id',
@@ -80,8 +99,10 @@ _integer_values = ['nchans',
                    'nsamples',
                    'nifs',
                    'npuls']
+#this header parameter precedes a character
 _character_values = ['signed']
 
+#the data_type parameter names' translation
 _data_types = defaultdict(lambda : 'unknown',
                           {0: 'raw data',
                            1: 'filterbank',
@@ -90,6 +111,7 @@ _data_types = defaultdict(lambda : 'unknown',
                            4: 'amplitude spectrum',
                            5: 'complex spectrum',
                            6: 'dedispersed subbands'})
+#the telescope_id parameter names' translation
 _telescopes = defaultdict(lambda : 'unknown',
                           {0:  'Fake',
                            1:  'Arecibo',
@@ -102,6 +124,7 @@ _telescopes = defaultdict(lambda : 'unknown',
                            8:  'Effelsberg',
                            52: 'LWA-OV',
                            53: 'LWA-SV'})
+#the machine_id parameter names' translation
 _machines   = defaultdict(lambda : 'unknown',
                           {0:  'FAKE',
                            1:  'PSPM',
@@ -368,6 +391,7 @@ class SigprocFileRW(object):
 			self._data = []
 			if len(mode) > 0:
 				self.open(filename,mode)
+	#open the filename, and read the header and data from it
 	def open(self, filename=None, mode=''):
 		if filename is not None:
 			self._filename = filename
@@ -385,6 +409,7 @@ class SigprocFileRW(object):
 		self.f = open(self._filename,mode)
 		self.header
 		self.data
+	#using our current stored header, redefine other local variables
 	def _interpret_header(self):
 		if 'header_size' in self._header:
 			self._header_length = self._header['header_size']
@@ -418,24 +443,28 @@ class SigprocFileRW(object):
 		if 'nsamples' in self._header and self._header['nsamples']!=0:
 			self.nframe = self._header['nsamples']
 		else:
-			self.nframe = self._find_nframe()
+			self.nframe = self._find_nframe_from_file()
 	def close(self):
 		self.f.close()
 	def __enter__(self):
 		return self
 	def __exit__(self, type, value, tb):
 		self.close()
+	#move along file
 	def seek(self, offset, whence=0):
 		if whence == 0:
 			offset += self.header_size
 		self.f.seek(offset, whence)
-	def _find_nframe(self):
+	def _find_nframe_from_file(self):
 		curpos = self.f.tell()
 		self.f.seek(0, 2) # Seek to end of file
 		frame_bits = self.nifs*self.nchans*self.nbit
 		nframe = (self.f.tell() - self.header['header_size'])*8 / frame_bits
 		self.f.seek(curpos, 0) # Seek back to where we were
 		return nframe		
+	def _find_nframe_from_data(self):
+		return self.data.shape[0]
+	#get all data from file and store it locally
 	def read(self, nframe=None):
 		if nframe == None:
 			nframe = self.nframe
@@ -446,17 +475,22 @@ class SigprocFileRW(object):
 		if nbit < 8:
 			data = unpack(data, nbit)
 		self._data = data
+	#appends to local data, not the file
+	def append_data(self,input_data):
+		self._data = np.append(self._data,input_data)
+		self.nframe = self._find_nframe_from_data()
 	def write_header_to(self,f):
 		_write_header(self.header,f)
 	def write_data_to(self,f):
-		_write_data(self.data,self.nbit,f)
+		_write_data(self._data,self.nbit,f)
+	#writes stored header and data to file
 	def write_to(self,filename):
 		f = open(filename,'wb')
 		self.write_header_to(f)
 		self.write_data_to(f)
+	#check if should read data from file before returning
 	@property
 	def data(self):
-		#check if should read header
 		if len(self._header)==0 and self._reading:
 			self.header
 		if len(self._header)!=0 and\
@@ -467,12 +501,14 @@ class SigprocFileRW(object):
 	@data.setter
 	def data(self, input_data):
 		self._data = input_data
+	#reads header from file if not already set.
 	@property
 	def header(self):
 		if len(self._header)==0 and self._reading:
 			self._header = _read_header(self.f)
 			self._interpret_header()
 		return self._header
+	#reinterprets header after setting
 	@header.setter
 	def header(self, input_header):
 		self._header = input_header
