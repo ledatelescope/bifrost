@@ -114,7 +114,8 @@ _machines   = defaultdict(lambda : 'unknown',
 def _header_write_string(f, key):
 	f.write(struct.pack('=i', len(key)))
 	f.write(key)
-def _header_write(f, key, value):
+
+def _header_write_value(f, key, value):
 	if isinstance(value, int):
 		fmt = '=i'
 	elif isinstance(value, float):
@@ -126,13 +127,14 @@ def _header_write(f, key, value):
 	_header_write_string(f, key)
 	f.write(struct.pack(fmt, value))
 
-def _header_read(f):
+def _header_read_one_parameter(f):
 	length = struct.unpack('=i', f.read(4))[0]
 	if length <= 0 or length >= 80:
 		return None
 	s = f.read(length)
 	return s
 
+#write the entire header to the current position of a file
 def _write_header(hdr, f):
 	#f.write("HEADER_START")
 	_header_write_string(f, "HEADER_START")
@@ -141,9 +143,9 @@ def _write_header(hdr, f):
 			_header_write_string(f, key)
 			_header_write_string(f, val)
 		elif key in _double_values:
-			_header_write(f, key, float(val))
+			_header_write_value(f, key, float(val))
 		elif key in _integer_values:
-			_header_write(f, key, int(val))
+			_header_write_value(f, key, int(val))
 		#elif key in _character_values:
 		#	_header_write(f, key, ??
 		elif key == "header_size":
@@ -153,14 +155,15 @@ def _write_header(hdr, f):
 			print "WARNING: Unknown sigproc header key: %s" % key
 	_header_write_string(f, "HEADER_END")
 
+#Get the entire header from a file, and return as dictionary
 def _read_header(f):
-	if _header_read(f) != "HEADER_START":
+	if _header_read_one_parameter(f) != "HEADER_START":
 		#f.seek(0)
 		raise ValueError("Missing HEADER_START")
 	expecting = None
 	header = {}
 	while True:
-		key = _header_read(f)
+		key = _header_read_one_parameter(f)
 		if key is None:
 			raise ValueError("Failed to parse header")
 		elif key == 'HEADER_END':
@@ -188,7 +191,7 @@ def _read_header(f):
 	#	f.seek(header['header_size'], 0) # Seek back to end of header
 	return header
 
-
+#downgrade data from 8bits to nbits (per value)
 def pack(data,nbit):
 	data = data.flatten()
 	if 8 % nbit != 0:
@@ -223,6 +226,7 @@ def _write_data(data,nbit,f):
 	data.tofile(f)
 
 # TODO: Move this elsewhere?
+#upgrade data from nbits to 8bits
 def unpack(data, nbit):
 	if nbit > 8:
 		raise ValueError("unpack: nbit must be <= 8")
@@ -357,6 +361,7 @@ class SigprocFile(object):
 			raise NotImplementedError
 
 class SigprocFileRW(object):
+	#opens file if enough parameters are given.
 	def __init__(self, filename = None, mode= ''):
 		if filename is not None:
 			self._filename = filename
