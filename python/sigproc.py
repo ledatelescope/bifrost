@@ -198,27 +198,10 @@ def pack(data,nbit):
 		raise ValueError("unpack: nbit must divide into 8")
 	if data.dtype not in (np.uint8, np.int8):
 		raise TypeError("unpack: dtype must be 8-bit")
-	if nbit == 4:
-		data[1::2]=data[1::2]/16
-		data = np.zeros(data.size/2).astype('uint8')+data[0::2]+data[1::2]
-	elif nbit == 2:
-		data[1::4]=data[1::4]/4
-		data[2::4]=data[2::4]/16
-		data[3::4]=data[3::4]/64
-		data = np.zeros(data.size/4).astype('uint8')+\
-				data[0::4]+data[1::4]+data[2::4]+data[3::4]
-	elif nbit == 1:
-		data[1::8]=data[1::8]/2
-		data[2::8]=data[2::8]/4
-		data[3::8]=data[3::8]/8
-		data[4::8]=data[4::8]/16
-		data[5::8]=data[5::8]/32
-		data[6::8]=data[6::8]/64
-		data[7::8]=data[7::8]/128
-		data = np.zeros(data.size/8).astype('uint8')+\
-				data[0::8]+data[1::8]+data[2::8]+data[3::8]+\
-				data[4::8]+data[5::8]+data[6::8]+data[7::8]
-	return data
+	outdata = np.zeros(data.size/(8/nbit)).astype('uint8')
+	for index in range(1,8/nbit):
+		outdata+=data[index::8/nbit]/(2**nbit)**index
+	return outdata
 
 def _write_data(data,nbit,f):
 	if nbit<8:
