@@ -190,6 +190,10 @@ def _read_header(f):
 	#	f.seek(header['header_size'], 0) # Seek back to end of header
 	return header
 
+
+def _write_data(data,f):
+	data.tofile(f)	
+
 # TODO: Move this elsewhere?
 def unpack(data, nbit):
 	if nbit > 8:
@@ -293,6 +297,7 @@ class SigprocFile(object):
 		data = np.fromfile(self.f, count=nframe*self.frame_size, dtype=self.dtype)
 		nframe = data.size // self.frame_size
 		data = data.reshape((nframe,)+self.frame_shape)
+            
 		nbit = self.header['nbits']
 		if nbit < 8:
 			data = unpack(data, nbit)
@@ -322,3 +327,122 @@ class SigprocFile(object):
 			return data[::key.step]
 		elif isinstance(key, tuple): # ND key
 			raise NotImplementedError
+
+class SigprocFileRW(object):
+	def __init__(self, filename = None, mode= ''):
+		if filename is not None:
+			self._filename = filename
+			self._header = {}
+			self._data = []
+			if len(mode) > 0:
+				self.open(filename,mode)
+	def open(self, filename=None, mode=''):
+		if filename is not None:
+			self._filename = filename
+		if self._filename is None:
+			raise ValueError("No filename inputted.")
+		if len(mode) == 0:
+			raise IOError("No input/output mode set.")
+		if 'b' not in mode:
+			raise NotImplementedError("No support for non-binary files")
+		self._header = {}
+		self._data = []
+		self._appending = ('a' in mode)
+		self._writing = any(i in mode for i in 'w+')
+		self._reading = ('r' in mode)
+		self.f = open(self._filename,mode)
+		self.header
+		self.data
+	def _interpret_header(self):
+		if 'header_size' in self._header:
+			self._header_length = self._header['header_size']
+		else:
+			self._header_length = -1
+		self.nifs = self._header['nifs']
+		self.nchans = self._header['nchans']
+		self.frame_shape = (self.nifs, self.nchans)
+		self.nbit = self._header['nbits']
+		signed = 'signed' in self._header and self._header['signed'] == True
+		if self.nbit >= 8:
+			if signed:
+				self.dtype  = { 8: np.int8,
+				               16: np.int16,
+				               32: np.float32,
+				               64: np.float64}[self.nbit]
+			else:
+				self.dtype  = { 8: np.uint8,
+				               16: np.uint16,
+				               32: np.float32,
+				               64: np.float64}[self.nbit]
+		else:
+			self.dtype = np.int8 if signed else np.uint8
+			pack_factor = 8 / self.nbit
+			self.frame_shape = (self.frame_shape[0],
+			                    int(np.ceil(self.frame_shape[1]/float(pack_factor))))
+
+			#self.frame_shape[-1] /= pack_factor
+		self.frame_size  = self.frame_shape[0]*self.frame_shape[1]
+		self.frame_nbyte = self.frame_size*self.dtype().itemsize
+		if 'nsamples' in self._header and self._header['nsamples']!=0:
+			self.nframe = self._header['nsamples']
+		else:
+			self.nframe = self._find_nframe()
+	def close(self):
+		self.f.close()
+	def __enter__(self):
+		return self
+	def __exit__(self, type, value, tb):
+		self.close()
+	def seek(self, offset, whence=0):
+		if whence == 0:
+			offset += self.header_size
+		self.f.seek(offset, whence)
+	def _find_nframe(self):
+		curpos = self.f.tell()
+		self.f.seek(0, 2) # Seek to end of file
+		frame_bits = self.nifs*self.nchans*self.nbit
+		nframe = (self.f.tell() - self.header['header_size'])*8 / frame_bits
+		self.f.seek(curpos, 0) # Seek back to where we were
+		return nframe		
+	def read(self, nframe=None):
+		if nframe == None:
+			nframe = self.nframe
+		data = np.fromfile(self.f, count=nframe*self.frame_size, dtype=self.dtype)
+		nframe = data.size // self.frame_size
+		data = data.reshape((nframe,)+self.frame_shape)
+		nbit = self.header['nbits']
+		if nbit < 8:
+			data = unpack(data, nbit)
+		self._data = data
+	def write_header_to(self,f):
+		_write_header(self.header,f)
+	def write_data_to(self,f):
+		_write_data(self.data,f)
+	def write_to(self,filename):
+		f = open(filename,'wb')
+		self.write_header_to(f)
+		self.write_data_to(f)
+	@property
+	def data(self):
+		#check if should read header
+		if len(self._header)==0 and self._reading:
+			self.header
+		if len(self._header)!=0 and\
+			len(self._data) == 0 and\
+			self._reading:
+				self.read()
+		return self._data
+	@data.setter
+	def data(self, input_data):
+		self._data = input_data
+	@property
+	def header(self):
+		if len(self._header)==0 and self._reading:
+			self._header = _read_header(self.f)
+			self._interpret_header()
+		return self._header
+	@header.setter
+	def header(self, input_header):
+		self._header = input_header
+		self._interpret_header()
+
