@@ -181,8 +181,22 @@ def _read_header(f):
 	return header
 
 
-def _write_data(data,f):
-	data.tofile(f)	
+def pack(data,nbit):
+	data = data.flatten()
+	if 8 % nbit != 0:
+		raise ValueError("unpack: nbit must divide into 8")
+	if data.dtype not in (np.uint8, np.int8):
+		raise TypeError("unpack: dtype must be 8-bit")
+	if nbit == 4:
+		data[1::2]=data[1::2]/16
+		data = np.zeros(data.size/2).astype('uint8')+data[0::2]+data[1::2]
+	return data
+
+def _write_data(data,nbit,f):
+	if nbit<8:
+		data = pack(data,nbit)
+	print data.dtype, data.shape
+	data.tofile(f)
 
 # TODO: Move this elsewhere?
 def unpack(data, nbit):
@@ -407,7 +421,7 @@ class SigprocFileRW(object):
 	def write_header_to(self,f):
 		_write_header(self.header,f)
 	def write_data_to(self,f):
-		_write_data(self.data,f)
+		_write_data(self.data,self.nbit,f)
 	def write_to(self,filename):
 		f = open(filename,'wb')
 		self.write_header_to(f)
