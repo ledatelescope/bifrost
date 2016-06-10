@@ -138,6 +138,8 @@ def _write_header(hdr, f):
 			_header_write(f, key, int(val))
 		#elif key in _character_values:
 		#	_header_write(f, key, ??
+		elif key == "header_size":
+			pass
 		else:
 			#raise KeyError("Unknown sigproc header key: %s"%key)
 			print "WARNING: Unknown sigproc header key: %s" % key
