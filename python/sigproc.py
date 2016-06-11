@@ -217,23 +217,23 @@ def unpack(data, nbit):
         return data
     elif nbit == 4:
         # Note: This technique assumes LSB-first ordering
-        x = data.astype(np.int16)#np.empty(upshape, dtype=np.int16)
-        x = (x | (x <<  8)) & 0x0F0F
-        x = x << 4 # Shift into high bits to avoid needing to sign extend
-        updata = x
+        tmpdata = data.astype(np.int16)#np.empty(upshape, dtype=np.int16)
+        tmpdata = (tmpdata | (tmpdata <<  8)) & 0x0F0F
+        tmpdata = tmpdata << 4 # Shift into high bits to avoid needing to sign extend
+        updata = tmpdata
     elif nbit == 2:
-        x = data.astype(np.int32)#np.empty(upshape, dtype=np.int16)
-        x = (x | (x << 16)) & 0x000F000F
-        x = (x | (x <<  8)) & 0x03030303
-        x = x << 6 # Shift into high bits to avoid needing to sign extend
-        updata = x
+        tmpdata = data.astype(np.int32)#np.empty(upshape, dtype=np.int16)
+        tmpdata = (tmpdata | (tmpdata << 16)) & 0x000F000F
+        tmpdata = (tmpdata | (tmpdata <<  8)) & 0x03030303
+        tmpdata = tmpdata << 6 # Shift into high bits to avoid needing to sign extend
+        updata = tmpdata
     elif nbit == 1:
-        x = data.astype(np.int64)#np.empty(upshape, dtype=np.int16)
-        x = (x | (x << 32)) & 0x0000000F0000000F
-        x = (x | (x << 16)) & 0x0003000300030003
-        x = (x | (x <<  8)) & 0x0101010101010101
-        x = x << 7 # Shift into high bits to avoid needing to sign extend
-        updata = x
+        tmpdata = data.astype(np.int64)#np.empty(upshape, dtype=np.int16)
+        tmpdata = (tmpdata | (tmpdata << 32)) & 0x0000000F0000000F
+        tmpdata = (tmpdata | (tmpdata << 16)) & 0x0003000300030003
+        tmpdata = (tmpdata | (tmpdata <<  8)) & 0x0101010101010101
+        tmpdata = tmpdata << 7 # Shift into high bits to avoid needing to sign extend
+        updata = tmpdata
     return updata.view(data.dtype)
 # TODO: Add support for writing
 #       Add support for data_type != filterbank
@@ -249,25 +249,25 @@ class SigprocFile(object):
         self.header_size = self.header['header_size']
         self.frame_shape = (self.header['nifs'], self.header['nchans'])
         self.nbit = self.header['nbits']
-        signed = 'signed' in self.header and self.header['signed'] == True
+        signed = 'signed' in self.header and self.header['signed'] is True
         if self.nbit >= 8:
             if signed:
-                self.dtype  = { 8: np.int8,
-                               16: np.int16,
-                               32: np.float32,
-                               64: np.float64}[self.nbit]
+                self.dtype = {8: np.int8,
+                              16: np.int16,
+                              32: np.float32,
+                              64: np.float64}[self.nbit]
             else:
-                self.dtype  = { 8: np.uint8,
-                               16: np.uint16,
-                               32: np.float32,
-                               64: np.float64}[self.nbit]
+                self.dtype = {8: np.uint8,
+                              16: np.uint16,
+                              32: np.float32,
+                              64: np.float64}[self.nbit]
         else:
             self.dtype = np.int8 if signed else np.uint8
             pack_factor = 8 / self.nbit
             self.frame_shape = (self.frame_shape[0],
                                 self.frame_shape[1]/pack_factor)
             #self.frame_shape[-1] /= pack_factor
-        self.frame_size  = self.frame_shape[0]*self.frame_shape[1]
+        self.frame_size = self.frame_shape[0]*self.frame_shape[1]
         self.frame_nbyte = self.frame_size*self.dtype().itemsize
         return self
     def close(self):
@@ -315,12 +315,12 @@ class SigprocFile(object):
         return self.file_object.readinto(buf)
     def __str__(self):
         hmod = self.header.copy()
-        d = hmod['data_type']
-        hmod['data_type'] = "%i (%s)" % (d, _DATA_TYPES[d])
-        t = hmod['telescope_id']
-        hmod['telescope_id'] = "%i (%s)" % (t, _TELESCOPES[t])
-        m = hmod['machine_id']
-        hmod['machine_id']   = "%i (%s)" % (m, _MACHINES[m])
+        data_type = hmod['data_type']
+        hmod['data_type'] = "%i (%s)" % (data_type, _DATA_TYPES[data_type])
+        telescope_id = hmod['telescope_id']
+        hmod['telescope_id'] = "%i (%s)" % (telescope_id, _TELESCOPES[telescope_id])
+        machine_id = hmod['machine_id']
+        hmod['machine_id']   = "%i (%s)" % (machine_id, _MACHINES[machine_id])
         return '\n'.join(['% 16s: %s' % (key, val) for (key, val) in hmod.items()])
     def __getitem__(self, key):
         if isinstance(key, type("")): # Header key lookup
@@ -328,8 +328,8 @@ class SigprocFile(object):
         elif isinstance(key, int): # Extract one time slice
             return self.read(key, key+1)[0]
         elif isinstance(key, slice): # 1D slice
-            start = key.start if key.start is not None else  0
-            stop  = key.stop  if key.stop  is not None else -1
+            start = key.start if key.start is not None else 0
+            stop = key.stop if key.stop is not None else -1
             data = self.read(start, stop)
             #data = self.read(stop) if start == 0 else \
             #       self.read(start, key.stop)
@@ -337,9 +337,11 @@ class SigprocFile(object):
         elif isinstance(key, tuple): # ND key
             raise NotImplementedError
 
+#TODO: Too many attributes, need class for header itself, maybe one for data
 class SigprocFileRW(object):
-    #opens file if enough parameters are given.
+    """Reads from or writes to a sigproc filterbank file"""
     def __init__(self, filename = None, mode= ''):
+        """opens file if enough parameters are given."""
         if filename is not None:
             self._filename = filename
             self._header = {}
@@ -444,6 +446,7 @@ class SigprocFileRW(object):
         self.write_header_to(file_object)
         self.write_data_to(file_object)
     #check if should read data from file before returning
+    #TODO: Keep data of local storage!
     @property
     def data(self):
         if len(self._header)==0 and self._reading:
