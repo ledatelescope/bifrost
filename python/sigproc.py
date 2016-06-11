@@ -41,14 +41,14 @@ data:          [time][pol][nbit] (General case: [time][if/pol][chan][nbit])
 """
 
 import struct
-import numpy as np
 from collections import defaultdict
+import numpy as np
 
 #header parameter names which precede strings
-_string_values = ['source_name',
+_STRING_VALUES = ['source_name',
                   'rawdatafile']
 #header parameter names which precede doubles
-_double_values = ['az_start',
+_DOUBLE_VALUES = ['az_start',
                   'za_start',
                   'src_raj',
                   'src_dej',
@@ -59,7 +59,7 @@ _double_values = ['az_start',
                   'foff',
                   'refdm']
 #header parameter names which precede integers
-_integer_values = ['nchans',
+_INTEGER_VALUES = ['nchans',
                    'telescope_id',
                    'machine_id',
                    'data_type',
@@ -73,10 +73,10 @@ _integer_values = ['nchans',
                    'nifs',
                    'npuls']
 #this header parameter precedes a character
-_character_values = ['signed']
+_CHARACTER_VALUES = ['signed']
 
 #the data_type parameter names' translation
-_data_types = defaultdict(lambda : 'unknown',
+_DATA_TYPES = defaultdict(lambda: 'unknown',
                           {0: 'raw data',
                            1: 'filterbank',
                            2: 'time series',
@@ -85,7 +85,7 @@ _data_types = defaultdict(lambda : 'unknown',
                            5: 'complex spectrum',
                            6: 'dedispersed subbands'})
 #the telescope_id parameter names' translation
-_telescopes = defaultdict(lambda : 'unknown',
+_TELESCOPES = defaultdict(lambda: 'unknown',
                           {0:  'Fake',
                            1:  'Arecibo',
                            2:  'Ooty',
@@ -98,24 +98,24 @@ _telescopes = defaultdict(lambda : 'unknown',
                            52: 'LWA-OV',
                            53: 'LWA-SV'})
 #the machine_id parameter names' translation
-_machines   = defaultdict(lambda : 'unknown',
-                          {0:  'FAKE',
-                           1:  'PSPM',
-                           2:  'WAPP',
-                           3:  'AOFTM',
-                           4:  'BPP',
-                           5:  'OOTY',
-                           6:  'SCAMP',
-                           7:  'GMRTFB',
-                           8:  'PULSAR2000',
-                           52: 'LWA-DP',
-                           53: 'LWA-ADP'})
+_MACHINES = defaultdict(lambda: 'unknown',
+                        {0:  'FAKE',
+                         1:  'PSPM',
+                         2:  'WAPP',
+                         3:  'AOFTM',
+                         4:  'BPP',
+                         5:  'OOTY',
+                         6:  'SCAMP',
+                         7:  'GMRTFB',
+                         8:  'PULSAR2000',
+                         52: 'LWA-DP',
+                         53: 'LWA-ADP'})
 
-def _header_write_string(f, key):
-	f.write(struct.pack('=i', len(key)))
-	f.write(key)
+def _header_write_string(file_object, key):
+	file_object.write(struct.pack('=i', len(key)))
+	file_object.write(key)
 
-def _header_write_value(f, key, value):
+def _header_write_value(file_object, key, value):
 	if isinstance(value, int):
 		fmt = '=i'
 	elif isinstance(value, float):
@@ -124,58 +124,56 @@ def _header_write_value(f, key, value):
 		fmt = '=b'
 	else:
 		raise TypeError("Invalid value type")
-	_header_write_string(f, key)
-	f.write(struct.pack(fmt, value))
+	_header_write_string(file_object, key)
+	file_object.write(struct.pack(fmt, value))
 
-def _header_read_one_parameter(f):
-	length = struct.unpack('=i', f.read(4))[0]
+def _header_read_one_parameter(file_object):
+	length = struct.unpack('=i', file_object.read(4))[0]
 	if length <= 0 or length >= 80:
 		return None
-	s = f.read(length)
-	return s
+	return file_object.read(length)
+	
 
 #write the entire header to the current position of a file
-def _write_header(hdr, f):
-	#f.write("HEADER_START")
-	_header_write_string(f, "HEADER_START")
-	for key,val in hdr.items():
-		if key in _string_values:
-			_header_write_string(f, key)
-			_header_write_string(f, val)
-		elif key in _double_values:
-			_header_write_value(f, key, float(val))
-		elif key in _integer_values:
-			_header_write_value(f, key, int(val))
-		#elif key in _character_values:
-		#	_header_write(f, key, ??
+def _write_header(hdr, file_object):
+	#file_object.write("HEADER_START")
+	_header_write_string(file_object, "HEADER_START")
+	for key, val in hdr.items():
+		if key in _STRING_VALUES:
+			_header_write_string(file_object, key)
+			_header_write_string(file_object, val)
+		elif key in _DOUBLE_VALUES:
+			_header_write_value(file_object, key, float(val))
+		elif key in _INTEGER_VALUES:
+			_header_write_value(file_object, key, int(val))
 		elif key == "header_size":
 			pass
 		else:
 			#raise KeyError("Unknown sigproc header key: %s"%key)
 			print "WARNING: Unknown sigproc header key: %s" % key
-	_header_write_string(f, "HEADER_END")
+	_header_write_string(file_object, "HEADER_END")
 
 #Get the entire header from a file, and return as dictionary
-def _read_header(f):
-	if _header_read_one_parameter(f) != "HEADER_START":
-		#f.seek(0)
+def _read_header(file_object):
+	if _header_read_one_parameter(file_object) != "HEADER_START":
+		#file_object.seek(0)
 		raise ValueError("Missing HEADER_START")
 	expecting = None
 	header = {}
 	while True:
-		key = _header_read_one_parameter(f)
+		key = _header_read_one_parameter(file_object)
 		if key is None:
 			raise ValueError("Failed to parse header")
 		elif key == 'HEADER_END':
 			break
-		elif key in _string_values:
+		elif key in _STRING_VALUES:
 			expecting = key
-		elif key in _double_values:
-			header[key] = struct.unpack('=d', f.read(8))[0]
-		elif key in _integer_values:
-			header[key] = struct.unpack('=i', f.read(4))[0]
-		elif key in _character_values:
-			header[key] = struct.unpack('=b', f.read(1))[0]
+		elif key in _DOUBLE_VALUES:
+			header[key] = struct.unpack('=d', file_object.read(8))[0]
+		elif key in _INTEGER_VALUES:
+			header[key] = struct.unpack('=i', file_object.read(4))[0]
+		elif key in _CHARACTER_VALUES:
+			header[key] = struct.unpack('=b', file_object.read(1))[0]
 		elif expecting is not None:
 			header[expecting] = key
 			expecting = None
@@ -183,16 +181,16 @@ def _read_header(f):
 			print "WARNING: Unknown header key", key
 	if 'nchans' not in header:
 		header['nchans'] = 1
-	header['header_size'] = f.tell()
+	header['header_size'] = file_object.tell()
 	#frame_bits = header['nifs'] * header['nchans'] * header['nbits']
 	#if 'nsamples' not in header or header['nsamples'] == 0:
-	#	f.seek(0, 2) # Seek to end of file
-	#	header['nsamples'] = (f.tell() - header['header_size'])*8 / frame_bits
-	#	f.seek(header['header_size'], 0) # Seek back to end of header
+	#	file_object.seek(0, 2) # Seek to end of file
+	#	header['nsamples'] = (file_object.tell() - header['header_size'])*8 / frame_bits
+	#	file_object.seek(header['header_size'], 0) # Seek back to end of header
 	return header
 
 #downgrade data from 8bits to nbits (per value)
-def pack(data,nbit):
+def pack(data, nbit):
 	data = data.flatten()
 	if 8 % nbit != 0:
 		raise ValueError("unpack: nbit must divide into 8")
@@ -203,10 +201,10 @@ def pack(data,nbit):
 		outdata+=data[index::8/nbit]/(2**nbit)**index
 	return outdata
 
-def _write_data(data,nbit,f):
+def _write_data(data,nbit,file_object):
 	if nbit<8:
 		data = pack(data,nbit)
-	data.tofile(f)
+	data.tofile(file_object)
 
 # TODO: Move this elsewhere?
 #upgrade data from nbits to 8bits
@@ -249,8 +247,8 @@ class SigprocFile(object):
 	def open(self, filename):
 		# Note: If nbit < 8, pack_factor = 8 / nbit and the last dimension
 		#         is divided by pack_factor, with dtype set to uint8.
-		self.f = open(filename, 'rb')
-		self.header = _read_header(self.f)
+		self.file_object = open(filename, 'rb')
+		self.header = _read_header(self.file_object)
 		self.header_size = self.header['header_size']
 		self.frame_shape = (self.header['nifs'], self.header['nchans'])
 		self.nbit = self.header['nbits']
@@ -276,7 +274,7 @@ class SigprocFile(object):
 		self.frame_nbyte = self.frame_size*self.dtype().itemsize
 		return self
 	def close(self):
-		self.f.close()
+		self.file_object.close()
 	def __enter__(self):
 		return self
 	def __exit__(self, type, value, tb):
@@ -284,7 +282,7 @@ class SigprocFile(object):
 	def seek(self, offset, whence=0):
 		if whence == 0:
 			offset += self.header_size
-		self.f.seek(offset, whence)
+		self.file_object.seek(offset, whence)
 	def bandwidth(self):
 		return self.header['nchans'] * self.header['foff']
 	def cfreq(self):
@@ -293,12 +291,12 @@ class SigprocFile(object):
 		return self.header['tsamp'] * self.nframe()
 	def nframe(self):
 		if 'nsamples' not in self.header or self.header['nsamples'] == 0:
-			curpos = self.f.tell()
-			self.f.seek(0, 2) # Seek to end of file
+			curpos = self.file_object.tell()
+			self.file_object.seek(0, 2) # Seek to end of file
 			frame_bits = self.header['nifs'] * self.header['nchans'] * self.header['nbits']
-			nframe = (self.f.tell() - self.header['header_size'])*8 / frame_bits
+			nframe = (self.file_object.tell() - self.header['header_size'])*8 / frame_bits
 			self.header['nsamples'] = nframe
-			self.f.seek(curpos, 0) # Seek back to where we were
+			self.file_object.seek(curpos, 0) # Seek back to where we were
 		return self.header['nsamples']
 	def read(self, nframe_or_start, end=None):
 		if end is not None:
@@ -309,7 +307,7 @@ class SigprocFile(object):
 			nframe = end - start
 		else:
 			nframe = nframe_or_start
-		data = np.fromfile(self.f, count=nframe*self.frame_size, dtype=self.dtype)
+		data = np.fromfile(self.file_object, count=nframe*self.frame_size, dtype=self.dtype)
 		nframe = data.size // self.frame_size
 		data = data.reshape((nframe,)+self.frame_shape)
             
@@ -318,15 +316,15 @@ class SigprocFile(object):
 			data = unpack(data, nbit)
 		return data
 	def readinto(self, buf):
-		return self.f.readinto(buf)
+		return self.file_object.readinto(buf)
 	def __str__(self):
 		hmod = self.header.copy()
 		d = hmod['data_type']
-		hmod['data_type'] = "%i (%s)" % (d, _data_types[d])
+		hmod['data_type'] = "%i (%s)" % (d, _DATA_TYPES[d])
 		t = hmod['telescope_id']
-		hmod['telescope_id'] = "%i (%s)" % (t, _telescopes[t])
+		hmod['telescope_id'] = "%i (%s)" % (t, _TELESCOPES[t])
 		m = hmod['machine_id']
-		hmod['machine_id']   = "%i (%s)" % (m, _machines[m])
+		hmod['machine_id']   = "%i (%s)" % (m, _MACHINES[m])
 		return '\n'.join(['% 16s: %s' % (key,val) for (key,val) in hmod.items()])
 	def __getitem__(self, key):
 		if isinstance(key, type("")): # Header key lookup
@@ -367,7 +365,7 @@ class SigprocFileRW(object):
 		self._appending = ('a' in mode)
 		self._writing = any(i in mode for i in 'w+')
 		self._reading = ('r' in mode)
-		self.f = open(self._filename,mode)
+		self.file_object = open(self._filename,mode)
 		self.header
 		self.data
 	#using our current stored header, redefine other local variables
@@ -406,7 +404,7 @@ class SigprocFileRW(object):
 		else:
 			self.nframe = self._find_nframe_from_file()
 	def close(self):
-		self.f.close()
+		self.file_object.close()
 	def __enter__(self):
 		return self
 	def __exit__(self, type, value, tb):
@@ -415,13 +413,13 @@ class SigprocFileRW(object):
 	def seek(self, offset, whence=0):
 		if whence == 0:
 			offset += self.header_size
-		self.f.seek(offset, whence)
+		self.file_object.seek(offset, whence)
 	def _find_nframe_from_file(self):
-		curpos = self.f.tell()
-		self.f.seek(0, 2) # Seek to end of file
+		curpos = self.file_object.tell()
+		self.file_object.seek(0, 2) # Seek to end of file
 		frame_bits = self.nifs*self.nchans*self.nbit
-		nframe = (self.f.tell() - self.header['header_size'])*8 / frame_bits
-		self.f.seek(curpos, 0) # Seek back to where we were
+		nframe = (self.file_object.tell() - self.header['header_size'])*8 / frame_bits
+		self.file_object.seek(curpos, 0) # Seek back to where we were
 		return nframe		
 	def _find_nframe_from_data(self):
 		return self.data.shape[0]
@@ -429,7 +427,7 @@ class SigprocFileRW(object):
 	def read(self, nframe=None):
 		if nframe == None:
 			nframe = self.nframe
-		data = np.fromfile(self.f, count=nframe*self.frame_size, dtype=self.dtype)
+		data = np.fromfile(self.file_object, count=nframe*self.frame_size, dtype=self.dtype)
 		nframe = data.size // self.frame_size
 		data = data.reshape((nframe,)+self.frame_shape)
 		nbit = self.header['nbits']
@@ -440,15 +438,15 @@ class SigprocFileRW(object):
 	def append_data(self,input_data):
 		self._data = np.append(self._data,input_data)
 		self.nframe = self._find_nframe_from_data()
-	def write_header_to(self,f):
-		_write_header(self.header,f)
-	def write_data_to(self,f):
-		_write_data(self._data,self.nbit,f)
+	def write_header_to(self,file_object):
+		_write_header(self.header,file_object)
+	def write_data_to(self,file_object):
+		_write_data(self._data,self.nbit,file_object)
 	#writes stored header and data to file
 	def write_to(self,filename):
-		f = open(filename,'wb')
-		self.write_header_to(f)
-		self.write_data_to(f)
+		file_object = open(filename,'wb')
+		self.write_header_to(file_object)
+		self.write_data_to(file_object)
 	#check if should read data from file before returning
 	@property
 	def data(self):
@@ -466,7 +464,7 @@ class SigprocFileRW(object):
 	@property
 	def header(self):
 		if len(self._header)==0 and self._reading:
-			self._header = _read_header(self.f)
+			self._header = _read_header(self.file_object)
 			self._interpret_header()
 		return self._header
 	#reinterprets header after setting
