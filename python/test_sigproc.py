@@ -77,7 +77,7 @@ class Test_8bit(unittest.TestCase):
     def tearDown(self):
         self.myfile.close()
     def test_read_header(self):
-        self.assertEqual(self.myfile._header_dict,{'telescope_id': 4, 'refdm': 0.0, 'fch1': 433.968, 'data_type': 2, 'nchans': 1, 'tsamp': 8e-05, 'foff': -0.062, 'nbits': 8, 'header_size': 258, 'tstart': 50000.0, 'source_name': 'P: 3.141592700000 ms, DM: 0.000', 'nifs': 1, 'machine_id': 10})
+        self.assertEqual(self.myfile.header,{'telescope_id': 4, 'refdm': 0.0, 'fch1': 433.968, 'data_type': 2, 'nchans': 1, 'tsamp': 8e-05, 'foff': -0.062, 'nbits': 8, 'header_size': 258, 'tstart': 50000.0, 'source_name': 'P: 3.141592700000 ms, DM: 0.000', 'nifs': 1, 'machine_id': 10})
     def test_read_frame_size(self):
         self.assertEqual(self.myfile.nifs,1)
     def test_data_test(self):
@@ -135,6 +135,15 @@ class Test_16bit_2chan(unittest.TestCase):
         self.my16bitfile.write_to('/data1/mcranmer/data/fake/test_file1.fil')
         np.testing.assert_array_equal(self.my16bitfile.data,
                 SigprocFileRW().open('/data1/mcranmer/data/fake/test_file1.fil','rb').data)
+class Test_break_local_storage(unittest.TestCase):
+    def setUp(self):
+        self.myfile = SigprocFileRW()
+        self.myfile.open('/data1/mcranmer/data/fake/256chan32bitNoDMLargeDuration.fil',mode='r+b')
+    def tearDown(self):
+        self.myfile.close()
+    def test_data_read(self):
+        """Test data to see if read in reasonable amount of time"""
+        self.assertEqual(self.myfile.data.shape[-1], 2)
 #Future tests:
 # - make sigprocfile without a filename attached to it, and write data from it.
 unittest.main()
