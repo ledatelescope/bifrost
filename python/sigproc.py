@@ -373,7 +373,7 @@ class SigprocSettings(object):
         self.dtype = np.uint8
         self.nbits = 8
         self.header = {}
-    def _interpret_header(self):
+    def interpret_header(self):
         """redefine variables from header dictionary"""
         self.nifs = self.header['nifs']
         self.nchans = self.header['nchans']
@@ -413,6 +413,7 @@ class SigprocData(SigprocSettings):
         self.nframe = self.data.shape[0]
     def append_data(self, input_data):
         """append data to local data"""
+        self._find_nframe_from_data()
         self.data.flatten()
         self.data = np.append(self.data, input_data.flatten())
         frame_shape = (self.nframe+input_data.shape[0], self.nifs, self.nchans)
@@ -429,8 +430,6 @@ class SigprocFileRW(SigprocData):
         if 'b' not in mode:
             raise NotImplementedError("No support for non-binary files")
         self.file_object = open(filename, mode)
-        self.read_header()
-        self.read_data()
         return self
     def close(self):
         """closes file object"""
@@ -442,7 +441,7 @@ class SigprocFileRW(SigprocData):
     def read_header(self):
         """reads in a header from the file and sets local settings"""
         self.header = _read_header(self.file_object)
-        self._interpret_header()
+        self.interpret_header()
     #get all data from file and store it locally
     def read_data(self):
         """read data from file and store it locally"""
