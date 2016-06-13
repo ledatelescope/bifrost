@@ -128,6 +128,11 @@ class Test_data_manip(unittest.TestCase):
         random_stream = np.random.randint(63, size=10000).astype('uint8').T
         self.my8bitfile.append_data(random_stream)
         self.assertEqual(self.my8bitfile.nframe,initial_nframe+10000)
+    def test_data_slice(self):
+        testFile = SigprocFileRW()
+        testFile.open(filename='/data1/mcranmer/data/fake/1chan8bitNoDM.fil',mode='r+b')
+        testFile.read_header()
+        self.assertEqual(testFile.read_data(-1).shape,(1,1,1))
     def test_append_untransposed_data(self):
         """test if appending data in different shape affects output"""
         initial_nframe = self.my8bitfile.nframe
@@ -177,8 +182,7 @@ class Test_break_local_storage(unittest.TestCase):
         """Test data to see if read in reasonable amount of time"""
         self.myfile.open('/data1/mcranmer/data/fake/256chan32bitNoDMLargeDuration.fil',mode='r+b')
         self.myfile.read_header()
-        self.myfile.read_data()
-        self.assertEqual(self.myfile.data.shape[-1], 256)
+        print self.myfile.read_data(-5)
 #Future tests:
 # - make sigprocfile without a filename attached to it, and write data from it.
 unittest.main()
