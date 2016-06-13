@@ -150,16 +150,37 @@ class Test_16bit_2chan(unittest.TestCase):
 class Test_break_local_storage(unittest.TestCase):
     def setUp(self):
         self.myfile = SigprocFileRW()
+        self.myfile.open('/data1/mcranmer/data/fake/256chan32bitNoDMLargeDuration.fil',mode='r+b')
+        self.myfile.read_header()
     def tearDown(self):
         self.myfile.close()
     def test_data_read_timed(self):
         """Test data to see if read in reasonable amount of time"""
-        self.myfile.open('/data1/mcranmer/data/fake/256chan32bitNoDMLargeDuration.fil',mode='r+b')
-        self.myfile.read_header()
         start_time = time.clock()
         data = self.myfile.read_data(-3)
         assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
         self.assertEqual(data.shape[0], 3)
+    def test_data_read_timed_2(self):
+        start_time = time.clock()
+        data = self.myfile.read_data(0, 3)
+        assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
+        self.assertEqual(data.shape[0], 3)
+    def test_data_read_timed_3(self):
+        start_time = time.clock()
+        data = self.myfile.read_data(-30000, -30000+3)
+        assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
+        self.assertEqual(data.shape[0], 3)
+    def test_data_read_timed_4(self):
+        start_time = time.clock()
+        data = self.myfile.read_data(30000, 30000+3)
+        assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
+        self.assertEqual(data.shape[0], 3)
+    def test_data_read_timed_5(self):
+        start_time = time.clock()
+        data = self.myfile.read_data(30000, 30000+3)
+        assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
+        self.assertEqual(data.shape[0], 3)
+
 #Future tests:
 # - make sigprocfile without a filename attached to it, and write data from it.
 unittest.main()
