@@ -68,6 +68,7 @@ data:          [time][pol][nbit] (General case: [time][if/pol][chan][nbit])
 """
 
 import struct
+import os
 from collections import defaultdict
 import numpy as np
 
@@ -180,6 +181,7 @@ def _write_header(hdr, file_object):
 
 def _read_header(file_object):
     """Get the entire header from a file, and return as dictionary"""
+    file_object.seek(0)
     if _header_read_one_parameter(file_object) != "HEADER_START":
         file_object.seek(0)
         raise ValueError("Missing HEADER_START")
@@ -438,6 +440,11 @@ class SigprocFileRW(SigprocData):
         return self
     def __exit__(self, exception_type, exception_value, traceback):
         self.close()
+    def _find_nframe_from_file(self):
+        curpos = self.file_object.tell()
+        self.file_object.seek(0, 2) # Seek to end of file
+        frame_bits = self.header['nifs'] * self.header['nchans'] * self.header['nbits']
+        self.nframe = (self.file_object.tell() - self.header['header_size'])*8 / frame_bits
     def read_header(self):
         """reads in a header from the file and sets local settings"""
         self.header = _read_header(self.file_object)
@@ -445,13 +452,23 @@ class SigprocFileRW(SigprocData):
     #get all data from file and store it locally
     def read_data(self,start = None, end = None):
         """read data from file and store it locally"""
+        self._find_nframe_from_file()
+        self.read_header()
+        #read header again.
+        #return np.fromfile(self.file_object, dtype=self.dtype)
+        if start is not None:
+            if start < 0:
+                read_location = (self.nframe+start)*self.nifs*self.nchans*self.nbits/8
+            elif start >= 0:
+                read_location = start*self.nifs*self.nchans*self.nbits/8
+            self.file_object.seek(read_location, os.SEEK_CUR)
         data = np.fromfile(self.file_object, dtype=self.dtype)
         self.nframe = data.size/self.nifs/self.nchans
         data = data.reshape((self.nframe, self.nifs, self.nchans))
         if self.nbits < 8:
             data = unpack(data, self.nbits)
         self.data = data
-        return self.data[start:end, :, :]
+        return self.data
     def write_to(self, filename):
         """writes data and header to a different file"""
         file_object = open(filename, 'wb')
