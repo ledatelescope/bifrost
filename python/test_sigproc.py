@@ -157,8 +157,9 @@ class Test_break_local_storage(unittest.TestCase):
         self.myfile.open('/data1/mcranmer/data/fake/256chan32bitNoDMLargeDuration.fil',mode='r+b')
         self.myfile.read_header()
         start_time = time.clock()
-        self.myfile.read_data(-1)
-        assert time.clock()-start_time < 0.1, "Taking too long to read. (Local data is probably being used.)"
+        data = self.myfile.read_data(-3)
+        assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
+        self.assertEqual(data.shape[0], 3)
 #Future tests:
 # - make sigprocfile without a filename attached to it, and write data from it.
 unittest.main()
