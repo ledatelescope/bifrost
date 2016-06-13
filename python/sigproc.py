@@ -345,13 +345,13 @@ class SigprocSettings(object):
         self.nchans = 0
         self.dtype = np.uint8
         self.nbits = 8
-        self._header_dict = {}
+        self.header = {}
     def _interpret_header(self):
         """redefine variables from header dictionary"""
-        self.nifs = self._header_dict['nifs']
-        self.nchans = self._header_dict['nchans']
-        self.nbits = self._header_dict['nbits']
-        signed = 'signed' in self._header_dict and self._header_dict['signed'] is True
+        self.nifs = self.header['nifs']
+        self.nchans = self.header['nchans']
+        self.nbits = self.header['nbits']
+        signed = 'signed' in self.header and self.header['signed'] is True
         if self.nbits >= 8:
             if signed:
                 self.dtype = {8: np.int8,
@@ -367,7 +367,7 @@ class SigprocSettings(object):
             self.dtype = np.int8 if signed else np.uint8
     def __str__(self):
         """print settings in string format"""
-        hmod = self._header_dict.copy()
+        hmod = self.header.copy()
         data_type = hmod['data_type']
         hmod['data_type'] = "%i (%s)" % (data_type, _DATA_TYPES[data_type])
         telescope_id = hmod['telescope_id']
@@ -375,39 +375,22 @@ class SigprocSettings(object):
         machine_id = hmod['machine_id']
         hmod['machine_id'] = "%i (%s)" % (machine_id, _MACHINES[machine_id])
         return '\n'.join(['% 16s: %s' % (key, val) for (key, val) in hmod.items()])
-    @property
-    def header(self):
-        """fetches the header dictionary, possibly
-        editing for readability(unimplemented)"""
-        return self._header_dict
-    @header.setter
-    def header(self, input_header):
-        self._header_dict = input_header
-        self._interpret_header()
 
 class SigprocData(SigprocSettings):
     """Reads, slices, writes data"""
     def __init__(self):
         super(SigprocData, self).__init__()
-        self._local_data = np.ndarray([])
+        self.data = np.ndarray([])
         self.nframe = 0
     def _find_nframe_from_data(self):
-        self.nframe = self._local_data.shape[0]
+        self.nframe = self.data.shape[0]
     def append_data(self, input_data):
         """append data to local data"""
-        self._local_data.flatten()
-        self._local_data = np.append(self._local_data, input_data.flatten())
+        self.data.flatten()
+        self.data = np.append(self.data, input_data.flatten())
         frame_shape = (self.nframe+input_data.shape[0], self.nifs, self.nchans)
-        self._local_data = np.reshape(self._local_data, frame_shape)
+        self.data = np.reshape(self.data, frame_shape)
         self._find_nframe_from_data()
-    @property
-    def data(self):
-        """fetches local data, possibly reading as it goes"""
-        return self._local_data
-    @property
-    def duration(self):
-        """calculates the duration of the observation"""
-        return self.nframe*self._header_dict['tsamp']
 
 class SigprocFileRW(SigprocData):
     """Reads from or writes to a sigproc filterbank file"""
@@ -431,7 +414,7 @@ class SigprocFileRW(SigprocData):
         self.close()
     def read_header(self):
         """reads in a header from the file and sets local settings"""
-        self._header_dict = _read_header(self.file_object)
+        self.header = _read_header(self.file_object)
         self._interpret_header()
     #get all data from file and store it locally
     def read_data(self):
@@ -441,10 +424,10 @@ class SigprocFileRW(SigprocData):
         data = data.reshape((self.nframe, self.nifs, self.nchans))
         if self.nbits < 8:
             data = unpack(data, self.nbits)
-        self._local_data = data
+        self.data = data
     def write_to(self, filename):
         """writes data and header to a different file"""
         file_object = open(filename, 'wb')
-        _write_header(self._header_dict, file_object)
-        _write_data(self._local_data, self.nbits, file_object)
+        _write_header(self.header, file_object)
+        _write_data(self.data, self.nbits, file_object)
     #check if should read data from file before returning
