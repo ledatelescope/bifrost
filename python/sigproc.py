@@ -457,12 +457,17 @@ class SigprocFileRW(SigprocData):
         #read header again.
         #return np.fromfile(self.file_object, dtype=self.dtype)
         if start is not None:
+            read_location = 0
             if start < 0:
                 read_location = (self.nframe+start)*self.nifs*self.nchans*self.nbits/8
             elif start >= 0:
                 read_location = start*self.nifs*self.nchans*self.nbits/8
             self.file_object.seek(read_location, os.SEEK_CUR)
-        data = np.fromfile(self.file_object, dtype=self.dtype)
+        if end is not None:
+            end_read = (end-start)*self.nifs*self.nchans
+            data = np.fromfile(self.file_object, count=end_read, dtype=self.dtype)
+        else:        
+            data = np.fromfile(self.file_object, dtype=self.dtype)
         self.nframe = data.size/self.nifs/self.nchans
         data = data.reshape((self.nframe, self.nifs, self.nchans))
         if self.nbits < 8:
