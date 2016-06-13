@@ -5,48 +5,63 @@ class Test_init(unittest.TestCase):
     def setUp(self):
         self.myfile = SigprocFileRW()
         self.myfile.open(filename='/data1/mcranmer/data/fake/2chan1bitNoDM.fil',mode='r+b')
+        self.myfile.read_header()
     def test_basic(self):
         self.myfile.close()
 class Test_1bit(unittest.TestCase):
     def setUp(self):
         self.myfile = SigprocFileRW()
         self.myfile.open(filename='/data1/mcranmer/data/fake/2chan1bitNoDM.fil',mode='r+b')
+        self.myfile.read_header()
+        self.myfile.read_data()
     def tearDown(self):
         self.myfile.close()
     def test_read_write_data_equal(self):
         self.myfile.write_to('/data1/mcranmer/data/fake/test_write.fil')
         checkfile = SigprocFileRW()
         checkfile.open(filename='/data1/mcranmer/data/fake/test_write.fil',mode='rb')
+        checkfile.read_header()
+        checkfile.read_data()
         np.testing.assert_array_equal(self.myfile.data,checkfile.data)
         checkfile.close()
 class Test_2bit(unittest.TestCase):
     def setUp(self):
         self.myfile = SigprocFileRW()
         self.myfile.open(filename='/data1/mcranmer/data/fake/2chan2bitNoDM.fil', mode='r+b')
+        self.myfile.read_header()
+        self.myfile.read_data()
     def tearDown(self):
         self.myfile.close()
     def test_read_write_data_equal(self):
         self.myfile.write_to('/data1/mcranmer/data/fake/test_write.fil')
         checkfile = SigprocFileRW()
         checkfile.open(filename='/data1/mcranmer/data/fake/test_write.fil',mode='rb')
+        checkfile.read_header()
+        checkfile.read_data()
         np.testing.assert_array_equal(self.myfile.data,checkfile.data)
         checkfile.close()
 class Test_4bit(unittest.TestCase):
     def setUp(self):
         self.myfile = SigprocFileRW()
         self.myfile.open(filename='/data1/mcranmer/data/fake/2chan4bitNoDM.fil',mode='rb')
+        self.myfile.read_header()
+        self.myfile.read_data()
     def tearDown(self):
         self.myfile.close()
     def test_read_write_data_equal(self):
         self.myfile.write_to('/data1/mcranmer/data/fake/test_write.fil')
         checkfile = SigprocFileRW()
         checkfile.open(filename='/data1/mcranmer/data/fake/test_write.fil',mode='rb')
+        checkfile.read_header()
+        checkfile.read_data()
         np.testing.assert_array_equal(self.myfile.data,checkfile.data)
         checkfile.close()
 class Test_8bit(unittest.TestCase):
     def setUp(self):
         self.myfile = SigprocFileRW()
         self.myfile.open(filename='/data1/mcranmer/data/fake/1chan8bitNoDM.fil',mode='r+b')
+        self.myfile.read_header()
+        self.myfile.read_data()
     def tearDown(self):
         self.myfile.close()
     def test_read_header(self):
@@ -61,18 +76,24 @@ class Test_8bit(unittest.TestCase):
         self.myfile.write_to('/data1/mcranmer/data/fake/test_write.fil')
         checkfile = SigprocFileRW()
         checkfile.open(filename='/data1/mcranmer/data/fake/test_write.fil',mode='rb')
+        checkfile.read_header()
+        checkfile.read_data()
         self.assertEqual(self.myfile.header, checkfile.header)
         checkfile.close()
     def test_read_write_data_equal(self):
         self.myfile.write_to('/data1/mcranmer/data/fake/test_write.fil')
         checkfile = SigprocFileRW()
         checkfile.open(filename='/data1/mcranmer/data/fake/test_write.fil', mode='rb')
+        checkfile.read_header()
+        checkfile.read_data()
         np.testing.assert_array_equal(self.myfile.data, checkfile.data)
         checkfile.close()
 class Test_data_manip(unittest.TestCase):
     def setUp(self):
         self.my8bitfile = SigprocFileRW()
         self.my8bitfile.open(filename='/data1/mcranmer/data/fake/1chan8bitNoDM.fil',mode='r+b')
+        self.my8bitfile.read_header()
+        self.my8bitfile.read_data()
     def tearDown(self):
         self.my8bitfile.close()
     def test_append_data(self):
@@ -85,17 +106,27 @@ class Test_data_manip(unittest.TestCase):
         initial_nframe = self.my8bitfile.nframe
         random_stream = np.random.randint(63, size=10000).astype('uint8')
         transposed_random_stream = random_stream.T
-        transposeFile = self.my8bitfile
+        transposeFile = SigprocFileRW()
+        transposeFile.header = self.my8bitfile.header
+        transposeFile.interpret_header()
+        transposeFile.data = self.my8bitfile.data
         transposeFile.append_data(transposed_random_stream)
         transposeFile.write_to('/data1/mcranmer/data/fake/test_file1.fil')
         self.my8bitfile.append_data(random_stream)
         self.my8bitfile.write_to('/data1/mcranmer/data/fake/test_file2.fil')
-        self.assertEqual(SigprocFileRW().open('/data1/mcranmer/data/fake/test_file1.fil','rb').data.shape,\
-                SigprocFileRW().open('/data1/mcranmer/data/fake/test_file1.fil','rb').data.shape)
+        file1 = SigprocFileRW().open('/data1/mcranmer/data/fake/test_file1.fil','rb')
+        file2 = SigprocFileRW().open('/data1/mcranmer/data/fake/test_file2.fil','rb')
+        file1.read_header()
+        file2.read_header()
+        file1.read_data()
+        file2.read_data()
+        np.testing.assert_array_equal(file1.data, file2.data)
 class Test_16bit_2chan(unittest.TestCase):
     def setUp(self):
         self.my16bitfile = SigprocFileRW()
         self.my16bitfile.open(filename='/data1/mcranmer/data/fake/2chan16bitNoDM.fil',mode='r+b')
+        self.my16bitfile.read_header()
+        self.my16bitfile.read_data()
     def tearDown(self):
         self.my16bitfile.close()
     def test_data_read(self):
@@ -106,17 +137,21 @@ class Test_16bit_2chan(unittest.TestCase):
         random_stream = np.random.randint(63, size=(10000,2)).astype('uint8')
         self.my16bitfile.append_data(random_stream)
         self.my16bitfile.write_to('/data1/mcranmer/data/fake/test_file1.fil')
-        np.testing.assert_array_equal(self.my16bitfile.data,
-                SigprocFileRW().open('/data1/mcranmer/data/fake/test_file1.fil','rb').data)
+        file2 = SigprocFileRW().open('/data1/mcranmer/data/fake/test_file1.fil','rb')
+        file2.read_header()
+        file2.read_data()
+        np.testing.assert_array_equal(self.my16bitfile.data,file2.data)
 class Test_break_local_storage(unittest.TestCase):
     def setUp(self):
         self.myfile = SigprocFileRW()
-        self.myfile.open('/data1/mcranmer/data/fake/256chan32bitNoDMLargeDuration.fil',mode='r+b')
     def tearDown(self):
         self.myfile.close()
     def test_data_read(self):
         """Test data to see if read in reasonable amount of time"""
-        self.assertEqual(self.myfile.data.shape[-1], 2)
+        self.myfile.open('/data1/mcranmer/data/fake/256chan32bitNoDMLargeDuration.fil',mode='r+b')
+        self.myfile.read_header()
+        self.myfile.read_data()
+        self.assertEqual(self.myfile.data.shape[-1], 256)
 #Future tests:
 # - make sigprocfile without a filename attached to it, and write data from it.
 unittest.main()
