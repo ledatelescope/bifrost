@@ -1,5 +1,6 @@
 import unittest
 from sigproc import *
+import time
 
 class Test_init(unittest.TestCase):
     def setUp(self):
@@ -151,11 +152,13 @@ class Test_break_local_storage(unittest.TestCase):
         self.myfile = SigprocFileRW()
     def tearDown(self):
         self.myfile.close()
-    def test_data_read(self):
+    def test_data_read_timed(self):
         """Test data to see if read in reasonable amount of time"""
         self.myfile.open('/data1/mcranmer/data/fake/256chan32bitNoDMLargeDuration.fil',mode='r+b')
         self.myfile.read_header()
-        print self.myfile.read_data(-5)
+        start_time = time.clock()
+        self.myfile.read_data(-1)
+        assert time.clock()-start_time < 0.1, "Taking too long to read. (Local data is probably being used.)"
 #Future tests:
 # - make sigprocfile without a filename attached to it, and write data from it.
 unittest.main()
