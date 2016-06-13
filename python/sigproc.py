@@ -416,7 +416,7 @@ class SigprocFileRW(SigprocData):
         self.header = _read_header(self.file_object)
         self.interpret_header()
     #get all data from file and store it locally
-    def read_data(self):
+    def read_data(self,start = None, end = None):
         """read data from file and store it locally"""
         data = np.fromfile(self.file_object, dtype=self.dtype)
         self.nframe = data.size/self.nifs/self.nchans
@@ -424,6 +424,7 @@ class SigprocFileRW(SigprocData):
         if self.nbits < 8:
             data = unpack(data, self.nbits)
         self.data = data
+        return self.data[start:end, :, :]
     def write_to(self, filename):
         """writes data and header to a different file"""
         file_object = open(filename, 'wb')
