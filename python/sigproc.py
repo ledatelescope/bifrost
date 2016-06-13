@@ -365,9 +365,6 @@ class SigprocFile(object):
         elif isinstance(key, tuple): # ND key
             raise NotImplementedError
 
-
-
-
 class SigprocSettings(object):
     """defines, reads, writes sigproc settings"""
     def __init__(self):
@@ -377,81 +374,104 @@ class SigprocSettings(object):
         self.nbits = 8
         self._header_dict = {}
     def _interpret_header(self):
+        """redefine variables from header dictionary"""
         self.nifs = self._header_dict['nifs']
         self.nchans = self._header_dict['nchans']
         self.nbits = self._header_dict['nbits']
-        signed = 'signed' in self._header_dict and self._header_dict['signed'] == True
+        signed = 'signed' in self._header_dict and self._header_dict['signed'] is True
         if self.nbits >= 8:
             if signed:
-                self.dtype  = { 8: np.int8,
-                               16: np.int16,
-                               32: np.float32,
-                               64: np.float64}[self.nbits]
+                self.dtype = {8: np.int8,
+                              16: np.int16,
+                              32: np.float32,
+                              64: np.float64}[self.nbits]
             else:
-                self.dtype  = { 8: np.uint8,
-                               16: np.uint16,
-                               32: np.float32,
-                               64: np.float64}[self.nbits]
+                self.dtype = {8: np.uint8,
+                              16: np.uint16,
+                              32: np.float32,
+                              64: np.float64}[self.nbits]
         else:
             self.dtype = np.int8 if signed else np.uint8
+    def __str__(self):
+        """print settings in string format"""
+        hmod = self._header_dict.copy()
+        data_type = hmod['data_type']
+        hmod['data_type'] = "%i (%s)" % (data_type, _DATA_TYPES[data_type])
+        telescope_id = hmod['telescope_id']
+        hmod['telescope_id'] = "%i (%s)" % (telescope_id, _TELESCOPES[telescope_id])
+        machine_id = hmod['machine_id']
+        hmod['machine_id'] = "%i (%s)" % (machine_id, _MACHINES[machine_id])
+        return '\n'.join(['% 16s: %s' % (key, val) for (key, val) in hmod.items()])
     @property
     def header(self):
+        """fetches the header dictionary, possibly
+        editing for readability(unimplemented)"""
         return self._header_dict
+    @header.setter
+    def header(self, input_header):
+        self._header_dict = input_header
+        self._interpret_header()
 
 class SigprocData(SigprocSettings):
     """Reads, slices, writes data"""
     def __init__(self):
+        super(SigprocData, self).__init__()
         self._local_data = np.ndarray([])
         self.nframe = 0
     def _find_nframe_from_data(self):
         self.nframe = self._local_data.shape[0]
+    def append_data(self, input_data):
+        """append data to local data"""
+        self._local_data.flatten()
+        self._local_data = np.append(self._local_data, input_data.flatten())
+        frame_shape = (self.nframe+input_data.shape[0], self.nifs, self.nchans)
+        self._local_data = np.reshape(self._local_data, frame_shape)
+        self._find_nframe_from_data()
     @property
     def data(self):
+        """fetches local data, possibly reading as it goes"""
         return self._local_data
+    @property
+    def duration(self):
+        """calculates the duration of the observation"""
+        return self.nframe*self._header_dict['tsamp']
 
-#TODO: Too many attributes, need class for header itself, maybe one for data
 class SigprocFileRW(SigprocData):
     """Reads from or writes to a sigproc filterbank file"""
     def __init__(self):
+        super(SigprocFileRW, self).__init__()
         self.file_object = None
-    #open the filename, and read the header and data from it
     def open(self, filename, mode):
+        """open the filename, and read the header and data from it"""
         if 'b' not in mode:
             raise NotImplementedError("No support for non-binary files")
-        self.file_object = open(filename,mode)
+        self.file_object = open(filename, mode)
         self.read_header()
         self.read_data()
         return self
     def close(self):
+        """closes file object"""
         self.file_object.close()
     def __enter__(self):
         return self
-    def __exit__(self, type, value, tb):
+    def __exit__(self, exception_type, exception_value, traceback):
         self.close()
     def read_header(self):
+        """reads in a header from the file and sets local settings"""
         self._header_dict = _read_header(self.file_object)
         self._interpret_header()
     #get all data from file and store it locally
     def read_data(self):
+        """read data from file and store it locally"""
         data = np.fromfile(self.file_object, dtype=self.dtype)
         self.nframe = data.size/self.nifs/self.nchans
         data = data.reshape((self.nframe, self.nifs, self.nchans))
         if self.nbits < 8:
             data = unpack(data, self.nbits)
         self._local_data = data
-    #appends to local data, not the file
-    def append_data(self,input_data):
-        self._local_data.flatten()
-        self._local_data = np.append(self._local_data,input_data.flatten())
-        self._local_data = np.reshape(self._local_data,(self.nframe+input_data.shape[0],self.nifs,self.nchans))
-        self._find_nframe_from_data()
-    def write_header_to(self,file_object):
-        _write_header(self._header_dict,file_object)
-    def write_data_to(self,file_object):
-        _write_data(self._local_data,self.nbits,file_object)
-    #writes stored header and data to file
-    def write_to(self,filename):
-        file_object = open(filename,'wb')
-        self.write_header_to(file_object)
-        self.write_data_to(file_object)
+    def write_to(self, filename):
+        """writes data and header to a different file"""
+        file_object = open(filename, 'wb')
+        _write_header(self._header_dict, file_object)
+        _write_data(self._local_data, self.nbits, file_object)
     #check if should read data from file before returning
