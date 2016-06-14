@@ -50,7 +50,7 @@ class Test_1bit(unittest.TestCase):
         checkfile.open(filename='/data1/mcranmer/data/fake/test_write.fil',mode='rb')
         checkfile.read_header()
         checkfile.read_data()
-        np.testing.assert_array_equal(self.myfile.data,checkfile.data)
+        np.testing.assert_array_equal(self.myfile.read_data(),checkfile.read_data())
         checkfile.close()
 class Test_2bit(unittest.TestCase):
     def setUp(self):
@@ -66,7 +66,7 @@ class Test_2bit(unittest.TestCase):
         checkfile.open(filename='/data1/mcranmer/data/fake/test_write.fil',mode='rb')
         checkfile.read_header()
         checkfile.read_data()
-        np.testing.assert_array_equal(self.myfile.data,checkfile.data)
+        np.testing.assert_array_equal(self.myfile.read_data(),checkfile.read_data())
         checkfile.close()
 class Test_4bit(unittest.TestCase):
     def setUp(self):
@@ -82,7 +82,7 @@ class Test_4bit(unittest.TestCase):
         checkfile.open(filename='/data1/mcranmer/data/fake/test_write.fil',mode='rb')
         checkfile.read_header()
         checkfile.read_data()
-        np.testing.assert_array_equal(self.myfile.data,checkfile.data)
+        np.testing.assert_array_equal(self.myfile.read_data(),checkfile.read_data())
         checkfile.close()
 class Test_8bit(unittest.TestCase):
     def setUp(self):
@@ -97,9 +97,9 @@ class Test_8bit(unittest.TestCase):
     def test_read_frame_size(self):
         self.assertEqual(self.myfile.nifs,1)
     def test_data_test(self):
-        data = self.myfile.data
+        data = self.myfile.read_data()
         data = np.sum(data,axis=2)
-        self.assertEqual(8495,data.T[0].sum(axis=0))
+        self.assertEqual(70552,data.T[0].sum(axis=0))
     def test_read_write_headers_equal(self):
         self.myfile.write_to('/data1/mcranmer/data/fake/test_write.fil')
         checkfile = SigprocFileRW()
@@ -114,7 +114,7 @@ class Test_8bit(unittest.TestCase):
         checkfile.open(filename='/data1/mcranmer/data/fake/test_write.fil', mode='rb')
         checkfile.read_header()
         checkfile.read_data()
-        np.testing.assert_array_equal(self.myfile.data, checkfile.data)
+        np.testing.assert_array_equal(self.myfile.read_data(), checkfile.read_data())
         checkfile.close()
 class Test_data_manip(unittest.TestCase):
     def setUp(self):
@@ -125,35 +125,42 @@ class Test_data_manip(unittest.TestCase):
     def tearDown(self):
         self.my8bitfile.close()
     def test_append_data(self):
-        initial_nframe = self.my8bitfile.nframe
+        testfile = SigprocFileRW()
+        testfile.open(filename='/data1/mcranmer/data/fake/test_write.fil',mode='rb')
+        testfile.data = self.my8bitfile.read_data()
+        testfile.header = self.my8bitfile.header
+        testfile.interpret_header()
+        self.my8bitfile.clear()
+        testfile.write_to('/data1/mcranmer/data/fake/1chan8bitNoDM.fil')
+        initial_nframe = testfile.get_nframe()
         random_stream = np.random.randint(63, size=10000).astype('uint8').T
-        self.my8bitfile.append_data(random_stream)
-        self.assertEqual(self.my8bitfile.nframe,initial_nframe+10000)
+        testfile.append_data(random_stream)
+        self.assertEqual(testfile.data.shape[0],initial_nframe+10000)
     def test_data_slice(self):
         testFile = SigprocFileRW()
-        testFile.open(filename='/data1/mcranmer/data/fake/1chan8bitNoDM.fil',mode='r+b')
+        testFile.open(filename='/data1/mcranmer/data/fake/1chan8bitNoDM.fil', mode='r+b')
         testFile.read_header()
-        self.assertEqual(testFile.read_data(-1).shape,(1,1,1))
+        self.assertEqual(testFile.read_data(-1).shape, (1, 1, 1))
     def test_append_untransposed_data(self):
         """test if appending data in different shape affects output"""
-        initial_nframe = self.my8bitfile.nframe
+        initial_nframe = self.my8bitfile.get_nframe()
         random_stream = np.random.randint(63, size=10000).astype('uint8')
         transposed_random_stream = random_stream.T
-        transposeFile = SigprocFileRW()
-        transposeFile.header = self.my8bitfile.header
-        transposeFile.interpret_header()
-        transposeFile.data = self.my8bitfile.data
-        transposeFile.append_data(transposed_random_stream)
-        transposeFile.write_to('/data1/mcranmer/data/fake/test_file1.fil')
-        self.my8bitfile.append_data(random_stream)
-        self.my8bitfile.write_to('/data1/mcranmer/data/fake/test_file2.fil')
-        file1 = SigprocFileRW().open('/data1/mcranmer/data/fake/test_file1.fil','rb')
-        file2 = SigprocFileRW().open('/data1/mcranmer/data/fake/test_file2.fil','rb')
-        file1.read_header()
-        file2.read_header()
-        file1.read_data()
-        file2.read_data()
-        np.testing.assert_array_equal(file1.data, file2.data)
+        testfile1 = SigprocFileRW()
+        testfile1.data = self.my8bitfile.read_data()
+        testfile1.header = self.my8bitfile.header
+        testfile1.interpret_header()
+        testfile2 = SigprocFileRW()
+        testfile2.data = self.my8bitfile.read_data()
+        testfile2.header = self.my8bitfile.header
+        testfile2.interpret_header()
+        testfile1.append_data(random_stream)
+        testfile2.append_data(transposed_random_stream)
+        testfile1.write_to(filename='/data1/mcranmer/data/fake/test_write1.fil')
+        testfile2.write_to(filename='/data1/mcranmer/data/fake/test_write2.fil')
+        testfile1.open(filename='/data1/mcranmer/data/fake/test_write1.fil', mode='rb')
+        testfile2.open(filename='/data1/mcranmer/data/fake/test_write1.fil', mode='rb')
+        np.testing.assert_array_equal(testfile1.read_data(), testfile2.read_data())
 class Test_16bit_2chan(unittest.TestCase):
     def setUp(self):
         self.my16bitfile = SigprocFileRW()
@@ -164,16 +171,22 @@ class Test_16bit_2chan(unittest.TestCase):
         self.my16bitfile.close()
     def test_data_read(self):
         """Test data to be 2 dimensions"""
-        self.assertEqual(self.my16bitfile.data.shape[-1], 2)
+        self.assertEqual(self.my16bitfile.read_data().shape[-1], 2)
     def test_append_2chan_data(self):
-        initial_nframe = self.my16bitfile.nframe
-        random_stream = np.random.randint(63, size=(10000,2)).astype('uint8')
-        self.my16bitfile.append_data(random_stream)
-        self.my16bitfile.write_to('/data1/mcranmer/data/fake/test_file1.fil')
-        file2 = SigprocFileRW().open('/data1/mcranmer/data/fake/test_file1.fil','rb')
+        initial_nframe = self.my16bitfile.get_nframe()
+        random_stream = np.random.randint(2**16-1, size=(10000,2)).astype('uint16')
+        file1 = SigprocFileRW()
+        file1.header = self.my16bitfile.header
+        file1.interpret_header()
+        file1.data = self.my16bitfile.data
+        file1.write_to('/data1/mcranmer/data/fake/test_file1.fil')
+        file1.open('/data1/mcranmer/data/fake/test_file1.fil','r+b')
+        file1.append_data(random_stream)
+        file1.write_to('/data1/mcranmer/data/fake/test_file2.fil')
+        file2 = SigprocFileRW().open('/data1/mcranmer/data/fake/test_file2.fil','rb')
         file2.read_header()
         file2.read_data()
-        np.testing.assert_array_equal(self.my16bitfile.data,file2.data)
+        np.testing.assert_array_equal(file1.read_data(),file2.read_data())
 class Test_break_local_storage(unittest.TestCase):
     def setUp(self):
         self.myfile = SigprocFileRW()
@@ -198,11 +211,6 @@ class Test_break_local_storage(unittest.TestCase):
         assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
         self.assertEqual(data.shape[0], 3)
     def test_data_read_timed_4(self):
-        start_time = time.clock()
-        data = self.myfile.read_data(30000, 30000+3)
-        assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
-        self.assertEqual(data.shape[0], 3)
-    def test_data_read_timed_5(self):
         start_time = time.clock()
         data = self.myfile.read_data(30000, 30000+3)
         assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
