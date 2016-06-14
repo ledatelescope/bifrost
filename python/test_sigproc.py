@@ -215,6 +215,21 @@ class Test_break_local_storage(unittest.TestCase):
         data = self.myfile.read_data(30000, 30000+3)
         assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
         self.assertEqual(data.shape[0], 3)
+class Test_data_slicing(unittest.TestCase):
+    def setUp(self):
+        self.myfile = SigprocFileRW()
+        self.myfile.open('/data1/mcranmer/data/fake/1chan8bitNoDM.fil',mode='r+b')
+        self.myfile.read_header()
+    def tearDown(self):
+        self.myfile.close()
+    def test_only_negative_end_given(self):
+        data = self.myfile.read_data(end=-3)
+        self.assertEqual(data.shape[1:],(1,1))
+        self.assertTrue(data.shape[0] > 100) #assumes more than 100 frames in .fil
+    def test_different_signs(self):
+        print self.myfile.read_data().shape
+        data = self.myfile.read_data(3,-3)
+        self.assertEqual(data.shape,(12800-6, 1, 1)) #assumes more than ~100 frames in .fil
 
 #Future tests:
 # - make sigprocfile without a filename attached to it, and write data from it.

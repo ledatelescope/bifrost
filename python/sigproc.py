@@ -483,18 +483,21 @@ class SigprocFileRW(SigprocSettings):
         """read data from file and store it locally"""
         nframe = self._find_nframe_from_file()
         seek_to_data(self.file_object)
+        read_start = 0
+        end_read = nframe*self.nifs*self.nchans
         if start is not None:
-            read_location = 0
             if start < 0:
-                read_location = (nframe+start)*self.nifs*self.nchans*self.nbits/8
+                read_start = (nframe+start)*self.nifs*self.nchans
             elif start >= 0:
-                read_location = start*self.nifs*self.nchans*self.nbits/8
-            self.file_object.seek(read_location, os.SEEK_CUR)
+                read_start = start*self.nifs*self.nchans
         if end is not None:
-            end_read = (end-start)*self.nifs*self.nchans
-            data = np.fromfile(self.file_object, count=end_read, dtype=self.dtype)
-        else:        
-            data = np.fromfile(self.file_object, dtype=self.dtype)
+            if end < 0:
+                end_read = (nframe+end)*self.nifs*self.nchans
+            elif end >= 0:
+                end_read = end*self.nifs*self.nchans
+        self.file_object.seek(read_start, os.SEEK_CUR)
+        nbytes_to_read = end_read-read_start
+        data = np.fromfile(self.file_object, count=nbytes_to_read, dtype=self.dtype)
         nframe = data.size/self.nifs/self.nchans
         data = data.reshape((nframe, self.nifs, self.nchans))
         if self.nbits < 8:
