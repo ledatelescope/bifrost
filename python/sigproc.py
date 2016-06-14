@@ -209,11 +209,6 @@ def _read_header(file_object):
     if 'nchans' not in header:
         header['nchans'] = 1
     header['header_size'] = file_object.tell()
-    #frame_bits = header['nifs'] * header['nchans'] * header['nbits']
-    #if 'nsamples' not in header or header['nsamples'] == 0:
-    #   file_object.seek(0, 2) # Seek to end of file
-    #   header['nsamples'] = (file_object.tell() - header['header_size'])*8 / frame_bits
-    #   file_object.seek(header['header_size'], 0) # Seek back to end of header
     return header
 
 def seek_to_data(file_object):
@@ -295,108 +290,6 @@ def unpack(data, nbit):
         updata = tmpdata
     return updata.view(data.dtype)
 
-# TODO: Add support for writing
-#       Add support for data_type != filterbank
-class SigprocFile(object):
-    def __init__(self, filename=None):
-        if filename is not None:
-            self.open(filename)
-    def open(self, filename):
-        # Note: If nbit < 8, pack_factor = 8 / nbit and the last dimension
-        #         is divided by pack_factor, with dtype set to uint8.
-        self.file_object = open(filename, 'rb')
-        self.header = _read_header(self.file_object)
-        self.header_size = self.header['header_size']
-        self.frame_shape = (self.header['nifs'], self.header['nchans'])
-        self.nbit = self.header['nbits']
-        signed = 'signed' in self.header and self.header['signed'] is True
-        if self.nbit >= 8:
-            if signed:
-                self.dtype = {8: np.int8,
-                              16: np.int16,
-                              32: np.float32,
-                              64: np.float64}[self.nbit]
-            else:
-                self.dtype = {8: np.uint8,
-                              16: np.uint16,
-                              32: np.float32,
-                              64: np.float64}[self.nbit]
-        else:
-            self.dtype = np.int8 if signed else np.uint8
-            pack_factor = 8 / self.nbit
-            self.frame_shape = (self.frame_shape[0],
-                                self.frame_shape[1]/pack_factor)
-            #self.frame_shape[-1] /= pack_factor
-        self.frame_size = self.frame_shape[0]*self.frame_shape[1]
-        self.frame_nbyte = self.frame_size*self.dtype().itemsize
-        return self
-    def close(self):
-        self.file_object.close()
-    def __enter__(self):
-        return self
-    def __exit__(self, type, value, tb):
-        self.close()
-    def seek(self, offset, whence=0):
-        if whence == 0:
-            offset += self.header_size
-        self.file_object.seek(offset, whence)
-    def bandwidth(self):
-        return self.header['nchans'] * self.header['foff']
-    def cfreq(self):
-        return self.header['fch1'] + 0.5*(self.header['nchans']-1)*self.header['foff']
-    def duration(self):
-        return self.header['tsamp'] * self.nframe()
-    def nframe(self):
-        if 'nsamples' not in self.header or self.header['nsamples'] == 0:
-            curpos = self.file_object.tell()
-            self.file_object.seek(0, 2) # Seek to end of file
-            frame_bits = self.header['nifs'] * self.header['nchans'] * self.header['nbits']
-            nframe = (self.file_object.tell() - self.header['header_size'])*8 / frame_bits
-            self.header['nsamples'] = nframe
-            self.file_object.seek(curpos, 0) # Seek back to where we were
-        return self.header['nsamples']
-    def read(self, nframe_or_start, end=None):
-        if end is not None:
-            start = nframe_or_start or 0
-            self.seek(start * self.frame_nbyte)
-            if end == -1:
-                end = self.nframe()
-            nframe = end - start
-        else:
-            nframe = nframe_or_start
-        data = np.fromfile(self.file_object, count=nframe*self.frame_size, dtype=self.dtype)
-        nframe = data.size // self.frame_size
-        data = data.reshape((nframe,)+self.frame_shape)
-        nbit = self.header['nbits']
-        if nbit < 8:
-            data = unpack(data, nbit)
-        return data
-    def readinto(self, buf):
-        return self.file_object.readinto(buf)
-    def __str__(self):
-        hmod = self.header.copy()
-        data_type = hmod['data_type']
-        hmod['data_type'] = "%i (%s)" % (data_type, _DATA_TYPES[data_type])
-        telescope_id = hmod['telescope_id']
-        hmod['telescope_id'] = "%i (%s)" % (telescope_id, _TELESCOPES[telescope_id])
-        machine_id = hmod['machine_id']
-        hmod['machine_id']   = "%i (%s)" % (machine_id, _MACHINES[machine_id])
-        return '\n'.join(['% 16s: %s' % (key, val) for (key, val) in hmod.items()])
-    def __getitem__(self, key):
-        if isinstance(key, type("")): # Header key lookup
-            return self.header[key]
-        elif isinstance(key, int): # Extract one time slice
-            return self.read(key, key+1)[0]
-        elif isinstance(key, slice): # 1D slice
-            start = key.start if key.start is not None else 0
-            stop = key.stop if key.stop is not None else -1
-            data = self.read(start, stop)
-            #data = self.read(stop) if start == 0 else \
-            #       self.read(start, key.stop)
-            return data[::key.step]
-        elif isinstance(key, tuple): # ND key
-            raise NotImplementedError
-
 class SigprocSettings(object):
     """defines, reads, writes sigproc settings"""
     def __init__(self):
@@ -424,17 +317,6 @@ class SigprocSettings(object):
                               64: np.float64}[self.nbits]
         else:
             self.dtype = np.int8 if signed else np.uint8
-    def __str__(self):
-        """print settings in string format"""
-        hmod = self.header.copy()
-        data_type = hmod['data_type']
-        hmod['data_type'] = "%i (%s)" % (data_type, _DATA_TYPES[data_type])
-        telescope_id = hmod['telescope_id']
-        hmod['telescope_id'] = "%i (%s)" % (telescope_id, _TELESCOPES[telescope_id])
-        machine_id = hmod['machine_id']
-        hmod['machine_id'] = "%i (%s)" % (machine_id, _MACHINES[machine_id])
-        return '\n'.join(['% 16s: %s' % (key, val) for (key, val) in hmod.items()])
-
 
 class SigprocFileRW(SigprocSettings):
     """Reads from or writes to a sigproc filterbank file"""
