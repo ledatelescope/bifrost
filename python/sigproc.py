@@ -189,6 +189,35 @@ def _read_header(file_object):
     #   file_object.seek(header['header_size'], 0) # Seek back to end of header
     return header
 
+def seek_to_data(file_object):
+    """Go the the location in the file where the data begins"""
+    file_object.seek(0)
+    if _header_read_one_parameter(file_object) != "HEADER_START":
+        file_object.seek(0)
+        raise ValueError("Missing HEADER_START")
+    expecting = None
+    header = {}
+    while True:
+        key = _header_read_one_parameter(file_object)
+        if key is None:
+            raise ValueError("Failed to parse header")
+        elif key == 'HEADER_END':
+            break
+        elif key in _STRING_VALUES:
+            expecting = key
+        elif key in _DOUBLE_VALUES:
+            header[key] = struct.unpack('=d', file_object.read(8))[0]
+        elif key in _INTEGER_VALUES:
+            header[key] = struct.unpack('=i', file_object.read(4))[0]
+        elif key in _CHARACTER_VALUES:
+            header[key] = struct.unpack('=b', file_object.read(1))[0]
+        elif expecting is not None:
+            header[expecting] = key
+            expecting = None
+        else:
+            print "WARNING: Unknown header key", key
+    return
+
 def pack(data, nbit):
     """downgrade data from 8bits to nbits (per value)"""
     data = data.flatten()
@@ -202,6 +231,7 @@ def pack(data, nbit):
     return outdata
 
 def _write_data(data, nbit, file_object):
+    file_object.seek(0,2)
     if nbit < 8:
         data = pack(data, nbit)
     data.tofile(file_object)
@@ -378,34 +408,24 @@ class SigprocSettings(object):
         hmod['machine_id'] = "%i (%s)" % (machine_id, _MACHINES[machine_id])
         return '\n'.join(['% 16s: %s' % (key, val) for (key, val) in hmod.items()])
 
-class SigprocData(SigprocSettings):
-    """Reads, slices, writes data"""
-    def __init__(self):
-        super(SigprocData, self).__init__()
-        self.data = np.ndarray([])
-        self.nframe = 0
-    def _find_nframe_from_data(self):
-        self.nframe = self.data.shape[0]
-    def append_data(self, input_data):
-        """append data to local data"""
-        self._find_nframe_from_data()
-        self.data.flatten()
-        self.data = np.append(self.data, input_data.flatten())
-        frame_shape = (self.nframe+input_data.shape[0], self.nifs, self.nchans)
-        self.data = np.reshape(self.data, frame_shape)
-        self._find_nframe_from_data()
 
-class SigprocFileRW(SigprocData):
+class SigprocFileRW(SigprocSettings):
     """Reads from or writes to a sigproc filterbank file"""
     def __init__(self):
         super(SigprocFileRW, self).__init__()
         self.file_object = None
+        self.mode = ''
+        self.data = np.array([])
     def open(self, filename, mode):
         """open the filename, and read the header and data from it"""
         if 'b' not in mode:
             raise NotImplementedError("No support for non-binary files")
+        self.mode = mode
         self.file_object = open(filename, mode)
         return self
+    def clear(self):
+        self.file_object.seek(0)
+        self.file_object.truncate()
     def close(self):
         """closes file object"""
         self.file_object.close()
@@ -414,25 +434,32 @@ class SigprocFileRW(SigprocData):
     def __exit__(self, exception_type, exception_value, traceback):
         self.close()
     def _find_nframe_from_file(self):
+        self.read_header()
         curpos = self.file_object.tell()
         self.file_object.seek(0, 2) # Seek to end of file
         frame_bits = self.header['nifs'] * self.header['nchans'] * self.header['nbits']
-        self.nframe = (self.file_object.tell() - self.header['header_size'])*8 / frame_bits
+        nframe = (self.file_object.tell() - curpos)*8 / frame_bits
+        return nframe
+    def get_nframe(self):
+        """calculate the number of frames from the data"""
+        if self.data.size%self.nifs != 0:
+            raise ValueError
+        elif self.data.size/self.nifs%self.nchans != 0:
+            raise ValueError
+        nframe = self.data.size/self.nifs/self.nchans
+        return nframe
     def read_header(self):
         """reads in a header from the file and sets local settings"""
         self.header = _read_header(self.file_object)
         self.interpret_header()
-    #get all data from file and store it locally
-    def read_data(self,start = None, end = None):
+    def read_data(self, start = None, end = None):
         """read data from file and store it locally"""
-        self._find_nframe_from_file()
-        self.read_header()
-        #read header again.
-        #return np.fromfile(self.file_object, dtype=self.dtype)
+        nframe = self._find_nframe_from_file()
+        seek_to_data(self.file_object)
         if start is not None:
             read_location = 0
             if start < 0:
-                read_location = (self.nframe+start)*self.nifs*self.nchans*self.nbits/8
+                read_location = (nframe+start)*self.nifs*self.nchans*self.nbits/8
             elif start >= 0:
                 read_location = start*self.nifs*self.nchans*self.nbits/8
             self.file_object.seek(read_location, os.SEEK_CUR)
@@ -441,8 +468,8 @@ class SigprocFileRW(SigprocData):
             data = np.fromfile(self.file_object, count=end_read, dtype=self.dtype)
         else:        
             data = np.fromfile(self.file_object, dtype=self.dtype)
-        self.nframe = data.size/self.nifs/self.nchans
-        data = data.reshape((self.nframe, self.nifs, self.nchans))
+        nframe = data.size/self.nifs/self.nchans
+        data = data.reshape((nframe, self.nifs, self.nchans))
         if self.nbits < 8:
             data = unpack(data, self.nbits)
         self.data = data
@@ -452,4 +479,19 @@ class SigprocFileRW(SigprocData):
         file_object = open(filename, 'wb')
         _write_header(self.header, file_object)
         _write_data(self.data, self.nbits, file_object)
-    #check if should read data from file before returning
+    def append_data(self, input_data):
+        """append data to local data and file"""
+        input_frames = input_data.size/self.nifs/self.nchans
+        input_shape = (input_frames, self.nifs, self.nchans)
+        input_data = np.reshape(input_data.flatten(), input_shape)
+        if any(character in self.mode for character in 'w+a'): 
+            _write_data(input_data, self.nbits, self.file_object)
+        if self.data.size > 0:
+            self.data = np.append(self.data.flatten(), input_data.flatten())
+        else:
+            self.data = input_data.flatten()
+        nframe = self.get_nframe()
+        frame_shape = (nframe, self.nifs, self.nchans)
+        self.data = np.reshape(self.data, frame_shape)
+    def remove_data(self, nframes):
+        self.file_object.truncate()
