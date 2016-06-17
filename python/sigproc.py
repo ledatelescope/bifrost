@@ -291,10 +291,10 @@ class SigprocSettings(object):
         else:
             self.dtype = np.int8 if signed else np.uint8
 
-class SigprocFileRW(SigprocSettings):
+class SigprocFile(SigprocSettings):
     """Reads from or writes to a sigproc filterbank file"""
     def __init__(self):
-        super(SigprocFileRW, self).__init__()
+        super(SigprocFile, self).__init__()
         self.file_object = None
         self.mode = ''
         self.data = np.array([])
