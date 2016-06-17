@@ -41,9 +41,9 @@ data:          [time][pol][nbit] (General case: [time][if/pol][chan][nbit])
 """
 
 import struct
-import os
-from collections import defaultdict
 import numpy as np
+from collections import defaultdict
+import os
 
 #header parameter names which precede strings
 _STRING_VALUES = ['source_name',
@@ -113,10 +113,13 @@ _MACHINES = defaultdict(lambda: 'unknown',
                          53: 'LWA-ADP'})
 
 def _header_write_string(file_object, key):
+    """Writes a single key name to the header,
+    which will be followed by the value"""
     file_object.write(struct.pack('=i', len(key)))
     file_object.write(key)
 
 def _header_write_value(file_object, key, value):
+    """Writes a single parameter value to the header"""
     if isinstance(value, int):
         fmt = '=i'
     elif isinstance(value, float):
@@ -129,6 +132,7 @@ def _header_write_value(file_object, key, value):
     file_object.write(struct.pack(fmt, value))
 
 def _header_read_one_parameter(file_object):
+    """Reads a single key name from the header"""
     length = struct.unpack('=i', file_object.read(4))[0]
     if length <= 0 or length >= 80:
         return None
@@ -226,7 +230,8 @@ def pack(data, nbit):
     return outdata
 
 def _write_data(data, nbit, file_object):
-    file_object.seek(0,2)
+    """Writes given data to an open file, also packing if needed"""
+    file_object.seek(0, 2)
     if nbit < 8:
         data = pack(data, nbit)
     data.tofile(file_object)
@@ -306,6 +311,7 @@ class SigprocFile(SigprocSettings):
         self.file_object = open(filename, mode)
         return self
     def clear(self):
+        """Erases file contents"""
         self.file_object.seek(0)
         self.file_object.truncate()
     def close(self):
@@ -334,7 +340,7 @@ class SigprocFile(SigprocSettings):
         """reads in a header from the file and sets local settings"""
         self.header = _read_header(self.file_object)
         self.interpret_header()
-    def read_data(self, start = None, end = None):
+    def read_data(self, start=None, end=None):
         """read data from file and store it locally"""
         nframe = self._find_nframe_from_file()
         seek_to_data(self.file_object)
@@ -369,7 +375,7 @@ class SigprocFile(SigprocSettings):
         input_frames = input_data.size/self.nifs/self.nchans
         input_shape = (input_frames, self.nifs, self.nchans)
         input_data = np.reshape(input_data.flatten(), input_shape)
-        if any(character in self.mode for character in 'w+a'): 
+        if any(character in self.mode for character in 'w+a'):
             _write_data(input_data, self.nbits, self.file_object)
         if self.data.size > 0:
             self.data = np.append(self.data.flatten(), input_data.flatten())
@@ -378,5 +384,3 @@ class SigprocFile(SigprocSettings):
         nframe = self.get_nframe()
         frame_shape = (nframe, self.nifs, self.nchans)
         self.data = np.reshape(self.data, frame_shape)
-    def remove_data(self, nframes):
-        self.file_object.truncate()
