@@ -1,3 +1,5 @@
+If you are interested in creating additional functionality for Bifrost, this document should help you get up and running with the Bifrost C++ API.
+
 ## Contents
 
 1. [Create a Ring Buffer and Load Data](#ringcreation)
