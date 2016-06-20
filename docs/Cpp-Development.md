@@ -8,7 +8,9 @@
 #include <cuda_runtime_api.h>
 #include <bifrost/common.h>
 #include <bifrost/ring.h>
+
 ...
+
 //declare our ring variable
 BFring my_ring;
 //initiate this ring on local memory (=BF_SPACE_SYSTEM)
