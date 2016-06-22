@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <iostream>
-#include "assert.hpp"
 #define BF_MAX_DIM 3
 
 /// Defines a single atom of data to be passed to a function.
@@ -52,6 +51,7 @@ typedef struct BFarray_ {
 } BFarray;
 
 typedef float BFcomplex[2];
+typedef float BFreal;
 
 /*! \brief Calls a 1 dimensional CUDA FFT.
  *
@@ -89,7 +89,6 @@ BFstatus bfFFTC2C1d(
  *  nelements_y - number of elements in input array
  *       along y dimension
  *  dtype - datatype of input array. Assumed complex.
- *  stride - number of bytes for each element
  *  space - where data is located
  *  outputs:
  *  output_data - pointer to one dimensional array 
@@ -109,8 +108,64 @@ BFstatus bfFFTC2C2d(
     return BF_STATUS_SUCCESS;
 }
 
+/*! \brief Calls a 1 dimensional real-real CUDA FFT
+ *
+ *  inputs:
+ *  input_data - a pointer to two dimensional array
+ *       of untransformed data
+ *  nelements - number of elements in input array
+ *  dtype - datatype of input array. Assumed complex.
+ *  space - where data is located
+ *  outputs:
+ *  output_data - pointer to one dimensional array 
+ *       of transformed data
+ *  Returns whether or not the operation was a success.
+ */
+BFstatus bfFFTR2C1d(
+    void** input_data, void** output_data, 
+    BFsize nelements, unsigned dtype, 
+    BFspace space)
+{
+    cufftReal* idata = *((cufftReal**)input_data);
+    cufftComplex* odata = *((cufftComplex**)output_data);
+    cufftHandle plan;
+    cufftPlan1d(&plan, nelements, CUFFT_R2C, 1);
+    cufftExecR2C(plan, idata, odata);
+    return cudaGetLastError();
+}
+
+/*! \brief Calls a 2 dimensional real-real CUDA FFT
+ *
+ *  inputs:
+ *  input_data - a pointer to two dimensional array
+ *       of untransformed data
+ *  nelements_x - number of elements in input array
+ *       along x dimension
+ *  nelements_y - number of elements in input array
+ *       along y dimension
+ *  dtype - datatype of input array. Assumed complex.
+ *  stride - number of bytes for each element
+ *  space - where data is located
+ *  outputs:
+ *  output_data - pointer to one dimensional array 
+ *       of transformed data
+ *  Returns whether or not the operation was a success.
+ */
+BFstatus bfFFTR2C2d(
+    void** input_data, void** output_data, 
+    BFsize nelements_x, BFsize nelements_y,
+    unsigned dtype, BFspace space)
+{
+    cufftReal* idata = *((cufftReal**)input_data);
+    cufftComplex* odata = *((cufftComplex**)output_data);
+    cufftHandle plan;
+    cufftPlan2d(&plan, nelements_x, nelements_y, CUFFT_R2C);
+    cufftExecR2C(plan, idata, odata);
+    return cudaGetLastError();
+}
+
 /*! \brief Calls a complex FFT function based on 
- *          specifications in BFarray
+ *          specifications in BFarrays
  *
  *  inputs:
  *  input - pointer to BFarray that contains data to be
@@ -123,6 +178,25 @@ BFstatus bfFFTC2C2d(
 BFstatus bfFFT(
     BFarray *input, BFarray *output)
 {
+    // TODO: Move plan here.
+    // TODO: Make user pass FFT_R2C, and FFT_FORWARD to this function
+    // TODO: Provide same functionality as in cufft_nyquist_packed.cu
+    // TODO: Set Ben's callbacks.
+    // TODO: Use planMany instead of plan1d.
+    // TODO: Set up BF dtype variable.
+    if (input->dtype == 0)
+    {
+        if (input->ndim == 1)
+            return bfFFTR2C1d(
+                (void**)&(input->data), (void**)&(output->data),
+                input->shape[0], input->dtype,
+                input->space);
+        else if (input->ndim == 2)
+            return bfFFTR2C2d(
+                (void**)&(input->data), (void**)&(output->data),
+                input->shape[0], input->shape[1],
+                input->dtype, input->space);
+    }
     if (input->ndim == 1)
         return bfFFTC2C1d(
             (void**)&(input->data), (void**)&(output->data),
@@ -134,6 +208,89 @@ BFstatus bfFFT(
             input->shape[0], input->shape[1], input->dtype,
             input->space);
     return BF_STATUS_INTERNAL_ERROR;
+}
+
+void test_bffft_real_2d()
+{
+    BFarray my_data;
+    BFarray out_data;
+    BFreal set_data[3][2] = 
+        {{1,2},{2,3},{3,4}};
+    BFreal** some_data;
+    BFcomplex* odata;
+    cudaMalloc((void**)&some_data, sizeof(BFreal)*6);
+    cudaMalloc((void**)&odata, sizeof(BFcomplex)*6);
+    cudaMemcpy(
+        some_data, set_data, 
+        sizeof(BFreal)*6, cudaMemcpyHostToDevice);
+    my_data.data = some_data;
+    my_data.space = BF_SPACE_CUDA;
+    my_data.shape[0] = 3;
+    my_data.shape[1] = 2;
+    my_data.dtype = 0;
+    my_data.ndim = 2;
+    my_data.strides[0] = 2*sizeof(BFreal);
+    my_data.strides[1] = sizeof(BFreal);
+    out_data = my_data;
+    out_data.data = odata;
+    out_data.dtype = 1;
+    out_data.strides[0] = 2*sizeof(BFcomplex);
+    out_data.strides[1] = sizeof(BFcomplex);
+    if (bfFFT(&my_data, &out_data) != BF_STATUS_SUCCESS)
+    {
+        printf("bfFFT failed!\n");
+        return; 
+    }
+    cufftComplex localdata[3][2] = {};
+    cudaMemcpy(
+        localdata, (cufftComplex*)out_data.data, 
+        sizeof(cufftComplex)*6, cudaMemcpyDeviceToHost);
+    for(int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 2; j++)
+        {
+            printf(
+                "%f+I%f\n",
+                cuCrealf(localdata[i][j]),
+                cuCimagf(localdata[i][j]));
+        }
+    }
+    return;
+}
+void test_bffft_real()
+{
+    BFarray my_data;
+    BFarray out_data;
+    BFreal set_data[4] = {1,3,6,2.5134};
+    BFreal* some_data;
+    BFcomplex* odata;
+    cudaMalloc((void**)&some_data, sizeof(BFreal)*5);
+    cudaMalloc((void**)&odata, sizeof(BFcomplex)*3);
+    cudaMemcpy(
+        some_data, set_data, 
+        sizeof(BFreal)*4, cudaMemcpyHostToDevice);
+    my_data.data = some_data;
+    my_data.space = BF_SPACE_CUDA;
+    my_data.shape[0] = 4;
+    my_data.dtype = 0;
+    my_data.ndim = 1;
+    my_data.strides[0] = sizeof(BFreal);
+    out_data = my_data;
+    out_data.data = odata;
+    out_data.dtype = 1;
+    out_data.strides[0] = sizeof(BFcomplex);
+    if (bfFFT(&my_data, &out_data) != BF_STATUS_SUCCESS)
+    {
+        printf("bfFFT failed!\n");
+        return; 
+    }
+    cufftComplex localdata[3] = {};
+    cudaMemcpy(
+        localdata, (cufftComplex*)out_data.data, 
+        sizeof(cufftComplex)*3, cudaMemcpyDeviceToHost);
+    for(int i = 0; i < 3; i++)
+        printf("%f+I%f\n",cuCrealf(localdata[i]),cuCimagf(localdata[i]));
+    return;
 }
 
 void test_bffft_2d()
@@ -152,9 +309,10 @@ void test_bffft_2d()
     my_data.space = BF_SPACE_CUDA;
     my_data.shape[0] = 3;
     my_data.shape[1] = 3;
+    my_data.dtype = 1;
     my_data.ndim = 2;
-    my_data.strides[0] = sizeof(BFcomplex);
-    my_data.strides[1] = 3*sizeof(BFcomplex);
+    my_data.strides[0] = 3*sizeof(BFcomplex);
+    my_data.strides[1] = sizeof(BFcomplex);
     if (bfFFT(&my_data, &my_data) != BF_STATUS_SUCCESS)
     {
         printf("bfFFT failed!\n");
@@ -176,20 +334,21 @@ void test_bffft_2d()
 void test_bffft_1d()
 {
     BFarray my_data;
-    BFcomplex set_data[5] = {{5,1},{30,0},{100,0},{30,0},{0,0}};
+    BFcomplex set_data[5] = {{0,0},{30,0},{100,0},{30,0},{-5,0}};
     BFcomplex* some_data;
     cudaMalloc((void**)&some_data, sizeof(BFcomplex)*5);
     cudaMemcpy(some_data, set_data, sizeof(BFcomplex)*5, cudaMemcpyHostToDevice);
     my_data.data = some_data;
     my_data.space = BF_SPACE_CUDA;
     my_data.shape[0] = 5;
+    my_data.dtype = 1;
     my_data.ndim = 1;
     my_data.strides[0] = sizeof(BFcomplex);
     bfFFT(&my_data, &my_data);
     cufftComplex localdata[5]={};
     cudaMemcpy(localdata, (cufftComplex*)my_data.data, sizeof(cufftComplex)*5, cudaMemcpyDeviceToHost);
     for(int i = 0; i < 5; i++)
-        printf("%f\n",cuCrealf(localdata[i]));
+        printf("%f+I%f\n",cuCrealf(localdata[i]),cuCimagf(localdata[i]));
     //print successfully fft'd data.
 }
 
@@ -197,9 +356,10 @@ void test_bffft_1d()
 int main()
 {
     printf("Running...\n");
-    //should make a call to bffft, and print results before and after.
     //test_bffft_1d();
-    test_bffft_2d();
+    //test_bffft_2d();
+    //test_bffft_real();
+    test_bffft_real_2d();
     printf("Done\n");
     return 0;
 }
