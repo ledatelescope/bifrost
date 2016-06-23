@@ -22,6 +22,11 @@
 #if BF_CUDA_ENABLED
     #include "cuda/stream.hpp"
     #include <cuda_runtime_api.h>
+    #define FFT_FORWARD CUFFT_FORWARD
+    #define FFT_INVERSE CUFFT_INVERSE
+    #define FFT_C2C CUFFT_C2C 
+    #define FFT_R2C CUFFT_R2C 
+    #define FFT_C2R CUFFT_C2R 
 #endif
 #include <bifrost/common.h>
 #include <bifrost/ring.h>
@@ -69,13 +74,13 @@ typedef float BFreal;
 BFstatus bfFFTC2C1d(
     void** input_data, void** output_data, 
     BFsize nelements, unsigned dtype,
-    BFspace space)
+    BFspace space, int direction)
 {
     cufftComplex* idata = *((cufftComplex**)input_data);
     cufftComplex* odata = *((cufftComplex**)output_data);
     cufftHandle plan;
     cufftPlan1d(&plan, nelements, CUFFT_C2C, 1);
-    cufftExecC2C(plan, idata, odata, CUFFT_FORWARD);
+    cufftExecC2C(plan, idata, odata, direction);
     return BF_STATUS_SUCCESS;
 }
 
@@ -98,13 +103,13 @@ BFstatus bfFFTC2C1d(
 BFstatus bfFFTC2C2d(
     void** input_data, void** output_data, 
     BFsize nelements_x, BFsize nelements_y, 
-    unsigned dtype, BFspace space)
+    unsigned dtype, BFspace space, int direction)
 {
     cufftComplex* idata = *((cufftComplex**)input_data);
     cufftComplex* odata = *((cufftComplex**)output_data);
     cufftHandle plan;
     cufftPlan2d(&plan, nelements_x, nelements_y, CUFFT_C2C);
-    cufftExecC2C(plan, idata, odata, CUFFT_FORWARD);
+    cufftExecC2C(plan, idata, odata, direction);
     return BF_STATUS_SUCCESS;
 }
 
@@ -176,10 +181,10 @@ BFstatus bfFFTR2C2d(
  *  Returns whether or not the operation was a success.
  */
 BFstatus bfFFT(
-    BFarray *input, BFarray *output)
+    BFarray *input, BFarray *output, int direction)
 {
     // TODO: Move plan here.
-    // TODO: Make user pass FFT_R2C, and FFT_FORWARD to this function
+    // TODO: Make user pass FFT_R2C
     // TODO: Provide same functionality as in cufft_nyquist_packed.cu
     // TODO: Set Ben's callbacks.
     // TODO: Use planMany instead of plan1d.
@@ -201,12 +206,12 @@ BFstatus bfFFT(
         return bfFFTC2C1d(
             (void**)&(input->data), (void**)&(output->data),
             input->shape[0], input->dtype,
-            input->space);
+            input->space, direction);
     else if(input->ndim == 2)
         return bfFFTC2C2d(
             (void**)&(input->data), (void**)&(output->data),
             input->shape[0], input->shape[1], input->dtype,
-            input->space);
+            input->space, direction);
     return BF_STATUS_INTERNAL_ERROR;
 }
 
@@ -236,7 +241,7 @@ void test_bffft_real_2d()
     out_data.dtype = 1;
     out_data.strides[0] = 2*sizeof(BFcomplex);
     out_data.strides[1] = sizeof(BFcomplex);
-    if (bfFFT(&my_data, &out_data) != BF_STATUS_SUCCESS)
+    if (bfFFT(&my_data, &out_data, FFT_FORWARD) != BF_STATUS_SUCCESS)
     {
         printf("bfFFT failed!\n");
         return; 
@@ -279,7 +284,7 @@ void test_bffft_real()
     out_data.data = odata;
     out_data.dtype = 1;
     out_data.strides[0] = sizeof(BFcomplex);
-    if (bfFFT(&my_data, &out_data) != BF_STATUS_SUCCESS)
+    if (bfFFT(&my_data, &out_data, FFT_FORWARD) != BF_STATUS_SUCCESS)
     {
         printf("bfFFT failed!\n");
         return; 
@@ -313,7 +318,7 @@ void test_bffft_2d()
     my_data.ndim = 2;
     my_data.strides[0] = 3*sizeof(BFcomplex);
     my_data.strides[1] = sizeof(BFcomplex);
-    if (bfFFT(&my_data, &my_data) != BF_STATUS_SUCCESS)
+    if (bfFFT(&my_data, &my_data, FFT_FORWARD) != BF_STATUS_SUCCESS)
     {
         printf("bfFFT failed!\n");
         return; 
@@ -344,7 +349,7 @@ void test_bffft_1d()
     my_data.dtype = 1;
     my_data.ndim = 1;
     my_data.strides[0] = sizeof(BFcomplex);
-    bfFFT(&my_data, &my_data);
+    bfFFT(&my_data, &my_data, FFT_FORWARD);
     cufftComplex localdata[5]={};
     cudaMemcpy(localdata, (cufftComplex*)my_data.data, sizeof(cufftComplex)*5, cudaMemcpyDeviceToHost);
     for(int i = 0; i < 5; i++)
