@@ -32,9 +32,10 @@
  */
 
 #include "fft.cu"
-#include <assert.hpp>
+#include <gtest/gtest.h>
+#include <bifrost/common.h>
 
-BFstatus test_bffft_real_2d()
+TEST(FFTTest, Handles2dReal)
 {
     BFarray my_data;
     BFarray out_data;
@@ -60,23 +61,19 @@ BFstatus test_bffft_real_2d()
     out_data.dtype = 1;
     out_data.strides[0] = 2*sizeof(BFcomplex);
     out_data.strides[1] = sizeof(BFcomplex);
-    if (bfFFT(&my_data, &out_data, FFT_FORWARD) != BF_STATUS_SUCCESS)
-    {
-        return BF_STATUS_INTERNAL_ERROR; 
-    }
+    bfFFT(&my_data, &out_data, FFT_FORWARD);
     cufftComplex localdata[3][2] = {};
     cudaMemcpy(
         localdata, (cufftComplex*)out_data.data, 
         sizeof(cufftComplex)*6, cudaMemcpyDeviceToHost);
-    BF_ASSERT(cuCrealf(localdata[0][0])==15.2,0);
-    printf("Still good?");
-    return BF_STATUS_SUCCESS;
+    EXPECT_EQ(cuCrealf(localdata[0][0]),15);
 }
-void test_bffft_real()
+
+TEST(FFTTest, Handles1dReal)
 {
     BFarray my_data;
     BFarray out_data;
-    BFreal set_data[4] = {1,3,6,2.5134};
+    BFreal set_data[4] = {1,3,6,4.5};
     BFreal* some_data;
     BFcomplex* odata;
     cudaMalloc((void**)&some_data, sizeof(BFreal)*5);
@@ -94,21 +91,15 @@ void test_bffft_real()
     out_data.data = odata;
     out_data.dtype = 1;
     out_data.strides[0] = sizeof(BFcomplex);
-    if (bfFFT(&my_data, &out_data, FFT_FORWARD) != BF_STATUS_SUCCESS)
-    {
-        printf("bfFFT failed!\n");
-        return; 
-    }
+    bfFFT(&my_data, &out_data, FFT_FORWARD);
     cufftComplex localdata[3] = {};
     cudaMemcpy(
         localdata, (cufftComplex*)out_data.data, 
         sizeof(cufftComplex)*3, cudaMemcpyDeviceToHost);
-    for(int i = 0; i < 3; i++)
-        printf("%f+I%f\n",cuCrealf(localdata[i]),cuCimagf(localdata[i]));
-    return;
+    EXPECT_EQ((int)cuCimagf(localdata[1]), 1);
 }
 
-void test_bffft_2d()
+TEST(FFTTest, Handles2dComplex)
 {
     BFarray my_data;
     BFcomplex set_data[3][3] = 
@@ -128,28 +119,18 @@ void test_bffft_2d()
     my_data.ndim = 2;
     my_data.strides[0] = 3*sizeof(BFcomplex);
     my_data.strides[1] = sizeof(BFcomplex);
-    if (bfFFT(&my_data, &my_data, FFT_FORWARD) != BF_STATUS_SUCCESS)
-    {
-        printf("bfFFT failed!\n");
-        return; 
-    }
+    bfFFT(&my_data, &my_data, FFT_FORWARD);
     cufftComplex localdata[3][3]={};
     cudaMemcpy(
         localdata, (cufftComplex**)my_data.data, 
         sizeof(cufftComplex)*9, cudaMemcpyDeviceToHost);
-    for(int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++)
-                printf("%f\n",cuCrealf(localdata[i][j]));
-    }
-    //print successfully fft'd data.
-    return;
+    EXPECT_EQ((int)cuCimagf(localdata[2][2]), -125);
 }
 
-void test_bffft_inverse_1d()
+TEST(FFTTest, InverseC2C)
 {
     BFarray my_data;
-    BFcomplex set_data[5] = {{0,0},{30,0},{100,0},{30,0},{-5,0}};
+    BFcomplex set_data[5] = {{0,-1},{0,0},{100,-100},{30,0},{-5,0}};
     BFcomplex* some_data;
     cudaMalloc((void**)&some_data, sizeof(BFcomplex)*5);
     cudaMemcpy(some_data, set_data, sizeof(BFcomplex)*5, cudaMemcpyHostToDevice);
@@ -162,13 +143,13 @@ void test_bffft_inverse_1d()
     bfFFT(&my_data, &my_data, FFT_INVERSE);
     cufftComplex localdata[5]={};
     cudaMemcpy(localdata, (cufftComplex*)my_data.data, sizeof(cufftComplex)*5, cudaMemcpyDeviceToHost);
-    for(int i = 0; i < 5; i++)
-        printf("%f+I%f\n",cuCrealf(localdata[i]),cuCimagf(localdata[i]));
-    //print successfully fft'd data.
+
+    EXPECT_EQ((int)cuCrealf(localdata[3]),139);
 }
 
-void test_bffft_1d()
+TEST(FFTTest, Handles1dComplex)
 {
+    //Set up the test with a 5 element complex array
     BFarray my_data;
     BFcomplex set_data[5] = {{0,0},{30,0},{100,0},{30,0},{-5,0}};
     BFcomplex* some_data;
@@ -180,23 +161,23 @@ void test_bffft_1d()
     my_data.dtype = 1;
     my_data.ndim = 1;
     my_data.strides[0] = sizeof(BFcomplex);
+
+    //Perform the FFT.
     bfFFT(&my_data, &my_data, FFT_FORWARD);
+    //Unload the data from the device
     cufftComplex localdata[5]={};
-    cudaMemcpy(localdata, (cufftComplex*)my_data.data, sizeof(cufftComplex)*5, cudaMemcpyDeviceToHost);
-    for(int i = 0; i < 5; i++)
-        printf("%f+I%f\n",cuCrealf(localdata[i]),cuCimagf(localdata[i]));
-    //print successfully fft'd data.
+    cudaMemcpy(
+        localdata, (cufftComplex*)my_data.data, 
+        sizeof(cufftComplex)*5, cudaMemcpyDeviceToHost);
+
+    //Assert that last imaginary value is about 74
+    EXPECT_EQ((int)cuCimagf(localdata[4]),(int)74.431946);
 }
 
 
-int main()
+
+int main(int argc, char** argv)
 {
-    printf("Running...\n");
-    //test_bffft_1d();
-    //test_bffft_2d();
-    //test_bffft_real();
-    //test_bffft_inverse_1d();
-    test_bffft_real_2d();
-    printf("Done\n");
-    return 0;
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
