@@ -17,7 +17,6 @@
 /*! \file fft.cu
  *  \brief This file wraps cufft functionality into the Bifrost C++ API.
  */
-// TODO: use @param to properly document parameters.
 #include <cufft.h>
 #if BF_CUDA_ENABLED
     #include "cuda/stream.hpp"
@@ -67,12 +66,15 @@ typedef float BFreal;
  *
  *  This input_data must be signed 32 floating point.
  *  \endparblock
- *  nelements - number of elements in in input array
- *  direction - direction of fft
- *  outputs:
- *  output_data - pointer to one dimensional array 
- *       of transformed data
- *  Returns whether or not the operation was a success.
+ *  @param[in] nelements Number of elements in input array
+ *  @param[in] direction (FFT_FORWARD/FFT_INVERSE)
+ *  @param[out] output_data 
+ *  \parblock
+ *  Pointer to one dimensional array to hold ouput.
+ * 
+ *  Must be pre-allocated.
+ *  \endparblock
+ *  \returns Whether or not computation was a success.
  */
 BFstatus bfFFTC2C1d(
     void** input_data, void** output_data, 
@@ -88,18 +90,25 @@ BFstatus bfFFTC2C1d(
 
 /*! \brief Calls a 2 dimensional CUDA FFT.
  *
- *  inputs:
- *  input_data - a pointer to two dimensional array
- *       of untransformed data
- *  nelements_x - number of elements in input array
- *       along x dimension
- *  nelements_y - number of elements in input array
- *       along y dimension
- *  direction - direction of fft
- *  outputs:
- *  output_data - pointer to one dimensional array 
- *       of transformed data
- *  Returns whether or not the operation was a success.
+ *  @param[in] input_data 
+ *  \parblock
+ *  Pointer to two dimensional array
+ *  of untransformed data. 
+ *
+ *  This input_data must be signed 32 floating point.
+ *  \endparblock
+ *  @param[in] nelements_x Number of elements in input 
+ *  along x-dimension in input array
+ *  @param[in] nelements_y Number of elements in input 
+ *  along y-dimension in input array
+ *  @param[in] direction (FFT_FORWARD/FFT_INVERSE)
+ *  @param[out] output_data 
+ *  \parblock
+ *  Pointer to two dimensional array to hold ouput.
+ * 
+ *  Must be pre-allocated.
+ *  \endparblock
+ *  \returns Whether or not computation was a success.
  */
 BFstatus bfFFTC2C2d(
     void** input_data, void** output_data, 
@@ -114,16 +123,23 @@ BFstatus bfFFTC2C2d(
     return BF_STATUS_SUCCESS;
 }
 
-/*! \brief Calls a 1 dimensional real-real CUDA FFT
+/*! \brief Calls a 1 dimensional CUDA FFT on real input.
  *
- *  inputs:
- *  input_data - a pointer to two dimensional array
- *       of untransformed data
- *  nelements - number of elements in input array
- *  outputs:
- *  output_data - pointer to one dimensional array 
- *       of transformed data
- *  Returns whether or not the operation was a success.
+ *  @param[in] input_data 
+ *  \parblock
+ *  Pointer to one dimensional array
+ *  of untransformed data. 
+ *
+ *  This input_data must be signed 32 floating point.
+ *  \endparblock
+ *  @param[in] nelements Number of elements in input array
+ *  @param[out] output_data 
+ *  \parblock
+ *  Pointer to one dimensional array to hold ouput.
+ * 
+ *  Must be pre-allocated.
+ *  \endparblock
+ *  \returns Whether or not computation was a success.
  */
 BFstatus bfFFTR2C1d(
     void** input_data, void** output_data, 
@@ -137,19 +153,27 @@ BFstatus bfFFTR2C1d(
     return cudaGetLastError();
 }
 
-/*! \brief Calls a 2 dimensional real-real CUDA FFT
+/*! \brief Calls a 2 dimensional CUDA FFT on real
+ *  input
  *
- *  inputs:
- *  input_data - a pointer to two dimensional array
- *       of untransformed data
- *  nelements_x - number of elements in input array
- *       along x dimension
- *  nelements_y - number of elements in input array
- *       along y dimension
- *  outputs:
- *  output_data - pointer to one dimensional array 
- *       of transformed data
- *  Returns whether or not the operation was a success.
+ *  @param[in] input_data 
+ *  \parblock
+ *  Pointer to two dimensional array
+ *  of untransformed data. 
+ *
+ *  This input_data must be signed 32 floating point.
+ *  \endparblock
+ *  @param[in] nelements_x Number of elements in input 
+ *  along x-dimension in input array
+ *  @param[in] nelements_y Number of elements in input 
+ *  along y-dimension in input array
+ *  @param[out] output_data 
+ *  \parblock
+ *  Pointer to two dimensional array to hold ouput.
+ * 
+ *  Must be pre-allocated.
+ *  \endparblock
+ *  \returns Whether or not computation was a success.
  */
 BFstatus bfFFTR2C2d(
     void** input_data, void** output_data, 
@@ -166,24 +190,23 @@ BFstatus bfFFTR2C2d(
 /*! \brief Calls a complex FFT function based on 
  *          specifications in BFarrays
  *
- *  input - pointer to BFarray that contains data to be
- *       transformed
- *  outputs:
- *  output - pointer to BFarray which will contain the
- *       transformed data
- *  Returns whether or not the operation was a success.
+ *  @param[in] input - pointer to BFarray that contains 
+ *  data to be transformed, with description of that
+ *  data
+ *  @param[in] direction (FFT_FORWARD/FFT_INVERSE)
+ *  @param[out] output - pointer to BFarray which will 
+ *  contain the transformed data
+ *  \returns Whether or not computation was a success.
  */
 BFstatus bfFFT(
     BFarray *input, BFarray *output, int direction)
 {
     // TODO: Move plan here.
-    // TODO: Make user pass FFT_R2C
-    // TODO: Provide same functionality as in cufft_nyquist_packed.cu
     // TODO: Use planMany instead of plan1d.
     // TODO: Set up BF dtype enum.
     // TODO: Make this function support type conversion
     // TODO: Enable multiple GPU support.
-
+    cufftHandle fftPlan; 
     if (input->dtype == 0)
     {
         if (input->ndim == 1)
