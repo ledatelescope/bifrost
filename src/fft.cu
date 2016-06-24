@@ -17,7 +17,7 @@
 /*! \file fft.cu
  *  \brief This file wraps cufft functionality into the Bifrost C++ API.
  */
-
+// TODO: use @param to properly document parameters.
 #include <cufft.h>
 #if BF_CUDA_ENABLED
     #include "cuda/stream.hpp"
@@ -60,12 +60,14 @@ typedef float BFreal;
 
 /*! \brief Calls a 1 dimensional CUDA FFT.
  *
- *  inputs:
- *  input_data - a pointer to one dimensional array
- *       of untransformed data
+ *  @param[in] input_data 
+ *  \parblock
+ *  Pointer to one dimensional array
+ *  of untransformed data. 
+ *
+ *  This input_data must be signed 32 floating point.
+ *  \endparblock
  *  nelements - number of elements in in input array
- *  dtype - datatype of input array. Assumed complex.
- *  space - where data is located
  *  direction - direction of fft
  *  outputs:
  *  output_data - pointer to one dimensional array 
@@ -74,8 +76,7 @@ typedef float BFreal;
  */
 BFstatus bfFFTC2C1d(
     void** input_data, void** output_data, 
-    BFsize nelements, unsigned dtype,
-    BFspace space, int direction)
+    BFsize nelements, int direction)
 {
     cufftComplex* idata = *((cufftComplex**)input_data);
     cufftComplex* odata = *((cufftComplex**)output_data);
@@ -94,8 +95,6 @@ BFstatus bfFFTC2C1d(
  *       along x dimension
  *  nelements_y - number of elements in input array
  *       along y dimension
- *  dtype - datatype of input array. Assumed complex.
- *  space - where data is located
  *  direction - direction of fft
  *  outputs:
  *  output_data - pointer to one dimensional array 
@@ -105,7 +104,7 @@ BFstatus bfFFTC2C1d(
 BFstatus bfFFTC2C2d(
     void** input_data, void** output_data, 
     BFsize nelements_x, BFsize nelements_y, 
-    unsigned dtype, BFspace space, int direction)
+    int direction)
 {
     cufftComplex* idata = *((cufftComplex**)input_data);
     cufftComplex* odata = *((cufftComplex**)output_data);
@@ -121,8 +120,6 @@ BFstatus bfFFTC2C2d(
  *  input_data - a pointer to two dimensional array
  *       of untransformed data
  *  nelements - number of elements in input array
- *  dtype - datatype of input array. Assumed complex.
- *  space - where data is located
  *  outputs:
  *  output_data - pointer to one dimensional array 
  *       of transformed data
@@ -130,8 +127,7 @@ BFstatus bfFFTC2C2d(
  */
 BFstatus bfFFTR2C1d(
     void** input_data, void** output_data, 
-    BFsize nelements, unsigned dtype, 
-    BFspace space)
+    BFsize nelements)
 {
     cufftReal* idata = *((cufftReal**)input_data);
     cufftComplex* odata = *((cufftComplex**)output_data);
@@ -150,9 +146,6 @@ BFstatus bfFFTR2C1d(
  *       along x dimension
  *  nelements_y - number of elements in input array
  *       along y dimension
- *  dtype - datatype of input array. Assumed complex.
- *  stride - number of bytes for each element
- *  space - where data is located
  *  outputs:
  *  output_data - pointer to one dimensional array 
  *       of transformed data
@@ -160,8 +153,7 @@ BFstatus bfFFTR2C1d(
  */
 BFstatus bfFFTR2C2d(
     void** input_data, void** output_data, 
-    BFsize nelements_x, BFsize nelements_y,
-    unsigned dtype, BFspace space)
+    BFsize nelements_x, BFsize nelements_y)
 {
     cufftReal* idata = *((cufftReal**)input_data);
     cufftComplex* odata = *((cufftComplex**)output_data);
@@ -174,7 +166,6 @@ BFstatus bfFFTR2C2d(
 /*! \brief Calls a complex FFT function based on 
  *          specifications in BFarrays
  *
- *  inputs:
  *  input - pointer to BFarray that contains data to be
  *       transformed
  *  outputs:
@@ -188,32 +179,30 @@ BFstatus bfFFT(
     // TODO: Move plan here.
     // TODO: Make user pass FFT_R2C
     // TODO: Provide same functionality as in cufft_nyquist_packed.cu
-    // TODO: Set Ben's callbacks.
     // TODO: Use planMany instead of plan1d.
-    // TODO: Set up BF dtype variable.
+    // TODO: Set up BF dtype enum.
+    // TODO: Make this function support type conversion
+    // TODO: Enable multiple GPU support.
+
     if (input->dtype == 0)
     {
         if (input->ndim == 1)
             return bfFFTR2C1d(
                 (void**)&(input->data), (void**)&(output->data),
-                input->shape[0], input->dtype,
-                input->space);
+                input->shape[0]);
         else if (input->ndim == 2)
             return bfFFTR2C2d(
                 (void**)&(input->data), (void**)&(output->data),
-                input->shape[0], input->shape[1],
-                input->dtype, input->space);
+                input->shape[0], input->shape[1]);
     }
     if (input->ndim == 1)
         return bfFFTC2C1d(
             (void**)&(input->data), (void**)&(output->data),
-            input->shape[0], input->dtype,
-            input->space, direction);
+            input->shape[0], direction);
     else if(input->ndim == 2)
         return bfFFTC2C2d(
             (void**)&(input->data), (void**)&(output->data),
-            input->shape[0], input->shape[1], input->dtype,
-            input->space, direction);
+            input->shape[0], input->shape[1], direction);
     return BF_STATUS_INTERNAL_ERROR;
 }
 

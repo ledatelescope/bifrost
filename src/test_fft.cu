@@ -199,7 +199,9 @@ TEST(FFTTest, Handles1dComplex)
     EXPECT_EQ((int)cuCimagf(hostData[4]),(int)74.431946);
 }
 
-
+// TODO: Add task functionality for rings?
+// TODO: Add test for multiple GPUs.
+// TODO: Add test for type conversion.
 
 int main(int argc, char** argv)
 {
