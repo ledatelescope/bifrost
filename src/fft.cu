@@ -31,15 +31,13 @@
  *  \brief This file wraps cufft functionality into the Bifrost C++ API.
  */
 #include <cufft.h>
-#if BF_CUDA_ENABLED
-    #include "cuda/stream.hpp"
-    #include <cuda_runtime_api.h>
-    #define FFT_FORWARD CUFFT_FORWARD
-    #define FFT_INVERSE CUFFT_INVERSE
-    #define FFT_C2C CUFFT_C2C 
-    #define FFT_R2C CUFFT_R2C 
-    #define FFT_C2R CUFFT_C2R 
-#endif
+#include "cuda/stream.hpp"
+#include <cuda_runtime_api.h>
+#define FFT_FORWARD CUFFT_FORWARD
+#define FFT_INVERSE CUFFT_INVERSE
+#define FFT_C2C CUFFT_C2C 
+#define FFT_R2C CUFFT_R2C 
+#define FFT_C2R CUFFT_C2R 
 #include <bifrost/common.h>
 #include <bifrost/ring.h>
 #include <stdlib.h>
@@ -47,28 +45,7 @@
 #include <iostream>
 #define BF_MAX_DIM 3
 
-/// Defines a single atom of data to be passed to a function.
-typedef struct BFarray_ {
-    /*! The data pointer can point towards any type of data, 
-     *  so long as there is a corresponding definition in dtype. 
-     *  This data should be an ndim array, which every element of
-     *  type dtype.
-     */
-    void* data;
-    /*! Where this data is located in memory.
-     *  Used to ensure that operations called are localized within
-     *  that space, such as a CUDA funciton operating on device
-     *  memory.
-     */
-    BFspace space;
-    unsigned dtype;
-    int ndim;
-    BFsize shape[BF_MAX_DIM];
-    BFsize strides[BF_MAX_DIM];
-} BFarray;
-
-typedef float BFcomplex[2];
-typedef float BFreal;
+extern "C" {
 
 /*! \brief Calls a 1 dimensional CUDA FFT.
  *
@@ -242,3 +219,4 @@ BFstatus bfFFT(
     return BF_STATUS_INTERNAL_ERROR;
 }
 
+}

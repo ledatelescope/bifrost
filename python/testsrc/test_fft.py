@@ -25,34 +25,48 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""This set of unit tests check the functionality
+on the bifrost FFT wrapper, both in device memory and out"""
+import ctypes
+import unittest
+import numpy as np
 from bifrost.GPUArray import GPUArray
 from bifrost.ring import Ring
-from bifrost.fft import fft
+from bifrost.fft import fft, ifft
 from bifrost.libbifrost import _bf, _string2space
-import numpy as np
-import ctypes
+
+class TestFFTHandles1DComplex(unittest.TestCase):
+    """This test runs one dimensional complex data
+    in device memory through an FFT, forward and then
+    inverse."""
+    def setUp(self):
+        """Create two arrays in device memory, input_data with
+        defined data"""
+        self.input_data = GPUArray(shape=5, dtype=np.complex64)
+        self.output_data = GPUArray(shape=5, dtype=np.complex64)
+        defined_data = np.array([0, 0, 10, 0, -5j]).astype(np.complex64)
+        self.input_data.set(defined_data)
+        self.output_data.set(1j*np.arange(5).astype(np.complex64))
+    def test_forwardfft(self):
+        """Computes a forward FFT and checks accuracy of result"""
+        input_array = self.input_data.as_BFarray(3)
+        output_array = self.output_data.as_BFarray(3)
+        fft(input_array, output_array)
+        self.output_data.buffer = output_array.data
+        local_data = self.output_data.get()
+        self.assertAlmostEqual(local_data[0],10-5j,places=4)
+    def test_inversefft(self):
+        """Computes an inverse FFT and checks accuracy of result"""
+        input_array = self.input_data.as_BFarray(3)
+        output_array = self.output_data.as_BFarray(3)
+        ifft(input_array, output_array)
+        self.output_data.buffer = output_array.data
+        local_data = self.output_data.get()
+        self.assertAlmostEqual(local_data[1],-12.8455+4.33277j,places=4)
 
 
-BF_MAX_DIM = 3
 
-class BFarray(ctypes.Structure):
-    _fields_ = [
-        ("data", ctypes.c_void_p),
-        ("space", _bf.BFspace),
-        ("dtype", ctypes.c_uint),
-        ("ndim", ctypes.c_int),
-        ("shape", ctypes.c_ulong*BF_MAX_DIM),
-        ("strides", ctypes.c_ulong*BF_MAX_DIM)]
 
-np.random.seed(4)
-a = GPUArray(shape=(10), dtype=np.float32)
-a.set(np.arange(10))
-data = ctypes.cast(a.ctypes.data, ctypes.c_void_p)
-space = _string2space('cuda')
-c = (ctypes.c_ulong*BF_MAX_DIM)(*[10,0,0])
-d = (ctypes.c_ulong*BF_MAX_DIM)(*[4*8,0,0])
-myarray = BFarray(data,space,1,1,c,d)
-print _bf.BFarray
-#mybfarray = ctypes.cast(myarray,_bf.BFarray)
-print fft(myarray, myarray)
+if __name__ == '__main__':
+    unittest.main()
 
