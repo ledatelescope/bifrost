@@ -166,6 +166,7 @@ TEST(FFTTest, InverseC2C)
     EXPECT_EQ((int)cuCrealf(hostData[3]),139);
 }
 
+// TODO: Make this data actually complex aside from type
 /*! \brief Simple test of 1 dimensional complex data
  *  through a forward bfFFT.
  */

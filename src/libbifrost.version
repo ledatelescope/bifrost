@@ -92,6 +92,13 @@ VERS_0.6 {
                 bfRingSpanGetStride;
                 bfRingSpanGetOffset;
                 bfRingSpanGetNRinglet;
+
+                bfFFT;
+                bfFFTC2C1d;
+                bfFFTC2C2d;
+                bfFFTR2C1d;
+                bfFFTR2C2d;
+
          local:
                 *;
 };

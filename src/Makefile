@@ -79,7 +79,7 @@ $(LIBBIFROST_SO): $(LIBBIFROST_OBJS)
 %.o: %.cpp  %.h*
 	$(CXX) -o $@	-c $(CXX_FLAGS) $(INC) $<
 %.o: %.cu
-	$(NVCC) -o $@	-c $(NVCC_FLAGS) $(INC) $<
+	$(NVCC) -o $@	-c $(NVCC_FLAGS) $(INC) $< $(LIB)
 #bfring.o: bfring.cpp bfring.h
 #	$(CXX) -o $@ -c $(CXX_FLAGS) $(INC) $<
 
