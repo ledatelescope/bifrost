@@ -31,15 +31,6 @@ extern "C" {
   #define BF_ALIGNMENT 4096//512
 #endif
 
-enum {
-	BF_SPACE_AUTO         = 0,
-	BF_SPACE_SYSTEM       = 1, // aligned_alloc
-	BF_SPACE_CUDA         = 2, // cudaMalloc
-	BF_SPACE_CUDA_HOST    = 3, // cudaHostAlloc
-	BF_SPACE_CUDA_MANAGED = 4  // cudaMallocManaged
-};
-
-typedef BFenum BFspace;
 
 BFstatus bfMalloc(void** ptr, BFsize size, BFspace space);
 BFstatus bfFree(void* ptr, BFspace space);
