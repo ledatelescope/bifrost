@@ -72,20 +72,47 @@ class SigprocReadBlock(object):
                                 if size == 0:
                                     break
 
-class DedisperseBlock(object):
-    """This block performs a dedispersion on sigproc-formatted
-        data"""
+class KurtosisBlock(object):
+    """This block performs spectral kurtosis and cleaning
+        on sigproc-formatted data in rings"""
     def __init__(self, input_ring, output_ring):
+        """
+        @param[in] input_ring Ring containing a 1d
+            timeseries
+        @param[out] output_ring Ring will contain a 1d
+            timeseries that will be cleaned of RFI 
+        """
         self.input_ring = input_ring
         self.output_ring = output_ring
+    def main(self):
+        """Initiate the block's processing"""
+        self.rfi_clean()
+    def rfi_clean(self):
+        """Calls a kurtosis algorithm and uses the result
+            to clean the input data of RFI, and move it to the
+            output ring."""
+        self.output_ring = self.input_ring
+
+class DedisperseBlock(object):
+    """This block performs a dedispersion on sigproc-formatted
+        data in a ring"""
+    def __init__(self, input_ring, output_ring):
+        """
+        @param[in] input_ring Ring containing a 1d
+            timeseries
+        @param[out] output_ring Ring will contain a 1d
+            timeseries that will be dedispersed
+        """
+        self.input_ring = input_ring
+        self.output_ring = output_ring
+    def main(self):
+        """Initiate the block's processing"""
+        self.dedisperse(dispersion_measure=0)
     def dedisperse(self, dispersion_measure):
         """Dedisperse on input ring, moving to output ring.
         @param[in] dispersion_measure Specify the dispersion
             measure that we will remove in the data"""
-        pass
-    def main(self):
-        """Initiate the block's processing"""
-        self.dedisperse(dispersion_measure=0)
+        self.output_ring = self.input_ring
 
 class FoldBlock(object):
     """This block folds a signal into a histogram"""
@@ -103,7 +130,7 @@ class FoldBlock(object):
         @param[in] period Period to fold over in seconds
         @param[in] bins Number of bins in the histogram
         """
-        pass
+        self.output_buffer
     def main(self):
         """Initiate the block's processing"""
         self.fold(period=1.0, bins=100)
@@ -115,11 +142,11 @@ def build_pipeline():
     raw_data_ring = Ring()
     cleaned_data_ring = Ring()
     histogram = np.zeros(100).astype(np.float)
-    filenames = ['/data1/mcranmer/data/fake/pulsar.fil']
+    filenames = ['/data1/mcranmer/data/fake/simple_pulsar_DM0.fil']
     blocks = []
     blocks.append(SigprocReadBlock(filenames, raw_data_ring))
-    #TODO: Put in a block for RFI cleaning
-    blocks.append(DedisperseBlock(raw_data_ring, cleaned_data_ring))
+    blocks.append(KurtosisBlock(raw_data_ring, cleaned_data_ring))
+    blocks.append(DedisperseBlock(cleaned_data_ring, cleaned_data_ring))
     blocks.append(FoldBlock(cleaned_data_ring, histogram))
     threads = [threading.Thread(target=block.main) for block in blocks]
     print "Launching %i threads" % len(threads)
@@ -131,7 +158,7 @@ def build_pipeline():
     #	signal.pause()
     for thread in threads:
         thread.join()
-    print "Done"
+    
 
 if __name__ == "__main__":
     build_pipeline()
