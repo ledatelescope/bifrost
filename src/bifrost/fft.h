@@ -27,58 +27,33 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*! \file memory.h
- *  \brief Space- (host/device) aware memory management/copy/set functions
- */
-
-#ifndef BF_MEMORY_H_INCLUDE_GUARD_
-#define BF_MEMORY_H_INCLUDE_GUARD_
-
+#include <cufft.h>
+#include <cuda.h>
+#include "cuda/stream.hpp"
+#include <cuda_runtime_api.h>
+#include <cuda_device_runtime_api.h>
+#define FFT_FORWARD CUFFT_FORWARD
+#define FFT_INVERSE CUFFT_INVERSE
+#define FFT_C2C CUFFT_C2C 
+#define FFT_R2C CUFFT_R2C 
+#define FFT_C2R CUFFT_C2R 
 #include <bifrost/common.h>
+#include <bifrost/ring.h>
 
-#ifdef __cplusplus
 extern "C" {
-#endif
-
-#ifndef BF_ALIGNMENT
-  #define BF_ALIGNMENT 4096//512
-#endif
-
-
-BFstatus bfMalloc(void** ptr, BFsize size, BFspace space);
-BFstatus bfFree(void* ptr, BFspace space);
-
-// TODO: Change this to return status as per the library convention
-BFspace bfGetSpace(const void* ptr, BFstatus* status);
-
-// Note: This is sync wrt host but async wrt device
-BFstatus bfMemcpy(void*       dst,
-                  BFspace     dst_space,
-                  const void* src,
-                  BFspace     src_space,
-                  BFsize      count);
-BFstatus bfMemcpy2D(void*       dst,
-                    BFsize      dst_stride,
-                    BFspace     dst_space,
-                    const void* src,
-                    BFsize      src_stride,
-                    BFspace     src_space,
-                    BFsize      width,
-                    BFsize      height);
-BFstatus bfMemset(void*   ptr,
-                  BFspace space,
-                  int     value,
-                  BFsize  count);
-BFstatus bfMemset2D(void*   ptr,
-                    BFsize  stride,
-                    BFspace space,
-                    int     value,
-                    BFsize  width,
-                    BFsize  height);
-BFsize bfGetAlignment();
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
-#endif // BF_MEMORY_H_INCLUDE_GUARD_
+BFstatus bfFFTC2C1d(
+    void** input_data, void** output_data, 
+    BFsize nelements, int direction);
+BFstatus bfFFTC2C2d(
+    void** input_data, void** output_data, 
+    BFsize nelements_x, BFsize nelements_y, 
+    int direction);
+BFstatus bfFFTR2C1d(
+    void** input_data, void** output_data, 
+    BFsize nelements);
+BFstatus bfFFTR2C2d(
+    void** input_data, void** output_data, 
+    BFsize nelements_x, BFsize nelements_y);
+BFstatus bfFFT(
+    BFarray *input, BFarray *output, int direction);
+}

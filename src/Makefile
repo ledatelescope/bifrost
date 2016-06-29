@@ -26,7 +26,7 @@ endif
 ifndef NOCUDA
 CXX_FLAGS  += -DBF_CUDA_ENABLED=1
 NVCC_FLAGS += -DBF_CUDA_ENABLED=1
-LIB        += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcudart
+LIB        += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcudart -lcufft
 endif
 
 ifdef ALIGNMENT
@@ -50,6 +50,7 @@ ifndef NOCUDA
   # These files require CUDA to compile
   LIBBIFROST_OBJS += \
   transpose.o \
+  fft.o \
   #apsynth.o
 endif
 #LIBBIFROST_HEADERS = bfcommon.h bfmemory.h bfaffinity.h bfring.h bfring_impl.hpp bftranspose.h bfudp.h Socket.hpp
@@ -78,7 +79,7 @@ $(LIBBIFROST_SO): $(LIBBIFROST_OBJS)
 %.o: %.cpp  %.h*
 	$(CXX) -o $@	-c $(CXX_FLAGS) $(INC) $<
 %.o: %.cu
-	$(NVCC) -o $@	-c $(NVCC_FLAGS) $(INC) $<
+	$(NVCC) -o $@	-c $(NVCC_FLAGS) $(INC) $< $(LIB)
 #bfring.o: bfring.cpp bfring.h
 #	$(CXX) -o $@ -c $(CXX_FLAGS) $(INC) $<
 
