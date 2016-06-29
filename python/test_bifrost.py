@@ -57,25 +57,25 @@ class SigprocReadOp(object):
 		with self.oring.begin_writing() as oring:
 			for name in self.filenames:
 				print "Opening", name
-				with SigprocFile(name) as ifile:
+				with SigprocFile().open(name,'rb') as ifile:
+                                        ifile.read_header()
 					ohdr = {}
-					ohdr['frame_shape']   = ifile.frame_shape
-					ohdr['frame_size']    = ifile.frame_size
-					ohdr['frame_nbyte']   = ifile.frame_nbyte
+					ohdr['frame_shape']   = (ifile.nchans, ifile.nifs)
+					ohdr['frame_size']    = ifile.nchans*ifile.nifs
+					ohdr['frame_nbyte']   = ifile.nchans*ifile.nifs*ifile.nbits/8
 					ohdr['frame_axes']    = ('pol', 'chan')
 					ohdr['ringlet_shape'] = (1,)
 					ohdr['ringlet_axes']  = ()
 					ohdr['dtype']         = str(ifile.dtype)
-					ohdr['nbit']          = ifile.nbit
+					ohdr['nbit']          = ifile.nbits
 					print 'ohdr:', ohdr
 					ohdr = json.dumps(ohdr)
-					#print 'ohdr_str:', ohdr
-					gulp_nbyte = self.gulp_nframe*ifile.frame_nbyte
+                                        gulp_nbyte = self.gulp_nframe*ifile.nchans*ifile.nifs*ifile.nbits/8
 					self.oring.resize(gulp_nbyte)
 					with oring.begin_sequence(name, header=ohdr) as osequence:
 						while True:
 							with osequence.reserve(gulp_nbyte) as wspan:
-								size = ifile.readinto(wspan.data.data)
+								size = ifile.file_object.readinto(wspan.data.data)
 								wspan.commit(size)
 								#print size
 								if size == 0:
@@ -120,8 +120,7 @@ class PrintOp(object):
 def main():
 	test_GPUArray()
 	
-	filenames = ['/data/bbarsdel/astro/aobeam.fil',
-	             '/data/bbarsdel/astro/aobeam2.fil']
+	filenames = ['/data1/mcranmer/data/fake/pulsar.fil']
 	
 	ring0 = Ring()
 	ring1 = Ring()
