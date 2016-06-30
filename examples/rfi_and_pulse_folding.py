@@ -1,12 +1,11 @@
 """@package rfi_and_pulse_folding
-This module is example code for creating a pipeline that 
+This module is example code for creating a pipeline that
 reads data containing a pulsar signal, then removes RFI
 in that signal, and then dedisperses and folds the pulse.
 """
 import json
 import threading
 import bifrost
-import time
 import numpy as np
 from matplotlib import pyplot as plt
 from bifrost import affinity
@@ -37,6 +36,8 @@ class SigprocReadBlock(object):
                     ohdr['nbit'] = ifile.nbits
                     ohdr['tsamp'] = float(ifile.header['tsamp'])
                     ohdr['tstart'] = float(ifile.header['tstart'])
+                    ohdr['fch1'] = float(ifile.header['fch1'])
+                    ohdr['foff'] = float(ifile.header['foff'])
                     print 'ohdr:', ohdr
                     ohdr = json.dumps(ohdr)
                     gulp_nbyte = self.gulp_nframe*ifile.nchans*ifile.nifs*ifile.nbits/8
@@ -78,8 +79,8 @@ class KurtosisBlock(object):
         @param[in] input_ring Ring containing a 1d
             timeseries
         @param[out] output_ring Ring will contain a 1d
-            timeseries that will be cleaned of RFI 
-        @param[in] core Which OpenMP core to use for 
+            timeseries that will be cleaned of RFI
+        @param[in] core Which OpenMP core to use for
             this block. (-1 is any)
         """
         self.input_ring = input_ring
@@ -96,9 +97,12 @@ class KurtosisBlock(object):
         duplicate_ring(self.input_ring, self.output_ring)
 
 class DedisperseBlock(object):
-    """This block performs a dedispersion on sigproc-formatted
-        data in a ring"""
-    def __init__(self, input_ring, output_ring, core=-1):
+    """This block calculates the dedispersion of 
+        sigproc-formatted data in a ring, and tags
+        it in the headers"""
+    def __init__(
+            self, ring, core=-1,
+            gulp_size=4096):
         """
         @param[in] input_ring Ring containing a 1d
             timeseries
@@ -106,92 +110,135 @@ class DedisperseBlock(object):
             timeseries that will be dedispersed
         @param[in] core Which OpenMP core to use for 
             this block. (-1 is any)
+        @param[in] gulp_size How many bytes of the ring to
+            read at once.
         """
-        self.input_ring = input_ring
-        self.output_ring = output_ring
+        self.ring = ring
         self.core = core
+        self.gulp_size = gulp_size
     def main(self):
         """Initiate the block's processing"""
         affinity.set_core(self.core)
-        self.dedisperse(dispersion_measure=0)
-    def dedisperse(self, dispersion_measure):
-        """Dedisperse on input ring, moving to output ring.
-        @param[in] dispersion_measure Specify the dispersion
-            measure that we will remove in the data"""
-        duplicate_ring(self.input_ring, self.output_ring)
+        self.dedisperse()
+    def dedisperse(self):
+        """Dedisperse on input ring, tagging the output ring.
+        This dedispersion algorithm simply adjusts the start
+        time for each channel in the header."""
+        pass
 
 class FoldBlock(object):
     """This block folds a signal into a histogram"""
-    def __init__(self, input_ring, np_output_array, core=-1):
+    def __init__(
+            self, input_ring, np_output_array, 
+            dispersion_measure=None, core=-1, gulp_size=4096):
         """
         @param[in] input_ring Ring containing a 1d
             timeseries
         @param[out] np_output_array Numpy array which will
             eventually contain a histogram from our folding
+        @param[in] dispersion_measure DM of the desired
+            source (pc cm^-3)
         @param[in] core Which OpenMP core to use for 
             this block. (-1 is any)
+        @param[in] gulp_size How many bytes of the ring to
+            read at once.
         """
         self.input_ring = input_ring
         self.output_array = np_output_array
         self.core = core
+        self.gulp_size = gulp_size
+        self.dispersion_measure = dispersion_measure
     def main(self):
         """Initiate the block's processing"""
         affinity.set_core(self.core)
         self.fold(period=1e-3, bins=100)
+    def calculate_bin_indices(
+        self, tstart, tsamp, data_size, period, bins):
+        """Calculate the bin that each time sample should be
+            added to
+        @param[in] tstart Time of the first element (s)
+        @param[in] tsamp Difference between the times of
+            consecutive elements (s)
+        @param[in] data_size Number of elements
+        @param[in] period Which period to fold over (s)
+        @param[in] bins The total number of bins to fold into
+        @return Which bin each sample is folded into
+        """
+        arrival_time = tstart+tsamp*np.arange(data_size)
+        phase = np.fmod(arrival_time, period)
+        return np.floor(phase/period*bins).astype(int)
+    def calculate_delay(self, frequency, reference_frequency):
+        """Calculate the time delay because of frequency dispersion
+        @param[in] frequency The current channel's frequency(MHz)
+        @param[in] reference_frequency The frequency of the 
+            channel we will hold at zero time delay(MHz)"""
+        frequency_factor = \
+            np.power(reference_frequency/1000, -2) -\
+            np.power(frequency/1000, -2)
+        return 4.15e-3*self.dispersion_measure*frequency_factor
     def fold(self, period, bins):
         """Fold the signal into the numpy array
         @param[in] period Period to fold over in seconds
         @param[in] bins Number of bins in the histogram
         """
-        gulp_size = 4096
-        self.input_ring.resize(gulp_size)
+        self.input_ring.resize(self.gulp_size)
         for sequence in self.input_ring.read(guarantee=True):
-            header_ascii = "".join(
-                [chr(item) for item in sequence.header])
-            header = json.loads(header_ascii)
+            ## Get the sequence's header as a dictionary
+            header = json.loads(
+                "".join(
+                    [chr(item) for item in sequence.header]))
             tstart = header['tstart']
             tsamp = header['tsamp']
-            for span in sequence.read(gulp_size):
-                array_size = span.data.shape[1]
-                ## Calculate the bin that each data element should
-                ## be added to
-                arrival_time = tstart+tsamp*np.arange(array_size)
-                phase = np.fmod(arrival_time, period)
-                bin_index = np.floor(phase/period*bins).astype(int)
-                ## Sort the data according to these bins
-                sort_indices = np.argsort(bin_index)
-                sorted_data = span.data[0][sort_indices[::-1]]
-                ## So that we can reshape the data before summing,
-                ## disperse zeros throughout the data show the size
-                ## is an integer multiple of bins
-                extra_elements = np.round(bins*(1-np.modf(
-                    float(array_size)/bins)[0]))
-                insert_index = np.floor(
-                    np.arange(
-                        extra_elements,
-                        step=1.0)*float(array_size)/extra_elements)
-                sorted_data = np.insert(
-                    sorted_data, insert_index,
-                    np.zeros(extra_elements))
-                ## Sum the data into the histogram
-                self.output_array += np.sum(
-                    sorted_data.reshape(100, -1), 1)
-                tstart += tsamp*gulp_size
+            nchans = header['frame_shape'][0]
+            if self.dispersion_measure is None:
+                try:
+                    self.dispersion_measure = header[
+                        'dispersion_measure']
+                except:
+                    self.dispersion_measure = 0
+            for span in sequence.read(self.gulp_size):
+                array_size = span.data.shape[1]/nchans
+                frequency = header['fch1']
+                for chan in range(nchans):
+                    modified_tstart = \
+                        tstart - self.calculate_delay(
+                            frequency, header['fch1'])
+                    ## Sort the data according to which bin
+                    ## it should be placed in
+                    sort_indices = np.argsort(
+                        self.calculate_bin_indices(
+                            modified_tstart, tsamp, 
+                            array_size, period, bins))
+                    sorted_data = span.data[0][chan::nchans][sort_indices]
+                    ## So that we can reshape the data before
+                    ## summing, disperse zeros throughout the
+                    ## data so the size is an integer multiple of
+                    ## bins
+                    extra_elements = np.round(bins*(1-np.modf(
+                        float(array_size)/bins)[0]))
+                    insert_index = np.floor(
+                        np.arange(
+                            extra_elements,
+                            step=1.0)*float(array_size)/extra_elements)
+                    sorted_data = np.insert(
+                        sorted_data, insert_index,
+                        np.zeros(extra_elements))
+                    ## Sum the data into our histogram
+                    self.output_array += np.sum(
+                        sorted_data.reshape(100, -1), 1)
+                    frequency -= header['foff']
+                tstart += tsamp*self.gulp_size
 
-def build_pipeline():
-    """This function creates the example pipeline,
-        and executes it. It prints 'done' when the execution
-        has finished."""
+def read_and_fold_pipeline():
+    """This function creates a pipeline that reads
+        in a sigproc file and executes it. 
+        It prints 'done' when the execution has finished."""
     raw_data_ring = Ring()
-    cleaned_data_ring = Ring()
-    dedispersed_data_ring = Ring()
     histogram = np.zeros(100).astype(np.float)
     filenames = ['/data1/mcranmer/data/fake/simple_pulsar_DM0.fil']
     blocks = []
     blocks.append(SigprocReadBlock(filenames, raw_data_ring))
-    blocks.append(KurtosisBlock(raw_data_ring, cleaned_data_ring))
-    blocks.append(DedisperseBlock(cleaned_data_ring, dedispersed_data_ring))
-    blocks.append(FoldBlock(dedispersed_data_ring, histogram))
+    blocks.append(FoldBlock(raw_data_ring, histogram))
     threads = [threading.Thread(target=block.main) for block in blocks]
 
     for thread in threads:
@@ -200,6 +247,62 @@ def build_pipeline():
     for thread in threads:
         # wait for thread to terminate
         thread.join()
+    ## Make sure that the histogram is not flat
+    assert (np.max(histogram)/np.min(histogram) > 3)
+
+def read_and_fold_pipeline_128chan():
+    """This function creates a pipeline that reads
+        in a sigproc file and executes it. 
+        It prints 'done' when the execution has finished."""
+    raw_data_ring = Ring()
+    histogram = np.zeros(100).astype(np.float)
+    filenames = ['/data1/mcranmer/data/fake/simple_pulsar_DM0_128ch.fil']
+    blocks = []
+    blocks.append(SigprocReadBlock(filenames, raw_data_ring))
+    blocks.append(
+        FoldBlock(raw_data_ring, histogram, gulp_size=4096*100))
+    threads = [threading.Thread(target=block.main) for block in blocks]
+
+    for thread in threads:
+        thread.daemon = True
+        thread.start()
+    for thread in threads:
+        # wait for thread to terminate
+        thread.join()
+    ## Make sure that the histogram is not flat
+    assert (np.max(histogram)/np.min(histogram) > 3)
+
+def read_dedisperse_and_fold_pipeline():
+    """This function creates the example pipeline,
+        and executes it. It prints 'done' when the execution
+        has finished."""
+    data_ring = Ring()
+    histogram = np.zeros(100).astype(np.float)
+    histogram_no_dm = np.zeros(100).astype(np.float)
+    filenames = ['/data1/mcranmer/data/fake/simple_pulsar_DM10_128ch.fil']
+    blocks = []
+    blocks.append(SigprocReadBlock(filenames, data_ring))
+    blocks.append(DedisperseBlock(data_ring))
+    blocks.append(FoldBlock(
+        data_ring, histogram_no_dm, 
+        gulp_size=4096*128*100, 
+        dispersion_measure=0))
+    blocks.append(FoldBlock(
+        data_ring, histogram, 
+        gulp_size=4096*128*100, 
+        dispersion_measure=10))
+    threads = [threading.Thread(target=block.main) for block in blocks]
+
+    for thread in threads:
+        thread.daemon = True
+        thread.start()
+    for thread in threads:
+        # wait for thread to terminate
+        thread.join()
+    # test file has large signal to noise ratio
+    assert (np.max(histogram)/np.min(histogram) > 10)
 
 if __name__ == "__main__":
-    build_pipeline()
+    read_and_fold_pipeline()
+    read_and_fold_pipeline_128chan()
+    read_dedisperse_and_fold_pipeline()
