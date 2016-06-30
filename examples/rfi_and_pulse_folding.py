@@ -46,7 +46,7 @@ class SigprocReadBlock(object):
                             with osequence.reserve(gulp_nbyte) as wspan:
                                 size = ifile.file_object.readinto(wspan.data.data)
                                 wspan.commit(size)
-                                print wspan.data.shape
+                                #print wspan.data.shape
                                 #print size
                                 if size == 0:
                                     break
@@ -88,7 +88,6 @@ class KurtosisBlock(object):
     def main(self):
         """Initiate the block's processing"""
         affinity.set_core(self.core)
-        print "Starting rfi cleaning"
         self.rfi_clean()
     def rfi_clean(self):
         """Calls a kurtosis algorithm and uses the result
@@ -138,7 +137,7 @@ class FoldBlock(object):
     def main(self):
         """Initiate the block's processing"""
         affinity.set_core(self.core)
-        self.fold(period=1.0, bins=100)
+        self.fold(period=1e-3, bins=100)
     def fold(self, period, bins):
         """Fold the signal into the numpy array
         @param[in] period Period to fold over in seconds
@@ -146,22 +145,37 @@ class FoldBlock(object):
         """
         gulp_size = 4096
         self.input_ring.resize(gulp_size)
-        print "Folding data!"
         for sequence in self.input_ring.read(guarantee=True):
             header_ascii = "".join(
                 [chr(item) for item in sequence.header])
             header = json.loads(header_ascii)
             tstart = header['tstart']
             tsamp = header['tsamp']
-            hist = self.output_array
             for span in sequence.read(gulp_size):
-                arrival_time = tstart+tsamp*np.arange(
-                    span.data.shape[1])
+                array_size = span.data.shape[1]
+                ## Calculate the bin that each data element should
+                ## be added to
+                arrival_time = tstart+tsamp*np.arange(array_size)
                 phase = np.fmod(arrival_time, period)
                 bin_index = np.floor(phase/period*bins).astype(int)
-                # TODO: This part takes an enourmous amount of time
-                for i in range(phase.size):
-                    hist[bin_index[i]] += float(span.data[0][i])
+                ## Sort the data according to these bins
+                sort_indices = np.argsort(bin_index)
+                sorted_data = span.data[0][sort_indices[::-1]]
+                ## So that we can reshape the data before summing,
+                ## disperse zeros throughout the data show the size
+                ## is an integer multiple of bins
+                extra_elements = np.round(bins*(1-np.modf(
+                    float(array_size)/bins)[0]))
+                insert_index = np.floor(
+                    np.arange(
+                        extra_elements,
+                        step=1.0)*float(array_size)/extra_elements)
+                sorted_data = np.insert(
+                    sorted_data, insert_index,
+                    np.zeros(extra_elements))
+                ## Sum the data into the histogram
+                self.output_array += np.sum(
+                    sorted_data.reshape(100, -1), 1)
                 tstart += tsamp*gulp_size
 
 def build_pipeline():
@@ -174,7 +188,6 @@ def build_pipeline():
     histogram = np.zeros(100).astype(np.float)
     filenames = ['/data1/mcranmer/data/fake/simple_pulsar_DM0.fil']
     blocks = []
-    start = time.clock()
     blocks.append(SigprocReadBlock(filenames, raw_data_ring))
     blocks.append(KurtosisBlock(raw_data_ring, cleaned_data_ring))
     blocks.append(DedisperseBlock(cleaned_data_ring, dedispersed_data_ring))
@@ -187,8 +200,6 @@ def build_pipeline():
     for thread in threads:
         # wait for thread to terminate
         thread.join()
-    print "Done. Took %f seconds" % (time.clock()-start)
-    #plt.plot(histogram)
-    #plt.show()
+
 if __name__ == "__main__":
     build_pipeline()
