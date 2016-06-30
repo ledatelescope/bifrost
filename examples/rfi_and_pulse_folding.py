@@ -138,6 +138,21 @@ class FoldBlock(object):
         """Initiate the block's processing"""
         affinity.set_core(self.core)
         self.fold(period=1e-3, bins=100)
+    def calculate_bin_indices(
+        self, tstart, tsamp, data_size, period, bins):
+        """Calculate the bin that each time sample should be
+            added to
+        @param[in] tstart Time of the first element
+        @param[in] tsamp Difference between the times of
+            consecutive elements
+        @param[in] data_size Number of elements
+        @param[in] period Which period to fold over
+        @param[in] period The total number of bins to fold into
+        @return Which bin each sample is folded into
+        """
+        arrival_time = tstart+tsamp*np.arange(data_size)
+        phase = np.fmod(arrival_time, period)
+        return np.floor(phase/period*bins).astype(int)
     def fold(self, period, bins):
         """Fold the signal into the numpy array
         @param[in] period Period to fold over in seconds
@@ -146,24 +161,24 @@ class FoldBlock(object):
         gulp_size = 4096
         self.input_ring.resize(gulp_size)
         for sequence in self.input_ring.read(guarantee=True):
-            header_ascii = "".join(
-                [chr(item) for item in sequence.header])
-            header = json.loads(header_ascii)
+            ## Get the sequence's header as a dictionary
+            header = json.loads(
+                "".join(
+                    [chr(item) for item in sequence.header]))
             tstart = header['tstart']
             tsamp = header['tsamp']
             for span in sequence.read(gulp_size):
                 array_size = span.data.shape[1]
-                ## Calculate the bin that each data element should
-                ## be added to
-                arrival_time = tstart+tsamp*np.arange(array_size)
-                phase = np.fmod(arrival_time, period)
-                bin_index = np.floor(phase/period*bins).astype(int)
-                ## Sort the data according to these bins
-                sort_indices = np.argsort(bin_index)
+                ## Sort the data according to which bin
+                ## it should be placed in
+                sort_indices = np.argsort(
+                    self.calculate_bin_indices(
+                        tstart, tsamp, array_size, period, bins))
                 sorted_data = span.data[0][sort_indices[::-1]]
-                ## So that we can reshape the data before summing,
-                ## disperse zeros throughout the data show the size
-                ## is an integer multiple of bins
+                ## So that we can reshape the data before
+                ## summing, disperse zeros throughout the
+                ## data so the size is an integer multiple of
+                ## bins
                 extra_elements = np.round(bins*(1-np.modf(
                     float(array_size)/bins)[0]))
                 insert_index = np.floor(
@@ -173,7 +188,7 @@ class FoldBlock(object):
                 sorted_data = np.insert(
                     sorted_data, insert_index,
                     np.zeros(extra_elements))
-                ## Sum the data into the histogram
+                ## Sum the data into our histogram
                 self.output_array += np.sum(
                     sorted_data.reshape(100, -1), 1)
                 tstart += tsamp*gulp_size
