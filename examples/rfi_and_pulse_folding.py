@@ -6,25 +6,44 @@ in that signal, and then dedisperses and folds the pulse.
 import json
 import threading
 import bifrost
+import matplotlib
 import numpy as np
-from matplotlib import pyplot as plt
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile
+## Use a graphical backend which supports threading
+matplotlib.use('Agg') 
+from matplotlib import pyplot as plt
 
 class SigprocReadBlock(object):
-    def __init__(self, filenames, outring, gulp_nframe=4096, core=-1):
-        self.filenames   = filenames
-        self.oring       = outring
+    """This block reads in a sigproc filterbank
+    (.fil) file into a ring buffer"""
+    def __init__(
+            self, filenames, outring, 
+            gulp_nframe=4096, max_frames=None,
+            core=-1):
+        """
+        @param[in] filenames filterbank files to read
+        @param[in] outring Ring to store data 
+        @param[in] gulp_nframe Time samples to read 
+            in at a time
+        @param[in] max_frames Maximum samples to read from
+            file (None is no max)
+        @param[in] core Which CPU core to bind to (-1) is
+            any
+        """
+        self.filenames = filenames
+        self.oring = outring
         self.gulp_nframe = gulp_nframe
-        self.core        = core
+        self.core = core
+        self.max_frames = max_frames
     def main(self): # Launched in thread
         affinity.set_core(self.core)
         with self.oring.begin_writing() as oring:
             for name in self.filenames:
-                print "Opening", name
                 with SigprocFile().open(name,'rb') as ifile:
                     ifile.read_header()
+                    print ifile.header
                     ohdr = {}
                     ohdr['frame_shape'] = (ifile.nchans, ifile.nifs)
                     ohdr['frame_size'] = ifile.nchans*ifile.nifs
@@ -38,12 +57,13 @@ class SigprocReadBlock(object):
                     ohdr['tstart'] = float(ifile.header['tstart'])
                     ohdr['fch1'] = float(ifile.header['fch1'])
                     ohdr['foff'] = float(ifile.header['foff'])
-                    print 'ohdr:', ohdr
                     ohdr = json.dumps(ohdr)
                     gulp_nbyte = self.gulp_nframe*ifile.nchans*ifile.nifs*ifile.nbits/8
                     self.oring.resize(gulp_nbyte)
                     with oring.begin_sequence(name, header=ohdr) as osequence:
-                        while True:
+                        frames_read = 0
+                        while (self.max_frames is None) or \
+                                frames_read < self.max_frames:
                             with osequence.reserve(gulp_nbyte) as wspan:
                                 size = ifile.file_object.readinto(wspan.data.data)
                                 wspan.commit(size)
@@ -51,6 +71,7 @@ class SigprocReadBlock(object):
                                 #print size
                                 if size == 0:
                                     break
+                                frames_read += 1
 
 def duplicate_ring(input_ring, output_ring):
     """This function copies data between two rings
@@ -104,10 +125,9 @@ class DedisperseBlock(object):
             self, ring, core=-1,
             gulp_size=4096):
         """
-        @param[in] input_ring Ring containing a 1d
-            timeseries
-        @param[out] output_ring Ring will contain a 1d
-            timeseries that will be dedispersed
+        @param[in] ring Ring containing a 1d
+            timeseries with a source affected
+            by DM
         @param[in] core Which OpenMP core to use for 
             this block. (-1 is any)
         @param[in] gulp_size How many bytes of the ring to
@@ -215,7 +235,7 @@ class FoldBlock(object):
                     ## data so the size is an integer multiple of
                     ## bins
                     extra_elements = np.round(bins*(1-np.modf(
-                        float(array_size)/bins)[0]))
+                        float(array_size)/bins)[0])).astype(int)
                     insert_index = np.floor(
                         np.arange(
                             extra_elements,
@@ -228,6 +248,85 @@ class FoldBlock(object):
                         sorted_data.reshape(100, -1), 1)
                     frequency -= header['foff']
                 tstart += tsamp*self.gulp_size
+
+class WaterfallBlock(object):
+    """This block creates a waterfall block
+        based on the data in a ring, and stores it 
+        in the headers"""
+    def __init__(
+            self, ring, imagename,
+            core=-1, gulp_size=4096):
+        """
+        @param[in] ring Ring containing a multichannel
+            timeseries
+        @param[in] imagename Filename to store the 
+            waterfall image
+        @param[in] core Which OpenMP core to use for 
+            this block. (-1 is any)
+        @param[in] gulp_size How many bytes of the ring to
+            read at once.
+        """
+        self.ring = ring
+        self.imagename = imagename
+        self.core = core
+        self.gulp_size = gulp_size
+    def main(self):
+        """Initiate the block's processing"""
+        affinity.set_core(self.core)
+        waterfall_matrix = self.generate_waterfall_matrix()
+        plt.ioff()
+        print "Interactive mode off"
+        fig, ax = plt.subplots(nrows=1, ncols=1)
+        plt.pcolormesh(
+            waterfall_matrix, axes=ax, figure=fig)
+        fig.savefig(
+            self.imagename, bbox_inches='tight')
+        plt.close(fig)
+    def generate_waterfall_matrix(self):
+        """Create a matrix for a waterfall image 
+            based on the ring's data"""
+        waterfall_matrix = np.zeros(shape=(0,128))
+        self.ring.resize(self.gulp_size)
+        # Generate a waterfall matrix:
+        for sequence in self.ring.read(guarantee=True):
+            ## Get the sequence's header as a dictionary
+            header = json.loads(
+                "".join(
+                    [chr(item) for item in sequence.header]))
+            tstart = header['tstart']
+            tsamp = header['tsamp']
+            nchans = header['frame_shape'][0]
+            for span in sequence.read(self.gulp_size):
+                array_size = span.data.shape[1]/nchans
+                frequency = header['fch1']
+                curr_data = np.reshape(span.data,(-1,128))
+                waterfall_matrix = np.concatenate(
+                    (waterfall_matrix, curr_data), 0)
+        #waterfall_matrix = waterfall_matrix[:1000,:]
+        return waterfall_matrix
+
+def read_dedisperse_waterfall_pipeline():
+    """This function creates the example pipeline,
+        and executes it. It prints 'done' when the execution
+        has finished."""
+    data_ring = Ring()
+    histogram = np.zeros(100).astype(np.float)
+    datafilename = ['/data1/mcranmer/data/fake/simple_pulsar_DM10_128ch.fil']
+    imagename = '/data1/mcranmer/data/fake/simple_pulsar_DM10_128ch.png'
+    blocks = []
+    blocks.append(SigprocReadBlock(datafilename, data_ring))
+    blocks.append(WaterfallBlock(data_ring, imagename))
+    blocks.append(DedisperseBlock(data_ring))
+    threads = [threading.Thread(target=block.main) for block in blocks]
+
+    for thread in threads:
+        thread.daemon = True
+        thread.start()
+    for thread in threads:
+        # wait for thread to terminate
+        thread.join()
+    # test file has large signal to noise ratio
+    print "Done waterfall."
 
 def read_and_fold_pipeline():
     """This function creates a pipeline that reads
@@ -270,7 +369,8 @@ def read_and_fold_pipeline_128chan():
         # wait for thread to terminate
         thread.join()
     ## Make sure that the histogram is not flat
-    assert (np.max(histogram)/np.min(histogram) > 3)
+    assert np.max(histogram)/np.min(histogram) > 10
+
 
 def read_dedisperse_and_fold_pipeline():
     """This function creates the example pipeline,
@@ -278,18 +378,13 @@ def read_dedisperse_and_fold_pipeline():
         has finished."""
     data_ring = Ring()
     histogram = np.zeros(100).astype(np.float)
-    histogram_no_dm = np.zeros(100).astype(np.float)
-    filenames = ['/data1/mcranmer/data/fake/simple_pulsar_DM10_128ch.fil']
+    filename = ['/data1/mcranmer/data/fake/simple_pulsar_DM10_128ch.fil']
     blocks = []
-    blocks.append(SigprocReadBlock(filenames, data_ring))
+    blocks.append(SigprocReadBlock(filename, data_ring))
     blocks.append(DedisperseBlock(data_ring))
     blocks.append(FoldBlock(
-        data_ring, histogram_no_dm, 
-        gulp_size=4096*128*100, 
-        dispersion_measure=0))
-    blocks.append(FoldBlock(
-        data_ring, histogram, 
-        gulp_size=4096*128*100, 
+        data_ring, histogram,
+        gulp_size=4096*128*100,
         dispersion_measure=10))
     threads = [threading.Thread(target=block.main) for block in blocks]
 
@@ -300,9 +395,11 @@ def read_dedisperse_and_fold_pipeline():
         # wait for thread to terminate
         thread.join()
     # test file has large signal to noise ratio
-    assert (np.max(histogram)/np.min(histogram) > 10)
+    assert np.max(histogram)/np.min(histogram) > 10
+
 
 if __name__ == "__main__":
-    read_and_fold_pipeline()
-    read_and_fold_pipeline_128chan()
-    read_dedisperse_and_fold_pipeline()
+    read_dedisperse_waterfall_pipeline()
+    #read_and_fold_pipeline()
+    #read_and_fold_pipeline_128chan()
+    #read_dedisperse_and_fold_pipeline()
