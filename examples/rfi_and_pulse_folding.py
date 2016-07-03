@@ -78,7 +78,7 @@ class SigprocReadBlock(object):
 
 # Read a collection of DADA files and form an array of time series data over
 # many frequencies.
-# Todo: Add more to the header.
+# TODO: Add more to the header.
 # Add a list of frequencies present. This could be the full band,
 # but there could be gaps. Downstream functionality has to be aware of the gaps.
 # Allow specification of span size based on time interval
@@ -86,13 +86,14 @@ class DadaReadBlock(object):
 
   # Assemble a group of files in the time direction and the frequency direction
   # time_stamp is of the form "2016-05-24-11:04:38", or a DADA file ending in .dada
-  def __init__(self, time_stamp, outring, core):
+  def __init__(self, time_stamp, outring, core=-1, gulp_nframe=4096):
     self.CHANNEL_WIDTH = 0.024
     self.SAMPLING_RATE = 41.66666666667e-6
     self.N_CHAN = 109
     self.N_BEAM = 2
     self.HEADER_SIZE = 4096
     self.OBS_OFFSET = 1255680000
+    self.gulp_nframe = gulp_nframe
 
     self.oring = outring
     self.core = core
@@ -201,8 +202,8 @@ class KurtosisBlock(object):
         self.N_CHAN = 109
         self.EXPECTED_V2 = 0.5      # Just use for testing
 
-        self.input_ring = input_ring
-        self.output_ring = output_ring
+        self.iring = input_ring
+        self.oring = output_ring
         self.core = core
     def main(self):
         """Initiate the block's processing"""
@@ -260,9 +261,9 @@ class KurtosisBlock(object):
                     bad_channels.append(chan)
 
                 if len(bad_channels) > 0:
-                  flag_power = power.copy()         # for some reason power is read-only
+                  flag_power = power.copy()
                   for chan in range(nchan):
-                    if chan in bad_channels: flag_power[:, chan] *= -1    # set bad channel to negative values
+                    if chan in bad_channels: flag_power[:, chan] = 0    # set bad channel to zero
 
                   #print "Chan flagged", bad_channels
                   with oseq.reserve(ispan.size) as ospan:
@@ -488,6 +489,34 @@ class WaterfallBlock(object):
         #waterfall_matrix = waterfall_matrix[:1000,:]
         return waterfall_matrix
 
+def dada_rficlean_dedisperse_fold_pipeline():
+    """This function creates the example pipeline,
+        and executes it. It prints 'done' when the execution
+        has finished."""
+    data_ring = Ring()
+    clean_ring = Ring()
+    histogram = np.zeros(100).astype(np.float)
+    datafilename = ['/data1/mcranmer/data/fake/pulsar_DM1_256chan.fil']
+    imagename = '/data1/mcranmer/data/fake/test_picture.png'
+    blocks = []
+    blocks.append(
+        SigprocReadBlock(datafilename, data_ring, gulp_nframe=128))
+    blocks.append(
+        KurtosisBlock(data_ring, clean_ring))
+    blocks.append(WaterfallBlock(clean_ring, imagename, gulp_size=16*8*8*4*8*8))
+    threads = [threading.Thread(target=block.main) for block in blocks]
+    print "Loaded threads"
+    for thread in threads:
+        thread.daemon = True
+        print "Starting thread", thread
+        thread.start()
+    for thread in threads:
+        # wait for thread to terminate
+        thread.join()
+    # test file has large signal to noise ratio
+    print "Done waterfall."
+
+
 def read_dedisperse_waterfall_pipeline():
     """This function creates the example pipeline,
         and executes it. It prints 'done' when the execution
@@ -586,7 +615,8 @@ def read_dedisperse_and_fold_pipeline():
 
 
 if __name__ == "__main__":
-    read_dedisperse_waterfall_pipeline()
+    dada_rficlean_dedisperse_fold_pipeline()
+    #read_dedisperse_waterfall_pipeline()
     #read_and_fold_pipeline()
     #read_and_fold_pipeline_128chan()
     #read_dedisperse_and_fold_pipeline()
