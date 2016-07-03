@@ -14,6 +14,7 @@ from bifrost.sigproc import SigprocFile
 ## Use a graphical backend which supports threading
 matplotlib.use('Agg') 
 from matplotlib import pyplot as plt
+from matplotlib import pylab
 
 class SigprocReadBlock(object):
     """This block reads in a sigproc filterbank
@@ -39,6 +40,7 @@ class SigprocReadBlock(object):
         self.max_frames = max_frames
     def main(self): # Launched in thread
         affinity.set_core(self.core)
+        print "Start read"
         with self.oring.begin_writing() as oring:
             for name in self.filenames:
                 with SigprocFile().open(name,'rb') as ifile:
@@ -72,6 +74,7 @@ class SigprocReadBlock(object):
                                 if size == 0:
                                     break
                                 frames_read += 1
+        print "Done read"
 
 def duplicate_ring(input_ring, output_ring):
     """This function copies data between two rings
@@ -259,9 +262,9 @@ class WaterfallBlock(object):
         """
         @param[in] ring Ring containing a multichannel
             timeseries
-        @param[in] imagename Filename to store the 
+        @param[in] imagename Filename to store the
             waterfall image
-        @param[in] core Which OpenMP core to use for 
+        @param[in] core Which OpenMP core to use for
             this block. (-1 is any)
         @param[in] gulp_size How many bytes of the ring to
             read at once.
@@ -270,38 +273,67 @@ class WaterfallBlock(object):
         self.imagename = imagename
         self.core = core
         self.gulp_size = gulp_size
+        self.header = {}
     def main(self):
         """Initiate the block's processing"""
         affinity.set_core(self.core)
         waterfall_matrix = self.generate_waterfall_matrix()
+        self.save_waterfall_plot(waterfall_matrix)
+    def save_waterfall_plot(self, waterfall_matrix):
+        """Save an image of the waterfall plot using
+            thread-safe backend for pyplot, and labelling
+            the plot using the header information from the
+            ring
+        @param[in] waterfall_matrix x axis is frequency and 
+            y axis is time. Values should be power.
+            """
         plt.ioff()
         print "Interactive mode off"
-        fig, ax = plt.subplots(nrows=1, ncols=1)
+        fig = pylab.figure()
+        ax = fig.gca()
+        header = self.header
+        ax.set_xticks(
+            np.arange(0, 1.33, 0.33)*waterfall_matrix.shape[1])
+        ax.set_xticklabels(
+            header['fch1']-np.arange(0,4)*header['foff'])
+        ax.set_xlabel("Frequency [MHz]")
+        ax.set_yticks(
+            np.arange(0, 1.125, 0.125)*waterfall_matrix.shape[0])
+        ax.set_yticklabels(
+            header['tstart']+header['tsamp']*np.arange(0, 1.125, 0.125)*waterfall_matrix.shape[0])
+        ax.set_ylabel("Time (s)")
         plt.pcolormesh(
             waterfall_matrix, axes=ax, figure=fig)
+        fig.autofmt_xdate()
         fig.savefig(
             self.imagename, bbox_inches='tight')
         plt.close(fig)
     def generate_waterfall_matrix(self):
-        """Create a matrix for a waterfall image 
+        """Create a matrix for a waterfall image
             based on the ring's data"""
-        waterfall_matrix = np.zeros(shape=(0,128))
+        waterfall_matrix = None
         self.ring.resize(self.gulp_size)
         # Generate a waterfall matrix:
         for sequence in self.ring.read(guarantee=True):
             ## Get the sequence's header as a dictionary
-            header = json.loads(
+            self.header = json.loads(
                 "".join(
                     [chr(item) for item in sequence.header]))
-            tstart = header['tstart']
-            tsamp = header['tsamp']
-            nchans = header['frame_shape'][0]
+            tstart = self.header['tstart']
+            tsamp = self.header['tsamp']
+            nchans = self.header['frame_shape'][0]
+            waterfall_matrix = np.zeros(shape=(0, nchans))
             for span in sequence.read(self.gulp_size):
                 array_size = span.data.shape[1]/nchans
-                frequency = header['fch1']
-                curr_data = np.reshape(span.data,(-1,128))
-                waterfall_matrix = np.concatenate(
-                    (waterfall_matrix, curr_data), 0)
+                frequency = self.header['fch1']
+                print span.data.shape
+                try: 
+                    curr_data = np.reshape(
+                        span.data,(-1, nchans))
+                    waterfall_matrix = np.concatenate(
+                        (waterfall_matrix, curr_data), 0)
+                except:
+                    pass
         #waterfall_matrix = waterfall_matrix[:1000,:]
         return waterfall_matrix
 
@@ -311,22 +343,26 @@ def read_dedisperse_waterfall_pipeline():
         has finished."""
     data_ring = Ring()
     histogram = np.zeros(100).astype(np.float)
-    datafilename = ['/data1/mcranmer/data/fake/simple_pulsar_DM10_128ch.fil']
-    imagename = '/data1/mcranmer/data/fake/simple_pulsar_DM10_128ch.png'
+    datafilename = ['/data1/mcranmer/data/fake/pulsar_DM1_256chan.fil']
+    imagename = '/data1/mcranmer/data/fake/test_picture.png'
     blocks = []
-    blocks.append(SigprocReadBlock(datafilename, data_ring))
-    blocks.append(WaterfallBlock(data_ring, imagename))
-    blocks.append(DedisperseBlock(data_ring))
+    blocks.append(
+        SigprocReadBlock(datafilename, data_ring, gulp_nframe=128))
+    blocks.append(WaterfallBlock(data_ring, imagename, gulp_size=16*8*8*4*8*8))
+    blocks.append(
+        FoldBlock(data_ring, histogram, gulp_size=4096*100, dispersion_measure=1))
     threads = [threading.Thread(target=block.main) for block in blocks]
-
+    print "Loaded threads"
     for thread in threads:
         thread.daemon = True
+        print "Starting thread", thread
         thread.start()
     for thread in threads:
         # wait for thread to terminate
         thread.join()
     # test file has large signal to noise ratio
     print "Done waterfall."
+    print histogram
 
 def read_and_fold_pipeline():
     """This function creates a pipeline that reads
