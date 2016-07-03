@@ -80,10 +80,12 @@ class FileInfo(object):
     self.mode = hedr["MODE"]
     self.size = os.path.getsize(fname)
 
+    """
     obs1 = extract_obs_offset_from_name(fname)
     obs2 = extract_obs_offset_in_file(fname)
     if obs1 != obs2 and obs1 != "UNKNOWN" and obs2 !="UNKNOWN":
       print "Consistency Error", fname, ": OBS_OFFSET in file doesn't match the offset in the name"
+    """
 
     if hedr["SOURCE"] == "LEDA_TEST":
       if not is_integer(n_scans): print "CONSISTENCY ERROR, ", fname, "scan:",n_scans, "is not integer"
@@ -144,7 +146,7 @@ class BandFiles(object):
     self.lst = self.files[0].lst
     self.utc_date = self.files[0].utc_date
     self.utc_time = self.files[0].utc_time
-    self.obs_offset = extract_obs_offset_from_name(basename)
+    self.obs_offset = extract_obs_offset_in_file(basename)
 
     self.ok = ( len(self.scans_present) == 1 and is_integer(self.scans_present[0]) and int(self.scans_present[0]) > 0 and self.all_frequencies_present() )
 

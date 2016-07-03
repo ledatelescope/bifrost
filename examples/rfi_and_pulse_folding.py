@@ -31,9 +31,11 @@ reads data containing a pulsar signal, then removes RFI
 in that signal, and then dedisperses and folds the pulse.
 """
 import json
+import os
 import threading
 import bifrost
 import matplotlib
+import bandfiles
 import numpy as np
 from bifrost import affinity
 from bifrost.ring import Ring
@@ -523,11 +525,11 @@ def dada_rficlean_dedisperse_fold_pipeline():
     data_ring = Ring()
     clean_ring = Ring()
     histogram = np.zeros(100).astype(np.float)
-    datafilename = ['/data1/mcranmer/data/fake/pulsar_DM1_256chan.fil']
+    datafilename = '/data1/mcranmer/data/real/2016.dada'
     imagename = '/data1/mcranmer/data/fake/test_picture.png'
     blocks = []
     blocks.append(
-        SigprocReadBlock(datafilename, data_ring, gulp_nframe=128))
+        DadaReadBlock(datafilename, data_ring, gulp_nframe=128))
     blocks.append(
         KurtosisBlock(data_ring, clean_ring))
     blocks.append(WaterfallBlock(clean_ring, imagename, gulp_size=16*8*8*4*8*8))
