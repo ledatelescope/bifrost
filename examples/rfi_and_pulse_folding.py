@@ -267,7 +267,7 @@ class KurtosisBlock(object):
 
                   #print "Chan flagged", bad_channels
                   with oseq.reserve(ispan.size) as ospan:
-                    ospan.data[0][:] = flag_power.view(dtype=np.uint8).reshape(ring_span_size)
+                    ospan.data[0][:] = flag_power.view(dtype=np.uint8).ravel()
                 else:
                   with oseq.reserve(ispan.size) as ospan:
                     bifrost.memory.memcpy2D(ospan.data, ispan.data)      # Transfer data unchanged
