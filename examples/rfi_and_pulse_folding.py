@@ -138,6 +138,9 @@ class DadaReadBlock(object):
     ohdr["frame_shape"] = ( self.N_CHAN, 1 )
     ohdr["nbit"] = 32
     ohdr["dtype"] = str(np.float32)
+    ohdr["tstart"] = 0
+    ohdr["tsamp"] = self.SAMPLING_RATE
+    ohdr['foff'] = self.CHANNEL_WIDTH
 
     #print length_one_second, ring_span_size, file_chunk_size, number_of_chunks
 
@@ -154,6 +157,7 @@ class DadaReadBlock(object):
             ifile.read(self.HEADER_SIZE)
 
             ohdr["cfreq"] = f.freq
+            ohdr["fch1"] = f.freq
 
             self.oring.resize(ring_span_size)
             with oring.begin_sequence(f.name, header=json.dumps(ohdr)) as osequence:
@@ -161,13 +165,21 @@ class DadaReadBlock(object):
               for i in range(number_of_seconds):
                   # Get a chunk of data from the file. The whole band is used, but only a chunk of time (1 second).
                   # Massage the data so it can go through the ring. That means changng the data type and flattening.
-                data = np.fromfile(ifile, count=file_chunk_size, dtype=np.int8).astype(np.float32)
+                try:
+                    data = np.fromfile(ifile, count=file_chunk_size, dtype=np.int8).astype(np.float32)
+                except:
+                    print "Bad read. Stopping read."
+                    return
+                if data.size != length_one_second*self.N_BEAM*self.N_CHAN*2:
+                    print "Bad data shape. Stopping read."
+                    return
                 data = data.reshape(length_one_second, self.N_BEAM, self.N_CHAN, 2)
                 power = (data[...,0]**2 + data[...,1]**2).mean(axis=1)  # Now have time by frequency.
+                print power.shape
 
                 # Send the data
                 with osequence.reserve(ring_span_size) as wspan:
-                  wspan.data[0][:] = power.view(dtype=np.uint8).reshape(ring_span_size)
+                  wspan.data[0][:] = power.view(dtype=np.uint8).ravel()
 
 def duplicate_ring(input_ring, output_ring):
     """This function copies data between two rings
@@ -412,7 +424,7 @@ class WaterfallBlock(object):
         in the headers"""
     def __init__(
             self, ring, imagename,
-            core=-1, gulp_size=4096):
+            core=-1, gulp_nframe=4096):
         """
         @param[in] ring Ring containing a multichannel
             timeseries
@@ -426,7 +438,7 @@ class WaterfallBlock(object):
         self.ring = ring
         self.imagename = imagename
         self.core = core
-        self.gulp_size = gulp_size
+        self.gulp_nframe = gulp_nframe
         self.header = {}
     def main(self):
         """Initiate the block's processing"""
@@ -443,6 +455,7 @@ class WaterfallBlock(object):
             """
         plt.ioff()
         print "Interactive mode off"
+        print waterfall_matrix.shape
         fig = pylab.figure()
         ax = fig.gca()
         header = self.header
@@ -466,7 +479,7 @@ class WaterfallBlock(object):
         """Create a matrix for a waterfall image
             based on the ring's data"""
         waterfall_matrix = None
-        self.ring.resize(self.gulp_size)
+        self.ring.resize(self.gulp_nframe)
         # Generate a waterfall matrix:
         for sequence in self.ring.read(guarantee=True):
             ## Get the sequence's header as a dictionary
@@ -476,19 +489,20 @@ class WaterfallBlock(object):
             tstart = self.header['tstart']
             tsamp = self.header['tsamp']
             nchans = self.header['frame_shape'][0]
+            gulp_size = self.gulp_nframe*nchans*self.header['nbit']
             waterfall_matrix = np.zeros(shape=(0, nchans))
-            for span in sequence.read(self.gulp_size):
+            print tstart, tsamp, nchans
+            for span in sequence.read(gulp_size):
                 array_size = span.data.shape[1]/nchans
                 frequency = self.header['fch1']
-                print span.data.shape
                 try: 
                     curr_data = np.reshape(
                         span.data,(-1, nchans))
                     waterfall_matrix = np.concatenate(
                         (waterfall_matrix, curr_data), 0)
                 except:
+                    print "Bad shape for waterfall"
                     pass
-        #waterfall_matrix = waterfall_matrix[:1000,:]
         return waterfall_matrix
 
 def dada_rficlean_dedisperse_fold_pipeline():
@@ -498,14 +512,14 @@ def dada_rficlean_dedisperse_fold_pipeline():
     data_ring = Ring()
     clean_ring = Ring()
     histogram = np.zeros(100).astype(np.float)
-    datafilename = '/data1/mcranmer/data/real/2016.dada'
+    datafilename = '/data1/mcranmer/data/real/2016_xaa.dada'
     imagename = '/data1/mcranmer/data/fake/test_picture.png'
     blocks = []
     blocks.append(
         DadaReadBlock(datafilename, data_ring, gulp_nframe=128))
-    blocks.append(
-        KurtosisBlock(data_ring, clean_ring))
-    blocks.append(WaterfallBlock(clean_ring, imagename, gulp_size=16*8*8*4*8*8))
+    #blocks.append(
+        #KurtosisBlock(data_ring, clean_ring))
+    blocks.append(WaterfallBlock(data_ring, imagename, gulp_nframe=128))
     threads = [threading.Thread(target=block.main) for block in blocks]
     print "Loaded threads"
     for thread in threads:
@@ -530,7 +544,7 @@ def read_dedisperse_waterfall_pipeline():
     blocks = []
     blocks.append(
         SigprocReadBlock(datafilename, data_ring, gulp_nframe=128))
-    blocks.append(WaterfallBlock(data_ring, imagename, gulp_size=16*8*8*4*8*8))
+    blocks.append(WaterfallBlock(data_ring, imagename, gulp_nframe=128))
     blocks.append(
         FoldBlock(data_ring, histogram, gulp_size=4096*100, dispersion_measure=1))
     threads = [threading.Thread(target=block.main) for block in blocks]
