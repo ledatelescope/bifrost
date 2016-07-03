@@ -50,7 +50,7 @@ LIBBIFROST_OBJS = \
 ifndef NOCUDA
   # These files require CUDA to compile
   LIBBIFROST_OBJS += \
-#  transpose.o \
+  transpose.o \
   fft.o \
   #apsynth.o
 endif
