@@ -46,27 +46,90 @@ matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 from matplotlib import pylab
 
+class Pipeline(object):
+    """Class which connects blocks linearly, with
+    one ring between each block."""
+    def __init__(self, blocks):
+        self.reader_ring = Ring()
+        self.intermediate_rings = [Ring() for count in range(len(blocks))]
+        self.blocks = blocks
+    def main(self):
+        """Start the pipeline, and finish when all threads exit"""
+        #self._initialize_blocks()
+        threads = []
+        threads.append(threading.Thread(
+            target=self.blocks[0].main,
+            args=[self.reader_ring]))
+        threads.append(threading.Thread(
+            target=self.blocks[1].main,
+            args=[self.reader_ring, self.intermediate_rings[0]]))
+        threads.append(threading.Thread(
+            target=self.blocks[2].main,
+            args=[self.intermediate_rings[0]]))
+        for thread in threads:
+            thread.daemon = True
+            thread.start()
+        for thread in threads:
+            # Wait for exit
+            thread.join()
+
+
 class Block(object):
     """Defines things which are needed by all types of blocks"""
     def __init__(self):
         self.inputs = []
+        self.outputs = []
 
 
 class TransformBlock(Block):
     """Defines the structure for a transform block"""
     def __init__(self):
         super(TransformBlock, self).__init__()
+    def main(self):
+        pass
+        
+class WriteAsciiBlock(TransformBlock):
+    """Copies input ring's data into ascii format
+        in a text file"""
+    def __init__(self, filename):
+        super(TransformBlock, self).__init__()
+        self.filename = filename
+        open(self.filename, "w").close()
+    def main(self, data_ring):
+        gulp_size = 1048576
+        data_ring.resize(gulp_size)
+        for iseq in data_ring.read(guarantee=True):
+            for ispan in iseq.read(gulp_size):
+                np.savetxt(self.filename, ispan.data, '%d')
+        
+class CopyBlock(TransformBlock):
+    """Copies input ring's data to the output ring"""
+    def __init__(self):
+        super(CopyBlock, self).__init__()
+    def main(self, input_ring, output_ring):
+        gulp_size = 1048576
+        input_ring.resize(gulp_size)
+        output_ring.resize(gulp_size)
+        with output_ring.begin_writing() as oring:
+            for iseq in input_ring.read(guarantee=True):
+                with oring.begin_sequence(
+                    iseq.name, iseq.time_tag,
+                    header=iseq.header,
+                    nringlet=iseq.nringlet) as oseq:
+                    for ispan in iseq.read(gulp_size):
+                        with oseq.reserve(ispan.size) as ospan:
+                            bifrost.memory.memcpy2D(
+                                ospan.data,ispan.data)
 
 class SigprocReadBlock(object):
     """This block reads in a sigproc filterbank
     (.fil) file into a ring buffer"""
     def __init__(
-            self, filenames, outring, 
+            self, filenames, 
             gulp_nframe=4096, max_frames=None,
             core=-1):
         """
         @param[in] filenames filterbank files to read
-        @param[in] outring Ring to store data 
         @param[in] gulp_nframe Time samples to read 
             in at a time
         @param[in] max_frames Maximum samples to read from
@@ -75,18 +138,15 @@ class SigprocReadBlock(object):
             any
         """
         self.filenames = filenames
-        self.oring = outring
         self.gulp_nframe = gulp_nframe
         self.core = core
         self.max_frames = max_frames
-    def main(self): # Launched in thread
+    def main(self, output_ring):
         affinity.set_core(self.core)
-        print "Start read"
-        with self.oring.begin_writing() as oring:
+        with output_ring.begin_writing() as oring:
             for name in self.filenames:
                 with SigprocFile().open(name,'rb') as ifile:
                     ifile.read_header()
-                    print ifile.header
                     ohdr = {}
                     ohdr['frame_shape'] = (ifile.nchans, ifile.nifs)
                     ohdr['frame_size'] = ifile.nchans*ifile.nifs
@@ -102,7 +162,7 @@ class SigprocReadBlock(object):
                     ohdr['foff'] = float(ifile.header['foff'])
                     ohdr = json.dumps(ohdr)
                     gulp_nbyte = self.gulp_nframe*ifile.nchans*ifile.nifs*ifile.nbits/8
-                    self.oring.resize(gulp_nbyte)
+                    output_ring.resize(gulp_nbyte)
                     with oring.begin_sequence(name, header=ohdr) as osequence:
                         frames_read = 0
                         while (self.max_frames is None) or \
@@ -110,12 +170,30 @@ class SigprocReadBlock(object):
                             with osequence.reserve(gulp_nbyte) as wspan:
                                 size = ifile.file_object.readinto(wspan.data.data)
                                 wspan.commit(size)
-                                #print wspan.data.shape
-                                #print size
                                 if size == 0:
                                     break
                                 frames_read += 1
-        print "Done read"
+
+
+def duplicate_ring(input_ring, output_ring):
+    """This function copies data between two rings
+    @param[in] input_ring Ring holding data to be copied
+    @param[out] output_ring Will be a copy of input_ring
+    """
+    gulp_size = 1048576
+    input_ring.resize(gulp_size)
+    output_ring.resize(gulp_size)
+    with output_ring.begin_writing() as oring:
+        for iseq in input_ring.read(guarantee=True):
+            with oring.begin_sequence(
+                iseq.name, iseq.time_tag,
+                header=iseq.header,
+                nringlet=iseq.nringlet) as oseq:
+                for ispan in iseq.read(gulp_size):
+                    with oseq.reserve(ispan.size) as ospan:
+                        bifrost.memory.memcpy2D(
+                            ospan.data,ispan.data)
+
 
 # Read a collection of DADA files and form an array of time series data over
 # many frequencies.
