@@ -115,7 +115,6 @@ def read_and_fold_pipeline_128chan():
         # wait for thread to terminate
         thread.join()
     ## Make sure that the histogram is not flat
-    print histogram
     assert np.max(histogram)/np.min(histogram) > 3
 
 
@@ -148,6 +147,6 @@ def read_dedisperse_and_fold_pipeline():
 if __name__ == "__main__":
     #dada_rficlean_dedisperse_fold_pipeline()
     #read_dedisperse_waterfall_pipeline()
-    #read_and_fold_pipeline()
-    #read_and_fold_pipeline_128chan()
-    #read_dedisperse_and_fold_pipeline()
+    read_and_fold_pipeline()
+    read_and_fold_pipeline_128chan()
+    read_dedisperse_and_fold_pipeline()
