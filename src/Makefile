@@ -1,4 +1,5 @@
 
+CXX = gcc-4.8
 include ../config.mk
 include ../user.mk
 
