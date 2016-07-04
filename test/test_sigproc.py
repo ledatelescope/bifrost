@@ -1,5 +1,5 @@
 import unittest
-from sigproc import *
+from bifrost.sigproc import *
 import time
 
 class Test_init(unittest.TestCase):
