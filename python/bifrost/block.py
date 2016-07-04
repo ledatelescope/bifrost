@@ -34,38 +34,46 @@ of a simple transform which works on a span by span basis.
 import json
 import os
 import threading
-import bifrost
-import matplotlib
-import bandfiles
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib import pyplot as plt
+import bifrost
+import bandfiles
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile
 ## Use a graphical backend which supports threading
-matplotlib.use('Agg') 
-from matplotlib import pyplot as plt
-from matplotlib import pylab
 
+#TODO: How does GNU Radio handle this?
 class Pipeline(object):
     """Class which connects blocks linearly, with
-    one ring between each block."""
+        one ring between each block. Does this by creating
+        one ring for each input/output 'port' of each block,
+        and running data through the rings."""
     def __init__(self, blocks):
-        self.reader_ring = Ring()
-        self.intermediate_rings = [Ring() for count in range(len(blocks))]
         self.blocks = blocks
+        self.rings = [Ring() for count in range(
+            self.number_of_rings())]
+    def number_of_rings(self):
+        """Return how many rings will be used in
+            this pipeline."""
+        all_ports = [
+            index for block in self.blocks for index in [
+                port for port in block[1:] if port != None]]
+        return len(np.unique(all_ports))
     def main(self):
         """Start the pipeline, and finish when all threads exit"""
-        #self._initialize_blocks()
         threads = []
-        threads.append(threading.Thread(
-            target=self.blocks[0].main,
-            args=[self.reader_ring]))
-        threads.append(threading.Thread(
-            target=self.blocks[1].main,
-            args=[self.reader_ring, self.intermediate_rings[0]]))
-        threads.append(threading.Thread(
-            target=self.blocks[2].main,
-            args=[self.intermediate_rings[0]]))
+        for block in self.blocks:
+            function_rings = []
+            function_rings.extend(
+                [self.rings[ring_index] for ring_index in block[1]])
+            function_rings.extend(
+                [self.rings[ring_index] for ring_index in block[2]])
+            threads.append(threading.Thread(
+                target=block[0].main,
+                args=function_rings))
         for thread in threads:
             thread.daemon = True
             thread.start()
@@ -74,38 +82,35 @@ class Pipeline(object):
             thread.join()
 
 
-class Block(object):
-    """Defines things which are needed by all types of blocks"""
-    def __init__(self):
-        self.inputs = []
-        self.outputs = []
-
-
-class TransformBlock(Block):
+class TransformBlock(object):
     """Defines the structure for a transform block"""
     def __init__(self):
         super(TransformBlock, self).__init__()
-    def main(self):
+    def main(self, input_ring, output_ring):
+        """Initiate the block's transform between
+            rings."""
         pass
-        
-class WriteAsciiBlock(TransformBlock):
+class WriteAsciiBlock(object):
     """Copies input ring's data into ascii format
         in a text file"""
     def __init__(self, filename):
-        super(TransformBlock, self).__init__()
+        super(WriteAsciiBlock, self).__init__()
         self.filename = filename
+        ## erase file
         open(self.filename, "w").close()
     def main(self, data_ring):
+        """Initiate the writing to filename"""
         gulp_size = 1048576
         data_ring.resize(gulp_size)
         for iseq in data_ring.read(guarantee=True):
             for ispan in iseq.read(gulp_size):
                 np.savetxt(self.filename, ispan.data, '%d')
-        
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self):
         super(CopyBlock, self).__init__()
+        self.inputs = 1
+        self.outputs = 1
     def main(self, input_ring, output_ring):
         gulp_size = 1048576
         input_ring.resize(gulp_size)
@@ -119,18 +124,18 @@ class CopyBlock(TransformBlock):
                     for ispan in iseq.read(gulp_size):
                         with oseq.reserve(ispan.size) as ospan:
                             bifrost.memory.memcpy2D(
-                                ospan.data,ispan.data)
+                                ospan.data, ispan.data)
 
 class SigprocReadBlock(object):
     """This block reads in a sigproc filterbank
     (.fil) file into a ring buffer"""
     def __init__(
-            self, filenames, 
+            self, filenames,
             gulp_nframe=4096, max_frames=None,
             core=-1):
         """
         @param[in] filenames filterbank files to read
-        @param[in] gulp_nframe Time samples to read 
+        @param[in] gulp_nframe Time samples to read
             in at a time
         @param[in] max_frames Maximum samples to read from
             file (None is no max)
@@ -141,7 +146,9 @@ class SigprocReadBlock(object):
         self.gulp_nframe = gulp_nframe
         self.core = core
         self.max_frames = max_frames
+        self.inputs = 1
     def main(self, output_ring):
+        """Read in the sigproc file to output_ring"""
         affinity.set_core(self.core)
         with output_ring.begin_writing() as oring:
             for name in self.filenames:
