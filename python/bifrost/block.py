@@ -55,7 +55,6 @@ class Pipeline(object):
             # Wait for exit
             thread.join()
 
-
 class TransformBlock(object):
     """Defines the structure for a transform block"""
     def __init__(self):
@@ -64,6 +63,21 @@ class TransformBlock(object):
         """Initiate the block's transform between
             rings."""
         pass
+def number_of_bits_to_datatype(number_bits, signed=False):
+    if number_bits >= 8:
+        if signed:
+            datatype = {8: np.int8,
+                          16: np.int16,
+                          32: np.float32,
+                          64: np.float64}[number_bits]
+        else:
+            datatype = {8: np.uint8,
+                          16: np.uint16,
+                          32: np.float32,
+                          64: np.float64}[number_bits]
+    else:
+        datatype = np.int8 if signed else np.uint8
+    return datatype
 class WriteAsciiBlock(TransformBlock):
     """Copies input ring's data into ascii format
         in a text file"""
@@ -78,8 +92,15 @@ class WriteAsciiBlock(TransformBlock):
         data_ring = input_rings[0]
         data_ring.resize(gulp_size)
         for iseq in data_ring.read(guarantee=True):
+            header_dict = json.loads(iseq.header.tostring())
+            datatype = number_of_bits_to_datatype(
+                    header_dict['nbit'])
             for ispan in iseq.read(gulp_size):
-                np.savetxt(self.filename, ispan.data, '%d')
+                if header_dict['frame_shape'][1] == 256:
+                    print ispan.data_view(datatype)
+                text_file = open(self.filename, 'a')
+                np.savetxt(
+                    text_file, ispan.data_view(datatype))
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
@@ -158,8 +179,6 @@ class SigprocReadBlock(object):
                                 if size == 0:
                                     break
                                 frames_read += 1
-
-
 def duplicate_ring(input_ring, output_ring):
     """This function copies data between two rings
     @param[in] input_ring Ring holding data to be copied
