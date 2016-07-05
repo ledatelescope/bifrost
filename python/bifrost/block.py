@@ -36,6 +36,7 @@ import os
 import threading
 import numpy as np
 import matplotlib
+## Use a graphical backend which supports threading
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import bifrost
@@ -43,7 +44,6 @@ import bandfiles
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile
-## Use a graphical backend which supports threading
 
 #TODO: How does GNU Radio handle this?
 class Pipeline(object):
