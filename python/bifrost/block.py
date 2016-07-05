@@ -240,7 +240,7 @@ class DadaReadBlock(object):
 
   # Assemble a group of files in the time direction and the frequency direction
   # time_stamp is of the form "2016-05-24-11:04:38", or a DADA file ending in .dada
-  def __init__(self, time_stamp, outring, core=-1, gulp_nframe=4096):
+  def __init__(self, time_stamp, core=-1, gulp_nframe=4096):
     self.CHANNEL_WIDTH = 0.024
     self.SAMPLING_RATE = 41.66666666667e-6
     self.N_CHAN = 109
@@ -249,7 +249,6 @@ class DadaReadBlock(object):
     self.OBS_OFFSET = 1255680000
     self.gulp_nframe = gulp_nframe
 
-    self.oring = outring
     self.core = core
 
     beamformer_scans = []
@@ -277,9 +276,10 @@ class DadaReadBlock(object):
 
     self.beamformer_scans = beamformer_scans     # List of full-band time steps
 
-  def main(self):
+  def main(self, input_rings, output_rings):
     bifrost.affinity.set_core(self.core)
 
+    self.oring = output_rings[0]
     # Calculate some constants for sizes
     length_one_second = int(round(1/self.SAMPLING_RATE))
     ring_span_size = length_one_second*self.N_CHAN*4                    # 1 second, all the channels (109) and then 4-byte floats
@@ -327,8 +327,6 @@ class DadaReadBlock(object):
                     return
                 data = data.reshape(length_one_second, self.N_BEAM, self.N_CHAN, 2)
                 power = (data[...,0]**2 + data[...,1]**2).mean(axis=1)  # Now have time by frequency.
-                print power.shape
-
                 # Send the data
                 with osequence.reserve(ring_span_size) as wspan:
                   wspan.data[0][:] = power.view(dtype=np.uint8).ravel()
