@@ -40,7 +40,7 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import bifrost
-import bandfiles
+from bifrost import bandfiles
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile
@@ -91,17 +91,19 @@ class TransformBlock(object):
             rings."""
         pass
 def number_of_bits_to_datatype(number_bits, signed=False):
+    """Make a guess for the datatype based on the number
+        of bits"""
     if number_bits >= 8:
         if signed:
             datatype = {8: np.int8,
-                          16: np.int16,
-                          32: np.float32,
-                          64: np.float64}[number_bits]
+                        16: np.int16,
+                        32: np.float32,
+                        64: np.float64}[number_bits]
         else:
             datatype = {8: np.uint8,
-                          16: np.uint16,
-                          32: np.float32,
-                          64: np.float64}[number_bits]
+                        16: np.uint16,
+                        32: np.float32,
+                        64: np.float64}[number_bits]
     else:
         datatype = np.int8 if signed else np.uint8
     return datatype
@@ -121,10 +123,8 @@ class WriteAsciiBlock(TransformBlock):
         for iseq in data_ring.read(guarantee=True):
             header_dict = json.loads(iseq.header.tostring())
             datatype = number_of_bits_to_datatype(
-                    header_dict['nbit'])
+                header_dict['nbit'])
             for ispan in iseq.read(gulp_size):
-                if header_dict['frame_shape'][1] == 256:
-                    print ispan.data_view(datatype)
                 text_file = open(self.filename, 'a')
                 np.savetxt(
                     text_file, ispan.data_view(datatype))
@@ -135,6 +135,13 @@ class CopyBlock(TransformBlock):
         self.inputs = 1
         self.outputs = 1
         self.gulp_size = gulp_size
+    def perform_sequence_copy(self, input_sequence, output_sequence):
+        """This function copies data from input_span 
+            to output_span"""
+        for ispan in input_sequence.read(self.gulp_size):
+            with output_sequence.reserve(ispan.size) as ospan:
+                bifrost.memory.memcpy2D(
+                        ospan.data, ispan.data)
     def main(self, input_rings, output_rings):
         input_ring = input_rings[0]
         for output_ring in output_rings:
@@ -146,10 +153,7 @@ class CopyBlock(TransformBlock):
                         iseq.name, iseq.time_tag,
                         header=iseq.header,
                         nringlet=iseq.nringlet) as oseq:
-                        for ispan in iseq.read(self.gulp_size):
-                            with oseq.reserve(ispan.size) as ospan:
-                                bifrost.memory.memcpy2D(
-                                    ospan.data, ispan.data)
+                        self.perform_sequence_copy(iseq, oseq)
 
 class SigprocReadBlock(object):
     """This block reads in a sigproc filterbank

@@ -29,7 +29,6 @@
 This file tests all aspects of the Bifrost.block module.
 """
 import unittest
-import struct # For a test which reads from Ascii
 from block import *
 from bifrost.ring import Ring
 
@@ -37,14 +36,14 @@ class TestCopyBlock(unittest.TestCase):
     """Performs tests of the Copy Block."""
     def setUp(self):
         """Set up the blocks list, and put in a single
-            block which reads in the data from a filterbank 
+            block which reads in the data from a filterbank
             file."""
         self.blocks = []
         self.blocks.append((
             SigprocReadBlock(
                 ['/data1/mcranmer/data/fake/1chan8bitNoDM.fil']),
             [], [0]))
-    def test_simple_copy_and_dump_to_text(self):
+    def test_simple_copy(self):
         """Test which performs a read of a sigproc file,
             copy to one ring, and then output as text."""
         logfile = '.log.txt'
@@ -53,7 +52,7 @@ class TestCopyBlock(unittest.TestCase):
         Pipeline(self.blocks).main()
         test_byte = open(logfile, 'r').read(1)
         self.assertEqual(test_byte, '2')
-    def test_multi_copy_and_dump_to_text(self):
+    def test_multi_copy(self):
         """Test which performs a read of a sigproc file,
             copy between many rings, and then output as
             text."""
@@ -65,9 +64,9 @@ class TestCopyBlock(unittest.TestCase):
         Pipeline(self.blocks).main()
         test_byte = open(logfile, 'r').read(1)
         self.assertEqual(test_byte, '2')
-    def test_non_linear_multi_copy_and_dump_to_text(self):
+    def test_non_linear_multi_copy(self):
         """Test which reads in a sigproc file, and
-            loads it between different rings in a 
+            loads it between different rings in a
             nonlinear fashion, then outputs to file."""
         logfile = '.log3.txt'
         self.blocks.append((CopyBlock(), [0], [1]))
@@ -86,7 +85,7 @@ class TestCopyBlock(unittest.TestCase):
             copies at once, and then dumps to two files,
             checking them both."""
         logfiles = ['.log4.txt', '.log5.txt']
-        self.blocks.append((CopyBlock(), [0], [1,2]))
+        self.blocks.append((CopyBlock(), [0], [1, 2]))
         self.blocks.append((WriteAsciiBlock(logfiles[0]), [1], []))
         self.blocks.append((WriteAsciiBlock(logfiles[1]), [2], []))
         Pipeline(self.blocks).main()
