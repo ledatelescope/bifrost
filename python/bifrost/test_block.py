@@ -29,7 +29,7 @@ class TestCopyBlock(unittest.TestCase):
         """Test which performs a read of a sigproc file,
             copy between many rings, and then output as
             text."""
-        logfile = '.log2.txt'
+        logfile = '.log.txt'
         for i in range(10):
             self.blocks.append(
                 (CopyBlock(), [i], [i+1]))
@@ -41,7 +41,7 @@ class TestCopyBlock(unittest.TestCase):
         """Test which reads in a sigproc file, and
             loads it between different rings in a
             nonlinear fashion, then outputs to file."""
-        logfile = '.log3.txt'
+        logfile = '.log.txt'
         self.blocks.append((CopyBlock(), [0], [1]))
         self.blocks.append((CopyBlock(), [0], [2]))
         self.blocks.append((CopyBlock(), [2], [5]))
@@ -57,7 +57,7 @@ class TestCopyBlock(unittest.TestCase):
         """Test which forces one block to do multiple
             copies at once, and then dumps to two files,
             checking them both."""
-        logfiles = ['.log4.txt', '.log5.txt']
+        logfiles = ['.log1.txt', '.log2.txt']
         self.blocks.append((CopyBlock(), [0], [1, 2]))
         self.blocks.append((WriteAsciiBlock(logfiles[0]), [1], []))
         self.blocks.append((WriteAsciiBlock(logfiles[1]), [2], []))
@@ -69,7 +69,7 @@ class TestCopyBlock(unittest.TestCase):
     def test_32bit_copy(self):
         """Perform a simple test to confirm that 32 bit
             copying has no information loss"""
-        logfile = '.log6.txt'
+        logfile = '.log.txt'
         self.blocks = []
         self.blocks.append((
             SigprocReadBlock(
@@ -80,5 +80,23 @@ class TestCopyBlock(unittest.TestCase):
         Pipeline(self.blocks).main()
         test_bytes = open(logfile, 'r').read(500).split(' ')
         self.assertAlmostEqual(np.float(test_bytes[0]), 0.72650784254)
+class TestDadaBlock(unittest.TestCase):
+    """Test the ability of the Dada block to read
+        in data that is compatible with other blocks."""
+    def setUp(self):
+        self.blocks = []
+        self.blocks.append(
+            (DadaReadBlock(
+                "/data1/mcranmer/data/real/2016_xaa.dada"),
+            [], [0]))
+    def test_read_and_write(self):
+        """Reads in a dada file, and logs in ascii
+            file."""
+        logfile = '.log.txt'
+        self.blocks.append((WriteAsciiBlock(logfile), [0], []))
+        Pipeline(self.blocks).main() 
+        test_bytes = open(logfile, 'r').read(500).split(' ')
+        self.assertAlmostEqual(np.float(test_bytes[0]), 3908.5, 3)
+
 if __name__ == "__main__":
     unittest.main()
