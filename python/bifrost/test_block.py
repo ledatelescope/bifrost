@@ -43,7 +43,7 @@ class TestCopyBlock(unittest.TestCase):
             SigprocReadBlock(
                 ['/data1/mcranmer/data/fake/1chan8bitNoDM.fil']),
             [], [0]))
-    def test_simple_ring_copy(self):
+    def SimpleSigprocCopyAndDump_DumpsFirstByteAs2(self):
         """Test which performs a read of a sigproc file,
             copy to one ring, and then output as text."""
         logfile = 'log.txt'
@@ -51,22 +51,20 @@ class TestCopyBlock(unittest.TestCase):
         self.blocks.append((WriteAsciiBlock(logfile), [1], []))
         Pipeline(self.blocks).main()
         test_byte = open(logfile, 'r').read(1)
-        print open(logfile, 'r').read()
         self.assertEqual(test_byte, '2')
-    def test_multi_linear_ring_copy(self):
+    def CopyBetweenMultipleBlocksLinear_DumpFirstByte2(self):
         """Test which performs a read of a sigproc file,
             copy between many rings, and then output as
             text."""
         logfile = 'log2.txt'
-        self.blocks.append((CopyBlock(), [0], [1]))
-        self.blocks.append((CopyBlock(), [1], [2]))
-        self.blocks.append((CopyBlock(), [2], [3]))
-        self.blocks.append((CopyBlock(), [3], [4]))
-        self.blocks.append((WriteAsciiBlock(logfile), [4], []))
+        for i in range(10):
+            self.blocks.append(
+                (CopyBlock(), [i], [i+1]))
+        self.blocks.append((WriteAsciiBlock(logfile), [10], []))
         Pipeline(self.blocks).main()
         test_byte = open(logfile, 'r').read(1)
         self.assertEqual(test_byte, '2')
-    def test_nonlinear_ring_copy(self):
+    def CopyBetweenMultipleBlocksNonlinear_Dump17thByte3(self):
         """Test which reads in a sigproc file, and
             loads it between different rings in a 
             nonlinear fashion, then outputs to file."""

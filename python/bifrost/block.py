@@ -107,21 +107,21 @@ class WriteAsciiBlock(object):
                 np.savetxt(self.filename, ispan.data, '%d')
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
-    def __init__(self):
+    def __init__(self, gulp_size=1048576):
         super(CopyBlock, self).__init__()
         self.inputs = 1
         self.outputs = 1
+        self.gulp_size = gulp_size
     def main(self, input_ring, output_ring):
-        gulp_size = 1048576
-        input_ring.resize(gulp_size)
-        output_ring.resize(gulp_size)
+        input_ring.resize(self.gulp_size)
+        output_ring.resize(self.gulp_size)
         with output_ring.begin_writing() as oring:
             for iseq in input_ring.read(guarantee=True):
                 with oring.begin_sequence(
                     iseq.name, iseq.time_tag,
                     header=iseq.header,
                     nringlet=iseq.nringlet) as oseq:
-                    for ispan in iseq.read(gulp_size):
+                    for ispan in iseq.read(self.gulp_size):
                         with oseq.reserve(ispan.size) as ospan:
                             bifrost.memory.memcpy2D(
                                 ospan.data, ispan.data)
