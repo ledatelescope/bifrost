@@ -39,14 +39,15 @@ class Pipeline(object):
         """Start the pipeline, and finish when all threads exit"""
         threads = []
         for block in self.blocks:
-            function_rings = []
-            function_rings.extend(
+            input_rings = []
+            output_rings = []
+            input_rings.extend(
                 [self.rings[ring_index] for ring_index in block[1]])
-            function_rings.extend(
+            output_rings.extend(
                 [self.rings[ring_index] for ring_index in block[2]])
             threads.append(threading.Thread(
                 target=block[0].main,
-                args=function_rings))
+                args=[input_rings, output_rings]))
         for thread in threads:
             thread.daemon = True
             thread.start()
@@ -59,11 +60,11 @@ class TransformBlock(object):
     """Defines the structure for a transform block"""
     def __init__(self):
         super(TransformBlock, self).__init__()
-    def main(self, input_ring, output_ring):
+    def main(self, input_rings, output_rings):
         """Initiate the block's transform between
             rings."""
         pass
-class WriteAsciiBlock(object):
+class WriteAsciiBlock(TransformBlock):
     """Copies input ring's data into ascii format
         in a text file"""
     def __init__(self, filename):
@@ -71,9 +72,10 @@ class WriteAsciiBlock(object):
         self.filename = filename
         ## erase file
         open(self.filename, "w").close()
-    def main(self, data_ring):
+    def main(self, input_rings, output_rings):
         """Initiate the writing to filename"""
         gulp_size = 1048576
+        data_ring = input_rings[0]
         data_ring.resize(gulp_size)
         for iseq in data_ring.read(guarantee=True):
             for ispan in iseq.read(gulp_size):
@@ -85,19 +87,21 @@ class CopyBlock(TransformBlock):
         self.inputs = 1
         self.outputs = 1
         self.gulp_size = gulp_size
-    def main(self, input_ring, output_ring):
-        input_ring.resize(self.gulp_size)
-        output_ring.resize(self.gulp_size)
-        with output_ring.begin_writing() as oring:
-            for iseq in input_ring.read(guarantee=True):
-                with oring.begin_sequence(
-                    iseq.name, iseq.time_tag,
-                    header=iseq.header,
-                    nringlet=iseq.nringlet) as oseq:
-                    for ispan in iseq.read(self.gulp_size):
-                        with oseq.reserve(ispan.size) as ospan:
-                            bifrost.memory.memcpy2D(
-                                ospan.data, ispan.data)
+    def main(self, input_rings, output_rings):
+        input_ring = input_rings[0]
+        for output_ring in output_rings:
+            input_ring.resize(self.gulp_size)
+            output_ring.resize(self.gulp_size)
+            with output_ring.begin_writing() as oring:
+                for iseq in input_ring.read(guarantee=True):
+                    with oring.begin_sequence(
+                        iseq.name, iseq.time_tag,
+                        header=iseq.header,
+                        nringlet=iseq.nringlet) as oseq:
+                        for ispan in iseq.read(self.gulp_size):
+                            with oseq.reserve(ispan.size) as ospan:
+                                bifrost.memory.memcpy2D(
+                                    ospan.data, ispan.data)
 
 class SigprocReadBlock(object):
     """This block reads in a sigproc filterbank
@@ -120,8 +124,9 @@ class SigprocReadBlock(object):
         self.core = core
         self.max_frames = max_frames
         self.inputs = 1
-    def main(self, output_ring):
-        """Read in the sigproc file to output_ring"""
+    def main(self, input_rings, output_rings):
+        """Read in the sigproc file to output_rings"""
+        output_ring = output_rings[0]
         affinity.set_core(self.core)
         with output_ring.begin_writing() as oring:
             for name in self.filenames:
