@@ -20,6 +20,7 @@
 
 #ifndef BF_COMMON_H_INCLUDE_GUARD_
 #define BF_COMMON_H_INCLUDE_GUARD_
+#define BF_MAX_DIM 3
 
 #include <stddef.h>
 #include <stdint.h>
@@ -31,13 +32,43 @@ extern "C" {
 typedef int                BFstatus;
 typedef int                BFbool;
 typedef int                BFenum;
-typedef uint64_t BFsize; // TODO: Check this on TK1 (32 bit)
+typedef float              BFcomplex[2];
+typedef float              BFreal;
+typedef uint64_t           BFsize; // TODO: Check this on TK1 (32 bit)
 //typedef unsigned long      BFsize;
 //typedef size_t             BFsize;
 //typedef unsigned long long BFoffset;
 typedef uint64_t BFoffset;
 //typedef unsigned char      BFoffset; // HACK TESTING correct offset wrapping
 typedef   signed long long BFdelta;
+enum {
+	BF_SPACE_AUTO         = 0,
+	BF_SPACE_SYSTEM       = 1, // aligned_alloc
+	BF_SPACE_CUDA         = 2, // cudaMalloc
+	BF_SPACE_CUDA_HOST    = 3, // cudaHostAlloc
+	BF_SPACE_CUDA_MANAGED = 4  // cudaMallocManaged
+};
+
+typedef BFenum BFspace;
+/// Defines a single atom of data to be passed to a function.
+typedef struct BFarray_ {
+    /*! The data pointer can point towards any type of data, 
+     *  so long as there is a corresponding definition in dtype. 
+     *  This data should be an ndim array, which every element of
+     *  type dtype.
+     */
+    void* data;
+    /*! Where this data is located in memory.
+     *  Used to ensure that operations called are localized within
+     *  that space, such as a CUDA funciton operating on device
+     *  memory.
+     */
+    BFspace space;
+    unsigned dtype;
+    int ndim;
+    BFsize shape[BF_MAX_DIM];
+    BFsize strides[BF_MAX_DIM];
+} BFarray;
 
 enum {
 	BF_STATUS_SUCCESS            = 0,
