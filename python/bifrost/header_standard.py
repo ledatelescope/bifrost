@@ -57,6 +57,8 @@ STANDARD_HEADER = {
 def enforce_header_standard(header_dict):
     """Raise an error if the header dictionary passed
         does not fit the standard specified above."""
+    if type(header_dict) != dict:
+        return False
     for parameter, standard in STANDARD_HEADER.items():
         if parameter not in header_dict:
             return False

@@ -32,6 +32,8 @@ import numpy as np
 from bifrost.header_standard import enforce_header_standard
 
 class TestHeaderStandardHandlesGoodHeaders(unittest.TestCase):
+    """Create a bunch of headers which should pass the test, 
+        and check that they do in fact pass"""
     def setUp(self):
         """Create empty header dictionary"""
         self.header_dict = {}
@@ -57,6 +59,8 @@ class TestHeaderStandardHandlesGoodHeaders(unittest.TestCase):
             'tstart':1e5, 'tsamp':1e-5, 'my_extra_param':50}
 
 class TestHeaderStandardHandlesBadHeaders(unittest.TestCase):
+    """Create a bunch of headers which should not pass the
+        test, and check that they do not."""
     def setUp(self):
         """Create empty header dictionary"""
         self.header_dict = {}
@@ -82,6 +86,9 @@ class TestHeaderStandardHandlesBadHeaders(unittest.TestCase):
         self.header_dict = {
             'nchans':1, 'nifs':1, 'nbits':-8, 'fch1':100.0, 'foff':1e-5,
             'tstart':1e5, 'tsamp':1e-5}
+    def test_non_dict(self):
+        """Puts in a non dictionary header"""
+        self.header_dict = "nchans nifs nbits fch1 foff tstart"
 
 if __name__ == '__main__':
     unittest.main()
