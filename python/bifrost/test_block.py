@@ -87,7 +87,7 @@ class TestDadaBlock(unittest.TestCase):
         self.blocks = []
         self.blocks.append(
             (DadaReadBlock(
-                "/data1/mcranmer/data/real/2016_xaa.dada"),
+                "/data1/mcranmer/data/real/2016-02-03-22_37_50_0001287429875776.dada"),
             [], [0]))
     def test_read_and_write(self):
         """Reads in a dada file, and logs in ascii
