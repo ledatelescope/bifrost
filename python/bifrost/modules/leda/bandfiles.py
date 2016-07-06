@@ -36,7 +36,7 @@ class FileInfo(object):
       lst = freq = t_offset = n_scans = int_time = utc_date = utc_time = 0
     else:
       t_offset = int(hedr["TIME_OFFSET"])	
-      n_scans = float(hedr["N_SCANS"])
+      n_scans = int(hedr["N_SCANS"])
       int_time = int(hedr["INT_TIME"])
       lst = float(hedr["LST"])
       freq = float(hedr["FREQCENT"])
@@ -80,6 +80,7 @@ class BandFiles(object):
     if basename[-5:] == ".dada":                # Just a single file
       if os.access(basename,os.R_OK): self.files.append(FileInfo(basename))
       else: "Error:", basename, "does not exist or is not readable"
+      print basename, FileInfo(basename), self.files
     else:
 
       # Look for files in all the standard locations
