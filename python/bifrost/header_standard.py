@@ -18,6 +18,8 @@ Optional parameters (which some blocks require):
 
 ## Define a header which we can check passed
 ## dictionaries with
+## Format: 
+##'parameter name':(type, minimum)
 STANDARD_HEADER = {
     'nchans':(int, 1),
     'nifs':(int, 1, ),
