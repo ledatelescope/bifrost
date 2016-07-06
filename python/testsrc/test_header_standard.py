@@ -25,10 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+"""@package test_header_standard
+This file tests the header standard"""
 import unittest
 import numpy as np
-from header_standard import enforce_header_standard
-#from bifrost import header_standard
+from bifrost.header_standard import enforce_header_standard
 
 class TestHeaderStandardHandlesGoodHeaders(unittest.TestCase):
     def setUp(self):
@@ -39,13 +40,21 @@ class TestHeaderStandardHandlesGoodHeaders(unittest.TestCase):
         self.assertTrue(
             enforce_header_standard(self.header_dict))
     def test_simple_header(self):
+        """Simple header test, with all good values in range"""
         self.header_dict = {
             'nchans':1, 'nifs':1, 'nbits':8, 'fch1':100.0, 'foff':1e-5,
             'tstart':1e5, 'tsamp':1e-5}
     def test_numpy_types(self):
+        """Same values, but some are numpy types"""
+        self.header_dict = {
+            'nchans':np.int(1), 'nifs':1, 'nbits':8, 
+            'fch1':np.float(100.0), 'foff':np.float(1e-5),
+            'tstart':1e5, 'tsamp':np.float(1e-5)}
+    def test_extra_parameters(self):
+        """Add some extra parameters"""
         self.header_dict = {
             'nchans':1, 'nifs':1, 'nbits':8, 'fch1':100.0, 'foff':1e-5,
-            'tstart':1e5, 'tsamp':1e-5}
+            'tstart':1e5, 'tsamp':1e-5, 'my_extra_param':50}
 
 class TestHeaderStandardHandlesBadHeaders(unittest.TestCase):
     def setUp(self):
@@ -68,10 +77,10 @@ class TestHeaderStandardHandlesBadHeaders(unittest.TestCase):
         self.header_dict = {
             'nchans':1.05, 'nifs':1, 'nbits':8, 'fch1':100, 'foff':1e-5,
             'tstart':1e5, 'tsamp':1e-5}
-    def test_bad_range(self):
-        """Put in bad range of data"""
+    def test_low_value(self):
+        """Put in low value for nbits"""
         self.header_dict = {
-            'nchans':1.05, 'nifs':1, 'nbits':8, 'fch1':100, 'foff':1e-5,
+            'nchans':1, 'nifs':1, 'nbits':-8, 'fch1':100.0, 'foff':1e-5,
             'tstart':1e5, 'tsamp':1e-5}
 
 if __name__ == '__main__':

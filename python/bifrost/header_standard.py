@@ -46,13 +46,13 @@ Optional parameters (which some blocks require):
 ## Define a header which we can check passed
 ## dictionaries with
 STANDARD_HEADER = {
-    'nchans':(int, 1, None),
-    'nifs':(int, 1, None),
-    'nbits':(int, 1, None),
-    'fch1':(float, 0, None),
-    'foff':(float, None, None),
-    'tstart':(float, 0, None),
-    'tsamp':(float, 0, None)}
+    'nchans':(int, 1),
+    'nifs':(int, 1, ),
+    'nbits':(int, 1),
+    'fch1':(float, 0),
+    'foff':(float, None),
+    'tstart':(float, 0),
+    'tsamp':(float, 0)}
 
 def enforce_header_standard(header_dict):
     """Raise an error if the header dictionary passed
@@ -62,5 +62,9 @@ def enforce_header_standard(header_dict):
             return False
         if type(header_dict[parameter]) != standard[0]:
             return False
+        if standard[1] != None and \
+            header_dict[parameter] < standard[1]:
+            return False
+
     return True
 
