@@ -37,7 +37,6 @@ class Ring(object):
 		space = _string2space(space)
 		#self.obj = None
 		self.obj = _get(_bf.RingCreate(space=space), retarg=0)
-		print "Ring obj", self.obj
 	def __del__(self):
 		if bool(self.obj):
 			_bf.RingDestroy(self.obj)

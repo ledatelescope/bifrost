@@ -30,7 +30,7 @@ which will install the library and headers into /usr/local/lib and
 
 Install dependencies:
 
-    $ sudo pip install --upgrade pyclibrary
+ * [PyCLibrary fork](https://github.com/MatthieuDartiailh/pyclibrary)
 
 Install bifrost module:
 
