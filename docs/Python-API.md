@@ -2,7 +2,7 @@
 
 1. [Read, Copy and Print a Filterbank File](#filterbank)
 2. [Create a Pulsar Search Pipeline](#pulsarsearch)
-3. [Ring() API]
+3. [[Ring() API]]
 
 ## <a name="filterbank">Read, Copy and Print a filterbank file</a>
 
