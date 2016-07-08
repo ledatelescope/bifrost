@@ -40,6 +40,3 @@ class TestFFTHandles1DComplex(unittest.TestCase):
 
 
 
-if __name__ == '__main__':
-    unittest.main()
-
