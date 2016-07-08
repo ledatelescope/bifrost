@@ -123,6 +123,7 @@ class RingWriter(object):
 		                     header=header, nringlet=nringlet)
 
 class SequenceBase(object):
+        """Python object for a ring's sequence (data unit)"""
 	def __init__(self, ring):
 		self._ring = ring
 	@property

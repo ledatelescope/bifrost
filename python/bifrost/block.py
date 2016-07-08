@@ -344,7 +344,43 @@ class DedisperseBlock(object):
         time for each channel in the header."""
         pass
 
-class FoldBlock(object):
+class FoldBlock(TransformBlock):
+    """This block folds a signal into a histogram"""
+    def __init__(self, bins):
+        """
+        @param[out] np_output_array Numpy array which will
+            eventually contain a histogram from our folding
+        @param[in] bins The total number of bins to fold into
+        """
+        self.bins = bins
+    def main(self, input_rings, output_rings):
+        input_ring = input_rings[0]
+        input_ring.resize(4096)
+        with output_ring.begin_writing() as oring:
+        for sequence in input_ring.read(guarantee=True):
+            ## Get the sequence's header as a dictionary
+            header = json.loads(
+                "".join(
+                    [chr(item) for item in sequence.header]))
+            tstart = header['tstart']
+            tsamp = header['tsamp']
+            nchans = header['frame_shape'][0]
+            nbits = header['nbit']
+            for span in sequence.read(4096):
+                print span.data.shape
+        for iseq in input_ring.read(guarantee=True):
+            with oring.begin_sequence(
+                iseq.name, iseq.time_tag,
+                header=iseq.header,
+                nringlet=iseq.nringlet) as oseq:
+                for ispan in iseq.read(gulp_size):
+                    with oseq.reserve(ispan.size) as ospan:
+                        bifrost.memory.memcpy2D(
+                            ospan.data,ispan.data)
+        
+
+
+class FoldBlockOld(object):
     """This block folds a signal into a histogram"""
     def __init__(
             self, input_ring, np_output_array, 
@@ -408,6 +444,9 @@ class FoldBlock(object):
             tstart = header['tstart']
             tsamp = header['tsamp']
             nchans = header['frame_shape'][0]
+            nbits = header['nbits']
+            nbits = header['nbits']
+            nifs = header['nifs']
             if self.dispersion_measure is None:
                 try:
                     self.dispersion_measure = header[
@@ -445,7 +484,7 @@ class FoldBlock(object):
                     self.output_array += np.sum(
                         sorted_data.reshape(100, -1), 1)
                     frequency -= header['foff']
-                tstart += tsamp*self.gulp_size
+                tstart += tsamp*self.gulp_size/nbits/nchans/nifs
 
 class WaterfallBlock(object):
     """This block creates a waterfall block

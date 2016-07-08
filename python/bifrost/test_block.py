@@ -108,5 +108,29 @@ class TestCopyBlock(unittest.TestCase):
         test_bytes = open(logfile, 'r').read(500).split(' ')
         self.assertAlmostEqual(np.float(test_bytes[0]), 0.72650784254)
 
+class TestFoldBlock(unittest.TestCase):
+    """This tests functionality of the 
+        FoldBlock."""
+    def setUp(self):
+        """Set up the blocks list, and put in a single
+            block which reads in the data from a filterbank
+            file."""
+        self.blocks = []
+        self.blocks.append((
+            SigprocReadBlock(
+                ['/data1/mcranmer/data/fake/1chan8bitNoDM.fil']),
+            [], [0]))
+    def test_simple_pulsar(self):
+        """Test whether a pulsar histogram
+            shows a large peak"""
+        logfile = ".log.txt"
+        self.blocks.append((
+            FoldBlock(bins=100), [0], [1]))
+        self.blocks.append((WriteAsciiBlock(logfile), [1], []))
+        Pipeline(self.blocks).main()
+        test_bytes = open(logfile, 'r').read().split(' ')
+        a = np.array([np.float(x) for x in test_bytes])
+        self.assertTrue(np.max(a)/np.min(a) >3)
+
 if __name__ == "__main__":
     unittest.main()
