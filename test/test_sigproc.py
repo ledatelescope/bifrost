@@ -1,4 +1,5 @@
 import unittest
+import bifrost
 from bifrost.sigproc import *
 import time
 
