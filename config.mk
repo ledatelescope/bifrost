@@ -17,8 +17,13 @@ else
   $(error Unsupported OS)
 endif
 
-INSTALL_LIB_DIR = /usr/local/lib
-INSTALL_INC_DIR = /usr/local/include
+ifndef INSTALL_LIB_DIR
+	INSTALL_LIB_DIR = /usr/local/lib
+endif 
+
+ifndef INSTALL_INC_DIR
+    INSTALL_INC_DIR = /usr/local/include
+endif 
 
 BIFROST_NAME          = bifrost
 LIBBIFROST_NAME       = lib$(BIFROST_NAME)
