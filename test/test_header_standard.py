@@ -90,5 +90,3 @@ class TestHeaderStandardHandlesBadHeaders(unittest.TestCase):
         """Puts in a non dictionary header"""
         self.header_dict = "nchans nifs nbits fch1 foff tstart"
 
-if __name__ == '__main__':
-    unittest.main()

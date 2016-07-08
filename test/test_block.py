@@ -108,5 +108,3 @@ class TestCopyBlock(unittest.TestCase):
         test_bytes = open(logfile, 'r').read(500).split(' ')
         self.assertAlmostEqual(np.float(test_bytes[0]), 0.72650784254)
 
-if __name__ == "__main__":
-    unittest.main()
