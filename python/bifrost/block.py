@@ -40,7 +40,6 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import bifrost
-from bifrost import bandfiles
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile
