@@ -33,7 +33,7 @@ class Pipeline(object):
         all_ports = [
             index for block in self.blocks for index in [
                 port for port in block[1:] if port] if index]
-        return len(np.unique(all_ports))
+        return len(np.unique(np.array(all_ports)))
     def main(self):
         """Start the pipeline, and finish when all threads exit"""
         threads = []
