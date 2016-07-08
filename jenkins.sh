@@ -1,7 +1,6 @@
 #!/bin/bash
 # Script for the Jenkins build system
 
-export PYTHONPATH=$PYTHONPATH:/data1/mcranmer/usr/lib/python2.7/site-packages
 while [ "$1" != "" ]; do 
     case $1 in
         --build )
