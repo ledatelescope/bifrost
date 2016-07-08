@@ -2,7 +2,7 @@
 This file tests all aspects of the Bifrost.block module.
 """
 import unittest
-from block import *
+from bifrost.block import *
 from bifrost.ring import Ring
 
 class TestCopyBlock(unittest.TestCase):
