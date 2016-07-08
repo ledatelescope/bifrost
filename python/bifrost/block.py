@@ -32,7 +32,7 @@ class Pipeline(object):
             this pipeline."""
         all_ports = [
             index for block in self.blocks for index in [
-                port for port in block[1:] if port != None]]
+                port for port in block[1:] if port]]
         return len(np.unique(all_ports))
     def main(self):
         """Start the pipeline, and finish when all threads exit"""
