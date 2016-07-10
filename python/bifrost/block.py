@@ -357,6 +357,7 @@ class FoldBlock(TransformBlock):
         input_ring = input_rings[0]
         input_ring.resize(4096)
         output_ring = output_rings[0]
+        output_ring.resize(self.bins*32)
         with output_ring.begin_writing() as oring:
             for sequence in input_ring.read(guarantee=True):
                 ## Get the sequence's header as a dictionary
@@ -370,15 +371,19 @@ class FoldBlock(TransformBlock):
                 iseq = sequence
                 myhdr = header
                 myhdr['nbit'] = 32
+                myhdr['frame_nbyte'] = 4
+                myhdr['dtype'] = str(np.float32)
                 with oring.begin_sequence(
                     iseq.name, iseq.time_tag,
                     header=json.dumps(myhdr),
                     nringlet=iseq.nringlet) as oseq:
-                    histogram = np.zeros(self.bins).astype(np.float)
-                    histogram[0] = 100 
+                    histogram = np.zeros(self.bins).astype(np.float32)
+                    histogram[0] = 100.0
                     with oseq.reserve(histogram.size*4) as ospan:
-                        ospan.data.data = np.zeros(self.bins).astype(float)
-                        ospan.commit(histogram.size*4)
+                        histogram = np.reshape(histogram, (1, self.bins))
+                        bifrost.memory.memcpy2D(
+                            ospan.data_view(dtype=np.float32), 
+                            histogram)
         
 
 
