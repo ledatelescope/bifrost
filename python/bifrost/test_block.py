@@ -93,19 +93,32 @@ class TestFoldBlock(unittest.TestCase):
             SigprocReadBlock(
                 ['/data1/mcranmer/data/fake/1chan8bitNoDM.fil']),
             [], [0]))
+    def dump_ring_and_read(self):
+        """Dump block to ring, read in as histogram"""
+        logfile = ".log.txt"
+        self.blocks.append((WriteAsciiBlock(logfile), [1], []))
+        Pipeline(self.blocks).main()
+        test_bytes = open(logfile, 'r').read().split(' ')
+        histogram = np.array([np.float(x) for x in test_bytes])
+        return histogram
     def test_simple_pulsar(self):
         """Test whether a pulsar histogram
             shows a large peak and is 
             sized exactly the way specified"""
-        logfile = ".log.txt"
         self.blocks.append((
             FoldBlock(bins=100), [0], [1]))
-        self.blocks.append((WriteAsciiBlock(logfile), [1], []))
-        Pipeline(self.blocks).main()
-        test_bytes = open(logfile, 'r').read().split(' ')
-        a = np.array([np.float(x) for x in test_bytes])
-        self.assertEqual(a.size, 100)
-        self.assertTrue(np.max(a)/np.average(a) >10)
+        histogram = self.dump_ring_and_read()
+        self.assertEqual(histogram.size, 100)
+        self.assertTrue(np.max(histogram)/np.average(histogram) > 10)
+    def test_different_bin_size(self):
+        """Try the same test but with a
+            different bin size"""
+        self.blocks.append((
+            FoldBlock(bins=50), [0], [1]))
+        histogram = self.dump_ring_and_read()
+        self.assertEqual(histogram.size, 50)
+        self.assertTrue(np.max(histogram)/np.average(histogram) > 10)
+
 
 if __name__ == "__main__":
     unittest.main()
