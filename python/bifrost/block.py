@@ -356,27 +356,29 @@ class FoldBlock(TransformBlock):
     def main(self, input_rings, output_rings):
         input_ring = input_rings[0]
         input_ring.resize(4096)
+        output_ring = output_rings[0]
         with output_ring.begin_writing() as oring:
-        for sequence in input_ring.read(guarantee=True):
-            ## Get the sequence's header as a dictionary
-            header = json.loads(
-                "".join(
-                    [chr(item) for item in sequence.header]))
-            tstart = header['tstart']
-            tsamp = header['tsamp']
-            nchans = header['frame_shape'][0]
-            nbits = header['nbit']
-            for span in sequence.read(4096):
-                print span.data.shape
-        for iseq in input_ring.read(guarantee=True):
-            with oring.begin_sequence(
-                iseq.name, iseq.time_tag,
-                header=iseq.header,
-                nringlet=iseq.nringlet) as oseq:
-                for ispan in iseq.read(gulp_size):
-                    with oseq.reserve(ispan.size) as ospan:
-                        bifrost.memory.memcpy2D(
-                            ospan.data,ispan.data)
+            for sequence in input_ring.read(guarantee=True):
+                ## Get the sequence's header as a dictionary
+                header = json.loads(
+                    "".join(
+                        [chr(item) for item in sequence.header]))
+                tstart = header['tstart']
+                tsamp = header['tsamp']
+                nchans = header['frame_shape'][0]
+                nbits = header['nbit']
+                iseq = sequence
+                myhdr = header
+                myhdr['nbit'] = 32
+                with oring.begin_sequence(
+                    iseq.name, iseq.time_tag,
+                    header=json.dumps(myhdr),
+                    nringlet=iseq.nringlet) as oseq:
+                    histogram = np.zeros(self.bins).astype(np.float)
+                    histogram[0] = 100 
+                    with oseq.reserve(histogram.size*4) as ospan:
+                        ospan.data.data = np.zeros(self.bins).astype(float)
+                        ospan.commit(histogram.size*4)
         
 
 

@@ -122,7 +122,8 @@ class TestFoldBlock(unittest.TestCase):
             [], [0]))
     def test_simple_pulsar(self):
         """Test whether a pulsar histogram
-            shows a large peak"""
+            shows a large peak and is 
+            sized exactly the way specified"""
         logfile = ".log.txt"
         self.blocks.append((
             FoldBlock(bins=100), [0], [1]))
@@ -130,7 +131,8 @@ class TestFoldBlock(unittest.TestCase):
         Pipeline(self.blocks).main()
         test_bytes = open(logfile, 'r').read().split(' ')
         a = np.array([np.float(x) for x in test_bytes])
-        self.assertTrue(np.max(a)/np.min(a) >3)
+        self.assertEqual(a.size, 100)
+        self.assertTrue(np.max(a)/np.average(a) >10)
 
 if __name__ == "__main__":
     unittest.main()
