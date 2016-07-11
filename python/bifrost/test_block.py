@@ -109,7 +109,7 @@ class TestFoldBlock(unittest.TestCase):
             FoldBlock(bins=100), [0], [1]))
         histogram = self.dump_ring_and_read()
         self.assertEqual(histogram.size, 100)
-        self.assertTrue(np.max(histogram)/np.average(histogram) > 10)
+        self.assertTrue(np.max(histogram)/np.average(histogram) > 3)
     def test_different_bin_size(self):
         """Try the same test but with a
             different bin size"""
@@ -117,7 +117,8 @@ class TestFoldBlock(unittest.TestCase):
             FoldBlock(bins=50), [0], [1]))
         histogram = self.dump_ring_and_read()
         self.assertEqual(histogram.size, 50)
-        self.assertTrue(np.max(histogram)/np.average(histogram) > 10)
+        self.assertTrue(np.max(histogram)/np.average(histogram) > 3)
+
 
 
 if __name__ == "__main__":

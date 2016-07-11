@@ -1,5 +1,4 @@
-"""@package block
-This file defines a generic block class.
+"""@package block This file defines a generic block class.
 
 Right now the only possible block type is one
 of a simple transform which works on a span by span basis.
@@ -326,11 +325,37 @@ class FoldBlock(TransformBlock):
         @param[in] bins The total number of bins to fold into
         """
         self.bins = bins
+        self.dispersion_measure = 0
+    def calculate_delay(self, frequency, reference_frequency):
+        """Calculate the time delay because of frequency dispersion
+        @param[in] frequency The current channel's frequency(MHz)
+        @param[in] reference_frequency The frequency of the 
+            channel we will hold at zero time delay(MHz)"""
+        frequency_factor = \
+            np.power(reference_frequency/1000, -2) -\
+            np.power(frequency/1000, -2)
+        return 4.15e-3*self.dispersion_measure*frequency_factor
+    def calculate_bin_indices(
+        self, tstart, tsamp, data_size, period, bins):
+        """Calculate the bin that each time sample should be
+            added to
+        @param[in] tstart Time of the first element (s)
+        @param[in] tsamp Difference between the times of
+            consecutive elements (s)
+        @param[in] data_size Number of elements
+        @param[in] period Which period to fold over (s)
+        @param[in] bins The total number of bins to fold into
+        @return Which bin each sample is folded into
+        """
+        arrival_time = tstart+tsamp*np.arange(data_size)
+        phase = np.fmod(arrival_time, period)
+        return np.floor(phase/period*bins).astype(int)
     def main(self, input_rings, output_rings):
+        period = 1e-3
         input_ring = input_rings[0]
         input_ring.resize(4096)
         output_ring = output_rings[0]
-        output_ring.resize(self.bins*32)
+        output_ring.resize(self.bins*64)
         with output_ring.begin_writing() as oring:
             for sequence in input_ring.read(guarantee=True):
                 ## Get the sequence's header as a dictionary
@@ -353,6 +378,40 @@ class FoldBlock(TransformBlock):
                     histogram = np.zeros(self.bins).astype(np.float32)
                     histogram[0] = 100.0
                     with oseq.reserve(histogram.size*4) as ospan:
+                        histogram = np.reshape(histogram, (1, self.bins))
+                        for span in sequence.read(4096):
+                            array_size = span.data.shape[1]/nchans
+                            frequency = header['fch1']
+                            for chan in range(nchans):
+                                modified_tstart = \
+                                    tstart - self.calculate_delay(
+                                        frequency, header['fch1'])
+                                ## Sort the data according to which bin
+                                ## it should be placed in
+                                sort_indices = np.argsort(
+                                    self.calculate_bin_indices(
+                                        modified_tstart, tsamp, 
+                                        array_size, period, self.bins))
+                                sorted_data = span.data[0][chan::nchans][sort_indices]
+                                ## So that we can reshape the data before
+                                ## summing, disperse zeros throughout the
+                                ## data so the size is an integer multiple of
+                                ## bins
+                                extra_elements = np.round(self.bins*(1-np.modf(
+                                    float(array_size)/self.bins)[0])).astype(int)
+                                insert_index = np.floor(
+                                    np.arange(
+                                        extra_elements,
+                                        step=1.0)*float(array_size)/extra_elements)
+                                sorted_data = np.insert(
+                                    sorted_data, insert_index,
+                                    np.zeros(extra_elements))
+                                ## Sum the data into our histogram
+                                histogram += np.sum(
+                                    sorted_data.reshape(self.bins, -1), 1)
+                                frequency -= header['foff']
+                            tstart += tsamp*4096/nbits/nchans
+                            
                         histogram = np.reshape(histogram, (1, self.bins))
                         bifrost.memory.memcpy2D(
                             ospan.data_view(dtype=np.float32), 
