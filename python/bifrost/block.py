@@ -345,106 +345,79 @@ class DedisperseBlock(object):
 
 class FoldBlock(TransformBlock):
     """This block folds a signal into a histogram"""
-    def __init__(self, bins):
+    def __init__(self, bins, period=1e-3, gulp_size=4096*256):
         """
-        @param[out] np_output_array Numpy array which will
-            eventually contain a histogram from our folding
         @param[in] bins The total number of bins to fold into
         """
+        super(FoldBlock, self).__init__()
         self.bins = bins
-        self.dispersion_measure = 0
-    def calculate_delay(self, frequency, reference_frequency):
-        """Calculate the time delay because of frequency dispersion
-        @param[in] frequency The current channel's frequency(MHz)
-        @param[in] reference_frequency The frequency of the 
-            channel we will hold at zero time delay(MHz)"""
-        frequency_factor = \
-            np.power(reference_frequency/1000, -2) -\
-            np.power(frequency/1000, -2)
-        return 4.15e-3*self.dispersion_measure*frequency_factor
+        self.gulp_size = gulp_size
+        self.period = period
     def calculate_bin_indices(
-        self, tstart, tsamp, data_size, period, bins):
+            self, tstart, tsamp, data_size):
         """Calculate the bin that each time sample should be
             added to
         @param[in] tstart Time of the first element (s)
         @param[in] tsamp Difference between the times of
             consecutive elements (s)
         @param[in] data_size Number of elements
-        @param[in] period Which period to fold over (s)
-        @param[in] bins The total number of bins to fold into
         @return Which bin each sample is folded into
         """
         arrival_time = tstart+tsamp*np.arange(data_size)
-        phase = np.fmod(arrival_time, period)
-        return np.floor(phase/period*bins).astype(int)
+        phase = np.fmod(arrival_time, self.period)
+        return np.floor(phase/self.period*self.bins).astype(int)
+    def insert_zeros_evenly(self, input_data, number_zeros):
+        insert_index = np.floor(
+            np.arange(
+                number_zeros,
+                step=1.0)*float(input_data.size)/number_zeros)
+        output_data = np.insert(
+            input_data, insert_index,
+            np.zeros(number_zeros))
+        return output_data
     def main(self, input_rings, output_rings):
-        period = 1e-3
+        """Generate a histogram from the input ring data
+        @param[in] input_rings List with first ring containing
+            data of interest. Must terminate before histogram
+            is generated.
+        @param[out] output_rings First ring in this list
+            will contain the output histogram"""
         input_ring = input_rings[0]
-        input_ring.resize(4096)
+        input_ring.resize(self.gulp_size)
         output_ring = output_rings[0]
         output_ring.resize(self.bins*64)
         with output_ring.begin_writing() as oring:
             for sequence in input_ring.read(guarantee=True):
                 ## Get the sequence's header as a dictionary
-                header = json.loads(
+                data_settings = json.loads(
                     "".join(
                         [chr(item) for item in sequence.header]))
-                tstart = header['tstart']
-                tsamp = header['tsamp']
-                nchans = header['frame_shape'][0]
-                nbits = header['nbit']
-                iseq = sequence
-                myhdr = header
-                myhdr['nbit'] = 32
-                myhdr['frame_nbyte'] = 4
-                myhdr['dtype'] = str(np.float32)
+                tstart = data_settings['tstart']
+                nchans = data_settings['frame_shape'][0]
                 with oring.begin_sequence(
-                    iseq.name, iseq.time_tag,
-                    header=json.dumps(myhdr),
-                    nringlet=iseq.nringlet) as oseq:
-                    histogram = np.zeros(self.bins).astype(np.float32)
-                    histogram[0] = 100.0
-                    with oseq.reserve(histogram.size*4) as ospan:
-                        histogram = np.reshape(histogram, (1, self.bins))
-                        for span in sequence.read(4096):
-                            array_size = span.data.shape[1]/nchans
-                            frequency = header['fch1']
+                    sequence.name, sequence.time_tag,
+                    header=json.dumps({'nbit':32}),
+                    nringlet=sequence.nringlet) as oseq:
+                    histogram = np.reshape(
+                        np.zeros(self.bins).astype(np.float32),
+                        (1, self.bins))
+                    with oseq.reserve(self.bins*4) as ospan:
+                        for span in sequence.read(self.gulp_size):
                             for chan in range(nchans):
-                                modified_tstart = \
-                                    tstart - self.calculate_delay(
-                                        frequency, header['fch1'])
-                                ## Sort the data according to which bin
-                                ## it should be placed in
                                 sort_indices = np.argsort(
                                     self.calculate_bin_indices(
-                                        modified_tstart, tsamp, 
-                                        array_size, period, self.bins))
+                                        tstart, data_settings['tsamp'], span.data.shape[1]/nchans))
                                 sorted_data = span.data[0][chan::nchans][sort_indices]
-                                ## So that we can reshape the data before
-                                ## summing, disperse zeros throughout the
-                                ## data so the size is an integer multiple of
-                                ## bins
                                 extra_elements = np.round(self.bins*(1-np.modf(
-                                    float(array_size)/self.bins)[0])).astype(int)
-                                insert_index = np.floor(
-                                    np.arange(
-                                        extra_elements,
-                                        step=1.0)*float(array_size)/extra_elements)
-                                sorted_data = np.insert(
-                                    sorted_data, insert_index,
-                                    np.zeros(extra_elements))
-                                ## Sum the data into our histogram
+                                    float(span.data.shape[1]/nchans)/self.bins)[0])).astype(int)
+                                sorted_data_with_zeros = self.insert_zeros_evenly(
+                                    sorted_data, extra_elements)
                                 histogram += np.sum(
-                                    sorted_data.reshape(self.bins, -1), 1)
-                                frequency -= header['foff']
-                            tstart += tsamp*4096/nbits/nchans
-                            
-                        histogram = np.reshape(histogram, (1, self.bins))
-                        bifrost.memory.memcpy2D(
-                            ospan.data_view(dtype=np.float32), 
+                                    sorted_data_with_zeros.reshape(self.bins, -1), 1).astype(np.float32)
+                            tstart += data_settings['tsamp']*self.gulp_size*8/data_settings['nbit']/nchans
+                        bifrost.memory.memcpy(
+                            ospan.data_view(dtype=np.float32),
                             histogram)
-        
-
 
 class FoldBlockOld(object):
     """This block folds a signal into a histogram"""
