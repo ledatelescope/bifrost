@@ -345,7 +345,7 @@ class DedisperseBlock(object):
 
 class FoldBlock(TransformBlock):
     """This block folds a signal into a histogram"""
-    def __init__(self, bins, period=1e-3, gulp_size=4096*256):
+    def __init__(self, bins, period=1e-3, gulp_size=4096*256, dispersion_measure=0):
         """
         @param[in] bins The total number of bins to fold into
         """
@@ -353,6 +353,7 @@ class FoldBlock(TransformBlock):
         self.bins = bins
         self.gulp_size = gulp_size
         self.period = period
+        self.dispersion_measure = dispersion_measure 
     def calculate_bin_indices(
             self, tstart, tsamp, data_size):
         """Calculate the bin that each time sample should be
@@ -375,6 +376,15 @@ class FoldBlock(TransformBlock):
             input_data, insert_index,
             np.zeros(number_zeros))
         return output_data
+    def calculate_delay(self, frequency, reference_frequency):
+        """Calculate the time delay because of frequency dispersion
+        @param[in] frequency The current channel's frequency(MHz)
+        @param[in] reference_frequency The frequency of the 
+            channel we will hold at zero time delay(MHz)"""
+        frequency_factor = \
+            np.power(reference_frequency/1000, -2) -\
+            np.power(frequency/1000, -2)
+        return 4.15e-3*self.dispersion_measure*frequency_factor
     def main(self, input_rings, output_rings):
         """Generate a histogram from the input ring data
         @param[in] input_rings List with first ring containing
@@ -403,10 +413,15 @@ class FoldBlock(TransformBlock):
                         (1, self.bins))
                     with oseq.reserve(self.bins*4) as ospan:
                         for span in sequence.read(self.gulp_size):
+                            frequency = data_settings['fch1']
                             for chan in range(nchans):
+                                modified_tstart = tstart - self.calculate_delay(
+                                    frequency,
+                                    data_settings['fch1'])
+                                frequency -= data_settings['foff']
                                 sort_indices = np.argsort(
                                     self.calculate_bin_indices(
-                                        tstart, data_settings['tsamp'], span.data.shape[1]/nchans))
+                                        modified_tstart, data_settings['tsamp'], span.data.shape[1]/nchans))
                                 sorted_data = span.data[0][chan::nchans][sort_indices]
                                 extra_elements = np.round(self.bins*(1-np.modf(
                                     float(span.data.shape[1]/nchans)/self.bins)[0])).astype(int)

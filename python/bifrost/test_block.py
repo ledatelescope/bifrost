@@ -157,12 +157,26 @@ class TestFoldBlock(unittest.TestCase):
         self.assertGreater(
             np.max(histogram)/np.average(histogram), 5)
     def test_many_channels(self):
+        """See if many channels work with folding"""
         self.blocks[0] = (
             SigprocReadBlock(
                 ['/data1/mcranmer/data/fake/simple_pulsar_DM0_128ch.fil']),
             [], [0])
         self.blocks.append((
             FoldBlock(bins=200), [0], [1]))
+        histogram = self.dump_ring_and_read()
+        self.assertTrue(np.min(histogram) > 1e-10)
+        self.assertGreater(
+            np.max(histogram)/np.min(histogram), 3)
+    def test_high_DM(self):
+        """Test folding on a file with high DM"""
+        self.blocks[0] = (
+            SigprocReadBlock(
+                ['/data1/mcranmer/data/fake/simple_pulsar_DM10_128ch.fil']),
+            [], [0])
+        self.blocks.append((
+            FoldBlock(bins=200, dispersion_measure=10), 
+            [0], [1]))
         histogram = self.dump_ring_and_read()
         self.assertTrue(np.min(histogram) > 1e-10)
         self.assertGreater(
