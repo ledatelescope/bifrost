@@ -175,7 +175,7 @@ class TestFoldBlock(unittest.TestCase):
                 ['/data1/mcranmer/data/fake/simple_pulsar_DM10_128ch.fil']),
             [], [0])
         self.blocks.append((
-            FoldBlock(bins=200, dispersion_measure=10), 
+            FoldBlock(bins=200, dispersion_measure=10, core=0),
             [0], [1]))
         histogram = self.dump_ring_and_read()
         self.assertTrue(np.min(histogram) > 1e-10)
