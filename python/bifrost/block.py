@@ -348,6 +348,13 @@ class FoldBlock(TransformBlock):
     def __init__(self, bins, period=1e-3, gulp_size=4096*256, dispersion_measure=0):
         """
         @param[in] bins The total number of bins to fold into
+        @param[in] period Period to fold over (s)
+        @param[in] gulp_size How many bytes of the ring to
+            read at once.
+        @param[in] dispersion_measure DM of the desired
+            source (pc cm^-3)
+        @param[in] core Which OpenMP core to use for 
+            this block. (-1 is any)
         """
         super(FoldBlock, self).__init__()
         self.bins = bins
@@ -368,6 +375,14 @@ class FoldBlock(TransformBlock):
         phase = np.fmod(arrival_time, self.period)
         return np.floor(phase/self.period*self.bins).astype(int)
     def insert_zeros_evenly(self, input_data, number_zeros):
+        """Insert zeros as elements in input_data.
+            These zeros are distibuted evenly throughout
+            the function, to help for binning of oddly
+            shaped arrays.
+        @param[in] input_data 1D array to contain zeros.
+        @param[out] number_zeros Number of zeros that need
+            to be added.
+        @returns input_data with extra zeros"""
         insert_index = np.floor(
             np.arange(
                 number_zeros,
