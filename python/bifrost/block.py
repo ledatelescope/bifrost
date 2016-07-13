@@ -318,7 +318,10 @@ class DedisperseBlock(object):
 
 class FoldBlock(TransformBlock):
     """This block folds a signal into a histogram"""
-    def __init__(self, bins, period=1e-3, gulp_size=4096*256, dispersion_measure=0):
+    def __init__(
+            self, bins, period=1e-3, 
+            gulp_size=4096*256, dispersion_measure=0,
+            core=-1):
         """
         @param[in] bins The total number of bins to fold into
         @param[in] period Period to fold over (s)
@@ -334,6 +337,7 @@ class FoldBlock(TransformBlock):
         self.gulp_size = gulp_size
         self.period = period
         self.dispersion_measure = dispersion_measure 
+        self.core = core
     def calculate_bin_indices(
             self, tstart, tsamp, data_size):
         """Calculate the bin that each time sample should be
@@ -380,6 +384,7 @@ class FoldBlock(TransformBlock):
             is generated.
         @param[out] output_rings First ring in this list
             will contain the output histogram"""
+        affinity.set_core(self.core)
         input_ring = input_rings[0]
         input_ring.resize(self.gulp_size)
         output_ring = output_rings[0]
