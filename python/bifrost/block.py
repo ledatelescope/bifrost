@@ -86,14 +86,20 @@ class TransformBlock(object):
     def __init__(self):
         super(TransformBlock, self).__init__()
         self.gulp_size = 4096
+        self.input_header = {}
+        self.output_header = {}
+    def update_settings(self):
+        self.output_header = self.input_header
     def ring_transfer(self, input_ring, output_ring):
         input_ring.resize(self.gulp_size)
         output_ring.resize(self.gulp_size)
         with output_ring.begin_writing() as oring:
             for sequence in input_ring.read(guarantee=True):
+                self.input_header = sequence.header
+                self.update_settings()
                 with oring.begin_sequence(
                     sequence.name, sequence.time_tag,
-                    header=sequence.header,
+                    header=self.output_header,
                     nringlet=sequence.nringlet) as oseq:
                     for ispan in sequence.read(self.gulp_size):
                         with oseq.reserve(ispan.size) as ospan:
@@ -147,6 +153,8 @@ class CopyBlock(TransformBlock):
         self.inputs = 1
         self.outputs = 1
         self.gulp_size = gulp_size
+    def update_settings(self):
+        self.output_header = self.input_header
     def main(self, input_rings, output_rings):
         input_ring = input_rings[0]
         for output_ring in output_rings:
