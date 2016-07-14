@@ -85,10 +85,23 @@ class TransformBlock(object):
     """Defines the structure for a transform block"""
     def __init__(self):
         super(TransformBlock, self).__init__()
+        self.gulp_size = 4096
+    def ring_transfer(self, input_ring, output_ring):
+        input_ring.resize(self.gulp_size)
+        output_ring.resize(self.gulp_size)
+        with output_ring.begin_writing() as oring:
+            for sequence in input_ring.read(guarantee=True):
+                with oring.begin_sequence(
+                    sequence.name, sequence.time_tag,
+                    header=sequence.header,
+                    nringlet=sequence.nringlet) as oseq:
+                    for ispan in sequence.read(self.gulp_size):
+                        with oseq.reserve(ispan.size) as ospan:
+                            yield ispan, ospan
     def main(self, input_rings, output_rings):
-        """Initiate the block's transform between
-            rings."""
+        """Initiate the block's transform rings."""
         pass
+
 def number_of_bits_to_datatype(number_bits, signed=False):
     """Make a guess for the datatype based on the number
         of bits"""
@@ -134,25 +147,11 @@ class CopyBlock(TransformBlock):
         self.inputs = 1
         self.outputs = 1
         self.gulp_size = gulp_size
-    def perform_sequence_copy(self, input_sequence, output_sequence):
-        """This function copies data from input_span 
-            to output_span"""
-        for ispan in input_sequence.read(self.gulp_size):
-            with output_sequence.reserve(ispan.size) as ospan:
-                bifrost.memory.memcpy2D(
-                        ospan.data, ispan.data)
     def main(self, input_rings, output_rings):
         input_ring = input_rings[0]
         for output_ring in output_rings:
-            input_ring.resize(self.gulp_size)
-            output_ring.resize(self.gulp_size)
-            with output_ring.begin_writing() as oring:
-                for iseq in input_ring.read(guarantee=True):
-                    with oring.begin_sequence(
-                        iseq.name, iseq.time_tag,
-                        header=iseq.header,
-                        nringlet=iseq.nringlet) as oseq:
-                        self.perform_sequence_copy(iseq, oseq)
+            for ispan, ospan in self.ring_transfer(input_ring, output_ring):
+                bifrost.memory.memcpy2D(ospan.data, ispan.data)
 
 class SigprocReadBlock(object):
     """This block reads in a sigproc filterbank
