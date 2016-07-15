@@ -61,6 +61,7 @@ class TransformBlock(object):
         self.gulp_size = 4096
         self.input_header = {}
         self.output_header = {}
+        self.core = -1
     def set_output_settings(self, input_header):
         self.output_header = input_header
     def ring_transfer(self, input_ring, output_ring):
@@ -77,8 +78,8 @@ class TransformBlock(object):
                         with oseq.reserve(ispan.size) as ospan:
                             yield ispan, ospan
     def main(self, input_rings, output_rings):
-        """Initiate the block's transform rings."""
-        pass
+        """Initiate the block's transform."""
+        affinity.set_core(self.core)
 
 def number_of_bits_to_datatype(number_bits, signed=False):
     """Make a guess for the datatype based on the number
@@ -386,7 +387,6 @@ class FoldBlock(TransformBlock):
             is generated.
         @param[out] output_rings First ring in this list
             will contain the output histogram"""
-        affinity.set_core(self.core)
         input_ring = input_rings[0]
         input_ring.resize(self.gulp_size)
         output_ring = output_rings[0]
