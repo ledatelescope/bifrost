@@ -61,15 +61,14 @@ class TransformBlock(object):
         self.gulp_size = 4096
         self.input_header = {}
         self.output_header = {}
-    def update_settings(self):
-        self.output_header = self.input_header
+    def set_output_settings(self, input_header):
+        self.output_header = input_header
     def ring_transfer(self, input_ring, output_ring):
         input_ring.resize(self.gulp_size)
         output_ring.resize(self.gulp_size)
         with output_ring.begin_writing() as oring:
             for sequence in input_ring.read(guarantee=True):
-                self.input_header = sequence.header
-                self.update_settings()
+                self.set_output_settings(sequence.header)
                 with oring.begin_sequence(
                     sequence.name, sequence.time_tag,
                     header=self.output_header,
@@ -123,11 +122,7 @@ class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
         super(CopyBlock, self).__init__()
-        self.inputs = 1
-        self.outputs = 1
         self.gulp_size = gulp_size
-    def update_settings(self):
-        self.output_header = self.input_header
     def main(self, input_rings, output_rings):
         input_ring = input_rings[0]
         for output_ring in output_rings:
