@@ -1,3 +1,0 @@
-filename: Same as the file you are testing. 
-function: FunctionalityYouAreTesting_StateYouAreTesting_ExpectedBehaviour()
-    example: FilterbankRead_ReadHeaderSize_200Characters()
