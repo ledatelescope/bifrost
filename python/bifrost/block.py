@@ -236,24 +236,6 @@ class SigprocReadBlock(object):
                                 if size == 0:
                                     break
                                 frames_read += 1
-def duplicate_ring(input_ring, output_ring):
-    """This function copies data between two rings
-    @param[in] input_ring Ring holding data to be copied
-    @param[out] output_ring Will be a copy of input_ring
-    """
-    gulp_size = 1048576
-    input_ring.resize(gulp_size)
-    output_ring.resize(gulp_size)
-    with output_ring.begin_writing() as oring:
-        for iseq in input_ring.read(guarantee=True):
-            with oring.begin_sequence(
-                iseq.name, iseq.time_tag,
-                header=iseq.header,
-                nringlet=iseq.nringlet) as oseq:
-                for ispan in iseq.read(gulp_size):
-                    with oseq.reserve(ispan.size) as ospan:
-                        bifrost.memory.memcpy2D(
-                            ospan.data,ispan.data)
 
 class KurtosisBlock(object):
     """This block performs spectral kurtosis and cleaning
