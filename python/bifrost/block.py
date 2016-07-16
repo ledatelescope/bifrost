@@ -185,7 +185,7 @@ class SigprocReadBlock(object):
     """This block reads in a sigproc filterbank
     (.fil) file into a ring buffer"""
     def __init__(
-            self, filenames,
+            self, filename,
             gulp_nframe=4096, max_frames=None,
             core=-1):
         """
@@ -197,7 +197,7 @@ class SigprocReadBlock(object):
         @param[in] core Which CPU core to bind to (-1) is
             any
         """
-        self.filenames = filenames
+        self.filename = filename
         self.gulp_nframe = gulp_nframe
         self.core = core
         self.max_frames = max_frames
@@ -207,35 +207,34 @@ class SigprocReadBlock(object):
         output_ring = output_rings[0]
         affinity.set_core(self.core)
         with output_ring.begin_writing() as oring:
-            for name in self.filenames:
-                with SigprocFile().open(name,'rb') as ifile:
-                    ifile.read_header()
-                    ohdr = {}
-                    ohdr['frame_shape'] = (ifile.nchans, ifile.nifs)
-                    ohdr['frame_size'] = ifile.nchans*ifile.nifs
-                    ohdr['frame_nbyte'] = ifile.nchans*ifile.nifs*ifile.nbits/8
-                    ohdr['frame_axes'] = ('pol', 'chan')
-                    ohdr['ringlet_shape'] = (1,)
-                    ohdr['ringlet_axes'] = ()
-                    ohdr['dtype'] = str(ifile.dtype)
-                    ohdr['nbit'] = ifile.nbits
-                    ohdr['tsamp'] = float(ifile.header['tsamp'])
-                    ohdr['tstart'] = float(ifile.header['tstart'])
-                    ohdr['fch1'] = float(ifile.header['fch1'])
-                    ohdr['foff'] = float(ifile.header['foff'])
-                    ohdr = json.dumps(ohdr)
-                    gulp_nbyte = self.gulp_nframe*ifile.nchans*ifile.nifs*ifile.nbits/8
-                    output_ring.resize(gulp_nbyte)
-                    with oring.begin_sequence(name, header=ohdr) as osequence:
-                        frames_read = 0
-                        while (self.max_frames is None) or \
-                                frames_read < self.max_frames:
-                            with osequence.reserve(gulp_nbyte) as wspan:
-                                size = ifile.file_object.readinto(wspan.data.data)
-                                wspan.commit(size)
-                                if size == 0:
-                                    break
-                                frames_read += 1
+            with SigprocFile().open(self.filename,'rb') as ifile:
+                ifile.read_header()
+                ohdr = {}
+                ohdr['frame_shape'] = (ifile.nchans, ifile.nifs)
+                ohdr['frame_size'] = ifile.nchans*ifile.nifs
+                ohdr['frame_nbyte'] = ifile.nchans*ifile.nifs*ifile.nbits/8
+                ohdr['frame_axes'] = ('pol', 'chan')
+                ohdr['ringlet_shape'] = (1,)
+                ohdr['ringlet_axes'] = ()
+                ohdr['dtype'] = str(ifile.dtype)
+                ohdr['nbit'] = ifile.nbits
+                ohdr['tsamp'] = float(ifile.header['tsamp'])
+                ohdr['tstart'] = float(ifile.header['tstart'])
+                ohdr['fch1'] = float(ifile.header['fch1'])
+                ohdr['foff'] = float(ifile.header['foff'])
+                ohdr = json.dumps(ohdr)
+                gulp_nbyte = self.gulp_nframe*ifile.nchans*ifile.nifs*ifile.nbits/8
+                output_ring.resize(gulp_nbyte)
+                with oring.begin_sequence(self.filename, header=ohdr) as osequence:
+                    frames_read = 0
+                    while (self.max_frames is None) or \
+                            frames_read < self.max_frames:
+                        with osequence.reserve(gulp_nbyte) as wspan:
+                            size = ifile.file_object.readinto(wspan.data.data)
+                            wspan.commit(size)
+                            if size == 0:
+                                break
+                            frames_read += 1
 
 class KurtosisBlock(object):
     """This block performs spectral kurtosis and cleaning
