@@ -81,13 +81,13 @@ class TransformBlock(object):
         self.input_header = {}
         self.output_header = {}
         self.core = -1
-    def transfer_settings(self, input_header):
+    def load_settings(self, input_header):
         self.output_header = input_header
     def iterate_ring_read(self, input_ring):
         """Iterate through one input ring"""
         input_ring.resize(self.gulp_size)
         for sequence in input_ring.read(guarantee=True):
-            self.transfer_settings(sequence.header)
+            self.load_settings(sequence.header)
             for span in sequence.read(self.gulp_size):
                 yield span
     def iterate_ring_write(
@@ -110,7 +110,7 @@ class TransformBlock(object):
         output_ring.resize(self.gulp_size)
         with output_ring.begin_writing() as oring:
             for sequence in input_ring.read(guarantee=True):
-                self.transfer_settings(sequence.header)
+                self.load_settings(sequence.header)
                 with oring.begin_sequence(
                     sequence.name, sequence.time_tag,
                     header=self.output_header,
@@ -125,25 +125,29 @@ class TransformBlock(object):
 
 class WriteAsciiBlock(TransformBlock):
     """Copies input ring's data into ascii format
-        in a text file"""
-    def __init__(self, filename):
+        in a text file."""
+    def __init__(self, filename, gulp_size=1048576):
+        """@param[in] filename Name of file to write ascii to
+        @param[out] gulp_size How much of the file to write at once"""
         super(WriteAsciiBlock, self).__init__()
         self.filename = filename
+        self.gulp_size = gulp_size 
+        self.datatype = np.uint8
         ## erase file
         open(self.filename, "w").close()
+    def load_settings(self, input_header):
+        header_dict = json.loads(input_header.tostring())
+        self.datatype = number_of_bits_to_datatype(
+            header_dict['nbit']) 
     def main(self, input_rings, output_rings):
-        """Initiate the writing to filename"""
-        gulp_size = 1048576
-        data_ring = input_rings[0]
-        data_ring.resize(gulp_size)
-        for iseq in data_ring.read(guarantee=True):
-            header_dict = json.loads(iseq.header.tostring())
-            datatype = number_of_bits_to_datatype(
-                header_dict['nbit'])
-            for ispan in iseq.read(gulp_size):
-                text_file = open(self.filename, 'a')
-                np.savetxt(
-                    text_file, ispan.data_view(datatype))
+        """Initiate the writing to filename
+        @param[in] input_rings First ring in this list will be used for
+            data
+        @param[out] output_rings This list of rings won't be used."""
+        span_generator = self.iterate_ring_read(input_rings[0])
+        for span in span_generator:
+            text_file = open(self.filename, 'a')
+            np.savetxt(text_file, span.data_view(self.datatype))
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
@@ -161,7 +165,7 @@ class SigprocReadBlock(TransformBlock):
             self, filename,
             gulp_nframe=4096, core=-1):
         """
-        @param[in] filenames filterbank files to read
+        @param[in] filename filterbank file to read
         @param[in] gulp_nframe Time samples to read
             in at a time
         @param[in] core Which CPU core to bind to (-1) is
@@ -375,7 +379,7 @@ class FoldBlock(TransformBlock):
             np.power(reference_frequency/1000, -2) -\
             np.power(frequency/1000, -2)
         return 4.15e-3*self.dispersion_measure*frequency_factor
-    def transfer_settings(self, input_header):
+    def load_settings(self, input_header):
         self.data_settings = json.loads(
             "".join(
                 [chr(item) for item in input_header]))
