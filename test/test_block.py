@@ -14,7 +14,7 @@ class TestCopyBlock(unittest.TestCase):
         self.blocks = []
         self.blocks.append((
             SigprocReadBlock(
-                ['/data1/mcranmer/data/fake/1chan8bitNoDM.fil']),
+                '/data1/mcranmer/data/fake/1chan8bitNoDM.fil'),
             [], [0]))
     def test_simple_copy(self):
         """Test which performs a read of a sigproc file,
@@ -73,7 +73,7 @@ class TestCopyBlock(unittest.TestCase):
         self.blocks = []
         self.blocks.append((
             SigprocReadBlock(
-                ['/data1/mcranmer/data/fake/256chan32bitNoDM.fil']),
+                '/data1/mcranmer/data/fake/256chan32bitNoDM.fil'),
             [], [0]))
         self.blocks.append((CopyBlock(), [0], [1]))
         self.blocks.append((WriteAsciiBlock(logfile), [1], []))
@@ -81,3 +81,77 @@ class TestCopyBlock(unittest.TestCase):
         test_bytes = open(logfile, 'r').read(500).split(' ')
         self.assertAlmostEqual(np.float(test_bytes[0]), 0.72650784254)
 
+class TestFoldBlock(unittest.TestCase):
+    """This tests functionality of the 
+        FoldBlock."""
+    def setUp(self):
+        """Set up the blocks list, and put in a single
+            block which reads in the data from a filterbank
+            file."""
+        self.blocks = []
+        self.blocks.append((
+            SigprocReadBlock(
+                '/data1/mcranmer/data/fake/pulsar_noisey_NoDM.fil'),
+            [], [0]))
+    def dump_ring_and_read(self):
+        """Dump block to ring, read in as histogram"""
+        logfile = ".log.txt"
+        self.blocks.append((WriteAsciiBlock(logfile), [1], []))
+        Pipeline(self.blocks).main()
+        test_bytes = open(logfile, 'r').read().split(' ')
+        histogram = np.array([np.float(x) for x in test_bytes])
+        return histogram
+    def test_simple_pulsar(self):
+        """Test whether a pulsar histogram
+            shows a large peak and is mostly
+            nonzero values"""
+        self.blocks.append((
+            FoldBlock(bins=100), [0], [1]))
+        histogram = self.dump_ring_and_read()
+        self.assertEqual(histogram.size, 100)
+        self.assertTrue(np.min(histogram) > 1e-10)
+    def test_different_bin_size(self):
+        """Try a different bin size"""
+        self.blocks.append((
+            FoldBlock(bins=50), [0], [1]))
+        histogram = self.dump_ring_and_read()
+        self.assertEqual(histogram.size, 50)
+    def test_show_pulse(self):
+        self.blocks[0] = (
+            SigprocReadBlock(
+                '/data1/mcranmer/data/fake/simple_pulsar_DM0.fil'),
+            [], [0])
+        """Test to see if a pulse is visible in the
+            histogram from pulsar data"""
+        self.blocks.append((
+            FoldBlock(bins=200), [0], [1]))
+        histogram = self.dump_ring_and_read()
+        self.assertTrue(np.min(histogram) > 1e-10)
+        self.assertGreater(
+            np.max(histogram)/np.average(histogram), 5)
+    def test_many_channels(self):
+        """See if many channels work with folding"""
+        self.blocks[0] = (
+            SigprocReadBlock(
+                '/data1/mcranmer/data/fake/simple_pulsar_DM0_128ch.fil'),
+            [], [0])
+        self.blocks.append((
+            FoldBlock(bins=200), [0], [1]))
+        histogram = self.dump_ring_and_read()
+        self.assertTrue(np.min(histogram) > 1e-10)
+        self.assertGreater(
+            np.max(histogram)/np.min(histogram), 3)
+    def test_high_DM(self):
+        """Test folding on a file with high DM"""
+        self.blocks[0] = (
+            SigprocReadBlock(
+                '/data1/mcranmer/data/fake/simple_pulsar_DM10_128ch.fil'),
+            [], [0])
+        self.blocks.append((
+            FoldBlock(bins=200, dispersion_measure=10, core=0),
+            [0], [1]))
+        histogram = self.dump_ring_and_read()
+        self.assertTrue(np.min(histogram) > 1e-10)
+        self.assertGreater(
+            np.max(histogram)/np.min(histogram), 3)
+        #TODO: Test to break bfmemcpy2D for lack of float32 functionality?
