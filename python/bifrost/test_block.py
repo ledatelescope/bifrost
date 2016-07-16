@@ -154,6 +154,7 @@ class TestFoldBlock(unittest.TestCase):
         self.assertTrue(np.min(histogram) > 1e-10)
         self.assertGreater(
             np.max(histogram)/np.min(histogram), 3)
+        #TODO: Test to break bfmemcpy2D for lack of float32 functionality?
 
 if __name__ == "__main__":
     unittest.main()
