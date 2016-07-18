@@ -48,3 +48,5 @@ respectively.
 
  * Ben Barsdell
  * Daniel Price
+ * Miles Cranmer
+ * Hugh Garsden
