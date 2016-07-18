@@ -203,10 +203,10 @@ class SigprocReadBlock(TransformBlock):
                 if size == 0:
                     break
 
-class KurtosisBlock(object):
+class KurtosisBlock(TransformBlock):
     """This block performs spectral kurtosis and cleaning
         on sigproc-formatted data in rings"""
-    def __init__(self, core=-1):
+    def __init__(self, gulp_size=1048576, core=-1):
         """
         @param[in] input_ring Ring containing a 1d
             timeseries
@@ -215,78 +215,45 @@ class KurtosisBlock(object):
         @param[in] core Which OpenMP core to use for
             this block. (-1 is any)
         """
+        super(KurtosisBlock, self).__init__()
         self.SAMPLING_RATE = 41.66666666667e-6    # Should pass in header
         self.N_CHAN = 109
         self.EXPECTED_V2 = 0.5      # Just use for testing
-
+        self.gulp_size = gulp_size
         self.core = core
+    def load_settings(self, input_header):
+        self.output_header = input_header
+        self.settings = json.loads(input_header.tostring())
+        self.nchan = self.settings["frame_shape"][0]
+        #TODO: Clean this up
+        dtype_str = self.settings["dtype"].split()[1].split(".")[1].split("'")[0]
+        self.dtype = np.dtype(dtype_str)
     def main(self, input_rings, output_rings):
-        """Initiate the block's processing"""
-        affinity.set_core(self.core)
-        self.iring = input_rings[0]
-        self.oring = output_rings[0]
-        self.rfi_clean()
-    def rfi_clean(self):
         """Calls a kurtosis algorithm and uses the result
             to clean the input data of RFI, and move it to the
             output ring."""
-        #duplicate_ring(self.input_ring, self.output_ring)
-        length_one_second = int(round(1/self.SAMPLING_RATE))
-        ring_span_size = length_one_second*self.N_CHAN*4                 # 1 second, all the channels (109) and then 4-byte floats
-
-        self.iring.resize(ring_span_size)
-        self.oring.resize(ring_span_size)
-
-        with self.oring.begin_writing() as oring:
-
-          for iseq in self.iring.read():
-
-            # Have to copy the data through, so need to write as well as read       
-            with oring.begin_sequence(iseq.name, header=iseq.header) as oseq:
-
-
-              # Get info about the data, to form an array
-              header = json.loads(iseq.header.tostring())
-              nchan = header["frame_shape"][0]
-              nbit = header["nbit"]
-              nif = header["frame_shape"][1]
-              dtype_str = header["dtype"].split()[1].split(".")[1].split("'")[0]    # Must be a better way
-              dtype = np.dtype(dtype_str)
-              #print iseq.name, "nchan:", nchan, "nbit:", nbit, "dtype:", dtype
-
-              if nif != 1:
-                print "Only 1 IF is supported"
-                return
-
-              for ispan in iseq.read(ring_span_size):
-                # Process 1 second data
-                nsample = ispan.size/nchan/(nbit/8)
-                power = ispan.data.reshape(nsample, nchan*nbit/8).view(dtype)               # Raw data -> power array of the right type
-
-                # Follow section 3.1 of the Nita paper. 
-                M = power.shape[0]          # Number of samples, the sample is a power value in a frequency bin from an FFT, i.e. the beamformer values in a channel
-
-                bad_channels = []
-                for chan in range(nchan):
-                  S1 = np.sum(power[:, chan])
-                  S2 = np.sum(power[:, chan]**2)
-
-                  V2 = (M/(M-1))*(M*S2/(S1**2) -1)          # Equation 21
-                  VarV2 = 24.0/M                            # Equation 23
-
-                  if abs(self.EXPECTED_V2-V2) > 0.1:
+        for ispan, ospan in self.ring_transfer(input_rings[0], output_rings[0]):
+            nsample = ispan.size/self.nchan/(self.settings['nbit']/8)
+            power = ispan.data.reshape(
+                nsample, 
+                self.nchan*self.settings['nbit']/8).view(self.dtype) # Raw data -> power array of the right type
+            # Follow section 3.1 of the Nita paper. 
+            M = power.shape[0] # Number of samples, the sample is a power value in a frequency bin from an FFT, i.e. the beamformer values in a channel
+            bad_channels = []
+            for chan in range(self.nchan):
+                S1 = np.sum(power[:, chan])
+                S2 = np.sum(power[:, chan]**2)
+                V2 = (M/(M-1))*(M*S2/(S1**2) -1)          # Equation 21
+                VarV2 = 24.0/M                            # Equation 23
+                if abs(self.EXPECTED_V2-V2) > 0.1:
                     bad_channels.append(chan)
-
-                if len(bad_channels) > 0:
-                  flag_power = power.copy()
-                  for chan in range(nchan):
+            if len(bad_channels) > 0:
+                flag_power = power.copy()
+                for chan in range(self.nchan):
                     if chan in bad_channels: flag_power[:, chan] = 0    # set bad channel to zero
-
-                  #print "Chan flagged", bad_channels
-                  with oseq.reserve(ispan.size) as ospan:
-                    ospan.data[0][:] = flag_power.view(dtype=np.uint8).ravel()
-                else:
-                  with oseq.reserve(ispan.size) as ospan:
+                ospan.data[0][:] = flag_power.view(dtype=np.uint8).ravel()
+            else:
+                with oseq.reserve(ispan.size) as ospan:
                     bifrost.memory.memcpy2D(ospan.data, ispan.data)      # Transfer data unchanged
 
 class DedisperseBlock(object):
