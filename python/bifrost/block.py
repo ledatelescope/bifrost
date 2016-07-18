@@ -206,7 +206,7 @@ class SigprocReadBlock(TransformBlock):
 class KurtosisBlock(object):
     """This block performs spectral kurtosis and cleaning
         on sigproc-formatted data in rings"""
-    def __init__(self, input_ring, output_ring, core=-1):
+    def __init__(self, core=-1):
         """
         @param[in] input_ring Ring containing a 1d
             timeseries
@@ -219,12 +219,12 @@ class KurtosisBlock(object):
         self.N_CHAN = 109
         self.EXPECTED_V2 = 0.5      # Just use for testing
 
-        self.iring = input_ring
-        self.oring = output_ring
         self.core = core
-    def main(self):
+    def main(self, input_rings, output_rings):
         """Initiate the block's processing"""
         affinity.set_core(self.core)
+        self.iring = input_rings[0]
+        self.oring = output_rings[0]
         self.rfi_clean()
     def rfi_clean(self):
         """Calls a kurtosis algorithm and uses the result
