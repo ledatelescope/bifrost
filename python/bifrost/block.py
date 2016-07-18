@@ -41,6 +41,7 @@ from matplotlib import pyplot as plt
 import bifrost
 from bifrost import affinity
 from bifrost.ring import Ring
+from bifrost.fft import fft
 from bifrost.sigproc import SigprocFile
 
 def number_of_bits_to_datatype(number_bits, signed=False):
@@ -133,21 +134,43 @@ class TransformBlock(object):
     def ring_transfer(self, input_ring, output_ring):
         """Iterate through two rings span-by-span"""
         input_ring.resize(self.gulp_size)
-        output_ring.resize(self.gulp_size)
-        with output_ring.begin_writing() as oring:
-            for sequence in input_ring.read(guarantee=True):
-                self.load_settings(sequence.header)
+        for sequence in input_ring.read(guarantee=True):
+            self.load_settings(sequence.header)
+            if self.out_gulp_size is None:
+                self.out_gulp_size = self.gulp_size
+            output_ring.resize(self.out_gulp_size)
+            with output_ring.begin_writing() as oring:
                 with oring.begin_sequence(
                     sequence.name, sequence.time_tag,
                     header=self.output_header,
                     nringlet=sequence.nringlet) as oseq:
                     for ispan in sequence.read(self.gulp_size):
-                        with oseq.reserve(ispan.size) as ospan:
+                        with oseq.reserve(ispan.size*self.out_gulp_size/self.gulp_size) as ospan:
                             yield ispan, ospan
 
     def main(self, input_rings, output_rings):
         """Initiate the block's transform."""
         affinity.set_core(self.core)
+
+class FFTBlock(TransformBlock):
+    """Performs real to complex FFT on input ring data"""
+    def __init__(self, gulp_size):
+        super(FFTBlock, self).__init__()
+    def load_settings(self, input_header):
+        header = json.loads(input_header.tostring())
+        self.out_gulp_size = self.gulp_size*64/header['nbit']
+        header['nbit'] = 64
+        header['dtype'] = str(np.complex64)
+        self.output_header = json.dumps(header)
+    def main(self, input_rings, output_rings):
+        """
+        @param[in] input_rings First ring in this list will be used for
+            data
+        @param[out] output_rings First ring in this list will be used for 
+            data output."""
+        for ispan, ospan in self.ring_transfer(input_rings[0], output_rings[0]):
+            result = np.fft.fft(ispan.data.astype(np.float32))
+            ospan.data_view(np.complex64)[0][:] = result
 
 class WriteAsciiBlock(TransformBlock):
     """Copies input ring's data into ascii format
@@ -163,8 +186,7 @@ class WriteAsciiBlock(TransformBlock):
         open(self.filename, "w").close()
     def load_settings(self, input_header):
         header_dict = json.loads(input_header.tostring())
-        self.datatype = number_of_bits_to_datatype(
-            header_dict['nbit']) 
+        self.datatype = np.dtype(header_dict['dtype'].split()[1].split(".")[1].split("'")[0]).type
     def main(self, input_rings, output_rings):
         """Initiate the writing to filename
         @param[in] input_rings First ring in this list will be used for
