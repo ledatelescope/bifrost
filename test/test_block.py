@@ -82,8 +82,7 @@ class TestCopyBlock(unittest.TestCase):
         self.assertAlmostEqual(np.float(test_bytes[0]), 0.72650784254)
 
 class TestFoldBlock(unittest.TestCase):
-    """This tests functionality of the 
-        FoldBlock."""
+    """This tests functionality of the FoldBlock."""
     def setUp(self):
         """Set up the blocks list, and put in a single
             block which reads in the data from a filterbank
@@ -155,3 +154,21 @@ class TestFoldBlock(unittest.TestCase):
         self.assertGreater(
             np.max(histogram)/np.min(histogram), 3)
         #TODO: Test to break bfmemcpy2D for lack of float32 functionality?
+class TestKurtosisBlock(unittest.TestCase):
+    """This tests functionality of the KurtosisBlock."""
+    def test_data_throughput(self):
+        """Check that data is being put through the block
+        (does this by checking consistency of shape/datatype)"""
+        blocks = []
+        blocks.append((
+            SigprocReadBlock('/data1/mcranmer/data/fake/1chan8bitNoDM.fil'),
+            [], [0]))
+        blocks.append((
+            KurtosisBlock(), [0], [1]))
+        blocks.append((
+            WriteAsciiBlock('.log.txt'), [1], []))
+        Pipeline(blocks).main()
+        test_byte = open('.log.txt', 'r').read().split(' ')
+        test_nums = np.array([float(x) for x in test_byte])
+        self.assertLess(np.max(test_nums), 256)
+        self.assertEqual(test_nums.size, 4096)
