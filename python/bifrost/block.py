@@ -12,7 +12,6 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import bifrost
-from bifrost import bandfiles
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile
@@ -50,8 +49,8 @@ class Pipeline(object):
             this pipeline."""
         all_ports = [
             index for block in self.blocks for index in [
-                port for port in block[1:] if port != None]]
-        return len(np.unique(all_ports))
+                port for port in block[1:] if port] if index]
+        return len(np.unique(np.array(all_ports)))
     def main(self):
         """Start the pipeline, and finish when all threads exit"""
         threads = []
