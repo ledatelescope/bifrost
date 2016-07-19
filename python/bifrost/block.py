@@ -149,7 +149,7 @@ class FFTBlock(TransformBlock):
             else:
                 unpacked_data = ispan.data_view(self.dtype)
             result = np.fft.fft(unpacked_data.astype(np.float32))
-            bifrost.memory.memcpy(ospan.data_view(np.complex64), result)
+            ospan.data_view(np.complex64)[0][:] = result[0][:]
 
 class WriteAsciiBlock(TransformBlock):
     """Copies input ring's data into ascii format
@@ -160,7 +160,7 @@ class WriteAsciiBlock(TransformBlock):
         super(WriteAsciiBlock, self).__init__()
         self.filename = filename
         self.gulp_size = gulp_size 
-        self.datatype = np.uint8
+        self.dtype = np.uint8
         ## erase file
         open(self.filename, "w").close()
     def load_settings(self, input_header):

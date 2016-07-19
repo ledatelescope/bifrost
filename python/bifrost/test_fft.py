@@ -49,3 +49,13 @@ class TestFFTBlock(unittest.TestCase):
             self.assertEqual(number_fftd, number_copied)
             # Go back to FFT
             self.blocks[1] = (FFTBlock(gulp_size=4096*8*8*8), [0], [1])
+    def test_fft_result(self):
+        """Make sure that fft matches what it should!"""
+        open(self.logfile, 'w').close()
+        Pipeline(self.blocks).main()
+        fft_block_result = np.loadtxt(self.logfile).astype(np.float32).view(np.complex64)
+        self.blocks[1] = (CopyBlock(), [0], [1])
+        open(self.logfile, 'w').close()
+        Pipeline(self.blocks).main()
+        normal_fft_result = np.fft.fft(np.loadtxt(self.logfile))
+        np.testing.assert_almost_equal(fft_block_result, normal_fft_result, 2)
