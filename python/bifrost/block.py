@@ -439,7 +439,7 @@ class FoldBlock(TransformBlock):
         self.data_settings = json.loads(
             "".join(
                 [chr(item) for item in input_header]))
-        self.output_header = json.dumps({'nbit':32})
+        self.output_header = json.dumps({'nbit':32, 'dtype': str(np.float32)})
     def main(self, input_rings, output_rings):
         """Generate a histogram from the input ring data
         @param[in] input_rings List with first ring containing
