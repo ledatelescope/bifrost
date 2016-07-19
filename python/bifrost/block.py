@@ -132,6 +132,7 @@ class FFTBlock(TransformBlock):
     def load_settings(self, input_header):
         header = json.loads(input_header.tostring())
         self.out_gulp_size = self.gulp_size*64/header['nbit']
+        self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
         header['nbit'] = 64
         header['dtype'] = str(np.complex64)
         self.output_header = json.dumps(header)
@@ -142,8 +143,8 @@ class FFTBlock(TransformBlock):
         @param[out] output_rings First ring in this list will be used for 
             data output."""
         for ispan, ospan in self.ring_transfer(input_rings[0], output_rings[0]):
-            result = np.fft.fft(ispan.data.astype(np.float32))
-            ospan.data_view(np.complex64)[0][:] = result
+            result = np.fft.fft(ispan.data_view(self.dtype).astype(np.float32))
+            bifrost.memory.memcpy(ospan.data_view(np.complex64), result)
 
 class WriteAsciiBlock(TransformBlock):
     """Copies input ring's data into ascii format
