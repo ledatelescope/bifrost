@@ -86,3 +86,30 @@ class TestFFTBlock(unittest.TestCase):
         Pipeline(self.blocks).main()
         normal_fft_result = np.fft.fft(np.loadtxt(self.logfile))
         np.testing.assert_almost_equal(fft_block_result, normal_fft_result, 2)
+class TestIFFTBlock(unittest.TestCase):
+    """This test assures basic functionality of the ifft block.
+    Requires the FFT block for testing."""
+    def setUp(self):
+        """Assemble a basic pipeline with the FFT/IFFT blocks"""
+        self.logfile = '.log.txt'
+        self.blocks = []
+        self.blocks.append((
+            SigprocReadBlock(
+                '/data1/mcranmer/data/fake/1chan8bitNoDM.fil'),
+            [], [0]))
+        self.blocks.append((FFTBlock(gulp_size=4096*8*8*8*8), [0], [1]))
+        self.blocks.append((IFFTBlock(gulp_size=4096*8*8*8*8), [1], [2]))
+        self.blocks.append((WriteAsciiBlock(self.logfile), [2], []))
+    def test_equivalent_data_to_copy(self):
+        """Test that the data coming out of this pipeline is equivalent
+        the initial read data"""
+        open(self.logfile, 'w').close()
+        Pipeline(self.blocks).main()
+        unfft_result = np.loadtxt(self.logfile).astype(np.float32).view(np.complex64)
+        self.blocks[1] = (CopyBlock(), [0], [1])
+        self.blocks[2] = (WriteAsciiBlock(self.logfile), [1], [])
+        del self.blocks[3]
+        open(self.logfile, 'w').close()
+        Pipeline(self.blocks).main()
+        untouched_result = np.loadtxt(self.logfile).astype(np.float32)
+        np.testing.assert_almost_equal(unfft_result, untouched_result, 2)
