@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import unittest
+import bifrost
 from bifrost.sigproc import *
 import time
 
@@ -227,10 +228,6 @@ class Test_data_slicing(unittest.TestCase):
         self.assertEqual(data.shape[1:],(1,1))
         self.assertTrue(data.shape[0] > 100) #assumes more than 100 frames in .fil
     def test_different_signs(self):
-        print self.myfile.read_data().shape
         data = self.myfile.read_data(3,-3)
         self.assertEqual(data.shape,(12800-6, 1, 1)) #assumes more than ~100 frames in .fil
 
-#Future tests:
-# - make sigprocfile without a filename attached to it, and write data from it.
-unittest.main()

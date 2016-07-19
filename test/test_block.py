@@ -29,7 +29,7 @@
 This file tests all aspects of the Bifrost.block module.
 """
 import unittest
-from block import *
+from bifrost.block import *
 from bifrost.ring import Ring
 
 class TestCopyBlock(unittest.TestCase):
@@ -199,6 +199,3 @@ class TestKurtosisBlock(unittest.TestCase):
         test_nums = np.array([float(x) for x in test_byte])
         self.assertLess(np.max(test_nums), 256)
         self.assertEqual(test_nums.size, 4096)
-
-if __name__ == "__main__":
-    unittest.main()

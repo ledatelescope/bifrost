@@ -1,4 +1,5 @@
 # Bifrost
+[![Build status](http://mcranmer.com/access/status.svg)](http://mcranmer.com/access/status.txt)
 
 A stream processing framework for high-throughput applications.
 
