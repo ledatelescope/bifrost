@@ -42,7 +42,7 @@ import bifrost
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.fft import fft
-from bifrost.sigproc import SigprocFile
+from bifrost.sigproc import SigprocFile, unpack
 
 def number_of_bits_to_datatype(number_bits, signed=False):
     """Make a guess for the datatype based on the number
@@ -159,6 +159,7 @@ class FFTBlock(TransformBlock):
     def load_settings(self, input_header):
         header = json.loads(input_header.tostring())
         self.out_gulp_size = self.gulp_size*64/header['nbit']
+        self.nbit = header['nbit']
         self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
         header['nbit'] = 64
         header['dtype'] = str(np.complex64)
@@ -170,7 +171,11 @@ class FFTBlock(TransformBlock):
         @param[out] output_rings First ring in this list will be used for 
             data output."""
         for ispan, ospan in self.ring_transfer(input_rings[0], output_rings[0]):
-            result = np.fft.fft(ispan.data_view(self.dtype).astype(np.float32))
+            if self.nbit < 8:
+                unpacked_data = unpack(ispan.data_view(self.dtype), self.nbit)
+            else:
+                unpacked_data = ispan.data_view(self.dtype)
+            result = np.fft.fft(unpacked_data.astype(np.float32))
             bifrost.memory.memcpy(ospan.data_view(np.complex64), result)
 
 class WriteAsciiBlock(TransformBlock):
@@ -187,7 +192,8 @@ class WriteAsciiBlock(TransformBlock):
         open(self.filename, "w").close()
     def load_settings(self, input_header):
         header_dict = json.loads(input_header.tostring())
-        self.datatype = np.dtype(header_dict['dtype'].split()[1].split(".")[1].split("'")[0]).type
+        self.nbit = header_dict['nbit']
+        self.dtype = np.dtype(header_dict['dtype'].split()[1].split(".")[1].split("'")[0]).type
     def main(self, input_rings, output_rings):
         """Initiate the writing to filename
         @param[in] input_rings First ring in this list will be used for
@@ -195,8 +201,15 @@ class WriteAsciiBlock(TransformBlock):
         @param[out] output_rings This list of rings won't be used."""
         span_generator = self.iterate_ring_read(input_rings[0])
         for span in span_generator:
+            if self.nbit < 8:
+                unpacked_data = unpack(span.data_view(self.dtype), self.nbit)
+            else:
+                unpacked_data = span.data_view(self.dtype)
             text_file = open(self.filename, 'a')
-            np.savetxt(text_file, span.data_view(self.datatype))
+            if self.dtype == np.complex64:
+                np.savetxt(text_file, span.data_view(self.dtype).view(np.float32))
+            else:
+                np.savetxt(text_file, unpacked_data)
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
