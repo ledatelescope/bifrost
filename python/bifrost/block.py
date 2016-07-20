@@ -152,6 +152,32 @@ class TransformBlock(object):
         """Initiate the block's transform."""
         affinity.set_core(self.core)
 
+class SourceBlock(object):
+    """Defines the structure for a source block"""
+    def __init__(self, gulp_size=4096):
+        super(SourceBlock, self).__init__()
+        self.gulp_size = gulp_size
+        self.core = -1
+    def iterate_ring_write(
+            self, output_ring, sequence_name="",
+            sequence_time_tag=0):
+        """Iterate over output ring
+        @param[in] output_ring Ring to write to
+        @param[in] sequence_name Name to label sequence
+        @param[in] sequence_time_tag Time tag to label sequence
+        """
+        output_ring.resize(self.gulp_size)
+        with output_ring.begin_writing() as oring:
+            with oring.begin_sequence(
+                sequence_name, sequence_time_tag,
+                header=self.output_header,
+                nringlet=1) as oseq:
+                with oseq.reserve(self.gulp_size) as span:
+                    yield span
+    def main(self, output_rings):
+        """Initiate the block's transform."""
+        affinity.set_core(self.core)
+
 class FFTBlock(TransformBlock):
     """Performs real to complex FFT on input ring data"""
     def __init__(self, gulp_size):
