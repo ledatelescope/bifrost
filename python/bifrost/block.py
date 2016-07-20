@@ -58,9 +58,9 @@ class Pipeline(object):
         """Return how many rings will be used in
             this pipeline."""
         all_ports = [
-            index for block in self.blocks for index in [
+            str(index) for block in self.blocks for index in [
                 port for port in block[1:] if port] if index]
-        return len(np.unique(np.array(all_ports)))
+        return len(set(all_ports))
     def main(self):
         """Start the pipeline, and finish when all threads exit"""
         threads = []
