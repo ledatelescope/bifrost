@@ -62,9 +62,14 @@ class Pipeline(object):
                 [self.rings[ring_index] for ring_index in block[1]])
             output_rings.extend(
                 [self.rings[ring_index] for ring_index in block[2]])
-            threads.append(threading.Thread(
-                target=block[0].main,
-                args=[input_rings, output_rings]))
+            if issubclass(type(block[0]), SourceBlock):
+                threads.append(threading.Thread(
+                    target=block[0].main,
+                    args=[output_rings[0]]))
+            else:
+                threads.append(threading.Thread(
+                    target=block[0].main,
+                    args=[input_rings, output_rings]))
         for thread in threads:
             thread.daemon = True
             thread.start()
@@ -273,7 +278,7 @@ class CopyBlock(TransformBlock):
             for ispan, ospan in self.ring_transfer(input_ring, output_ring):
                 bifrost.memory.memcpy2D(ospan.data, ispan.data)
 
-class SigprocReadBlock(TransformBlock):
+class SigprocReadBlock(SourceBlock):
     """This block reads in a sigproc filterbank
     (.fil) file into a ring buffer"""
     def __init__(
@@ -286,14 +291,13 @@ class SigprocReadBlock(TransformBlock):
         @param[in] core Which CPU core to bind to (-1) is
             any
         """
+        super(SigprocReadBlock, self).__init__()
         self.filename = filename
         self.gulp_nframe = gulp_nframe
         self.core = core
-    def main(self, input_rings, output_rings):
-        """Read in the sigproc file to output_rings
-        @param[in] input_rings Should be an empty list, as this is a source
-        @param[out] output_rings List containing rings. First ring will 
-            be used to put the filterbank's data onto"""
+    def main(self, output_ring):
+        """Read in the sigproc file to output_ring
+        @param[in] output_ring Ring to write to"""
         with SigprocFile().open(self.filename,'rb') as ifile:
             ifile.read_header()
             ohdr = {}
@@ -310,8 +314,8 @@ class SigprocReadBlock(TransformBlock):
             ohdr['fch1'] = float(ifile.header['fch1'])
             ohdr['foff'] = float(ifile.header['foff'])
             self.output_header = json.dumps(ohdr)
-            self.out_gulp_size = self.gulp_nframe*ifile.nchans*ifile.nifs*ifile.nbits/8
-            out_span_generator = self.iterate_ring_write(output_rings[0])
+            self.gulp_size = self.gulp_nframe*ifile.nchans*ifile.nifs*ifile.nbits/8
+            out_span_generator = self.iterate_ring_write(output_ring)
             for span in out_span_generator:
                 size = ifile.file_object.readinto(span.data.data)
                 span.commit(size)
