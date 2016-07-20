@@ -44,24 +44,6 @@ from bifrost.ring import Ring
 from bifrost.fft import fft
 from bifrost.sigproc import SigprocFile, unpack
 
-def number_of_bits_to_datatype(number_bits, signed=False):
-    """Make a guess for the datatype based on the number
-        of bits"""
-    if number_bits >= 8:
-        if signed:
-            datatype = {8: np.int8,
-                        16: np.int16,
-                        32: np.float32,
-                        64: np.float64}[number_bits]
-        else:
-            datatype = {8: np.uint8,
-                        16: np.uint16,
-                        32: np.float32,
-                        64: np.float64}[number_bits]
-    else:
-        datatype = np.int8 if signed else np.uint8
-    return datatype
-
 #TODO: How does GNU Radio handle this?
 class Pipeline(object):
     """Class which connects blocks linearly, with
@@ -118,6 +100,8 @@ class TransformBlock(object):
         self.output_header = {}
         self.core = -1
     def load_settings(self, input_header):
+        """Load in input header and set up block attributes
+        @param[in] input_header Header sent from input ring"""
         self.output_header = input_header
     def iterate_ring_read(self, input_ring):
         """Iterate through one input ring"""
