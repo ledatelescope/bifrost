@@ -163,33 +163,6 @@ class SinkBlock(object):
     def main(self, input_ring):
         """Initiate the block's transform."""
         affinity.set_core(self.core)
-
-class FFTBlock(TransformBlock):
-    """Performs real to complex FFT on input ring data"""
-    def __init__(self, gulp_size):
-        super(FFTBlock, self).__init__()
-    def load_settings(self, input_header):
-        header = json.loads(input_header.tostring())
-        self.out_gulp_size = self.gulp_size*64/header['nbit']
-        self.nbit = header['nbit']
-        self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
-        header['nbit'] = 64
-        header['dtype'] = str(np.complex64)
-        self.output_header = json.dumps(header)
-    def main(self, input_rings, output_rings):
-        """
-        @param[in] input_rings First ring in this list will be used for
-            data
-        @param[out] output_rings First ring in this list will be used for 
-            data output."""
-        for ispan, ospan in self.ring_transfer(input_rings[0], output_rings[0]):
-            if self.nbit < 8:
-                unpacked_data = unpack(ispan.data_view(self.dtype), self.nbit)
-            else:
-                unpacked_data = ispan.data_view(self.dtype)
-            result = np.fft.fft(unpacked_data.astype(np.float32))
-            ospan.data_view(np.complex64)[0][:] = result[0][:]
-
 class FFTBlock(TransformBlock):
     """Performs complex to complex IFFT on input ring data"""
     def __init__(self, gulp_size):
