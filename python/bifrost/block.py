@@ -93,6 +93,10 @@ class Pipeline(object):
                 threads.append(threading.Thread(
                     target=block[0].main,
                     args=[output_rings[0]]))
+            elif issubclass(type(block[0]), SinkBlock):
+                threads.append(threading.Thread(
+                    target=block[0].main,
+                    args=[input_rings[0]]))
             else:
                 threads.append(threading.Thread(
                     target=block[0].main,
@@ -186,7 +190,7 @@ class SourceBlock(object):
 class SinkBlock(object):
     """Defines the structure for a transform block"""
     def __init__(self, gulp_size=4096):
-        super(TransformBlock, self).__init__()
+        super(SinkBlock, self).__init__()
         self.gulp_size = gulp_size
         self.core = -1
     def load_settings(self, input_header):
@@ -280,7 +284,7 @@ class IFFTBlock(TransformBlock):
                 unpacked_data = ispan.data_view(self.dtype)
             result = np.fft.ifft(unpacked_data)
             ospan.data_view(np.complex64)[0][:] = result[0][:]
-class WriteAsciiBlock(TransformBlock):
+class WriteAsciiBlock(SinkBlock):
     """Copies input ring's data into ascii format
         in a text file."""
     def __init__(self, filename, gulp_size=1048576):
@@ -296,12 +300,12 @@ class WriteAsciiBlock(TransformBlock):
         header_dict = json.loads(input_header.tostring())
         self.nbit = header_dict['nbit']
         self.dtype = np.dtype(header_dict['dtype'].split()[1].split(".")[1].split("'")[0]).type
-    def main(self, input_rings, output_rings):
+    def main(self, input_ring):
         """Initiate the writing to filename
         @param[in] input_rings First ring in this list will be used for
             data
         @param[out] output_rings This list of rings won't be used."""
-        span_generator = self.iterate_ring_read(input_rings[0])
+        span_generator = self.iterate_ring_read(input_ring)
         for span in span_generator:
             if self.nbit < 8:
                 unpacked_data = unpack(span.data_view(self.dtype), self.nbit)
@@ -321,7 +325,6 @@ class CopyBlock(TransformBlock):
         for output_ring in output_rings:
             for ispan, ospan in self.ring_transfer(input_ring, output_ring):
                 bifrost.memory.memcpy2D(ospan.data, ispan.data)
-
 class SigprocReadBlock(SourceBlock):
     """This block reads in a sigproc filterbank
     (.fil) file into a ring buffer"""
