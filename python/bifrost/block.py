@@ -156,6 +156,26 @@ class SourceBlock(object):
         """Initiate the block's transform."""
         affinity.set_core(self.core)
 
+class SinkBlock(object):
+    """Defines the structure for a transform block"""
+    def __init__(self, gulp_size=4096):
+        super(TransformBlock, self).__init__()
+        self.gulp_size = gulp_size
+        self.core = -1
+    def load_settings(self, input_header):
+        self.header = json.loads(input_header.tostring())
+    def iterate_ring_read(self, input_ring):
+        """Iterate through one input ring
+        @param[in] input_ring Ring to read through"""
+        input_ring.resize(self.gulp_size)
+        for sequence in input_ring.read(guarantee=True):
+            self.load_settings(sequence.header)
+            for span in sequence.read(self.gulp_size):
+                yield span
+    def main(self, input_ring):
+        """Initiate the block's transform."""
+        affinity.set_core(self.core)
+
 class FFTBlock(TransformBlock):
     """Performs real to complex FFT on input ring data"""
     def __init__(self, gulp_size):
@@ -207,8 +227,6 @@ class FFTBlock(TransformBlock):
                 unpacked_data = ispan.data_view(self.dtype)
             result = np.fft.fft(unpacked_data.astype(np.float32))
             ospan.data_view(np.complex64)[0][:] = result[0][:]
-
-
 class IFFTBlock(TransformBlock):
     """Performs complex to complex IFFT on input ring data"""
     def __init__(self, gulp_size):
@@ -235,7 +253,6 @@ class IFFTBlock(TransformBlock):
                 unpacked_data = ispan.data_view(self.dtype)
             result = np.fft.ifft(unpacked_data)
             ospan.data_view(np.complex64)[0][:] = result[0][:]
-
 class WriteAsciiBlock(TransformBlock):
     """Copies input ring's data into ascii format
         in a text file."""
