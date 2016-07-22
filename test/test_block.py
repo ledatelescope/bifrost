@@ -32,6 +32,27 @@ import unittest
 from bifrost.block import *
 from bifrost.ring import Ring
 
+class TestTestingBlock(unittest.TestCase):
+    """Test the TestingBlock for basic functionality"""
+    def test_simple_dump(self):
+        """Input some numbers, and ensure they are written to a file"""
+        blocks = []
+        blocks.append((TestBlock([1, 2, 3]), [], [0]))
+        blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), [0], []))
+        Pipeline(blocks).main()
+        dumped_numbers = np.loadtxt('.log.txt')
+        np.testing.assert_almost_equal(dumped_numbers, [1, 2, 3])
+    def test_multi_dimensional_input(self):
+        """Input a 2 dimensional list, and have this printed"""
+        blocks = []
+        test_array = [[1, 2], [3, 4]]
+        blocks.append((TestBlock(test_array), [], [0]))
+        blocks.append((WriteAsciiBlock('.log.txt', gulp_size=4*4), [0], []))
+        blocks.append((WriteHeaderBlock('.log2.txt'), [0], []))
+        Pipeline(blocks).main()
+        header = eval(open('.log2.txt').read())
+        dumped_numbers = np.loadtxt('.log.txt').reshape(header['shape'])
+        np.testing.assert_almost_equal(dumped_numbers, test_array)
 class TestCopyBlock(unittest.TestCase):
     """Performs tests of the Copy Block."""
     def setUp(self):
