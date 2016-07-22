@@ -163,6 +163,39 @@ class SinkBlock(object):
     def main(self, input_ring):
         """Initiate the block's transform."""
         affinity.set_core(self.core)
+class TestBlock(SourceBlock):
+    """Block for debugging purposes.
+    Allows you to pass arbitrary 1d arrays in initialization,
+    which will be outputted into a ring buffer"""
+    def __init__(self, test_array):
+        """@param[in] test_array A list or numpy array containing test data"""
+        super(TestBlock, self).__init__()
+        self.test_array = np.array(test_array).astype(np.float32)
+        self.output_header = json.dumps(
+            {'nbit':32,
+             'dtype':str(np.float32),
+             'shape':self.test_array.shape})
+    def main(self, output_ring):
+        """Put the test array onto the output ring
+        @param[in] output_ring Holds the flattend test array in a single span"""
+        self.gulp_size = self.test_array.nbytes
+        for ospan in self.iterate_ring_write(output_ring):
+            ospan.data_view(np.float32)[0][:] = self.test_array.ravel()
+            break
+class WriteHeaderBlock(SinkBlock):
+    """Prints the header of a ring to a file"""
+    def __init__(self, filename):
+        """@param[in] test_array A list or numpy array containing test data"""
+        super(WriteHeaderBlock, self).__init__()
+        self.filename = filename
+    def load_settings(self, input_header):
+        write_file = open(self.filename, 'w')
+        write_file.write(str(json.loads(input_header.tostring())))
+    def main(self, input_ring):
+        """Put the header into the file"""
+        self.gulp_size = 1
+        span_dummy_generator = self.iterate_ring_read(input_ring)
+        span_dummy_generator.next()
 class FFTBlock(TransformBlock):
     """Performs complex to complex IFFT on input ring data"""
     def __init__(self, gulp_size):
