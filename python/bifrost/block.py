@@ -165,7 +165,7 @@ class SinkBlock(object):
         affinity.set_core(self.core)
 class TestBlock(SourceBlock):
     """Block for debugging purposes.
-    Allows you to pass arbitrary 1d arrays in initialization,
+    Allows you to pass arbitrary N-dimensional arrays in initialization,
     which will be outputted into a ring buffer"""
     def __init__(self, test_array):
         """@param[in] test_array A list or numpy array containing test data"""
@@ -189,10 +189,13 @@ class WriteHeaderBlock(SinkBlock):
         super(WriteHeaderBlock, self).__init__()
         self.filename = filename
     def load_settings(self, input_header):
+        """Load the header from json
+        @param[in] input_header The header from the ring"""
         write_file = open(self.filename, 'w')
         write_file.write(str(json.loads(input_header.tostring())))
     def main(self, input_ring):
-        """Put the header into the file"""
+        """Put the header into the file
+        @param[in] input_ring Contains the header in question"""
         self.gulp_size = 1
         span_dummy_generator = self.iterate_ring_read(input_ring)
         span_dummy_generator.next()
