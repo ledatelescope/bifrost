@@ -52,8 +52,17 @@ class Pipeline(object):
         and running data through the rings."""
     def __init__(self, blocks):
         self.blocks = blocks
-        self.rings = [Ring() for count in range(
-            self.number_of_rings())]
+        self.rings = {}
+        for index in self.unique_ring_names():
+            self.rings[index] = Ring()
+    def unique_ring_names(self):
+        """Return a list of unique ring indices"""
+        all_names = []
+        for block in self.blocks:
+            for port in block[1:]:
+                for index in port:
+                    all_names.append(str(index))
+        return set(all_names)
     def number_of_rings(self):
         """Return how many rings will be used in
             this pipeline."""
@@ -68,9 +77,9 @@ class Pipeline(object):
             input_rings = []
             output_rings = []
             input_rings.extend(
-                [self.rings[ring_index] for ring_index in block[1]])
+                [self.rings[str(ring_index)] for ring_index in block[1]])
             output_rings.extend(
-                [self.rings[ring_index] for ring_index in block[2]])
+                [self.rings[str(ring_index)] for ring_index in block[2]])
             if issubclass(type(block[0]), SourceBlock):
                 threads.append(threading.Thread(
                     target=block[0].main,
@@ -190,13 +199,13 @@ class SinkBlock(object):
     def main(self, input_ring):
         """Initiate the block's transform."""
         affinity.set_core(self.core)
-class TestBlock(SourceBlock):
+class TestingBlock(SourceBlock):
     """Block for debugging purposes.
     Allows you to pass arbitrary N-dimensional arrays in initialization,
     which will be outputted into a ring buffer"""
     def __init__(self, test_array):
         """@param[in] test_array A list or numpy array containing test data"""
-        super(TestBlock, self).__init__()
+        super(TestingBlock, self).__init__()
         self.test_array = np.array(test_array).astype(np.float32)
         self.output_header = json.dumps(
             {'nbit':32,
