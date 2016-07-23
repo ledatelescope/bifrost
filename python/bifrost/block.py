@@ -63,13 +63,6 @@ class Pipeline(object):
                 for index in port:
                     all_names.append(str(index))
         return set(all_names)
-    def number_of_rings(self):
-        """Return how many rings will be used in
-            this pipeline."""
-        all_ports = [
-            str(index) for block in self.blocks for index in [
-                port for port in block[1:] if port] if index]
-        return len(set(all_ports))
     def main(self):
         """Start the pipeline, and finish when all threads exit"""
         threads = []
