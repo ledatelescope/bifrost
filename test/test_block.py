@@ -10,7 +10,7 @@ class TestTestingBlock(unittest.TestCase):
     def test_simple_dump(self):
         """Input some numbers, and ensure they are written to a file"""
         blocks = []
-        blocks.append((TestBlock([1, 2, 3]), [], [0]))
+        blocks.append((TestingBlock([1, 2, 3]), [], [0]))
         blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), [0], []))
         Pipeline(blocks).main()
         dumped_numbers = np.loadtxt('.log.txt')
@@ -19,7 +19,7 @@ class TestTestingBlock(unittest.TestCase):
         """Input a 2 dimensional list, and have this printed"""
         blocks = []
         test_array = [[1, 2], [3, 4]]
-        blocks.append((TestBlock(test_array), [], [0]))
+        blocks.append((TestingBlock(test_array), [], [0]))
         blocks.append((WriteAsciiBlock('.log.txt', gulp_size=4*4), [0], []))
         blocks.append((WriteHeaderBlock('.log2.txt'), [0], []))
         Pipeline(blocks).main()
@@ -278,3 +278,14 @@ class TestIFFTBlock(unittest.TestCase):
         Pipeline(self.blocks).main()
         untouched_result = np.loadtxt(self.logfile).astype(np.float32)
         np.testing.assert_almost_equal(unfft_result, untouched_result, 2)
+class TestPipeline(unittest.TestCase):
+    """Test rigidity and features of the pipeline"""
+    def test_naming_rings(self):
+        """Name the rings instead of numerating them"""
+        blocks = []
+        blocks.append((TestingBlock([1, 2, 3]), [], ['ring1']))
+        blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), ['ring1'], []))
+        open('.log.txt', 'w').close()
+        Pipeline(blocks).main()
+        result = np.loadtxt('.log.txt').astype(np.float32)
+        np.testing.assert_almost_equal(result, [1, 2, 3])
