@@ -2,28 +2,32 @@
 This file tests all aspects of the Bifrost.block module.
 """
 import unittest
-from bifrost.block import *
+import numpy as np
 from bifrost.ring import Ring
+from bifrost.block import TestingBlock, WriteAsciiBlock, WriteHeaderBlock
+from bifrost.block import SigprocReadBlock, CopyBlock, KurtosisBlock, FoldBlock
+from bifrost.block import IFFTBlock, FFTBlock, Pipeline
 
 class TestTestingBlock(unittest.TestCase):
     """Test the TestingBlock for basic functionality"""
+    def setUp(self):
+        """Initiate blocks list with write asciiBlock"""
+        self.blocks = []
+        self.blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), [0], []))
     def test_simple_dump(self):
         """Input some numbers, and ensure they are written to a file"""
-        blocks = []
-        blocks.append((TestingBlock([1, 2, 3]), [], [0]))
-        blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), [0], []))
-        Pipeline(blocks).main()
+        self.blocks.append((TestingBlock([1, 2, 3]), [], [0]))
+        Pipeline(self.blocks).main()
         dumped_numbers = np.loadtxt('.log.txt')
         np.testing.assert_almost_equal(dumped_numbers, [1, 2, 3])
     def test_multi_dimensional_input(self):
         """Input a 2 dimensional list, and have this printed"""
-        blocks = []
         test_array = [[1, 2], [3, 4]]
-        blocks.append((TestingBlock(test_array), [], [0]))
-        blocks.append((WriteAsciiBlock('.log.txt', gulp_size=4*4), [0], []))
-        blocks.append((WriteHeaderBlock('.log2.txt'), [0], []))
-        Pipeline(blocks).main()
-        header = eval(open('.log2.txt').read())
+        self.blocks[0] = (WriteAsciiBlock('.log.txt', gulp_size=4*4), [0], [])
+        self.blocks.append((TestingBlock(test_array), [], [0]))
+        self.blocks.append((WriteHeaderBlock('.log2.txt'), [0], []))
+        Pipeline(self.blocks).main()
+        header = eval(open('.log2.txt').read()) #pylint:disable=eval-used
         dumped_numbers = np.loadtxt('.log.txt').reshape(header['shape'])
         np.testing.assert_almost_equal(dumped_numbers, test_array)
 class TestCopyBlock(unittest.TestCase):
@@ -101,7 +105,6 @@ class TestCopyBlock(unittest.TestCase):
         Pipeline(self.blocks).main()
         test_bytes = open(logfile, 'r').read(500).split(' ')
         self.assertAlmostEqual(np.float(test_bytes[0]), 0.72650784254)
-
 class TestFoldBlock(unittest.TestCase):
     """This tests functionality of the FoldBlock."""
     def setUp(self):
@@ -137,12 +140,12 @@ class TestFoldBlock(unittest.TestCase):
         histogram = self.dump_ring_and_read()
         self.assertEqual(histogram.size, 50)
     def test_show_pulse(self):
+        """Test to see if a pulse is visible in the
+            histogram from pulsar data"""
         self.blocks[0] = (
             SigprocReadBlock(
                 '/data1/mcranmer/data/fake/simple_pulsar_DM0.fil'),
             [], [0])
-        """Test to see if a pulse is visible in the
-            histogram from pulsar data"""
         self.blocks.append((
             FoldBlock(bins=200), [0], [1]))
         histogram = self.dump_ring_and_read()
@@ -161,7 +164,7 @@ class TestFoldBlock(unittest.TestCase):
         self.assertTrue(np.min(histogram) > 1e-10)
         self.assertGreater(
             np.max(histogram)/np.min(histogram), 3)
-    def test_high_DM(self):
+    def test_high_dispersion(self):
         """Test folding on a file with high DM"""
         self.blocks[0] = (
             SigprocReadBlock(
@@ -218,8 +221,8 @@ class TestFFTBlock(unittest.TestCase):
         ## Run pipeline again with simple copy
         self.blocks[1] = (CopyBlock(), [0], [1])
         Pipeline(self.blocks).main()
-        #number_copied = len(open(self.logfile, 'r').read().split(' '))
-        #self.assertEqual(number_fftd, 2*number_copied)
+        number_copied = len(open(self.logfile, 'r').read().split(' '))
+        self.assertEqual(number_fftd, 2*number_copied)
     def test_data_sizes(self):
         """Test that different number of bits give correct throughput size"""
         for iterate in range(5):
@@ -287,5 +290,17 @@ class TestPipeline(unittest.TestCase):
         blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), ['ring1'], []))
         open('.log.txt', 'w').close()
         Pipeline(blocks).main()
+        result = np.loadtxt('.log.txt').astype(np.float32)
+        np.testing.assert_almost_equal(result, [1, 2, 3])
+    def test_pass_rings(self):
+        """Pass rings entirely instead of naming/numerating them"""
+        block_set_one = []
+        block_set_two = []
+        ring1 = Ring()
+        block_set_one.append((TestingBlock([1, 2, 3]), [], [ring1]))
+        block_set_two.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), [ring1], []))
+        open('.log.txt', 'w').close()
+        Pipeline(block_set_one).main() # The ring should communicate between the pipelines
+        Pipeline(block_set_two).main()
         result = np.loadtxt('.log.txt').astype(np.float32)
         np.testing.assert_almost_equal(result, [1, 2, 3])
