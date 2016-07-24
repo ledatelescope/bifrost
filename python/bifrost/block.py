@@ -31,7 +31,6 @@ Right now the only possible block type is one
 of a simple transform which works on a span by span basis.
 """
 import json
-import os
 import threading
 import numpy as np
 import matplotlib
@@ -41,10 +40,8 @@ from matplotlib import pyplot as plt
 import bifrost
 from bifrost import affinity
 from bifrost.ring import Ring
-from bifrost.fft import fft
 from bifrost.sigproc import SigprocFile, unpack
 
-#TODO: How does GNU Radio handle this?
 class Pipeline(object):
     """Class which connects blocks linearly, with
         one ring between each block. Does this by creating
@@ -54,14 +51,20 @@ class Pipeline(object):
         self.blocks = blocks
         self.rings = {}
         for index in self.unique_ring_names():
-            self.rings[index] = Ring()
+            if isinstance(index, Ring):
+                self.rings[str(index)] = index
+            else:
+                self.rings[index] = Ring()
     def unique_ring_names(self):
         """Return a list of unique ring indices"""
         all_names = []
         for block in self.blocks:
             for port in block[1:]:
                 for index in port:
-                    all_names.append(str(index))
+                    if isinstance(index, Ring):
+                        all_names.append(index)
+                    else:
+                        all_names.append(str(index))
         return set(all_names)
     def main(self):
         """Start the pipeline, and finish when all threads exit"""
@@ -143,15 +146,12 @@ class TransformBlock(object):
                         with oseq.reserve(ispan.size*self.out_gulp_size/self.gulp_size) as ospan:
                             yield ispan, ospan
 
-    def main(self, input_rings, output_rings):
-        """Initiate the block's transform."""
-        affinity.set_core(self.core)
-
 class SourceBlock(object):
     """Defines the structure for a source block"""
     def __init__(self, gulp_size=4096):
         super(SourceBlock, self).__init__()
         self.gulp_size = gulp_size
+        self.output_header = {}
         self.core = -1
     def iterate_ring_write(
             self, output_ring, sequence_name="",
@@ -169,17 +169,15 @@ class SourceBlock(object):
                 nringlet=1) as oseq:
                 with oseq.reserve(self.gulp_size) as span:
                     yield span
-    def main(self, output_rings):
-        """Initiate the block's transform."""
-        affinity.set_core(self.core)
-
 class SinkBlock(object):
     """Defines the structure for a transform block"""
     def __init__(self, gulp_size=4096):
         super(SinkBlock, self).__init__()
         self.gulp_size = gulp_size
+        self.header = {}
         self.core = -1
     def load_settings(self, input_header):
+        """Load in settings from input ring header"""
         self.header = json.loads(input_header.tostring())
     def iterate_ring_read(self, input_ring):
         """Iterate through one input ring
@@ -189,9 +187,6 @@ class SinkBlock(object):
             self.load_settings(sequence.header)
             for span in sequence.read(self.gulp_size):
                 yield span
-    def main(self, input_ring):
-        """Initiate the block's transform."""
-        affinity.set_core(self.core)
 class TestingBlock(SourceBlock):
     """Block for debugging purposes.
     Allows you to pass arbitrary N-dimensional arrays in initialization,
