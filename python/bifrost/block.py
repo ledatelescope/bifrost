@@ -186,7 +186,7 @@ class SourceBlock(object):
                 with oseq.reserve(self.gulp_size) as span:
                     yield span
 class SinkBlock(object):
-    """Defines the structure for a transform block"""
+    """Defines the structure for a sink block"""
     def __init__(self, gulp_size=4096):
         super(SinkBlock, self).__init__()
         self.gulp_size = gulp_size
