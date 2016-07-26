@@ -208,7 +208,7 @@ class TestKurtosisBlock(unittest.TestCase):
         test_byte = open('.log.txt', 'r').read().split(' ')
         test_nums = np.array([float(x) for x in test_byte])
         self.assertLess(np.max(test_nums), 256)
-        self.assertEqual(test_nums.size, 4096)
+        self.assertEqual(test_nums.size, 12800)
 class TestFFTBlock(unittest.TestCase):
     """This test assures basic functionality of fft block"""
     def setUp(self):
@@ -229,13 +229,14 @@ class TestFFTBlock(unittest.TestCase):
     def test_throughput_size(self):
         """Number of elements going out should be double that of basic copy"""
         Pipeline(self.blocks).main()
-        number_fftd = len(open(self.logfile, 'r').read().split(' '))
+        number_fftd = len(open(self.logfile, 'r').read().split('\n'))
+        number_fftd = np.loadtxt(self.logfile).size
         open(self.logfile, 'w').close()
         ## Run pipeline again with simple copy
         self.blocks[1] = (CopyBlock(), [0], [1])
         Pipeline(self.blocks).main()
-        number_copied = len(open(self.logfile, 'r').read().split(' '))
-        self.assertEqual(number_fftd, 2*number_copied)
+        number_copied = np.loadtxt(self.logfile).size
+        self.assertAlmostEqual(number_fftd, 2*number_copied)
     def test_data_sizes(self):
         """Test that different number of bits give correct throughput size"""
         for iterate in range(5):
@@ -270,8 +271,22 @@ class TestFFTBlock(unittest.TestCase):
 class TestIFFTBlock(unittest.TestCase):
     """This test assures basic functionality of the ifft block.
     Requires the FFT block for testing."""
-    def setUp(self):
-        """Assemble a basic pipeline with the FFT/IFFT blocks"""
+    def test_simple_ifft(self):
+        """Put test data through a ring buffer and check correctness"""
+        self.logfile = '.log.txt'
+        self.blocks = []
+        test_array = [1, 2, 3]
+        self.blocks.append((TestingBlock(test_array), [], [0]))
+        self.blocks.append((IFFTBlock(gulp_size=3*4), [0], [1]))
+        self.blocks.append((WriteAsciiBlock(self.logfile), [1], []))
+        open(self.logfile, 'w').close()
+        Pipeline(self.blocks).main()
+        true_result = np.fft.ifft(test_array)
+        result = np.loadtxt(self.logfile).astype(np.float32).view(np.complex64)
+        np.testing.assert_almost_equal(result, true_result, 2)
+    def test_equivalent_data_to_copy(self):
+        """Test that the data coming out of this pipeline is equivalent
+        the initial read data"""
         self.logfile = '.log.txt'
         self.blocks = []
         self.blocks.append((
@@ -281,9 +296,6 @@ class TestIFFTBlock(unittest.TestCase):
         self.blocks.append((FFTBlock(gulp_size=4096*8*8*8*8), [0], [1]))
         self.blocks.append((IFFTBlock(gulp_size=4096*8*8*8*8), [1], [2]))
         self.blocks.append((WriteAsciiBlock(self.logfile), [2], []))
-    def test_equivalent_data_to_copy(self):
-        """Test that the data coming out of this pipeline is equivalent
-        the initial read data"""
         open(self.logfile, 'w').close()
         Pipeline(self.blocks).main()
         unfft_result = np.loadtxt(self.logfile).astype(np.float32).view(np.complex64)
