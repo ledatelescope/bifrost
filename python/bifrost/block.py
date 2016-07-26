@@ -246,11 +246,13 @@ class FFTBlock(TransformBlock):
         super(FFTBlock, self).__init__()
         self.nbit = 8
         self.dtype = np.uint8
+        self.shape = (1, 1)
     def load_settings(self, input_header):
         header = json.loads(input_header.tostring())
-        self.out_gulp_size = self.gulp_size*64/header['nbit']
         self.nbit = header['nbit']
         self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
+        if 'frame_shape' in header:
+            self.shape = header['frame_shape']
         header['nbit'] = 64
         header['dtype'] = str(np.complex64)
         self.output_header = json.dumps(header)
@@ -260,13 +262,24 @@ class FFTBlock(TransformBlock):
             data
         @param[out] output_rings First ring in this list will be used for
             data output."""
-        for ispan, ospan in self.ring_transfer(input_rings[0], output_rings[0]):
+        data_accumulate = None
+        for ispan in self.iterate_ring_read(input_rings[0]):
             if self.nbit < 8:
                 unpacked_data = unpack(ispan.data_view(self.dtype), self.nbit)
             else:
                 unpacked_data = ispan.data_view(self.dtype)
-            result = np.fft.fft(unpacked_data.astype(np.float32))
-            ospan.data_view(np.complex64)[0][:] = result[0][:]
+            if data_accumulate is not None:
+                data_accumulate = np.concatenate((data_accumulate, unpacked_data[0]))
+            else:
+                data_accumulate = unpacked_data[0]
+        if self.shape != [1, 1]:
+            data_accumulate = np.reshape(data_accumulate, (self.shape[0], -1))
+        data_accumulate = data_accumulate.astype(np.complex64)
+        self.out_gulp_size = data_accumulate.nbytes
+        outspan_generator = self.iterate_ring_write(output_rings[0])
+        ospan = outspan_generator.next()
+        result = np.fft.fft(data_accumulate)
+        ospan.data_view(np.complex64)[0] = result.ravel()
 class IFFTBlock(TransformBlock):
     """Performs complex to complex IFFT on input ring data"""
     def __init__(self, gulp_size):
@@ -276,7 +289,6 @@ class IFFTBlock(TransformBlock):
         self.dtype = np.uint8
     def load_settings(self, input_header):
         header = json.loads(input_header.tostring())
-        self.out_gulp_size = self.gulp_size*64/header['nbit']
         self.nbit = header['nbit']
         self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
         header['nbit'] = 64
@@ -288,13 +300,22 @@ class IFFTBlock(TransformBlock):
             data
         @param[out] output_rings First ring in this list will be used for 
             data output."""
-        for ispan, ospan in self.ring_transfer(input_rings[0], output_rings[0]):
+        data_accumulate = None
+        for ispan in self.iterate_ring_read(input_rings[0]):
             if self.nbit < 8:
                 unpacked_data = unpack(ispan.data_view(self.dtype), self.nbit)
             else:
                 unpacked_data = ispan.data_view(self.dtype)
-            result = np.fft.ifft(unpacked_data)
-            ospan.data_view(np.complex64)[0][:] = result[0][:]
+            if data_accumulate is not None:
+                data_accumulate = np.concatenate((data_accumulate, unpacked_data[0]))
+            else:
+                data_accumulate = unpacked_data[0]
+        data_accumulate = data_accumulate.astype(np.complex64)
+        self.out_gulp_size = data_accumulate.nbytes
+        outspan_generator = self.iterate_ring_write(output_rings[0])
+        ospan = outspan_generator.next()
+        result = np.fft.ifft(data_accumulate)
+        ospan.data_view(np.complex64)[0][:] = result[:]
 class WriteAsciiBlock(SinkBlock):
     """Copies input ring's data into ascii format
         in a text file."""
@@ -317,16 +338,21 @@ class WriteAsciiBlock(SinkBlock):
             data
         @param[out] output_rings This list of rings won't be used."""
         span_generator = self.iterate_ring_read(input_ring)
+        data_accumulate = None
         for span in span_generator:
             if self.nbit < 8:
                 unpacked_data = unpack(span.data_view(self.dtype), self.nbit)
             else:
-                unpacked_data = span.data_view(self.dtype)
-            text_file = open(self.filename, 'a')
-            if self.dtype == np.complex64:
-                np.savetxt(text_file, span.data_view(self.dtype).view(np.float32))
+                if self.dtype == np.complex64:
+                    unpacked_data = span.data_view(self.dtype).view(np.float32)
+                else:
+                    unpacked_data = span.data_view(self.dtype)
+            if data_accumulate is not None:
+                data_accumulate = np.concatenate((data_accumulate, unpacked_data[0]))
             else:
-                np.savetxt(text_file, unpacked_data)
+                data_accumulate = unpacked_data[0]
+        text_file = open(self.filename, 'a')
+        np.savetxt(text_file, data_accumulate.reshape((1,-1)))
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
@@ -376,9 +402,9 @@ class SigprocReadBlock(SourceBlock):
             self.gulp_size = self.gulp_nframe*ifile.nchans*ifile.nifs*ifile.nbits/8
             out_span_generator = self.iterate_ring_write(output_ring)
             for span in out_span_generator:
-                size = ifile.file_object.readinto(span.data.data)
-                span.commit(size)
-                if size == 0:
+                output_size = ifile.file_object.readinto(span.data.data)
+                span.commit(output_size)
+                if output_size < self.gulp_size:
                     break
 class KurtosisBlock(TransformBlock):
     """This block performs spectral kurtosis and cleaning
