@@ -29,3 +29,9 @@ In Bifrost, anything that does something to a data stream is called a *block*. C
 
 A simple pipeline would be a source block (e.g. file read), connected to a task block (compute average), connected to a sink block (plot time series of moving averaged data).
 
+
+## Ring concepts
+
+#### Sequence
+
+#### Span
