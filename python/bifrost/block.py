@@ -156,8 +156,9 @@ class SourceBlock(object):
                 sequence_name, sequence_time_tag,
                 header=self.output_header,
                 nringlet=1) as oseq:
-                with oseq.reserve(self.gulp_size) as span:
-                    yield span
+                while True:
+                    with oseq.reserve(self.gulp_size) as span:
+                        yield span
 class SinkBlock(object):
     """Defines the structure for a sink block"""
     def __init__(self, gulp_size=4096):
