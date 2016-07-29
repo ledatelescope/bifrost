@@ -35,6 +35,19 @@ from bifrost.block import TestingBlock, WriteAsciiBlock, WriteHeaderBlock
 from bifrost.block import SigprocReadBlock, CopyBlock, KurtosisBlock, FoldBlock
 from bifrost.block import IFFTBlock, FFTBlock, Pipeline
 
+class TestIterateRingWrite(unittest.TestCase):
+    """Test the iterate_ring_write function of SourceBlocks/TransformBlocks"""
+    def test_throughput(self):
+        """Read in data with a small throughput size. Expect all to go through."""
+        blocks = []
+        blocks.append((
+            SigprocReadBlock(
+                '/data1/mcranmer/data/fake/1chan8bitNoDM.fil', gulp_nframe=4096),
+            [], [0]))
+        blocks.append((WriteAsciiBlock('.log.txt'), [0], []))
+        Pipeline(blocks).main()
+        log_data = np.loadtxt('.log.txt')
+        self.assertEqual(log_data.size, 12800)
 class TestTestingBlock(unittest.TestCase):
     """Test the TestingBlock for basic functionality"""
     def setUp(self):
