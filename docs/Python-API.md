@@ -1,128 +1,39 @@
 ## Contents
 
-1. [Read, Copy and Print a Filterbank File](#filterbank)
-2. [Create a Pulsar Search Pipeline](#pulsarsearch)
-3. [[Ring() API]]
+0. [Basic Syntax](#syntax)
+1. [Bifrost blocks](#blocks)
+4. [[Ring() API]]
 
-## <a name="filterbank">Read, Copy and Print a filterbank file</a>
+## <a name="syntax">Basic Syntax</a>
 
-The following is a basic implementation of a processing pipeline in Bifrost. It creates two rings, sets `ring0` to read in data from a filterbank file, copies the data from `ring0` to `ring1`, then prints out the size of each data sequence contained in `ring1`. 
+As described on the [[Home]] page, Bifrost is made up of blocks, rings, and pipelines. Blocks embody *black box processes*, and rings connect these blocks together. A network of blocks and rings is called a pipeline. Bifrost's Python API mirrors these concepts very closely. 
 
-````python
-import bifrost
-from bifrost.ring import Ring
-from bifrost import GPUArray
+####Let's dive into an example: here we will perform an FFT on an array, and dump the result to a text file.
 
-from sigproc import SigprocFile
+The following code generates a list of three blocks: a `TestingBlock`, which takes a list of numbers during its initialization (which we give as `[1, 2, 3]`, an `FFTBlock`, which performs a one dimensional FFT on our input, and a `WriteAsciiBlock`, which dumps everything given to it into a text file (which we name as `'logfile.txt'`).
 
-import numpy as np
-import threading
-import json
 
-def test_GPUArray():
-	np.random.seed(1234)
-	a = GPUArray(shape=(3,4), dtype=np.float32)
-	print a.shape
-	r = np.random.random(size=(3,4))
-	print r
-	a.set(np.arange(3*4).reshape(3,4))
-	print a.get()
+These blocks are created into a sublist, where they are proceeded by a subsublist of input rings, and a subsublist of output rings. The `TestingBlock` gets an output ring which we arbitrarily name `'my array ring'`, the `FFTBlock` gets the same ring for an input ring, and puts its results into an output ring which we name `'fft output ring'` and `WriteAsciiBlock` gets an input ring of the same name. 
 
-class SigprocReadOp(object):
-	def __init__(self, filenames, outring, gulp_nframe=4096, core=-1):
-		self.filenames   = filenames
-		self.oring       = outring
-		self.gulp_nframe = gulp_nframe
-		self.core        = core
-	def main(self): # Launched in thread
-		bifrost.affinity.set_core(self.core)
-		with self.oring.begin_writing() as oring:
-			for name in self.filenames:
-				print "Opening", name
-				with SigprocFile(name) as ifile:
-					ohdr = {}
-					ohdr['frame_shape']   = ifile.frame_shape
-					ohdr['frame_size']    = ifile.frame_size
-					ohdr['frame_nbyte']   = ifile.frame_nbyte
-					ohdr['frame_axes']    = ('pol', 'chan')
-					ohdr['ringlet_shape'] = (1,)
-					ohdr['ringlet_axes']  = ()
-					ohdr['dtype']         = str(ifile.dtype)
-					ohdr['nbit']          = ifile.nbit
-					print 'ohdr:', ohdr
-					ohdr = json.dumps(ohdr)
-					gulp_nbyte = self.gulp_nframe*ifile.frame_nbyte
-					self.oring.resize(gulp_nbyte)
-					with oring.begin_sequence(name, header=ohdr) as osequence:
-						while True:
-							with osequence.reserve(gulp_nbyte) as wspan:
-								size = ifile.readinto(wspan.data.data)
-								wspan.commit(size)
-								#print size
-								if size == 0:
-									break
+This list of blocks, inputs, and outputs, is fed into a `Pipeline` object. Calling `my_pipeline.main()` then initiates the pipeline. 
 
-class CopyOp(object):
-	def __init__(self, iring, oring, gulp_size=1048576, guarantee=True, core=-1):
-		self.gulp_size  = gulp_size
-		self.iring      = iring
-		self.oring      = oring
-		self.guarantee  = guarantee
-		self.core       = core
-	def main(self):
-		bifrost.affinity.set_core(self.core)
-		self.iring.resize(self.gulp_size)
-		self.oring.resize(self.gulp_size)
-		with self.oring.begin_writing() as oring:
-			for iseq in self.iring.read(guarantee=self.guarantee):
-				with oring.begin_sequence(iseq.name, iseq.time_tag,
-				                          header=iseq.header,
-				                          nringlet=iseq.nringlet) as oseq:
-					for ispan in iseq.read(self.gulp_size):
-						with oseq.reserve(ispan.size) as ospan:
-							bifrost.memory.memcpy2D(ospan.data,
-							                        ispan.data)
+```python
+from bifrost.block import TestingBlock, FFTBlock, WriteAsciiBlock, Pipeline
 
-class PrintOp(object):
-	def __init__(self, iring, gulp_size=1048576, guarantee=True):
-		self.gulp_size  = gulp_size
-		self.iring      = iring
-		self.guarantee  = guarantee
-	def main(self):
-		self.iring.resize(self.gulp_size)
-		for iseq in self.iring.read(guarantee=self.guarantee):
-			print iseq.name, iseq.header.tostring()
-			for ispan in iseq.read(self.gulp_size):
-				print ispan.size, ispan.offset
+my_blocks = []
+my_blocks.append([TestingBlock([1, 2, 3]), [], ['my array ring']])
+my_blocks.append([FFTBlock(), ['my array ring'], ['fft output ring']])
+my_blocks.append([WriteAsciiBlock('logfile.txt'), ['fft output ring'], []])
+my_pipeline = Pipeline(my_blocks)
+my_pipeline.main() #Turn on the pipeline!
+```
 
-def main():
-	test_GPUArray()
-	
-	filenames = ['/data/bbarsdel/astro/aobeam.fil',
-	             '/data/bbarsdel/astro/aobeam2.fil']
-	
-	ring0 = Ring()
-	ring1 = Ring()
-	
-	ops = []
-	ops.append(SigprocReadOp(filenames, ring0, core=0))
-	ops.append(CopyOp(ring0, ring1, core=1))
-	ops.append(PrintOp(ring1))
-	
-	threads = [threading.Thread(target=op.main) for op in ops]
-	print "Launching %i threads" % len(threads)
-	for thread in threads:
-		thread.daemon = True
-		thread.start()
-	print "Waiting for threads to finish"
-	for thread in threads:
-		thread.join()
-	print "Done"
-	
+[POST IMAGE OF GUI EQUIVALENT]
 
-if __name__ == '__main__':
-   main()
-````
+A file named `'logfile.txt'` should now be created and filled with the result of our FFT. 
 
+As you can see, creating a high-throughput Bifrost pipeline from previously written blocks is a trivial process. This is the great thing about Bifrost: once you have modularized your functions into blocks, you can connect them seamlessly into a pipeline, and have your data streamed through in real-time. 
 
 ## <a name="pulsarsearch">Create a Pulsar Search Pipeline</a>
+
+[SIMPLE BLOCKS WHICH CALL PRESTO FUNCTIONS]
