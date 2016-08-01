@@ -1,3 +1,4 @@
+* [[Home]]
 * Introductions and examples
  * [[Getting started guide]]
 * Reference guides
