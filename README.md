@@ -3,6 +3,8 @@
 
 A stream processing framework for high-throughput applications.
 
+### [Bifrost Wiki](https://github.com/ledatelescope/bifrost/wiki)
+
 ## Feature overview
 
  * Designed for sustained high-throughput stream processing
