@@ -12,7 +12,7 @@ For a quick demo of Bifrost to whet your appetite, please check out our online d
 
 ## Installation
 
-Bifrost requires several dependencies, depending on how you do it. If you don't know what you are doing, you should assume that you want all the dependencies - we will walk you through this process.
+Bifrost requires several dependencies, depending on how you want to use it. If you don't know what you are doing, you should assume that you want all the dependencies - we will walk you through this process.
 
 ### Python dependencies
 
