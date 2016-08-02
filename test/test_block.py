@@ -6,7 +6,7 @@ import numpy as np
 from bifrost.ring import Ring
 from bifrost.block import TestingBlock, WriteAsciiBlock, WriteHeaderBlock
 from bifrost.block import SigprocReadBlock, CopyBlock, KurtosisBlock, FoldBlock
-from bifrost.block import IFFTBlock, FFTBlock, Pipeline
+from bifrost.block import IFFTBlock, FFTBlock, Pipeline, MultiAddBlock
 
 class TestIterateRingWrite(unittest.TestCase):
     """Test the iterate_ring_write function of SourceBlocks/TransformBlocks"""
@@ -341,7 +341,7 @@ class TestMultiTransformBlock(unittest.TestCase):
         blocks.append([TestingBlock([6, 2]), [], [3]])
         blocks.append([TestingBlock([1, 2]), [], [4]])
         blocks.append([MultiAddBlock(), 
-            {'inputs':[0, 1, 2, 3, 4], 'sum':[my_ring]}])
+            {'inputs':[0, 1, 2, 3, 4], 'summed':[my_ring]}])
         blocks.append([WriteAsciiBlock('.log.txt'), [my_ring], []])
         Pipeline(blocks).main()
         summed_result = np.loadtxt(

@@ -32,6 +32,14 @@ class Pipeline(object):
         """Return a list of unique ring indices"""
         all_names = []
         for block in self.blocks:
+            if issubclass(type(block[0]), MultiTransformBlock):
+                # These blocks are allowed dictionaries!
+                for param_name in block[1]:
+                    for index in block[1][param_name]:
+                        if isinstance(index, Ring):
+                            all_names.append(index)
+                        else:
+                            all_names.append(str(index))
             for port in block[1:]:
                 for index in port:
                     if isinstance(index, Ring):
@@ -43,24 +51,27 @@ class Pipeline(object):
         """Start the pipeline, and finish when all threads exit"""
         threads = []
         for block in self.blocks:
-            input_rings = []
-            output_rings = []
-            input_rings.extend(
-                [self.rings[str(ring_index)] for ring_index in block[1]])
-            output_rings.extend(
-                [self.rings[str(ring_index)] for ring_index in block[2]])
-            if issubclass(type(block[0]), SourceBlock):
-                threads.append(threading.Thread(
-                    target=block[0].main,
-                    args=[output_rings[0]]))
-            elif issubclass(type(block[0]), SinkBlock):
-                threads.append(threading.Thread(
-                    target=block[0].main,
-                    args=[input_rings[0]]))
+            if issubclass(type(block[0]), MultiTransformBlock):
+                raise NotImplementedError
             else:
-                threads.append(threading.Thread(
-                    target=block[0].main,
-                    args=[input_rings, output_rings]))
+                input_rings = []
+                output_rings = []
+                input_rings.extend(
+                    [self.rings[str(ring_index)] for ring_index in block[1]])
+                output_rings.extend(
+                    [self.rings[str(ring_index)] for ring_index in block[2]])
+                if issubclass(type(block[0]), SourceBlock):
+                    threads.append(threading.Thread(
+                        target=block[0].main,
+                        args=[output_rings[0]]))
+                elif issubclass(type(block[0]), SinkBlock):
+                    threads.append(threading.Thread(
+                        target=block[0].main,
+                        args=[input_rings[0]]))
+                else:
+                    threads.append(threading.Thread(
+                        target=block[0].main,
+                        args=[input_rings, output_rings]))
         for thread in threads:
             thread.daemon = True
             thread.start()
