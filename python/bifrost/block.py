@@ -11,6 +11,7 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import bifrost
+import itertools
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
@@ -52,7 +53,15 @@ class Pipeline(object):
         threads = []
         for block in self.blocks:
             if issubclass(type(block[0]), MultiTransformBlock):
-                raise NotImplementedError
+                param_rings = {}
+                print block[1]
+                for param_name in block[1]:
+                    param_rings[param_name] = [
+                        self.rings[str(ring_index)] for ring_index in block[1][param_name]]
+                threads.append(threading.Thread(
+                    target=block[0].main,
+                    kwargs=param_rings))
+
             else:
                 input_rings = []
                 output_rings = []
@@ -193,9 +202,41 @@ class MultiTransformBlock(object):
         pass
 class MultiAddBlock(MultiTransformBlock):
     """Block which adds any number of input rings"""
+    def __init__(self):
+        self.gulp_size = 4*2
+    def read(self, inputs):
+        i = 0
+        for ring in inputs:
+            i+=1
+            if i == 2:
+                ring.resize(self.gulp_size)
+            else:
+                ring.resize(self.gulp_size)
+        for sequence1, sequence2, sequence3, sequence4, sequence5 in itertools.izip(inputs[0].read(guarantee=True), inputs[1].read(guarantee=True), inputs[2].read(guarantee=True), inputs[3].read(guarantee=True), inputs[4].read(guarantee=True)):
+            self.output_header = json.loads(sequence1.header.tostring())
+            for span1, span2, span3, span4, span5 in itertools.izip(sequence1.read(self.gulp_size), sequence2.read(2*self.gulp_size), sequence3.read(self.gulp_size), sequence4.read(self.gulp_size), sequence5.read(self.gulp_size)):
+                yield span1, span2, span3, span4, span5
+    def write(
+            self, output_ring, sequence_name="",
+            sequence_time_tag=0):
+        """Iterate over output ring
+        @param[in] output_ring Ring to write to
+        @param[in] sequence_name Name to label sequence
+        @param[in] sequence_time_tag Time tag to label sequence
+        """
+        output_ring.resize(self.gulp_size)
+        with output_ring.begin_writing() as oring:
+            with oring.begin_sequence(
+                sequence_name, sequence_time_tag,
+                header=json.dumps(self.output_header),
+                nringlet=1) as oseq:
+                while True:
+                    with oseq.reserve(self.gulp_size) as span:
+                        yield span.data.reshape(self.output_header['shape'])
     def main(self, inputs, summed):
-        for input_spans, sum_span in read(inputs), write(summed):
-            sum_span = np.sum(input_spans, axis=0)
+        for input_spans, sum_span in itertools.izip(self.read(inputs), self.write(summed[0])):
+            pass
+            #sum_span = np.sum(input_spans, axis=0)
 class TestingBlock(SourceBlock):
     """Block for debugging purposes.
     Allows you to pass arbitrary N-dimensional arrays in initialization,
