@@ -204,6 +204,14 @@ class SinkBlock(object):
             self.load_settings(sequence.header)
             for span in sequence.read(self.gulp_size):
                 yield span
+class MultiTransformBlock(object):
+    def __init__(self):
+        pass
+class MultiAddBlock(MultiTransformBlock):
+    """Block which adds any number of input rings"""
+    def main(self, inputs, summed):
+        for input_spans, sum_span in read(inputs), write(summed):
+            sum_span = np.sum(input_spans, axis=0)
 class TestingBlock(SourceBlock):
     """Block for debugging purposes.
     Allows you to pass arbitrary N-dimensional arrays in initialization,
