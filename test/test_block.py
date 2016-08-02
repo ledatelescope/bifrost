@@ -329,3 +329,21 @@ class TestPipeline(unittest.TestCase):
         Pipeline(block_set_two).main()
         result = np.loadtxt('.log.txt').astype(np.float32)
         np.testing.assert_almost_equal(result, [1, 2, 3])
+class TestMultiTransformBlock(unittest.TestCase):
+    """Test call syntax and function of a multi transform block"""
+    def test_copy_block(self):
+        """Try some syntax on an addition block."""
+        my_ring = Ring()
+        blocks = []
+        blocks.append([TestingBlock([1, 2]), [], [0]])
+        blocks.append([TestingBlock([1, 6j]), [], [1]])
+        blocks.append([TestingBlock([9, 2]), [], [2]])
+        blocks.append([TestingBlock([6, 2]), [], [3]])
+        blocks.append([TestingBlock([1, 2]), [], [4]])
+        blocks.append([MultiAddBlock(), 
+            {'inputs':[0, 1, 2, 3, 4], 'sum':[my_ring]}])
+        blocks.append([WriteAsciiBlock('.log.txt'), [my_ring], []])
+        Pipeline(blocks).main()
+        summed_result = np.loadtxt(
+            '.log.txt', dtype=np.float32).view(np.complex64)
+        np.testing.assert_almost_equal(summed_result, [18, 8+6j])
