@@ -341,7 +341,13 @@ class TestMultiTransformBlock(unittest.TestCase):
         blocks.append([TestingBlock([6, 2]), [], [3]])
         blocks.append([TestingBlock([1, 2]), [], [4]])
         blocks.append([MultiAddBlock(), 
-            {'inputs':[0, 1, 2, 3, 4], 'summed':[my_ring]}])
+            {'input1': 0, 'input2':1, 'summed': 'first_sum'}])
+        blocks.append([MultiAddBlock(), 
+            {'input1': 2, 'input2':3, 'summed': 'second_sum'}])
+        blocks.append([MultiAddBlock(), 
+            {'input1': 'first_sum', 'input2':3, 'summed': 'third_sum'}])
+        blocks.append([MultiAddBlock(), 
+            {'input1': 'third_sum', 'input2':4, 'summed': my_ring}])
         blocks.append([WriteAsciiBlock('.log.txt'), [my_ring], []])
         Pipeline(blocks).main()
         summed_result = np.loadtxt(
