@@ -25,27 +25,28 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""@module test_late_resize
-This file checks to see if resizing a ring after its sequence is opened
-produces an error."""
+"""@module test_resizing
+This file checks different aspects of resizing a ring for segmentation faults."""
 import unittest
 import json
 import numpy as np
 from bifrost.block import TestingBlock, SinkBlock, Pipeline
 
-class ModWriteAsciiBlock(SinkBlock):
-    """Copies input ring's data into ascii format
-        in a text file."""
-    def __init__(self, filename):
+class ModResizeAsciiBlock(SinkBlock):
+    """Copies input ring's data into ascii format in a text file,
+        after resizing late (after opening sequence)."""
+    def __init__(self, filename, gulp_size=None):
         """@param[in] filename Name of file to write ascii to"""
         self.filename = filename
-        self.gulp_size = 1024
+        self.gulp_size = gulp_size
         open(self.filename, "w").close()
     def load_settings(self, input_header):
+        """Load the header, and set the gulp appropriately"""
         header_dict = json.loads(input_header.tostring())
         self.shape = header_dict['shape']
         size_of_float32 = 4
-        self.gulp_size = np.product(self.shape)*size_of_float32
+        if self.gulp_size is None:
+            self.gulp_size = np.product(self.shape)*size_of_float32
     def iterate_ring_read(self, input_ring):
         """Iterate through one input ring
         @param[in] input_ring Ring to read through"""
@@ -70,7 +71,18 @@ class TestLateResize(unittest.TestCase):
         size of the input ring ahead of time, and resize accordingly."""
         blocks = []
         blocks.append((TestingBlock([1, 2, 3]), [], [0]))
-        blocks.append((ModWriteAsciiBlock('.log.txt'), [0], []))
+        blocks.append((ModResizeAsciiBlock('.log.txt'), [0], []))
+        Pipeline(blocks).main()
+        np.testing.assert_almost_equal(
+            np.loadtxt('.log.txt'), [1, 2, 3])
+
+class TestLargeGulpSize(unittest.TestCase):
+    """Create a gulp size larger than ring size"""
+    def test_simple_large_gulp(self):
+        """Test if a large gulp size produces a seg fault"""
+        blocks = []
+        blocks.append((TestingBlock([1, 2, 3]), [], [0]))
+        blocks.append((ModResizeAsciiBlock('.log.txt', gulp_size=1024), [0], []))
         Pipeline(blocks).main()
         np.testing.assert_almost_equal(
             np.loadtxt('.log.txt'), [1, 2, 3])
