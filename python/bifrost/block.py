@@ -11,7 +11,7 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import bifrost
-import itertools
+from itertools import izip
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
@@ -36,11 +36,11 @@ class Pipeline(object):
             if issubclass(type(block[0]), MultiTransformBlock):
                 # These blocks are allowed dictionaries!
                 for param_name in block[1]:
-                    for index in block[1][param_name]:
-                        if isinstance(index, Ring):
-                            all_names.append(index)
-                        else:
-                            all_names.append(str(index))
+                    ring_id = block[1][param_name]
+                    if isinstance(ring_id, Ring):
+                        all_names.append(ring_id)
+                    else:
+                        all_names.append(str(ring_id))
             else:
                 for port in block[1:]:
                     for index in port:
@@ -56,8 +56,7 @@ class Pipeline(object):
             if issubclass(type(block[0]), MultiTransformBlock):
                 param_rings = {}
                 for param_name in block[1]:
-                    param_rings[param_name] = [
-                        self.rings[str(ring_index)] for ring_index in block[1][param_name]]
+                    param_rings[param_name] = self.rings[str(block[1][param_name])]
                 threads.append(threading.Thread(
                     target=block[0].main,
                     kwargs=param_rings))
@@ -198,44 +197,55 @@ class SinkBlock(object):
             for span in sequence.read(self.gulp_size):
                 yield span
 class MultiTransformBlock(object):
-    def __init__(self):
-        pass
+    def __init__(self, *args, **kwargs):
+        self.rings = {}
+        self.header = {}
+        self.gulp_size = {}
 class MultiAddBlock(MultiTransformBlock):
     """Block which adds any number of input rings"""
-    #name all rings with descriptions
-    rings = {
+    # name all rings with descriptions
+    ring_names = {
         'in_1': 'First input to add. List of floats',
         'in_2': 'Second input to add. List of floats',
         'out_sum': 'Result of add. List of floats.'}
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        #can hard code these, or calculate them during load_settings
+        super(MultiAddBlock, self).__init__(args, kwargs)
         self.gulp_size['in_1'] = 2*4
         self.gulp_size['in_2'] = 2*4
         self.gulp_size['out_sum'] = 2*4
-        self.headers['out_sum']['dtype'] = 'float32'
-    def read(self, *kwargs):
-        for ring_name in kwargs:
-            print ring_name
-    def write(
-            self, sequence_name="",
-            sequence_time_tag=0, **kwargs):
-        """Iterate over output ring
-        @param[in] output_ring Ring to write to
-        @param[in] sequence_name Name to label sequence
-        @param[in] sequence_time_tag Time tag to label sequence
-        """
-        output_ring.resize(self.gulp_size)
-        with output_ring.begin_writing() as oring:
+        self.header['out_sum'] = {}
+        self.header['out_sum']['dtype'] = 'float32'
+    def read(self, *args):
+        # resize all rings
+        for ring_name in args:
+            self.rings[ring_name].resize(self.gulp_size[ring_name])
+        # list of sequences
+        for sequences in izip(*[self.rings[ring_name].read(guarantee=True) for ring_name in args]):
+            # sequences is a tuple of all sequences
+            for spans in izip(*[sequence.read(self.gulp_size[ring_name]) for sequence in sequences]):
+                yield spans
+    def write(self, *args):
+        """Iterate over output rings"""
+        # resize all rings
+        for ring_name in args:
+            self.rings[ring_name].resize(self.gulp_size[ring_name])
+        # list of sequences
+        with self.rings['out_sum'].begin_writing() as oring:
             with oring.begin_sequence(
-                sequence_name, sequence_time_tag,
-                header=json.dumps(self.output_header),
+                "", 0,
+                header=json.dumps(self.header['out_sum']),
                 nringlet=1) as oseq:
                 while True:
-                    with oseq.reserve(self.gulp_size) as span:
+                    with oseq.reserve(self.gulp_size['out_sum']) as span:
                         yield span
-    def main(self):
-        #rings stored in dictionary as self.rings['in_1'] etc.
-        for inspan1, inspan2, outspan in itertools.izip(self.read('in_1', 'in_2'), self.write('out_sum')):
-            #outspan = np.sum(inspan1, inspan2, axis=0)
+    def main(self, **kwargs):
+        """@param[in] kwargs Dictionary of rings"""
+        for ring_name in kwargs:
+            self.rings[ring_name] = kwargs[ring_name]
+        for inspans, outspans in izip(self.read('in_1', 'in_2'), self.write('out_sum')):
+            pass
+            #outspan.data_view(np.float32)[0][:] = inspan1.data_view(np.float32)[0][:] + inspan2.data_view(np.float32)[0][:]
 class TestingBlock(SourceBlock):
     """Block for debugging purposes.
     Allows you to pass arbitrary N-dimensional arrays in initialization,
