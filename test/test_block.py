@@ -350,6 +350,5 @@ class TestMultiTransformBlock(unittest.TestCase):
             {'in_1': 'third_sum', 'in_2':4, 'out_sum': my_ring}])
         blocks.append([WriteAsciiBlock('.log.txt'), [my_ring], []])
         Pipeline(blocks).main()
-        summed_result = np.loadtxt(
-            '.log.txt', dtype=np.float32).view(np.complex64)
+        summed_result = np.loadtxt('.log.txt')
         np.testing.assert_almost_equal(summed_result, [18, 8])
