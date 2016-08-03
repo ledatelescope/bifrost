@@ -363,7 +363,7 @@ class TestMultiTransformBlock(unittest.TestCase):
         my_ring = Ring()
         blocks = []
         blocks.append([TestingBlock([1, 2]), [], [0]])
-        blocks.append([TestingBlock([1, 6j]), [], [1]])
+        blocks.append([TestingBlock([1, 6]), [], [1]])
         blocks.append([TestingBlock([9, 2]), [], [2]])
         blocks.append([TestingBlock([6, 2]), [], [3]])
         blocks.append([TestingBlock([1, 2]), [], [4]])
@@ -379,4 +379,4 @@ class TestMultiTransformBlock(unittest.TestCase):
         Pipeline(blocks).main()
         summed_result = np.loadtxt(
             '.log.txt', dtype=np.float32).view(np.complex64)
-        np.testing.assert_almost_equal(summed_result, [18, 8+6j])
+        np.testing.assert_almost_equal(summed_result, [18, 8])
