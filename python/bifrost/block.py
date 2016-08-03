@@ -41,12 +41,13 @@ class Pipeline(object):
                             all_names.append(index)
                         else:
                             all_names.append(str(index))
-            for port in block[1:]:
-                for index in port:
-                    if isinstance(index, Ring):
-                        all_names.append(index)
-                    else:
-                        all_names.append(str(index))
+            else:
+                for port in block[1:]:
+                    for index in port:
+                        if isinstance(index, Ring):
+                            all_names.append(index)
+                        else:
+                            all_names.append(str(index))
         return set(all_names)
     def main(self):
         """Start the pipeline, and finish when all threads exit"""
@@ -54,7 +55,6 @@ class Pipeline(object):
         for block in self.blocks:
             if issubclass(type(block[0]), MultiTransformBlock):
                 param_rings = {}
-                print block[1]
                 for param_name in block[1]:
                     param_rings[param_name] = [
                         self.rings[str(ring_index)] for ring_index in block[1][param_name]]
@@ -202,23 +202,22 @@ class MultiTransformBlock(object):
         pass
 class MultiAddBlock(MultiTransformBlock):
     """Block which adds any number of input rings"""
+    #name all rings with descriptions
+    rings = {
+        'in_1': 'First input to add. List of floats',
+        'in_2': 'Second input to add. List of floats',
+        'out_sum': 'Result of add. List of floats.'}
     def __init__(self):
-        self.gulp_size = 4*2
-    def read(self, inputs):
-        i = 0
-        for ring in inputs:
-            i+=1
-            if i == 2:
-                ring.resize(self.gulp_size)
-            else:
-                ring.resize(self.gulp_size)
-        for sequence1, sequence2, sequence3, sequence4, sequence5 in itertools.izip(inputs[0].read(guarantee=True), inputs[1].read(guarantee=True), inputs[2].read(guarantee=True), inputs[3].read(guarantee=True), inputs[4].read(guarantee=True)):
-            self.output_header = json.loads(sequence1.header.tostring())
-            for span1, span2, span3, span4, span5 in itertools.izip(sequence1.read(self.gulp_size), sequence2.read(2*self.gulp_size), sequence3.read(self.gulp_size), sequence4.read(self.gulp_size), sequence5.read(self.gulp_size)):
-                yield span1, span2, span3, span4, span5
+        self.gulp_size['in_1'] = 2*4
+        self.gulp_size['in_2'] = 2*4
+        self.gulp_size['out_sum'] = 2*4
+        self.headers['out_sum']['dtype'] = 'float32'
+    def read(self, *kwargs):
+        for ring_name in kwargs:
+            print ring_name
     def write(
-            self, output_ring, sequence_name="",
-            sequence_time_tag=0):
+            self, sequence_name="",
+            sequence_time_tag=0, **kwargs):
         """Iterate over output ring
         @param[in] output_ring Ring to write to
         @param[in] sequence_name Name to label sequence
@@ -232,11 +231,11 @@ class MultiAddBlock(MultiTransformBlock):
                 nringlet=1) as oseq:
                 while True:
                     with oseq.reserve(self.gulp_size) as span:
-                        yield span.data.reshape(self.output_header['shape'])
-    def main(self, inputs, summed):
-        for input_spans, sum_span in itertools.izip(self.read(inputs), self.write(summed[0])):
-            pass
-            #sum_span = np.sum(input_spans, axis=0)
+                        yield span
+    def main(self):
+        #rings stored in dictionary as self.rings['in_1'] etc.
+        for inspan1, inspan2, outspan in itertools.izip(self.read('in_1', 'in_2'), self.write('out_sum')):
+            #outspan = np.sum(inspan1, inspan2, axis=0)
 class TestingBlock(SourceBlock):
     """Block for debugging purposes.
     Allows you to pass arbitrary N-dimensional arrays in initialization,
@@ -699,4 +698,3 @@ class WaterfallBlock(object):
                     print "Bad shape for waterfall"
                     pass
         return waterfall_matrix
-
