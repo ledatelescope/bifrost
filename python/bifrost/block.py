@@ -242,7 +242,9 @@ class MultiAddBlock(MultiTransformBlock):
         self.gulp_size['in_2'] = 2*4
         self.gulp_size['out_sum'] = 2*4
         self.header['out_sum'] = {}
-        self.header['out_sum']['dtype'] = 'float32'
+        self.header['out_sum']['dtype'] = str(np.float32)
+        self.header['out_sum']['nbit'] = '32'
+        self.header['out_sum']['shape'] = (2,)
     def read(self, *args):
         # resize all rings
         for ring_name in args:
@@ -270,9 +272,10 @@ class MultiAddBlock(MultiTransformBlock):
         """@param[in] kwargs Dictionary of rings"""
         for ring_name in kwargs:
             self.rings[ring_name] = kwargs[ring_name]
-        for inspans, outspans in izip(self.read('in_1', 'in_2'), self.write('out_sum')):
-            pass
-            #outspan.data_view(np.float32)[0][:] = inspan1.data_view(np.float32)[0][:] + inspan2.data_view(np.float32)[0][:]
+        for inspans, outspan in izip(self.read('in_1', 'in_2'), self.write('out_sum')):
+            inspan1 = inspans[0]
+            inspan2 = inspans[1]
+            outspan.data_view(np.float32)[0][:] = inspan1.data_view(np.float32)[0][:] + inspan2.data_view(np.float32)[0][:]
 class TestingBlock(SourceBlock):
     """Block for debugging purposes.
     Allows you to pass arbitrary N-dimensional arrays in initialization,
