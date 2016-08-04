@@ -11,7 +11,6 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 import bifrost
-from itertools import izip
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
@@ -201,6 +200,17 @@ class MultiTransformBlock(object):
         self.rings = {}
         self.header = {}
         self.gulp_size = {}
+    def izip(self, *iterables):
+        """Iterate through multpile iterators 
+            This differs from itertools in that this izip combines list generators 
+            into a single list generator"""
+        iterators = map(iter, iterables)
+        # Credits to http://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists-in-python
+        flatten = lambda *n: (e for a in n
+            for e in (flatten(*a) if isinstance(a, (tuple, list)) else (a,)))
+        while True:
+            next_set = tuple(map(next, iterators))
+            yield tuple(flatten(next_set))
 class MultiAddBlock(MultiTransformBlock):
     """Block which adds any number of input rings"""
     # name all rings with descriptions
@@ -223,9 +233,9 @@ class MultiAddBlock(MultiTransformBlock):
         for ring_name in args:
             self.rings[ring_name].resize(self.gulp_size[ring_name])
         # list of sequences
-        for sequences in izip(*[self.rings[ring_name].read(guarantee=True) for ring_name in args]):
+        for sequences in self.izip(*[self.rings[ring_name].read(guarantee=True) for ring_name in args]):
             # sequences is a tuple of all sequences
-            for spans in izip(*[sequence.read(self.gulp_size[ring_name]) for sequence in sequences]):
+            for spans in self.izip(*[sequence.read(self.gulp_size[ring_name]) for sequence in sequences]):
                 yield spans
     def write(self, *args):
         """Iterate over output rings"""
@@ -245,9 +255,7 @@ class MultiAddBlock(MultiTransformBlock):
         """@param[in] kwargs Dictionary of rings"""
         for ring_name in kwargs:
             self.rings[ring_name] = kwargs[ring_name]
-        for inspans, outspan in izip(self.read('in_1', 'in_2'), self.write('out_sum')):
-            inspan1 = inspans[0]
-            inspan2 = inspans[1]
+        for inspan1, inspan2, outspan in self.izip(self.read('in_1', 'in_2'), self.write('out_sum')):
             outspan.data_view(np.float32)[0][:] = inspan1.data_view(np.float32)[0][:] + inspan2.data_view(np.float32)[0][:]
 class TestingBlock(SourceBlock):
     """Block for debugging purposes.
