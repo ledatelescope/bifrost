@@ -263,7 +263,7 @@ class MultiAddBlock(MultiTransformBlock):
         for sequences in self.izip(*[self.rings[ring_name].read(guarantee=True) for ring_name in args]):
             # sequences is a tuple of all sequences
             for spans in self.izip(*[sequence.read(self.gulp_size[ring_name]) for sequence in sequences]):
-                yield spans
+                yield [span.data_view(np.float32)[0] for span in spans]
     def write(self, *args):
         """Iterate over output rings"""
         # resize all rings
@@ -277,13 +277,13 @@ class MultiAddBlock(MultiTransformBlock):
                 nringlet=1) as oseq:
                 while True:
                     with oseq.reserve(self.gulp_size['out_sum']) as span:
-                        yield span
+                        yield span.data_view(np.float32)[0]
     def main(self, **kwargs):
         """@param[in] kwargs Dictionary of rings"""
         for ring_name in kwargs:
             self.rings[ring_name] = kwargs[ring_name]
         for inspan1, inspan2, outspan in self.izip(self.read('in_1', 'in_2'), self.write('out_sum')):
-            outspan.data_view(np.float32)[0][:] = inspan1.data_view(np.float32)[0][:] + inspan2.data_view(np.float32)[0][:]
+            outspan[:] = inspan1 + inspan2
 class TestingBlock(SourceBlock):
     """Block for debugging purposes.
     Allows you to pass arbitrary N-dimensional arrays in initialization,
