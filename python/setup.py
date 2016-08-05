@@ -27,7 +27,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 setup(name='Bifrost',
       version='0.6',
@@ -35,4 +35,4 @@ setup(name='Bifrost',
       author='Ben Barsdell',
       author_email='benbarsdell@gmail.com',
       url='',
-      packages=['bifrost'])
+      packages=find_packages())
