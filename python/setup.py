@@ -14,7 +14,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 setup(name='Bifrost',
       version='0.6',
@@ -22,4 +22,4 @@ setup(name='Bifrost',
       author='Ben Barsdell',
       author_email='benbarsdell@gmail.com',
       url='',
-      packages=['bifrost'])
+      packages=find_packages())
