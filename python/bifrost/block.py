@@ -80,13 +80,10 @@ class Pipeline(object):
         threads = []
         for block in self.blocks:
             if issubclass(type(block[0]), MultiTransformBlock):
-                param_rings = {}
                 for param_name in block[1]:
-                    param_rings[param_name] = self.rings[str(block[1][param_name])]
+                    block[0].rings[param_name] = self.rings[str(block[1][param_name])]
                 threads.append(threading.Thread(
-                    target=block[0].main,
-                    kwargs=param_rings))
-
+                    target=block[0].main))
             else:
                 input_rings = []
                 output_rings = []
@@ -278,10 +275,7 @@ class MultiAddBlock(MultiTransformBlock):
                 while True:
                     with oseq.reserve(self.gulp_size['out_sum']) as span:
                         yield span.data_view(np.float32)[0]
-    def main(self, **kwargs):
-        """@param[in] kwargs Dictionary of rings"""
-        for ring_name in kwargs:
-            self.rings[ring_name] = kwargs[ring_name]
+    def main(self):
         for inspan1, inspan2, outspan in self.izip(self.read('in_1', 'in_2'), self.write('out_sum')):
             outspan[:] = inspan1 + inspan2
 class TestingBlock(SourceBlock):
