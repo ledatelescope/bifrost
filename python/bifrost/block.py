@@ -193,7 +193,9 @@ class SinkBlock(object):
             for span in sequence.read(self.gulp_size):
                 yield span
 class MultiTransformBlock(object):
+    """Defines functions and attributes for a block with multi input/output"""
     def __init__(self, *args, **kwargs):
+        super(MultiTransformBlock, self).__init__(args, kwargs)
         self.rings = {}
         self.header = {}
         self.gulp_size = {}
@@ -208,12 +210,12 @@ class MultiTransformBlock(object):
         return flattened_list
     def izip(self, *iterables):
         """Iterate through multpile iterators
-            This differs from itertools in that this izip combines list generators
-            into a single list generator"""
-        iterators = map(iter, iterables)
+        This differs from itertools in that this izip combines list generators
+        into a single list generator"""
+        iterators = [iter(iterable) for iterable in iterables]
         while True:
             next_set = [iterator.next() for iterator in iterators]
-            yield tuple(self.flatten(*next_set))
+            yield self.flatten(*next_set)
     def read(self, *args):
         """Iterate over selection of input rings"""
         # resize all rings
@@ -241,7 +243,7 @@ class MultiTransformBlock(object):
                     with oseq.reserve(self.gulp_size['out_sum']) as span:
                         yield span.data_view(np.float32)[0]
 class MultiAddBlock(MultiTransformBlock):
-    """Block which adds any number of input rings"""
+    """Block which adds two input rings"""
     # name all rings with descriptions
     ring_names = {
         'in_1': 'First input to add. List of floats',
@@ -258,7 +260,10 @@ class MultiAddBlock(MultiTransformBlock):
         self.header['out_sum']['nbit'] = '32'
         self.header['out_sum']['shape'] = (2,)
     def main(self):
-        for inspan1, inspan2, outspan in self.izip(self.read('in_1', 'in_2'), self.write('out_sum')):
+        """Iterate through the inputs, and add them to the output"""
+        for inspan1, inspan2, outspan in self.izip(
+                self.read('in_1', 'in_2'),
+                self.write('out_sum')):
             outspan[:] = inspan1 + inspan2
 class TestingBlock(SourceBlock):
     """Block for debugging purposes.
