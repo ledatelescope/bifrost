@@ -197,17 +197,49 @@ class MultiTransformBlock(object):
         self.rings = {}
         self.header = {}
         self.gulp_size = {}
+    def flatten(self, *args):
+        """Flatten a nested tuple/list of tuples/lists"""
+        flattened_list = []
+        for element in args:
+            if isinstance(element, (tuple, list)):
+                flattened_list.extend(self.flatten(*element))
+            else:
+                flattened_list.extend([element])
+        return flattened_list
     def izip(self, *iterables):
-        """Iterate through multpile iterators 
-            This differs from itertools in that this izip combines list generators 
+        """Iterate through multpile iterators
+            This differs from itertools in that this izip combines list generators
             into a single list generator"""
         iterators = map(iter, iterables)
-        # Credits to http://stackoverflow.com/questions/2158395/flatten-an-irregular-list-of-lists-in-python
-        flatten = lambda *n: (e for a in n
-            for e in (flatten(*a) if isinstance(a, (tuple, list)) else (a,)))
         while True:
-            next_set = tuple(map(next, iterators))
-            yield tuple(flatten(next_set))
+            next_set = [iterator.next() for iterator in iterators]
+            yield tuple(self.flatten(*next_set))
+    def read(self, *args):
+        """Iterate over selection of input rings"""
+        # resize all rings
+        for ring_name in args:
+            self.rings[ring_name].resize(self.gulp_size[ring_name])
+        # list of sequences
+        for sequences in self.izip(*[self.rings[ring_name].read(guarantee=True) \
+                for ring_name in args]):
+            # sequences is a tuple of all sequences
+            for spans in self.izip(*[sequence.read(self.gulp_size[ring_name]) \
+                    for sequence in sequences]):
+                yield [span.data_view(np.float32)[0] for span in spans]
+    def write(self, *args):
+        """Iterate over selection of output rings"""
+        # resize all rings
+        for ring_name in args:
+            self.rings[ring_name].resize(self.gulp_size[ring_name])
+        # list of sequences
+        with self.rings['out_sum'].begin_writing() as oring:
+            with oring.begin_sequence(
+                "", 0,
+                header=json.dumps(self.header['out_sum']),
+                nringlet=1) as oseq:
+                while True:
+                    with oseq.reserve(self.gulp_size['out_sum']) as span:
+                        yield span.data_view(np.float32)[0]
 class MultiAddBlock(MultiTransformBlock):
     """Block which adds any number of input rings"""
     # name all rings with descriptions
@@ -225,29 +257,6 @@ class MultiAddBlock(MultiTransformBlock):
         self.header['out_sum']['dtype'] = str(np.float32)
         self.header['out_sum']['nbit'] = '32'
         self.header['out_sum']['shape'] = (2,)
-    def read(self, *args):
-        # resize all rings
-        for ring_name in args:
-            self.rings[ring_name].resize(self.gulp_size[ring_name])
-        # list of sequences
-        for sequences in self.izip(*[self.rings[ring_name].read(guarantee=True) for ring_name in args]):
-            # sequences is a tuple of all sequences
-            for spans in self.izip(*[sequence.read(self.gulp_size[ring_name]) for sequence in sequences]):
-                yield [span.data_view(np.float32)[0] for span in spans]
-    def write(self, *args):
-        """Iterate over output rings"""
-        # resize all rings
-        for ring_name in args:
-            self.rings[ring_name].resize(self.gulp_size[ring_name])
-        # list of sequences
-        with self.rings['out_sum'].begin_writing() as oring:
-            with oring.begin_sequence(
-                "", 0,
-                header=json.dumps(self.header['out_sum']),
-                nringlet=1) as oseq:
-                while True:
-                    with oseq.reserve(self.gulp_size['out_sum']) as span:
-                        yield span.data_view(np.float32)[0]
     def main(self):
         for inspan1, inspan2, outspan in self.izip(self.read('in_1', 'in_2'), self.write('out_sum')):
             outspan[:] = inspan1 + inspan2
