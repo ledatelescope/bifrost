@@ -34,6 +34,7 @@ import json
 import threading
 import numpy as np
 import matplotlib
+from contextlib import nested
 ## Use a graphical backend which supports threading
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
@@ -222,7 +223,7 @@ class SinkBlock(object):
 class MultiTransformBlock(object):
     """Defines functions and attributes for a block with multi input/output"""
     def __init__(self, *args, **kwargs):
-        super(MultiTransformBlock, self).__init__(args, kwargs)
+        super(MultiTransformBlock, self).__init__()
         self.rings = {}
         self.header = {}
         self.gulp_size = {}
@@ -243,15 +244,21 @@ class MultiTransformBlock(object):
         while True:
             next_set = [iterator.next() for iterator in iterators]
             yield self.flatten(*next_set)
+    def load_settings(self):
+        """Set by user to interpret input rings"""
+        pass
     def read(self, *args):
         """Iterate over selection of input rings"""
-        # resize all rings
-        for ring_name in args:
-            self.rings[ring_name].resize(self.gulp_size[ring_name])
         # list of sequences
         for sequences in self.izip(*[self.rings[ring_name].read(guarantee=True) \
                 for ring_name in args]):
             # sequences is a tuple of all sequences
+            for ring_name, sequence in self.izip(args, sequences):
+                self.header[ring_name] = json.loads(sequence.header.tostring())
+            self.load_settings()
+            # resize all rings
+            for ring_name in args:
+                self.rings[ring_name].resize(self.gulp_size[ring_name])
             for spans in self.izip(*[sequence.read(self.gulp_size[ring_name]) \
                     for sequence in sequences]):
                 yield [span.data_view(np.float32)[0] for span in spans]
@@ -261,14 +268,52 @@ class MultiTransformBlock(object):
         for ring_name in args:
             self.rings[ring_name].resize(self.gulp_size[ring_name])
         # list of sequences
-        with self.rings['out_sum'].begin_writing() as oring:
-            with oring.begin_sequence(
-                "", 0,
-                header=json.dumps(self.header['out_sum']),
-                nringlet=1) as oseq:
+        #TODO: Change this code if someone gives a reasonable answer on 
+        #http://stackoverflow.com/questions/38834827/multiple-with-statements-in-python-2-7-using-a-list-comprehension
+        with nested(*[self.rings[ring_name].begin_writing() \
+                for ring_name in args]) as out_rings:
+            with nested(*[out_ring.begin_sequence(
+                    "", 
+                    0, 
+                    header=json.dumps(self.header[ring_name]), 
+                    nringlet=1) \
+                        for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
                 while True:
-                    with oseq.reserve(self.gulp_size['out_sum']) as span:
-                        yield span.data_view(np.float32)[0]
+                    with nested(*[out_sequence.reserve(self.gulp_size[ring_name]) \
+                            for out_sequence, ring_name in self.izip(out_sequences, args)]) as out_spans:
+                        yield tuple([out_span.data_view(np.float32)[0] for out_span in out_spans])
+class SplitterBlock(MultiTransformBlock):
+    """Block which splits up a ring into two"""
+    ring_names = {
+        'in': 'Input to split. List of floats',
+        'out_1': 'Gets first share of the ring. List of floats',
+        'out_2': 'Gets second share of the ring. List of floats'}
+    def __init__(self, sections, *args, **kwargs):
+        """@param[in] sections List of two lists - each list is a
+                1D array of integers indicating sections of the ring
+                to cut. Like numpy slicing indices."""
+        super(SplitterBlock, self).__init__(args, kwargs)
+        assert len(sections) == 2
+        self.sections = sections
+        self.header['out_1'] = {}
+        self.header['out_1']['dtype'] = str(np.float32)
+        self.header['out_1']['nbit'] = 32
+        #TODO: These sections should be applied to the incoming shapes
+        self.header['out_1']['shape'] = sections[0]
+        self.header['out_2'] = self.header['out_1']
+        self.header['out_2']['shape'] = sections[1]
+    def load_settings(self):
+        """Set the gulp sizes appropriate to the input ring"""
+        self.gulp_size['in'] = np.product(self.header['in']['shape'])*self.header['in']['nbit']//8
+        self.gulp_size['out_1'] = self.gulp_size['in']*np.product(self.header['out_1']['shape'])//np.product(self.header['in']['shape'])
+        self.gulp_size['out_2'] = self.gulp_size['in']*np.product(self.header['out_2']['shape'])//np.product(self.header['in']['shape'])
+    def main(self):
+        """Split the incoming ring into the outputs rings"""
+        for inspan, outspan1, outspan2 in self.izip(
+                self.read('in'),
+                self.write('out_1', 'out_2')):
+            outspan1[:] = inspan[self.sections[0]].ravel()
+            outspan2[:] = inspan[self.sections[1]].ravel()
 class MultiAddBlock(MultiTransformBlock):
     """Block which adds two input rings"""
     # name all rings with descriptions
