@@ -379,3 +379,16 @@ class TestMultiTransformBlock(unittest.TestCase):
         Pipeline(blocks).main()
         summed_result = np.loadtxt('.log.txt')
         np.testing.assert_almost_equal(summed_result, [18, 14])
+class TestSplitterBlock(unittest.TestCase):
+    """Test a block which splits up incoming data into two rings"""
+    def test_simple_half_split(self):
+        """Try to split up a single array in half, and dump to file"""
+        blocks = []
+        blocks.append([TestingBlock([1, 2]), [], [0]])
+        blocks.append([SplitterBlock(), {'in': 0, 'out_1':1, 'out_2':2}])
+        blocks.append([WriteAsciiBlock('.log1.txt'), [1], []])
+        blocks.append([WriteAsciiBlock('.log2.txt'), [1], []])
+        Pipeline(blocks.main())
+        first_log = np.loadtxt('.log1.txt')
+        second_log = np.loadtxt('.log2.txt')
+        np.testing.assert_almost_equal(first_log, second_log)
