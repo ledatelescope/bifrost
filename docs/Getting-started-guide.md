@@ -12,18 +12,32 @@ For a quick demo of Bifrost to whet your appetite, please check out our online d
 
 ## Installation
 
-Bifrost requires several dependencies, depending on how you want to use it. If you don't know what you are doing, you should assume that you want all the dependencies - we will walk you through this process.
+Bifrost requires several dependencies, depending on how you want to use it. If you don't know what you are doing, assume that you want all the dependencies - we will walk you through this process.
 
 ### Python dependencies
 
-*Bifrost is written in Python 2.7.* If you would like us to support Python 3.x, please let us know your interest.
+*Bifrost is written in Python 2.7. If you would like us to support Python 3.x, please let us know your interest.*
 
-- pip 
+#### [pip](https://pip.pypa.io/en/stable/)
 
-pip is a package manager for other Python dependencies. Once you have pip, installing additional python dependencies should become straightforward. 
+pip is a package manager for other Python dependencies. Once you have pip, installing additional python dependencies should be straightforward. pip comes with setuptools, which is required for installing Bifrost. The detailed instructions for pip can be found [here](https://pip.pypa.io/en/stable/installing/), but the basics are as follows:
 
-- PyCLibrary
+1. Download [`get-pip.py`](https://bootstrap.pypa.io/get-pip.py)
+2. Navigate to the download directory, and run `python get-pip.py --user`, which will install a local copy of pip. 
+3. Check pip is working with `pip list`, which will give the versions of pip and setuptools. 
 
-#### C++ dependencies
+#### [PyCLibrary (modified)](https://github.com/MatthieuDartiailh/pyclibrary)
+
+PyCLibrary is a Python library that will parse C files and ease the interaction with `ctypes`. The entire Bifrost front end is built with it. **Do not install the pip version, as it is out of date**. You need to get the source from [GitHub](https://github.com/MatthieuDartiailh/pyclibrary), and install it manually:
+
+1. Download PyCLibrary by running `git clone https://github.com/MatthieuDartiailh/pyclibrary`
+2. Enter the PyCLibrary folder that was just created, and run `python setup.py install`. 
+3. Check that PyCLibrary installed correctly by running `ipython`, and then trying `import pyclibrary`. If this works, you are ready to go.
+
+### C++ dependencies
+
+#### CUDA
+
+CUDA allows you to run code on your GPU. You will need an NVIDIA GPU to do this. If you don't know if you have an NVIDIA GPU, 
 
 ## <a name="tutorial">Create your first pipeline</a>
