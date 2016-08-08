@@ -7,6 +7,7 @@ from bifrost.ring import Ring
 from bifrost.block import TestingBlock, WriteAsciiBlock, WriteHeaderBlock
 from bifrost.block import SigprocReadBlock, CopyBlock, KurtosisBlock, FoldBlock
 from bifrost.block import IFFTBlock, FFTBlock, Pipeline, MultiAddBlock
+from bifrost.block import SplitterBlock
 
 class TestIterateRingWrite(unittest.TestCase):
     """Test the iterate_ring_write function of SourceBlocks/TransformBlocks"""
@@ -358,10 +359,13 @@ class TestSplitterBlock(unittest.TestCase):
         """Try to split up a single array in half, and dump to file"""
         blocks = []
         blocks.append([TestingBlock([1, 2]), [], [0]])
-        blocks.append([SplitterBlock(), {'in': 0, 'out_1':1, 'out_2':2}])
-        blocks.append([WriteAsciiBlock('.log1.txt'), [1], []])
-        blocks.append([WriteAsciiBlock('.log2.txt'), [1], []])
-        Pipeline(blocks.main())
+        blocks.append([SplitterBlock([[0], [1]]), {'in': 0, 'out_1':1, 'out_2':2}])
+        blocks.append([WriteAsciiBlock('.log1.txt', gulp_size=4), [1], []])
+        blocks.append([WriteAsciiBlock('.log2.txt', gulp_size=4), [2], []])
+        Pipeline(blocks).main()
         first_log = np.loadtxt('.log1.txt')
         second_log = np.loadtxt('.log2.txt')
-        np.testing.assert_almost_equal(first_log, second_log)
+        print first_log, second_log
+        self.assertEqual(first_log.size, 1)
+        self.assertEqual(second_log.size, 1)
+        np.testing.assert_almost_equal(first_log+1, second_log)
