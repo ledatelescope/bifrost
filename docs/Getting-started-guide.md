@@ -26,6 +26,10 @@ pip is a package manager for other Python dependencies. Once you have pip, insta
 2. Navigate to the download directory, and run `python get-pip.py --user`, which will install a local copy of pip. 
 3. Check pip is working with `pip list`, which will give the versions of pip and setuptools. 
 
+#### [NumPy](http://docs.scipy.org/doc/numpy/index.html)
+
+If you have already installed pip, this step should be as simple as `pip install numpy`. NumPy is used in the Python front end of Bifrost, and is very helpful for quick testing of pipeline ideas.
+
 #### [PyCLibrary (modified)](https://github.com/MatthieuDartiailh/pyclibrary)
 
 PyCLibrary is a Python library that will parse C files and ease the interaction with `ctypes`. The entire Bifrost front end is built with it. **Do not install the pip version, as it is out of date**. You need to get the source from [GitHub](https://github.com/MatthieuDartiailh/pyclibrary), and install it manually:
@@ -36,8 +40,10 @@ PyCLibrary is a Python library that will parse C files and ease the interaction 
 
 ### C++ dependencies
 
-#### CUDA
+#### [CUDA](https://developer.nvidia.com/cuda-zone)
 
-CUDA allows you to run code on your GPU. You will need an NVIDIA GPU to do this. If you don't know if you have an NVIDIA GPU, 
+CUDA allows you to program your GPU from C and C++. You will need an NVIDIA GPU to do this. If this is your first time trying out Bifrost, and you don't have CUDA yet, we recommend that you skip this step, and try out a CPU-only version of Bifrost. Then, once you have the first experience, you can come back here for a speedup. 
+
+If you are ready to work with your GPUs, you will want to get the newest [CUDA toolkit](https://developer.nvidia.com/cuda-downloads). The full installation instructions are found on this download page, and vary slightly by platform. 
 
 ## <a name="tutorial">Create your first pipeline</a>
