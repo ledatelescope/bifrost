@@ -365,7 +365,6 @@ class TestSplitterBlock(unittest.TestCase):
         Pipeline(blocks).main()
         first_log = np.loadtxt('.log1.txt')
         second_log = np.loadtxt('.log2.txt')
-        print first_log, second_log
         self.assertEqual(first_log.size, 1)
         self.assertEqual(second_log.size, 1)
         np.testing.assert_almost_equal(first_log+1, second_log)
