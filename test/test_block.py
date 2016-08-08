@@ -368,13 +368,17 @@ class TestMultiTransformBlock(unittest.TestCase):
         blocks.append([TestingBlock([9, 2]), [], [2]])
         blocks.append([TestingBlock([6, 2]), [], [3]])
         blocks.append([TestingBlock([1, 2]), [], [4]])
-        blocks.append([MultiAddBlock(), 
+        blocks.append([
+            MultiAddBlock(),
             {'in_1': 0, 'in_2':1, 'out_sum': 'first_sum'}])
-        blocks.append([MultiAddBlock(), 
+        blocks.append([
+            MultiAddBlock(),
             {'in_1': 2, 'in_2':3, 'out_sum': 'second_sum'}])
-        blocks.append([MultiAddBlock(), 
+        blocks.append([
+            MultiAddBlock(),
             {'in_1': 'first_sum', 'in_2':'second_sum', 'out_sum': 'third_sum'}])
-        blocks.append([MultiAddBlock(), 
+        blocks.append([
+            MultiAddBlock(),
             {'in_1': 'third_sum', 'in_2':4, 'out_sum': my_ring}])
         blocks.append([WriteAsciiBlock('.log.txt'), [my_ring], []])
         Pipeline(blocks).main()
