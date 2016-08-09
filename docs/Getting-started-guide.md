@@ -36,15 +36,25 @@ If you have already installed pip, this step should be as simple as `pip install
 PyCLibrary is a Python library that will parse C files and ease the interaction with `ctypes`. The entire Bifrost front end is built with it. **Do not install the pip version, as it is out of date**. You need to get the source from [GitHub](https://github.com/MatthieuDartiailh/pyclibrary), and install it manually:
 
 1. Download PyCLibrary by running `git clone https://github.com/MatthieuDartiailh/pyclibrary`
-2. Enter the PyCLibrary folder that was just created, and run `python setup.py install`. 
-3. Check that PyCLibrary installed correctly by running `ipython`, and then trying `import pyclibrary`. If this works, you are ready to go.
+2. Enter the PyCLibrary folder that was just created, and run `python setup.py install --user`. 
+3. Check that PyCLibrary installed correctly by running `python`, and then trying `import pyclibrary`. If this works, you are ready to go.
 
 ### C++ dependencies
 
 #### [CUDA](https://developer.nvidia.com/cuda-zone)
 
-CUDA allows you to program your GPU from C and C++. You will need an NVIDIA GPU to do this. If this is your first time trying out Bifrost, and you don't have CUDA yet, we recommend that you skip this step, and try out a CPU-only version of Bifrost. Then, once you have the first experience, you can come back here for a speedup. 
+CUDA allows you to program your GPU from C and C++. You will need an NVIDIA GPU to do this. If this is your first time trying out Bifrost, and you don't have CUDA yet, we recommend that you skip this step, and try out a CPU-only version of Bifrost. Then, once you have that first experience, you can come back here for a speedup. 
 
-If you are ready to work with your GPUs, you will want to get the newest [CUDA toolkit](https://developer.nvidia.com/cuda-downloads). The full installation instructions are found on this download page, and vary slightly by platform. 
+If you are ready to work with a GPU, you will want to get the newest [CUDA toolkit](https://developer.nvidia.com/cuda-downloads). Follow the operating system-specific instructions to install.
+
+### Bifrost install
+
+Now you are ready to install Bifrost. Clone the GitHub master branch with 
+
+`git clone https://github.com/ledatelescope/bifrost`. 
+
+You will want to edit `user.mk` to suit your system. For example, if you are not working with GPUs, uncomment the line:
+
+`#NOCUDA   = 1 # Disable CUDA support`. 
 
 ## <a name="tutorial">Create your first pipeline</a>
