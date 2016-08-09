@@ -38,8 +38,10 @@
 #include "assert.hpp"
 #include <bifrost/memory.h>
 
-#include <cuda_runtime_api.h>
-#include <iostream>
+#ifdef BF_CUDA_ENABLED
+	#include <cuda_runtime_api.h>
+	#include <iostream>
+#endif
 
 // This implements a lock with the condition that no reads or writes
 //   can be open while it is held.
