@@ -385,14 +385,20 @@ class TestMultiTransformBlock(unittest.TestCase):
         summed_result = np.loadtxt('.log.txt')
         np.testing.assert_almost_equal(summed_result, [18, 14])
     def test_for_bad_ring_definitions(self):
-        """Try to skip one of the ring names"""
+        """Try to pass bad input and outputs"""
         blocks = []
         blocks.append([TestingBlock([1, 2]), [], [0]])
         blocks.append([
             MultiAddBlock(),
             {'in_2':0, 'out_sum': 1}])
         blocks.append([WriteAsciiBlock('.log.txt'), [1], []])
-        self.assertRaises(Pipeline(blocks).main(), Exception)
+        with self.assertRaises(AssertionError):
+            Pipeline(blocks).main()
+        blocks[1] = [
+            MultiAddBlock(),
+            {'bad_ring_name':0, 'in_2':0, 'out_sum': 1}] 
+        with self.assertRaises(AssertionError):
+            Pipeline(blocks).main()
 class TestSplitterBlock(unittest.TestCase):
     """Test a block which splits up incoming data into two rings"""
     def test_simple_half_split(self):
