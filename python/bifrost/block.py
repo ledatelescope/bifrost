@@ -35,6 +35,9 @@ class Pipeline(object):
         for block in self.blocks:
             if issubclass(type(block[0]), MultiTransformBlock):
                 # These blocks are allowed dictionaries!
+                assert len(block[0].ring_names) == len(block[1])
+                for ring_name in block[0].ring_names:
+                    assert ring_name in block[1]
                 for param_name in block[1]:
                     ring_id = block[1][param_name]
                     if isinstance(ring_id, Ring):
