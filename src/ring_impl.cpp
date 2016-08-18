@@ -115,6 +115,9 @@ void BFring_impl::resize(BFsize contiguous_span,
 	BFsize  new_nringlet   = std::max(nringlet,        _nringlet);
 	//new_ghost_span = round_up(new_ghost_span, bfGetAlignment());
 	//new_span       = round_up(new_span,       bfGetAlignment());
+	bool span_smaller_than_alignment = (new_span < (long unsigned int)BF_ALIGNMENT);
+	if (span_smaller_than_alignment)
+		new_span = (long unsigned int)BF_ALIGNMENT;
 	// Note: This is critical to enable safe overflowing/wrapping of offsets
 	new_span = round_up_pow2(new_span);
 	// This is just to ensure nice indexing
