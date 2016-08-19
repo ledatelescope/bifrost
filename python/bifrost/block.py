@@ -790,9 +790,18 @@ class NumpyBlock(MultiTransformBlock):
         self.function = function
         assert callable(self.function)
     def load_settings(self):
-        self.header['out_1'] = self.header['in_1']
-        self.gulp_size['in_1'] = np.product(self.header['in_1']['shape'])*self.header['in_1']['nbit']//8
-        self.gulp_size['out_1'] = self.gulp_size['in_1']
+
+        dtype = np.dtype(self.header['in_1']['dtype'].split("'")[1].split('.')[1]).type
+        test_input_data = np.zeros(shape=self.header['in_1']['shape'], dtype=np.float32)
+        test_output_data = self.function(test_input_data).astype(np.float32)
+
+        self.gulp_size['in_1'] = test_input_data.nbytes
+        self.gulp_size['out_1'] = test_output_data.nbytes
+
+        self.header['out_1'] = dict(self.header['in_1'])
+        self.header['out_1']['dtype'] = str(np.float32)
+        self.header['out_1']['nbits'] = test_output_data.nbytes//np.product(test_output_data.shape)
+        self.header['out_1']['shape'] = test_output_data.shape
     def main(self):
         for inspan, outspan in self.izip(self.read('in_1'), self.write('out_1')):
-            outspan[:] = self.function(inspan)
+            outspan[:] = self.function(inspan)[:].astype(np.float32)

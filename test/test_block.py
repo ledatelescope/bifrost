@@ -397,9 +397,11 @@ class TestNumpyBlock(unittest.TestCase):
     def setUp(self):
         """Set up a pipeline for a numpy operation in the middle"""
         self.blocks = []
-        self.blocks.append((TestingBlock([1, 2, 3, 4]), [], [0]))
+        self.test_array = [1, 2, 3, 4]
+        self.blocks.append((TestingBlock(self.test_array), [], [0]))
         self.blocks.append((WriteAsciiBlock('.log.txt'), [1], []))
     def tearDown(self):
+        """Run the pipeline and test the output against the expectation"""
         Pipeline(self.blocks).main()
         result = np.loadtxt('.log.txt').astype(np.float32)
         np.testing.assert_almost_equal(result, self.expected_result)
@@ -417,3 +419,12 @@ class TestNumpyBlock(unittest.TestCase):
             NumpyBlock(function=greater_than_two),
             {'in_1': 0, 'out_1': 1}])
         self.expected_result = [0, 0, 1, 1]
+    def test_different_size_output(self):
+        """Test that the output size can be different"""
+        def first_half(array):
+            array = np.array(array)
+            return array[:int(array.size/2)]
+        self.blocks.append([
+            NumpyBlock(function=first_half),
+            {'in_1': 0, 'out_1': 1}])
+        self.expected_result = first_half(self.test_array)
