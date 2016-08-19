@@ -796,15 +796,16 @@ class NumpyBlock(MultiTransformBlock):
 
         dtype = np.dtype(self.header['in_1']['dtype']).type
         test_input_data = np.zeros(shape=self.header['in_1']['shape'], dtype=dtype)
-        test_output_data = self.function(test_input_data).astype(np.float32)
+        test_output_data = self.function(test_input_data)
 
         self.gulp_size['in_1'] = test_input_data.nbytes
         self.gulp_size['out_1'] = test_output_data.nbytes
 
         self.header['out_1'] = dict(self.header['in_1'])
         self.header['out_1']['dtype'] = str(test_output_data.dtype)
-        self.header['out_1']['nbits'] = test_output_data.nbytes//np.product(test_output_data.shape)
-        self.header['out_1']['shape'] = test_output_data.shape
+        self.header['out_1']['nbit'] = 8*test_output_data.nbytes//np.product(test_output_data.shape)
+        self.header['out_1']['shape'] = list(test_output_data.shape)
+        print self.header
     def main(self):
         for inspan, outspan in self.izip(self.read('in_1'), self.write('out_1')):
-            outspan[:] = self.function(inspan)[:].astype(np.float32)
+            outspan[:] = self.function(inspan)[:]
