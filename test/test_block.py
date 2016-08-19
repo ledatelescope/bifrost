@@ -33,7 +33,8 @@ import numpy as np
 from bifrost.ring import Ring
 from bifrost.block import TestingBlock, WriteAsciiBlock, WriteHeaderBlock
 from bifrost.block import SigprocReadBlock, CopyBlock, KurtosisBlock, FoldBlock
-from bifrost.block import IFFTBlock, FFTBlock, Pipeline
+from bifrost.block import IFFTBlock, FFTBlock, Pipeline, MultiAddBlock
+from bifrost.block import SplitterBlock
 
 class TestIterateRingWrite(unittest.TestCase):
     """Test the iterate_ring_write function of SourceBlocks/TransformBlocks"""
@@ -356,6 +357,63 @@ class TestPipeline(unittest.TestCase):
         Pipeline(block_set_two).main()
         result = np.loadtxt('.log.txt').astype(np.float32)
         np.testing.assert_almost_equal(result, [1, 2, 3])
+class TestMultiTransformBlock(unittest.TestCase):
+    """Test call syntax and function of a multi transform block"""
+    def test_add_block(self):
+        """Try some syntax on an addition block."""
+        my_ring = Ring()
+        blocks = []
+        blocks.append([TestingBlock([1, 2]), [], [0]])
+        blocks.append([TestingBlock([1, 6]), [], [1]])
+        blocks.append([TestingBlock([9, 2]), [], [2]])
+        blocks.append([TestingBlock([6, 2]), [], [3]])
+        blocks.append([TestingBlock([1, 2]), [], [4]])
+        blocks.append([
+            MultiAddBlock(),
+            {'in_1': 0, 'in_2':1, 'out_sum': 'first_sum'}])
+        blocks.append([
+            MultiAddBlock(),
+            {'in_1': 2, 'in_2':3, 'out_sum': 'second_sum'}])
+        blocks.append([
+            MultiAddBlock(),
+            {'in_1': 'first_sum', 'in_2':'second_sum', 'out_sum': 'third_sum'}])
+        blocks.append([
+            MultiAddBlock(),
+            {'in_1': 'third_sum', 'in_2':4, 'out_sum': my_ring}])
+        blocks.append([WriteAsciiBlock('.log.txt'), [my_ring], []])
+        Pipeline(blocks).main()
+        summed_result = np.loadtxt('.log.txt')
+        np.testing.assert_almost_equal(summed_result, [18, 14])
+    def test_for_bad_ring_definitions(self):
+        """Try to pass bad input and outputs"""
+        blocks = []
+        blocks.append([TestingBlock([1, 2]), [], [0]])
+        blocks.append([
+            MultiAddBlock(),
+            {'in_2':0, 'out_sum': 1}])
+        blocks.append([WriteAsciiBlock('.log.txt'), [1], []])
+        with self.assertRaises(AssertionError):
+            Pipeline(blocks).main()
+        blocks[1] = [
+            MultiAddBlock(),
+            {'bad_ring_name':0, 'in_2':0, 'out_sum': 1}] 
+        with self.assertRaises(AssertionError):
+            Pipeline(blocks).main()
+class TestSplitterBlock(unittest.TestCase):
+    """Test a block which splits up incoming data into two rings"""
+    def test_simple_half_split(self):
+        """Try to split up a single array in half, and dump to file"""
+        blocks = []
+        blocks.append([TestingBlock([1, 2]), [], [0]])
+        blocks.append([SplitterBlock([[0], [1]]), {'in': 0, 'out_1':1, 'out_2':2}])
+        blocks.append([WriteAsciiBlock('.log1.txt', gulp_size=4), [1], []])
+        blocks.append([WriteAsciiBlock('.log2.txt', gulp_size=4), [2], []])
+        Pipeline(blocks).main()
+        first_log = np.loadtxt('.log1.txt')
+        second_log = np.loadtxt('.log2.txt')
+        self.assertEqual(first_log.size, 1)
+        self.assertEqual(second_log.size, 1)
+        np.testing.assert_almost_equal(first_log+1, second_log)
 class TestNumpyBlock(unittest.TestCase):
     """Tests for a block which can call arbitrary functions that work on numpy arrays.
         This should include the many numpy, scipy and astropy functions.
