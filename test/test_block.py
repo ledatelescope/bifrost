@@ -394,27 +394,26 @@ class TestNumpyBlock(unittest.TestCase):
         call the numpy function, and then put out data on a CPU ring.
         The purpose of this ring is mainly for tests or filling in missing
         functionality."""
+    def setUp(self):
+        """Set up a pipeline for a numpy operation in the middle"""
+        self.blocks = []
+        self.blocks.append((TestingBlock([1, 2, 3, 4]), [], [0]))
+        self.blocks.append((WriteAsciiBlock('.log.txt'), [1], []))
+    def tearDown(self):
+        Pipeline(self.blocks).main()
+        result = np.loadtxt('.log.txt').astype(np.float32)
+        np.testing.assert_almost_equal(result, self.expected_result)
     def test_simple_copy(self):
         """Perform a np.copy on a ring"""
-        blocks = []
-        blocks.append((TestingBlock([1, 2, 3]), [], [0]))
-        blocks.append([
+        self.blocks.append([
             NumpyBlock(function=np.copy),
             {'in_1': 0, 'out_1': 1}])
-        blocks.append((WriteAsciiBlock('.log.txt'), [1], []))
-        Pipeline(blocks).main()
-        result = np.loadtxt('.log.txt').astype(np.float32)
-        np.testing.assert_almost_equal(result, [1, 2, 3])
+        self.expected_result = [1, 2, 3, 4]
     def test_boolean_output(self):
         """Convert a ring into boolean output"""
         def greater_than_two(array):
             return array>2
-        blocks = []
-        blocks.append((TestingBlock([1, 2, 3]), [], [0]))
-        blocks.append([
+        self.blocks.append([
             NumpyBlock(function=greater_than_two),
             {'in_1': 0, 'out_1': 1}])
-        blocks.append((WriteAsciiBlock('.log.txt'), [1], []))
-        Pipeline(blocks).main()
-        result = np.loadtxt('.log.txt').astype(np.float32)
-        np.testing.assert_almost_equal(result, [0, 0, 1])
+        self.expected_result = [0, 0, 1, 1]
