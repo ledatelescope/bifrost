@@ -9,8 +9,8 @@ LINKER_FLAGS  ?=
 #GPU_ARCHS     ?= 30 32 35 37 50 52 53 # Nap time!
 #GPU_ARCHS     ?= 35 52
 #GPU_ARCHS     ?= 52
-GPU_ARCHS     ?= 35
 #GPU_ARCHS     ?=
+GPU_ARCHS     ?= 20
 
 CUDA_HOME     ?= /usr/local/cuda
 CUDA_LIBDIR   ?= $(CUDA_HOME)/lib
