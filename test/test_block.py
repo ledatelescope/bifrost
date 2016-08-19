@@ -430,7 +430,10 @@ class TestNumpyBlock(unittest.TestCase):
     def tearDown(self):
         """Run the pipeline and test the output against the expectation"""
         Pipeline(self.blocks).main()
-        result = np.loadtxt('.log.txt').astype(np.float32)
+        if np.array(self.expected_result).dtype == 'complex128':
+            result = np.loadtxt('.log.txt', dtype=np.float64).view(np.complex128)
+        else:
+            result = np.loadtxt('.log.txt').astype(np.float32)
         np.testing.assert_almost_equal(result, self.expected_result)
     def test_simple_copy(self):
         """Perform a np.copy on a ring"""
