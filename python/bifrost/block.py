@@ -288,7 +288,14 @@ class MultiTransformBlock(object):
                                 out_sequences,
                                 args)]) as out_spans:
                         #TODO: Other types and sizes
-                        dtypes = {ring_name: np.dtype(self.header[ring_name]['dtype']).type for ring_name in args}
+                        dtypes = {}
+                        #dtypes = {ring_name: np.dtype(self.header[ring_name]['dtype']).type for ring_name in args}
+                        for ring_name in args:
+                            try:
+                                dtype = np.dtype(self.header[ring_name]['dtype']).type
+                            except:
+                                dtype = np.dtype(self.header[ring_name]['dtype'].split()[1].split(".")[1].split("'")[0]).type
+                            dtypes[ring_name] = dtype
                         yield tuple([out_span.data_view(dtypes[ring_name])[0] for out_span, ring_name in self.izip(out_spans, args)])
 class SplitterBlock(MultiTransformBlock):
     """Block which splits up a ring into two"""
@@ -433,7 +440,10 @@ class IFFTBlock(TransformBlock):
     def load_settings(self, input_header):
         header = json.loads(input_header.tostring())
         self.nbit = header['nbit']
-        self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
+        try:
+            self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
+        except:
+            self.dtype = np.dtype(header['dtype']).type
         header['nbit'] = 64
         header['dtype'] = str(np.complex64)
         self.output_header = json.dumps(header)
