@@ -825,18 +825,16 @@ class WaterfallBlock(object):
                     pass
         return waterfall_matrix
 class NumpyBlock(MultiTransformBlock):
-    def __init__(self, function, inputs, outputs=1):
+    def __init__(self, function, inputs=1, outputs=1):
         """Based on the number of inputs, set up enough ring_names"""
         super(NumpyBlock, self).__init__()
         self.ring_names = {
             'in_1': "First input",
             'out_1': "First output"}
-        if inputs > 1:
-            for index in range(1, inputs+1):
-                self.ring_names['in_'+str(index)] = ""
-        if outputs > 1:
-            for index in range(1, outputs+1):
-                self.ring_names['out_'+str(index)] = ""
+        for index in range(1, inputs+1):
+            self.ring_names['in_'+str(index)] = ""
+        for index in range(1, outputs+1):
+            self.ring_names['out_'+str(index)] = ""
         self.function = function
         assert callable(self.function)
     def load_settings(self):
