@@ -829,42 +829,32 @@ class NumpyBlock(MultiTransformBlock):
         """Based on the number of inputs/outputs, set up enough ring_names
             for the pipeline to call."""
         super(NumpyBlock, self).__init__()
-        self.ring_names = {
-            'in_1': "First input",
-            'out_1': "First output"}
-        self.inputs = inputs
-        self.outputs = outputs
-        for index in range(1, inputs+1):
-            self.ring_names['in_'+str(index)] = "Input number %d" % index
-        for index in range(1, outputs+1):
-            self.ring_names['out_'+str(index)] = "Output number %d" % index
+        self.inputs = ['in_%d' % (i+1) for i in range(inputs)]
+        self.outputs = ['out_%d' % (i+1) for i in range(outputs)]
+        self.ring_names = {}
+        for input_name in self.inputs:
+            self.ring_names[input_name] = "Input number " + input_name[3:]
+        for output_name in self.outputs:
+            self.ring_names[output_name] = "Output number " + output_name[4:]
         self.function = function
         assert callable(self.function)
     def load_settings(self):
         """Estimate the output settings based on zero matrices
             of the input shapes and data types"""
-        inputs = []
-        outputs = []
         test_input_arrays = []
-        test_output_arrays = []
-        for key in self.ring_names:
-            if key[:2] == 'in':
-                inputs.append(key)
-            elif key[:3] == 'out':
-                outputs.append(key)
-        for input_name in inputs:
+        for input_name in self.inputs:
             dtype = np.dtype(self.header[input_name]['dtype']).type
             input_array = np.zeros(
                 shape=self.header[input_name]['shape'],
                 dtype=dtype)
             self.gulp_size[input_name] = input_array.nbytes
             test_input_arrays.append(input_array)
-        if len(outputs) == 1:
-            test_output_arrays.extend([self.function(*test_input_arrays)])
+        if len(self.outputs) == 1:
+            test_output_arrays = [self.function(*test_input_arrays)]
         else:
-            test_output_arrays.extend(self.function(*test_input_arrays))
-        for index, output_name in enumerate(outputs):
-            test_output_data = test_output_arrays[index]
+            test_output_arrays = self.function(*test_input_arrays)
+        for output_index, output_name in enumerate(self.outputs):
+            test_output_data = test_output_arrays[output_index]
             assert type(test_output_data) == np.ndarray
             self.gulp_size[output_name] = test_output_data.nbytes
             self.header[output_name] = {}
@@ -872,17 +862,14 @@ class NumpyBlock(MultiTransformBlock):
             self.header[output_name]['nbit'] = 8*test_output_data.nbytes//np.product(test_output_data.shape)
             self.header[output_name]['shape'] = list(test_output_data.shape)
     def main(self):
-        """Call self.function on all of the input spans for each input ring"""
-        inputs = ['in_%d' % (i+1) for i in range(self.inputs)]
-        outputs = ['out_%d' % (i+1) for i in range(self.outputs)]
-        for allspans in self.izip(self.read(*inputs), self.write(*outputs)):
-            inspans = allspans[:self.inputs]
-            outspans = allspans[self.inputs:]
-            for i, input_name in enumerate(inputs):
+        """Call self.function on all of the input spans"""
+        for allspans in self.izip(self.read(*self.inputs), self.write(*self.outputs)):
+            inspans = allspans[:len(self.inputs)]
+            outspans = allspans[len(self.inputs):]
+            for i, input_name in enumerate(self.inputs):
                 inspans[i] = inspans[i].reshape(self.header[input_name]['shape'])
-            output_data = []
             output_data = self.function(*inspans)
             if type(output_data) is np.ndarray:
                 output_data = [output_data]
-            for i, output_name in enumerate(outputs):
+            for i, output_name in enumerate(self.outputs):
                 outspans[i][:] = output_data[i].ravel()
