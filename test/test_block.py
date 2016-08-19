@@ -472,6 +472,6 @@ class TestNumpyBlock(unittest.TestCase):
             NumpyBlock(function=np.copy),
             {'in_1': 0, 'out_1': 2}])
         self.blocks.append([
-            NumpyBlock(function=dstack_handler),
+            NumpyBlock(function=dstack_handler, inputs=2),
             {'in_1': 0, 'in_2': 2, 'out_1': 1}])
-        self.expected_result = np.dstack((self.test_array, self.test_array))
+        self.expected_result = np.dstack((self.test_array, self.test_array)).ravel()
