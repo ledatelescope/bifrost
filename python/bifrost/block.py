@@ -473,7 +473,10 @@ class WriteAsciiBlock(SinkBlock):
     def load_settings(self, input_header):
         header_dict = json.loads(input_header.tostring())
         self.nbit = header_dict['nbit']
-        self.dtype = np.dtype(header_dict['dtype'].split()[1].split(".")[1].split("'")[0]).type
+        try:
+            self.dtype = np.dtype(header_dict['dtype']).type
+        except:
+            self.dtype = np.dtype(header_dict['dtype'].split()[1].split(".")[1].split("'")[0]).type
     def main(self, input_ring):
         """Initiate the writing to filename
         @param[in] input_rings First ring in this list will be used for
@@ -826,7 +829,7 @@ class NumpyBlock(MultiTransformBlock):
         self.gulp_size['out_1'] = test_output_data.nbytes
 
         self.header['out_1'] = dict(self.header['in_1'])
-        self.header['out_1']['dtype'] = str(np.float32)
+        self.header['out_1']['dtype'] = str(test_output_data.dtype)
         self.header['out_1']['nbits'] = test_output_data.nbytes//np.product(test_output_data.shape)
         self.header['out_1']['shape'] = test_output_data.shape
     def main(self):
