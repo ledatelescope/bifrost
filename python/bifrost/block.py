@@ -329,7 +329,7 @@ class TestingBlock(SourceBlock):
         self.test_array = np.array(test_array).astype(np.float32)
         self.output_header = json.dumps(
             {'nbit':32,
-             'dtype':str(np.float32),
+             'dtype':'float32',
              'shape':self.test_array.shape})
     def main(self, output_ring):
         """Put the test array onto the output ring
@@ -791,8 +791,8 @@ class NumpyBlock(MultiTransformBlock):
         assert callable(self.function)
     def load_settings(self):
 
-        dtype = np.dtype(self.header['in_1']['dtype'].split("'")[1].split('.')[1]).type
-        test_input_data = np.zeros(shape=self.header['in_1']['shape'], dtype=np.float32)
+        dtype = np.dtype(self.header['in_1']['dtype']).type
+        test_input_data = np.zeros(shape=self.header['in_1']['shape'], dtype=dtype)
         test_output_data = self.function(test_input_data).astype(np.float32)
 
         self.gulp_size['in_1'] = test_input_data.nbytes
