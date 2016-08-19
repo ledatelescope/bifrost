@@ -411,7 +411,7 @@ class TestNumpyBlock(unittest.TestCase):
     def test_simple_copy(self):
         """Perform a np.copy on a ring"""
         self.blocks.append([
-            NumpyBlock(function=np.copy, inputs=1),
+            NumpyBlock(function=np.copy),
             {'in_1': 0, 'out_1': 1}])
         self.expected_result = [1, 2, 3, 4]
     def test_boolean_output(self):
@@ -419,7 +419,7 @@ class TestNumpyBlock(unittest.TestCase):
         def greater_than_two(array):
             return array>2
         self.blocks.append([
-            NumpyBlock(function=greater_than_two, inputs=1),
+            NumpyBlock(function=greater_than_two),
             {'in_1': 0, 'out_1': 1}])
         self.expected_result = [0, 0, 1, 1]
     def test_different_size_output(self):
@@ -428,13 +428,13 @@ class TestNumpyBlock(unittest.TestCase):
             array = np.array(array)
             return array[:int(array.size/2)]
         self.blocks.append([
-            NumpyBlock(function=first_half, inputs=1),
+            NumpyBlock(function=first_half),
             {'in_1': 0, 'out_1': 1}])
         self.expected_result = first_half(self.test_array)
     def test_complex_output(self):
         """Test that complex data can be generated"""
         self.blocks.append([
-            NumpyBlock(function=np.fft.fft, inputs=1),
+            NumpyBlock(function=np.fft.fft),
             {'in_1': 0, 'out_1': 1}])
         self.expected_result = np.fft.fft(self.test_array)
     def test_two_inputs(self):
@@ -442,7 +442,7 @@ class TestNumpyBlock(unittest.TestCase):
         def dstack_handler(array_1, array_2):
             return np.dstack((array_1, array_2))
         self.blocks.append([
-            NumpyBlock(function=np.copy, inputs=1),
+            NumpyBlock(function=np.copy),
             {'in_1': 0, 'out_1': 2}])
         self.blocks.append([
             NumpyBlock(function=dstack_handler, inputs=2),
@@ -456,7 +456,7 @@ class TestNumpyBlock(unittest.TestCase):
         connections = {'in_1': 0, 'out_1': 1}
         for index in range(number_inputs):
             self.blocks.append([
-                NumpyBlock(function=np.copy, inputs=1),
+                NumpyBlock(function=np.copy),
                 {'in_1': 0, 'out_1': index+2}])
             connections['in_'+str(index+2)] = index+2
         self.blocks.append([
@@ -468,6 +468,6 @@ class TestNumpyBlock(unittest.TestCase):
         def double(array):
             return (array, array)
         self.blocks.append([
-            NumpyBlock(function=double, inputs=1, outputs=2),
+            NumpyBlock(function=double, outputs=2),
             {'in_1': 0, 'out_1': 2, 'out_2': 1}])
         self.expected_result = [1, 2, 3, 4]
