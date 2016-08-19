@@ -455,3 +455,9 @@ class TestNumpyBlock(unittest.TestCase):
             NumpyBlock(function=first_half),
             {'in_1': 0, 'out_1': 1}])
         self.expected_result = first_half(self.test_array)
+    def test_complex_output(self):
+        """Test that complex data can be generated"""
+        self.blocks.append([
+            NumpyBlock(function=np.fft.fft),
+            {'in_1': 0, 'out_1': 1}])
+        self.expected_result = np.fft.fft(self.test_array)
