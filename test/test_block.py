@@ -356,3 +356,19 @@ class TestPipeline(unittest.TestCase):
         Pipeline(block_set_two).main()
         result = np.loadtxt('.log.txt').astype(np.float32)
         np.testing.assert_almost_equal(result, [1, 2, 3])
+class TestNumpyBlock(unittest.TestCase):
+    """Tests for a block which can call arbitrary functions that work on numpy arrays.
+        This should include the many numpy, scipy and astropy functions.
+        Furthermore, this block should automatically move GPU data to CPU,
+        call the numpy function, and then put out data on a CPU ring.
+        The purpose of this ring is mainly for tests or filling in missing
+        functionality."""
+    def test_simple_copy(self):
+        """Perform a np.copy on a ring"""
+        blocks = []
+        blocks.append((TestingBlock([1, 2, 3]), [], [0]))
+        blocks.append((NumpyBlock(function=np.copy), [0], [1]))
+        blocks.append((WriteAsciiBlock('.log.txt'), [1], []))
+        Pipeline(blocks).main()
+        result = np.loadtxt('.log.txt').astype(np.float32)
+        np.testing.assert_almost_equal(result, [1, 2, 3])
