@@ -798,7 +798,7 @@ class WaterfallBlock(object):
                     pass
         return waterfall_matrix
 class NumpyBlock(MultiTransformBlock):
-    def __init__(self, function, inputs=1):
+    def __init__(self, function, inputs):
         super(NumpyBlock, self).__init__()
         self.ring_names = {
             'in_1': "First input",
@@ -810,7 +810,6 @@ class NumpyBlock(MultiTransformBlock):
         self.function = function
         assert callable(self.function)
     def load_settings(self):
-
         if self.inputs == 1:
             dtype = np.dtype(self.header['in_1']['dtype']).type
             test_input_data = np.zeros(shape=self.header['in_1']['shape'], dtype=dtype)
@@ -850,4 +849,3 @@ class NumpyBlock(MultiTransformBlock):
                 inspan1 = inspan1.reshape(self.header['in_1']['shape'])
                 inspan2 = inspan2.reshape(self.header['in_2']['shape'])
                 outspan[:] = self.function(inspan1, inspan2).ravel()
-                print outspan
