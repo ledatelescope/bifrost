@@ -288,7 +288,8 @@ class MultiTransformBlock(object):
                                 out_sequences,
                                 args)]) as out_spans:
                         #TODO: Other types and sizes
-                        yield tuple([out_span.data_view(np.float32)[0] for out_span in out_spans])
+                        dtypes = {ring_name: np.dtype(self.header[ring_name]['dtype']).type for ring_name in args}
+                        yield tuple([out_span.data_view(dtypes[ring_name])[0] for out_span, ring_name in self.izip(out_spans, args)])
 class SplitterBlock(MultiTransformBlock):
     """Block which splits up a ring into two"""
     ring_names = {
@@ -490,6 +491,8 @@ class WriteAsciiBlock(SinkBlock):
             else:
                 if self.dtype == np.complex64:
                     unpacked_data = span.data_view(self.dtype).view(np.float32)
+                elif self.dtype == np.complex128:
+                    unpacked_data = span.data_view(self.dtype).view(np.float64)
                 else:
                     unpacked_data = span.data_view(self.dtype)
             if data_accumulate is not None:
@@ -827,6 +830,7 @@ class NumpyBlock(MultiTransformBlock):
 
         self.gulp_size['in_1'] = test_input_data.nbytes
         self.gulp_size['out_1'] = test_output_data.nbytes
+        print self.gulp_size
 
         self.header['out_1'] = dict(self.header['in_1'])
         self.header['out_1']['dtype'] = str(test_output_data.dtype)
