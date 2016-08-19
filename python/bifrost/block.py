@@ -832,6 +832,7 @@ class NumpyBlock(MultiTransformBlock):
         self.header['out_1']['nbit'] = 8*test_output_data.nbytes//np.product(test_output_data.shape)
         self.header['out_1']['shape'] = list(test_output_data.shape)
     def main(self):
+        import itertools
         inputs = []
         for key in self.ring_names:
             if key[:2] == 'in':
@@ -840,7 +841,10 @@ class NumpyBlock(MultiTransformBlock):
             for inspan, outspan in self.izip(self.read('in_1'), self.write('out_1')):
                 outspan[:] = self.function(inspan)[:]
         else:
-            for inspan1, inspan2, outspan in self.izip(self.read(*inputs), self.write('out_1')):
-                inspan1 = inspan1.reshape(self.header['in_1']['shape'])
-                inspan2 = inspan2.reshape(self.header['in_2']['shape'])
-                outspan[:] = self.function(inspan1, inspan2).ravel()
+            for allspans in itertools.izip(self.read(*inputs), self.write('out_1')):
+                allspans = list(allspans)
+                outspan = allspans[1][0]
+                inspans = list(allspans[0])
+                for i, input_name in enumerate(inputs):
+                    inspans[i] = inspans[i].reshape(self.header[input_name]['shape'])
+                outspan[:] = self.function(*inspans).ravel()
