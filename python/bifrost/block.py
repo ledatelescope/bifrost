@@ -834,23 +834,17 @@ class NumpyBlock(MultiTransformBlock):
             dtypes.append(dtype)
             test_input_arrays.append(input_array)
         if len(outputs) == 1:
-            test_output_data = self.function(*test_input_arrays)
-            assert type(test_output_data) == np.ndarray
-            self.gulp_size['out_1'] = test_output_data.nbytes
-            self.header['out_1'] = {}
-            self.header['out_1']['dtype'] = str(test_output_data.dtype)
-            self.header['out_1']['nbit'] = 8*test_output_data.nbytes//np.product(test_output_data.shape)
-            self.header['out_1']['shape'] = list(test_output_data.shape)
+            test_output_arrays.extend([self.function(*test_input_arrays)])
         else:
             test_output_arrays.extend(self.function(*test_input_arrays))
-            for index, output_name in enumerate(outputs):
-                test_output_data = test_output_arrays[index]
-                assert type(test_output_data) == np.ndarray
-                self.gulp_size[output_name] = test_output_data.nbytes
-                self.header[output_name] = {}
-                self.header[output_name]['dtype'] = str(test_output_data.dtype)
-                self.header[output_name]['nbit'] = 8*test_output_data.nbytes//np.product(test_output_data.shape)
-                self.header[output_name]['shape'] = list(test_output_data.shape)
+        for index, output_name in enumerate(outputs):
+            test_output_data = test_output_arrays[index]
+            assert type(test_output_data) == np.ndarray
+            self.gulp_size[output_name] = test_output_data.nbytes
+            self.header[output_name] = {}
+            self.header[output_name]['dtype'] = str(test_output_data.dtype)
+            self.header[output_name]['nbit'] = 8*test_output_data.nbytes//np.product(test_output_data.shape)
+            self.header[output_name]['shape'] = list(test_output_data.shape)
     def main(self):
         """Call self.function on all of the input spans for each input ring"""
         inputs = []
