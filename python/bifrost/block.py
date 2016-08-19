@@ -799,11 +799,14 @@ class WaterfallBlock(object):
         return waterfall_matrix
 class NumpyBlock(MultiTransformBlock):
     def __init__(self, function, inputs=1, outputs=1):
-        """Based on the number of inputs, set up enough ring_names"""
+        """Based on the number of inputs/outputs, set up enough ring_names
+            for the pipeline to call."""
         super(NumpyBlock, self).__init__()
         self.ring_names = {
             'in_1': "First input",
             'out_1': "First output"}
+        self.inputs = inputs
+        self.outputs = outputs
         for index in range(1, inputs+1):
             self.ring_names['in_'+str(index)] = "Input number %d" % index
         for index in range(1, outputs+1):
@@ -843,28 +846,16 @@ class NumpyBlock(MultiTransformBlock):
             self.header[output_name]['shape'] = list(test_output_data.shape)
     def main(self):
         """Call self.function on all of the input spans for each input ring"""
-        inputs = []
-        outputs = []
-        for key in self.ring_names:
-            if key[:2] == 'in':
-                inputs.append(key)
-            elif key[:3] == 'out':
-                outputs.append(key)
-        if len(inputs) == 1:
-            if len(outputs) == 1:
-                for inspan, outspan in self.izip(self.read('in_1'), self.write('out_1')):
-                    outspan[:] = self.function(inspan)[:]
-            else:
-                for allspans in self.izip(self.read('in_1'), self.write(*outputs)):
-                    inspan = allspans[0].reshape(self.header['in_1']['shape'])
-                    outspans = list(allspans[1:])
-                    output_data = self.function(inspan)
-                    for i, output in enumerate(outputs):
-                        outspans[i][:] = output_data[i].reshape(self.header[output]['shape'])
-        else:
-            for allspans in self.izip(self.read(*inputs), self.write('out_1')):
-                outspan = allspans[-1]
-                inspans = list(allspans[:-1])
-                for i, input_name in enumerate(inputs):
-                    inspans[i] = inspans[i].reshape(self.header[input_name]['shape'])
-                outspan[:] = self.function(*inspans).ravel()
+        inputs = ['in_%d' % (i+1) for i in range(self.inputs)]
+        outputs = ['out_%d' % (i+1) for i in range(self.outputs)]
+        for allspans in self.izip(self.read(*inputs), self.write(*outputs)):
+            inspans = allspans[:self.inputs]
+            outspans = allspans[self.inputs:]
+            for i, input_name in enumerate(inputs):
+                inspans[i] = inspans[i].reshape(self.header[input_name]['shape'])
+            output_data = []
+            output_data = self.function(*inspans)
+            if type(output_data) is np.ndarray:
+                output_data = [output_data]
+            for i, output_name in enumerate(outputs):
+                outspans[i][:] = output_data[i].ravel()
