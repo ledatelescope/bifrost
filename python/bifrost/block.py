@@ -825,7 +825,7 @@ class WaterfallBlock(object):
                     pass
         return waterfall_matrix
 class NumpyBlock(MultiTransformBlock):
-    def __init__(self, function, inputs):
+    def __init__(self, function, inputs, outputs):
         """Based on the number of inputs, set up enough ring_names"""
         super(NumpyBlock, self).__init__()
         self.ring_names = {
@@ -834,18 +834,26 @@ class NumpyBlock(MultiTransformBlock):
         if inputs > 1:
             for index in range(1, inputs+1):
                 self.ring_names['in_'+str(index)] = ""
+        if outputs > 1:
+            for index in range(1, outputs+1):
+                self.ring_names['out_'+str(index)] = ""
         self.inputs = inputs
+        self.outputs = outputs
         self.function = function
         assert callable(self.function)
     def load_settings(self):
         """Estimate the output settings based on zero matrices
             of the input shapes and data types"""
         inputs = []
+        outputs = []
+        dtypes = []
+        test_input_arrays = []
+        test_output_arrays = []
         for key in self.ring_names:
             if key[:2] == 'in':
                 inputs.append(key)
-        dtypes = []
-        test_input_arrays = []
+            elif key[:3] == 'out':
+                outputs.append(key)
         for input_name in inputs:
             dtype = np.dtype(self.header[input_name]['dtype']).type
             input_array = np.zeros(
@@ -854,22 +862,34 @@ class NumpyBlock(MultiTransformBlock):
             self.gulp_size[input_name] = input_array.nbytes
             dtypes.append(dtype)
             test_input_arrays.append(input_array)
-
-        test_output_data = self.function(*test_input_arrays)
-        self.gulp_size['out_1'] = test_output_data.nbytes
-        self.header['out_1'] = {}
-        self.header['out_1']['dtype'] = str(test_output_data.dtype)
-        self.header['out_1']['nbit'] = 8*test_output_data.nbytes//np.product(test_output_data.shape)
-        self.header['out_1']['shape'] = list(test_output_data.shape)
+        test_output_arrays.extend(self.function(*test_input_arrays))
+        for index, output_name in enumerate(outputs):
+            test_output_data = test_output_arrays[index]
+            self.gulp_size[output_name] = test_output_data.nbytes
+            self.header[output_name] = {}
+            self.header[output_name]['dtype'] = str(test_output_data.dtype)
+            self.header[output_name]['nbit'] = 8*test_output_data.nbytes//np.product(test_output_data.shape)
+            self.header[output_name]['shape'] = list(test_output_data.shape)
     def main(self):
         """Call self.function on all of the input spans for each input ring"""
         inputs = []
+        outputs = []
         for key in self.ring_names:
             if key[:2] == 'in':
                 inputs.append(key)
+            elif key[:3] == 'out':
+                outputs.append(key)
         if len(inputs) == 1:
-            for inspan, outspan in self.izip(self.read('in_1'), self.write('out_1')):
-                outspan[:] = self.function(inspan)[:]
+            if len(outputs) == 1:
+                for inspan, outspan in self.izip(self.read('in_1'), self.write('out_1')):
+                    outspan[:] = self.function(inspan)[:]
+            else:
+                for allspans in self.izip(self.read('in_1'), self.write(*outputs)):
+                    inspan = allspans[0].reshape(self.header['in_1']['shape'])
+                    outspans = list(allspans[1:])
+                    output_data = self.function(inspan)
+                    for i, output in enumerate(outputs):
+                        outspans[i][:] = output_data[i].reshape(self.header[output]['shape'])
         else:
             for allspans in self.izip(self.read(*inputs), self.write('out_1')):
                 outspan = allspans[-1]
