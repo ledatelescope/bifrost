@@ -437,3 +437,14 @@ class TestNumpyBlock(unittest.TestCase):
             NumpyBlock(function=np.fft.fft),
             {'in_1': 0, 'out_1': 1}])
         self.expected_result = np.fft.fft(self.test_array)
+    def test_two_inputs(self):
+        """Test that two input rings work"""
+        def dstack_handler(array_1, array_2):
+            return np.dstack((array_1, array_2))
+        self.blocks.append([
+            NumpyBlock(function=np.copy),
+            {'in_1': 0, 'out_1': 2}])
+        self.blocks.append([
+            NumpyBlock(function=dstack_handler),
+            {'in_1': 0, 'in_2': 2, 'out_1': 1}])
+        self.expected_result = np.dstack((self.test_array, self.test_array))
