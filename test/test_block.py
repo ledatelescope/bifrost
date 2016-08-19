@@ -470,5 +470,5 @@ class TestNumpyBlock(unittest.TestCase):
             return (array, array)
         self.blocks.append([
             NumpyBlock(function=double, inputs=1, outputs=2),
-            {'in_1': 0, 'out_1': 1, 'out_2': 2}])
+            {'in_1': 0, 'out_1': 2, 'out_2': 1}])
         self.expected_result = [1, 2, 3, 4]
