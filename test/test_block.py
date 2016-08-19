@@ -432,3 +432,16 @@ class TestNumpyBlock(unittest.TestCase):
         Pipeline(blocks).main()
         result = np.loadtxt('.log.txt').astype(np.float32)
         np.testing.assert_almost_equal(result, [1, 2, 3])
+    def test_boolean_output(self):
+        """Convert a ring into boolean output"""
+        def greater_than_two(array):
+            return array>2
+        blocks = []
+        blocks.append((TestingBlock([1, 2, 3]), [], [0]))
+        blocks.append([
+            NumpyBlock(function=greater_than_two),
+            {'in_1': 0, 'out_1': 1}])
+        blocks.append((WriteAsciiBlock('.log.txt'), [1], []))
+        Pipeline(blocks).main()
+        result = np.loadtxt('.log.txt').astype(np.float32)
+        np.testing.assert_almost_equal(result, [0, 0, 1])
