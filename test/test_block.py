@@ -475,3 +475,19 @@ class TestNumpyBlock(unittest.TestCase):
             NumpyBlock(function=dstack_handler, inputs=2),
             {'in_1': 0, 'in_2': 2, 'out_1': 1}])
         self.expected_result = np.dstack((self.test_array, self.test_array)).ravel()
+    def test_N_input(self):
+        """Test that 100 input rings work"""
+        def dstack_handler(*args):
+            return np.dstack(tuple(args))
+        number_inputs = 100
+        connections = {'in_1': 0, 'out_1': 1}
+        for index in range(number_inputs):
+            self.blocks.append([
+                NumpyBlock(function=np.copy, inputs=1),
+                {'in_1': 0, 'out_1': index+2}])
+            connections['in_'+str(index+2)] = index+2
+        self.blocks.append([
+            NumpyBlock(function=dstack_handler, inputs=len(connections)-1),
+            connections])
+        print connections
+        self.expected_result = np.dstack((self.test_array,)*(len(connections)-1)).ravel()
