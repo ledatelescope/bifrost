@@ -805,9 +805,9 @@ class NumpyBlock(MultiTransformBlock):
             'in_1': "First input",
             'out_1': "First output"}
         for index in range(1, inputs+1):
-            self.ring_names['in_'+str(index)] = ""
+            self.ring_names['in_'+str(index)] = "Input number %d" % index
         for index in range(1, outputs+1):
-            self.ring_names['out_'+str(index)] = ""
+            self.ring_names['out_'+str(index)] = "Output number %d" % index
         self.function = function
         assert callable(self.function)
     def load_settings(self):
@@ -815,7 +815,6 @@ class NumpyBlock(MultiTransformBlock):
             of the input shapes and data types"""
         inputs = []
         outputs = []
-        dtypes = []
         test_input_arrays = []
         test_output_arrays = []
         for key in self.ring_names:
@@ -829,7 +828,6 @@ class NumpyBlock(MultiTransformBlock):
                 shape=self.header[input_name]['shape'],
                 dtype=dtype)
             self.gulp_size[input_name] = input_array.nbytes
-            dtypes.append(dtype)
             test_input_arrays.append(input_array)
         if len(outputs) == 1:
             test_output_arrays.extend([self.function(*test_input_arrays)])
