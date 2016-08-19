@@ -781,3 +781,17 @@ class WaterfallBlock(object):
                     print "Bad shape for waterfall"
                     pass
         return waterfall_matrix
+class NumpyBlock(MultiTransformBlock):
+    ring_names = {
+        'in_1': "First input",
+        'out_1': "First output"}
+    def __init__(self, function):
+        super(NumpyBlock, self).__init__()
+        self.function = function
+    def load_settings(self):
+        self.header['out_1'] = self.header['in_1']
+        self.gulp_size['in_1'] = 3*4
+        self.gulp_size['out_1'] = 3*4
+    def main(self):
+        for inspan, outspan in self.izip(self.read('in_1'), self.write('out_1')):
+            outspan[:] = inspan[:]
