@@ -489,7 +489,6 @@ class TestNumpyBlock(unittest.TestCase):
         self.blocks.append([
             NumpyBlock(function=dstack_handler, inputs=len(connections)-1),
             connections])
-        print connections
         self.expected_result = np.dstack((self.test_array,)*(len(connections)-1)).ravel()
     def test_two_outputs(self):
         """Test that two output rings work by copying input data to both"""
