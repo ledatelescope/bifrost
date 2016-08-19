@@ -788,10 +788,11 @@ class NumpyBlock(MultiTransformBlock):
     def __init__(self, function):
         super(NumpyBlock, self).__init__()
         self.function = function
+        assert callable(self.function)
     def load_settings(self):
         self.header['out_1'] = self.header['in_1']
-        self.gulp_size['in_1'] = 3*4
-        self.gulp_size['out_1'] = 3*4
+        self.gulp_size['in_1'] = np.product(self.header['in_1']['shape'])*self.header['in_1']['nbit']//8
+        self.gulp_size['out_1'] = self.gulp_size['in_1']
     def main(self):
         for inspan, outspan in self.izip(self.read('in_1'), self.write('out_1')):
-            outspan[:] = inspan[:]
+            outspan[:] = self.function(inspan)
