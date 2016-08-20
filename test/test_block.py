@@ -500,14 +500,14 @@ class TestNumpyBlock(unittest.TestCase):
             {'in_1': 0, 'out_1': 2, 'out_2': 1}])
         self.expected_result = [1, 2, 3, 4]
     def test_N_input_N_output(self):
-        """Test that 1000 input and 1000 output rings work"""
+        """Test that 10 input and 10 output rings work"""
         def dstack_handler(*args):
             """Stack all input arrays"""
             return np.dstack(tuple(args))
         def identity(*args):
             """Return all arrays passed"""
             return args
-        N = 1000
+        N = 10
         connections = {}
         for index in range(N):
             """Simple 1 to 1 copy block"""
