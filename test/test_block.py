@@ -396,7 +396,7 @@ class TestMultiTransformBlock(unittest.TestCase):
             Pipeline(blocks).main()
         blocks[1] = [
             MultiAddBlock(),
-            {'bad_ring_name':0, 'in_2':0, 'out_sum': 1}] 
+            {'bad_ring_name':0, 'in_2':0, 'out_sum': 1}]
         with self.assertRaises(AssertionError):
             Pipeline(blocks).main()
 class TestSplitterBlock(unittest.TestCase):
@@ -427,6 +427,7 @@ class TestNumpyBlock(unittest.TestCase):
         self.test_array = [1, 2, 3, 4]
         self.blocks.append((TestingBlock(self.test_array), [], [0]))
         self.blocks.append((WriteAsciiBlock('.log.txt'), [1], []))
+        self.expected_result = []
     def tearDown(self):
         """Run the pipeline and test the output against the expectation"""
         Pipeline(self.blocks).main()
@@ -444,7 +445,9 @@ class TestNumpyBlock(unittest.TestCase):
     def test_boolean_output(self):
         """Convert a ring into boolean output"""
         def greater_than_two(array):
-            return array>2
+            """Return a matrix representing whether each element
+                is greater than 2"""
+            return array > 2
         self.blocks.append([
             NumpyBlock(function=greater_than_two),
             {'in_1': 0, 'out_1': 1}])
@@ -452,6 +455,7 @@ class TestNumpyBlock(unittest.TestCase):
     def test_different_size_output(self):
         """Test that the output size can be different"""
         def first_half(array):
+            """Only return the first half of the input vector"""
             array = np.array(array)
             return array[:int(array.size/2)]
         self.blocks.append([
@@ -467,6 +471,7 @@ class TestNumpyBlock(unittest.TestCase):
     def test_two_inputs(self):
         """Test that two input rings work"""
         def dstack_handler(array_1, array_2):
+            """Stack two matrices along a third dimension"""
             return np.dstack((array_1, array_2))
         self.blocks.append([
             NumpyBlock(function=np.copy),
@@ -475,7 +480,7 @@ class TestNumpyBlock(unittest.TestCase):
             NumpyBlock(function=dstack_handler, inputs=2),
             {'in_1': 0, 'in_2': 2, 'out_1': 1}])
         self.expected_result = np.dstack((self.test_array, self.test_array)).ravel()
-    def test_N_input(self):
+    def test_100_inputs(self):
         """Test that 100 input rings work"""
         def dstack_handler(*args):
             """Stack all input arrays"""
@@ -494,12 +499,13 @@ class TestNumpyBlock(unittest.TestCase):
     def test_two_outputs(self):
         """Test that two output rings work by copying input data to both"""
         def double(array):
+            """Return two of the inputted matrix"""
             return (array, array)
         self.blocks.append([
             NumpyBlock(function=double, outputs=2),
             {'in_1': 0, 'out_1': 2, 'out_2': 1}])
         self.expected_result = [1, 2, 3, 4]
-    def test_N_input_N_output(self):
+    def test_10_input_10_output(self):
         """Test that 10 input and 10 output rings work"""
         def dstack_handler(*args):
             """Stack all input arrays"""
@@ -507,22 +513,26 @@ class TestNumpyBlock(unittest.TestCase):
         def identity(*args):
             """Return all arrays passed"""
             return args
-        N = 10
+        number_rings = 10
         connections = {}
-        for index in range(N):
-            """Simple 1 to 1 copy block"""
+        for index in range(number_rings):
+            #Simple 1 to 1 copy block
             self.blocks.append([
                 NumpyBlock(function=np.copy),
                 {'in_1': 0, 'out_1': index+2}])
             connections['in_'+str(index+1)] = index+2
-            connections['out_'+str(index+1)] = index+2+N
-        """Copy N inputs to N outputs"""
-        self.blocks.append([NumpyBlock(function=identity, inputs=N, outputs=N), dict(connections)])
+            connections['out_'+str(index+1)] = index+2+number_rings
+        #Copy all inputs to all outputs
+        self.blocks.append([
+            NumpyBlock(function=identity, inputs=number_rings, outputs=number_rings),
+            dict(connections)])
         second_connections = {}
         for key in connections:
             if key[:3] == 'out':
                 second_connections['in'+key[3:]] = int(connections[key])
         second_connections['out_1'] = 1
-        """Stack N input rings into 1 output ring"""
-        self.blocks.append([NumpyBlock(function=dstack_handler, inputs=N, outputs=1), second_connections])
+        #Stack N input rings into 1 output ring
+        self.blocks.append([
+            NumpyBlock(function=dstack_handler, inputs=number_rings, outputs=1),
+            second_connections])
         self.expected_result = np.dstack((self.test_array,)*(len(second_connections)-1)).ravel()
