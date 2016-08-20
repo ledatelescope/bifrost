@@ -788,16 +788,18 @@ class WaterfallBlock(object):
             for span in sequence.read(gulp_size):
                 array_size = span.data.shape[1]/nchans
                 frequency = self.header['fch1']
-                try: 
+                try:
                     curr_data = np.reshape(
                         span.data,(-1, nchans))
                     waterfall_matrix = np.concatenate(
                         (waterfall_matrix, curr_data), 0)
                 except:
                     print "Bad shape for waterfall"
-                    pass
         return waterfall_matrix
 class NumpyBlock(MultiTransformBlock):
+    """Perform an arbitrary N ndarray -> M ndarray numpy function
+        Inside of a pipeline. This block will calculate all of the
+        necessary information for Bifrost."""
     def __init__(self, function, inputs=1, outputs=1):
         """Based on the number of inputs/outputs, set up enough ring_names
             for the pipeline to call."""
@@ -806,14 +808,25 @@ class NumpyBlock(MultiTransformBlock):
         self.outputs = ['out_%d' % (i+1) for i in range(outputs)]
         self.ring_names = {}
         for input_name in self.inputs:
-            self.ring_names[input_name] = "Input number " + input_name[3:]
+            ring_description = "Input number " + input_name[3:]
+            self.ring_names[input_name] = ring_description
         for output_name in self.outputs:
-            self.ring_names[output_name] = "Output number " + output_name[4:]
+            ring_description = "Output number " + output_name[4:]
+            self.ring_names[output_name] = ring_description
         self.function = function
         assert callable(self.function)
     def load_settings(self):
         """Estimate the output settings based on zero matrices
             of the input shapes and data types"""
+        test_input_arrays = self.generate_input_arrays()
+        if len(self.outputs) == 1:
+            test_output_arrays = [self.function(*test_input_arrays)]
+        else:
+            test_output_arrays = self.function(*test_input_arrays)
+        self.measure_output_settings(test_output_arrays)
+    def generate_input_arrays(self):
+        """Generate empty input arrays to test self.function, based on
+            input headers."""
         test_input_arrays = []
         for input_name in self.inputs:
             dtype = np.dtype(self.header[input_name]['dtype']).type
@@ -822,18 +835,21 @@ class NumpyBlock(MultiTransformBlock):
                 dtype=dtype)
             self.gulp_size[input_name] = input_array.nbytes
             test_input_arrays.append(input_array)
-        if len(self.outputs) == 1:
-            test_output_arrays = [self.function(*test_input_arrays)]
-        else:
-            test_output_arrays = self.function(*test_input_arrays)
+        return test_input_arrays
+    def measure_output_settings(self, test_arrays):
+        """Measure the settings of the output arrays and set header settings
+            appropriately.
+            @param[in] test_arrays The test arrays to measure"""
         for output_index, output_name in enumerate(self.outputs):
-            test_output_data = test_output_arrays[output_index]
-            assert type(test_output_data) == np.ndarray
-            self.gulp_size[output_name] = test_output_data.nbytes
+            test_output_array = test_arrays[output_index]
+            assert isinstance(test_output_array, np.ndarray)
+            nbytes = test_output_array.nbytes
+            nelements = test_output_array.size
+            self.gulp_size[output_name] = nbytes
             self.header[output_name] = {}
-            self.header[output_name]['dtype'] = str(test_output_data.dtype)
-            self.header[output_name]['nbit'] = 8*test_output_data.nbytes//np.product(test_output_data.shape)
-            self.header[output_name]['shape'] = list(test_output_data.shape)
+            self.header[output_name]['dtype'] = str(test_output_array.dtype)
+            self.header[output_name]['nbit'] = 8*nbytes//nelements
+            self.header[output_name]['shape'] = list(test_output_array.shape)
     def main(self):
         """Call self.function on all of the input spans"""
         for allspans in self.izip(self.read(*self.inputs), self.write(*self.outputs)):
@@ -842,7 +858,7 @@ class NumpyBlock(MultiTransformBlock):
             for i, input_name in enumerate(self.inputs):
                 inspans[i] = inspans[i].reshape(self.header[input_name]['shape'])
             output_data = self.function(*inspans)
-            if type(output_data) is np.ndarray:
+            if len(self.outputs) == 1:
                 output_data = [output_data]
-            for i, output_name in enumerate(self.outputs):
+            for i in range(len(self.outputs)):
                 outspans[i][:] = output_data[i].ravel()
