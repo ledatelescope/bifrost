@@ -799,7 +799,7 @@ class WaterfallBlock(object):
 class NumpyBlock(MultiTransformBlock):
     """Perform an arbitrary N ndarray -> M ndarray numpy function
         Inside of a pipeline. This block will calculate all of the
-        necessary information for Bifrost."""
+        necessary information for Bifrost based on the passed function."""
     def __init__(self, function, inputs=1, outputs=1):
         """Based on the number of inputs/outputs, set up enough ring_names
             for the pipeline to call."""
@@ -830,11 +830,9 @@ class NumpyBlock(MultiTransformBlock):
         test_input_arrays = []
         for input_name in self.inputs:
             dtype = np.dtype(self.header[input_name]['dtype']).type
-            input_array = np.zeros(
-                shape=self.header[input_name]['shape'],
-                dtype=dtype)
-            self.gulp_size[input_name] = input_array.nbytes
-            test_input_arrays.append(input_array)
+            array = np.zeros(shape=self.header[input_name]['shape'], dtype=dtype)
+            self.gulp_size[input_name] = array.nbytes
+            test_input_arrays.append(array)
         return test_input_arrays
     def measure_output_settings(self, test_arrays):
         """Measure the settings of the output arrays and set header settings
