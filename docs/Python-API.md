@@ -28,8 +28,6 @@ my_pipeline = Pipeline(my_blocks)
 my_pipeline.main() #Turn on the pipeline!
 ```
 
-[POST IMAGE OF GUI EQUIVALENT]
-
 A file named `'logfile.txt'` should now be created and filled with the result of our FFT. 
 
 As you can see, creating a high-throughput Bifrost pipeline from previously written blocks is a trivial process. This is the great thing about Bifrost: once you have modularized your functions into blocks, you can connect them seamlessly into a pipeline, and have your data streamed through in real-time. 
