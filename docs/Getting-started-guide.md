@@ -57,4 +57,10 @@ You will want to edit `user.mk` to suit your system. For example, if you are not
 
 `#NOCUDA   = 1 # Disable CUDA support`. 
 
+Now you can call `make`, and `make install` to install the C backend of Bifrost to your computer.
+
+After this, navigate to `bifrost/python`, and run `python setup.py install --user`, to install the Python interface.
+
+Trying to call `import bifrost` inside of a Python program will tell you if your install was successful or not.
+
 ## <a name="tutorial">Create your first pipeline</a>
