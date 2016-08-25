@@ -47,6 +47,8 @@ CUDA allows you to program your GPU from C and C++. You will need an NVIDIA GPU 
 
 If you are ready to work with a GPU, you will want to get the newest [CUDA toolkit](https://developer.nvidia.com/cuda-downloads). Follow the operating system-specific instructions to install.
 
+#### [OpenMP](http://openmp.org/wp/openmp-compilers/)
+
 ### Bifrost install
 
 Now you are ready to install Bifrost. Clone the GitHub master branch with 
