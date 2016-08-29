@@ -520,13 +520,9 @@ class TestNumpySourceBlock(unittest.TestCase):
         """For single yields, should act like a TestingBlock"""
         def generate_one_array():
             yield np.array([1, 2, 3, 4])
-        self.i = 0
         def assert_expectation(array):
-            if self.i > 0:
-                np.testing.assert_almost_equal(array, [1, 2, 3, 4])
-            self.i += 1
+            np.testing.assert_almost_equal(array, [1, 2, 3, 4])
         blocks = []
         blocks.append((NumpySourceBlock(generate_one_array), {'out_1': 0}))
         blocks.append((NumpyBlock(assert_expectation, outputs=0), {'in_1': 0}))
         Pipeline(blocks).main()
-        assert self.i > 0
