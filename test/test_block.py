@@ -509,3 +509,20 @@ class TestNumpyBlock(unittest.TestCase):
             NumpyBlock(function=dstack_handler, inputs=number_rings, outputs=1),
             second_connections])
         self.expected_result = np.dstack((self.test_array,)*(len(second_connections)-1)).ravel()
+class TestNumpySourceBlock(unittest.TestCase):
+    """Tests for a block which can call arbitrary functions that work on numpy arrays.
+        This should include the many numpy, scipy and astropy functions.
+        Furthermore, this block should automatically move GPU data to CPU,
+        call the numpy function, and then put out data on a CPU ring.
+        The purpose of this ring is mainly for tests or filling in missing
+        functionality."""
+    def test_simple_single_generation(self):
+        """For single yields, should act like a TestingBlock"""
+        def generate_one_array():
+            yield np.array([1, 2, 3, 4])
+        def assert_expectation(array):
+            np.testing.assert_almost_equal(array, [1, 2, 3, 4])
+        blocks = []
+        blocks.append((NumpySourceBlock(generate_one_array), {'out_1': 0}))
+        blocks.append((NumpyBlock(assert_expectation), {'in_1': 0}))
+        Pipeline(blocks).main()
