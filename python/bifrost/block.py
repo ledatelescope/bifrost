@@ -5,6 +5,7 @@ of a simple transform which works on a span by span basis.
 """
 import json
 import threading
+from contextlib import nested
 import numpy as np
 import matplotlib
 ## Use a graphical backend which supports threading
@@ -32,35 +33,53 @@ class Pipeline(object):
         """Return a list of unique ring indices"""
         all_names = []
         for block in self.blocks:
-            for port in block[1:]:
-                for index in port:
-                    if isinstance(index, Ring):
-                        all_names.append(index)
+            if issubclass(type(block[0]), MultiTransformBlock):
+                # These blocks are allowed dictionaries!
+                assert len(block[0].ring_names) == len(block[1])
+                for ring_name in block[0].ring_names:
+                    assert ring_name in block[1]
+                for param_name in block[1]:
+                    ring_id = block[1][param_name]
+                    if isinstance(ring_id, Ring):
+                        all_names.append(ring_id)
                     else:
-                        all_names.append(str(index))
+                        all_names.append(str(ring_id))
+            else:
+                for port in block[1:]:
+                    for index in port:
+                        if isinstance(index, Ring):
+                            all_names.append(index)
+                        else:
+                            all_names.append(str(index))
         return set(all_names)
     def main(self):
         """Start the pipeline, and finish when all threads exit"""
         threads = []
         for block in self.blocks:
-            input_rings = []
-            output_rings = []
-            input_rings.extend(
-                [self.rings[str(ring_index)] for ring_index in block[1]])
-            output_rings.extend(
-                [self.rings[str(ring_index)] for ring_index in block[2]])
-            if issubclass(type(block[0]), SourceBlock):
+            if issubclass(type(block[0]), MultiTransformBlock):
+                for param_name in block[1]:
+                    block[0].rings[param_name] = self.rings[str(block[1][param_name])]
                 threads.append(threading.Thread(
-                    target=block[0].main,
-                    args=[output_rings[0]]))
-            elif issubclass(type(block[0]), SinkBlock):
-                threads.append(threading.Thread(
-                    target=block[0].main,
-                    args=[input_rings[0]]))
+                    target=block[0].main))
             else:
-                threads.append(threading.Thread(
-                    target=block[0].main,
-                    args=[input_rings, output_rings]))
+                input_rings = []
+                output_rings = []
+                input_rings.extend(
+                    [self.rings[str(ring_index)] for ring_index in block[1]])
+                output_rings.extend(
+                    [self.rings[str(ring_index)] for ring_index in block[2]])
+                if issubclass(type(block[0]), SourceBlock):
+                    threads.append(threading.Thread(
+                        target=block[0].main,
+                        args=[output_rings[0]]))
+                elif issubclass(type(block[0]), SinkBlock):
+                    threads.append(threading.Thread(
+                        target=block[0].main,
+                        args=[input_rings[0]]))
+                else:
+                    threads.append(threading.Thread(
+                        target=block[0].main,
+                        args=[input_rings, output_rings]))
         for thread in threads:
             thread.daemon = True
             thread.start()
@@ -177,6 +196,129 @@ class SinkBlock(object):
             self.load_settings(sequence.header)
             for span in sequence.read(self.gulp_size):
                 yield span
+class MultiTransformBlock(object):
+    """Defines functions and attributes for a block with multi input/output"""
+    def __init__(self):
+        """Set up dictionaries for holding ring settings"""
+        super(MultiTransformBlock, self).__init__()
+        self.rings = {}
+        self.header = {}
+        self.gulp_size = {}
+    def flatten(self, *args):
+        """Flatten a nested tuple/list of tuples/lists"""
+        flattened_list = []
+        for element in args:
+            if isinstance(element, (tuple, list)):
+                flattened_list.extend(self.flatten(*element))
+            else:
+                flattened_list.extend([element])
+        return flattened_list
+    def izip(self, *iterables):
+        """Iterate through multpile iterators
+        This differs from itertools in that this izip combines list generators
+        into a single list generator"""
+        iterators = [iter(iterable) for iterable in iterables]
+        while True:
+            next_set = [iterator.next() for iterator in iterators]
+            yield self.flatten(*next_set)
+    def load_settings(self):
+        """Set by user to interpret input rings"""
+        pass
+    def read(self, *args):
+        """Iterate over selection of input rings"""
+        # list of sequences
+        for sequences in self.izip(*[self.rings[ring_name].read(guarantee=True) \
+                for ring_name in args]):
+            # sequences is a tuple of all sequences
+            for ring_name, sequence in self.izip(args, sequences):
+                self.header[ring_name] = json.loads(sequence.header.tostring())
+            self.load_settings()
+            # resize all rings
+            for ring_name in args:
+                self.rings[ring_name].resize(self.gulp_size[ring_name])
+            for spans in self.izip(*[sequence.read(self.gulp_size[ring_name]) \
+                    for ring_name, sequence in self.izip(args, sequences)]):
+                yield [span.data_view(np.float32)[0] for span in spans]
+    def write(self, *args):
+        """Iterate over selection of output rings"""
+        # resize all rings
+        for ring_name in args:
+            self.rings[ring_name].resize(self.gulp_size[ring_name])
+        # list of sequences
+        #TODO: Change this code if someone gives a reasonable answer on 
+        #http://stackoverflow.com/questions/38834827/multiple-with-statements-in-python-2-7-using-a-list-comprehension
+        with nested(*[self.rings[ring_name].begin_writing() \
+                for ring_name in args]) as out_rings:
+            with nested(*[out_ring.begin_sequence(
+                "",
+                0,
+                header=json.dumps(self.header[ring_name]),
+                nringlet=1) \
+                    for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
+                while True:
+                    with nested(*[out_sequence.reserve(self.gulp_size[ring_name]) \
+                            for out_sequence, ring_name in self.izip(
+                                out_sequences,
+                                args)]) as out_spans:
+                        #TODO: Other types and sizes
+                        yield tuple([out_span.data_view(np.float32)[0] for out_span in out_spans])
+class SplitterBlock(MultiTransformBlock):
+    """Block which splits up a ring into two"""
+    ring_names = {
+        'in': 'Input to split. List of floats',
+        'out_1': 'Gets first share of the ring. List of floats',
+        'out_2': 'Gets second share of the ring. List of floats'}
+    def __init__(self, sections):
+        """@param[in] sections List of two lists - each list is a
+                1D array of integers indicating sections of the ring
+                to cut. Like numpy slicing indices."""
+        super(SplitterBlock, self).__init__()
+        assert len(sections) == 2
+        self.sections = sections
+        self.header['out_1'] = {}
+        self.header['out_1']['dtype'] = str(np.float32)
+        self.header['out_1']['nbit'] = 32
+        #TODO: These sections should be applied to the incoming shapes
+        self.header['out_1']['shape'] = sections[0]
+        self.header['out_2'] = self.header['out_1']
+        self.header['out_2']['shape'] = sections[1]
+    def load_settings(self):
+        """Set the gulp sizes appropriate to the input ring"""
+        self.gulp_size['in'] = np.product(self.header['in']['shape'])*self.header['in']['nbit']//8
+        self.gulp_size['out_1'] = self.gulp_size['in']*np.product(self.header['out_1']['shape']) \
+                                    //np.product(self.header['in']['shape'])
+        self.gulp_size['out_2'] = self.gulp_size['in']*np.product(self.header['out_2']['shape']) \
+                                    //np.product(self.header['in']['shape'])
+    def main(self):
+        """Split the incoming ring into the outputs rings"""
+        for inspan, outspan1, outspan2 in self.izip(
+                self.read('in'),
+                self.write('out_1', 'out_2')):
+            outspan1[:] = inspan[self.sections[0]].ravel()
+            outspan2[:] = inspan[self.sections[1]].ravel()
+class MultiAddBlock(MultiTransformBlock):
+    """Block which adds two input rings"""
+    # name all rings with descriptions
+    ring_names = {
+        'in_1': 'First input to add. List of floats',
+        'in_2': 'Second input to add. List of floats',
+        'out_sum': 'Result of add. List of floats.'}
+    def __init__(self, *args, **kwargs):
+        #can hard code these, or calculate them during load_settings
+        super(MultiAddBlock, self).__init__()
+        self.gulp_size['in_1'] = 2*4
+        self.gulp_size['in_2'] = 2*4
+        self.gulp_size['out_sum'] = 2*4
+        self.header['out_sum'] = {}
+        self.header['out_sum']['dtype'] = str(np.float32)
+        self.header['out_sum']['nbit'] = '32'
+        self.header['out_sum']['shape'] = (2,)
+    def main(self):
+        """Iterate through the inputs, and add them to the output"""
+        for inspan1, inspan2, outspan in self.izip(
+                self.read('in_1', 'in_2'),
+                self.write('out_sum')):
+            outspan[:] = inspan1 + inspan2
 class TestingBlock(SourceBlock):
     """Block for debugging purposes.
     Allows you to pass arbitrary N-dimensional arrays in initialization,
@@ -325,7 +467,7 @@ class WriteAsciiBlock(SinkBlock):
             else:
                 data_accumulate = unpacked_data[0]
         text_file = open(self.filename, 'a')
-        np.savetxt(text_file, data_accumulate.reshape((1,-1)))
+        np.savetxt(text_file, data_accumulate.reshape((1, -1)))
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
@@ -639,4 +781,3 @@ class WaterfallBlock(object):
                     print "Bad shape for waterfall"
                     pass
         return waterfall_matrix
-
