@@ -31,7 +31,6 @@ Right now the only possible block type is one
 of a simple transform which works on a span by span basis.
 """
 import json
-import os
 import threading
 import numpy as np
 import matplotlib
@@ -41,27 +40,8 @@ from matplotlib import pyplot as plt
 import bifrost
 from bifrost import affinity
 from bifrost.ring import Ring
-from bifrost.sigproc import SigprocFile
+from bifrost.sigproc import SigprocFile, unpack
 
-def number_of_bits_to_datatype(number_bits, signed=False):
-    """Make a guess for the datatype based on the number
-        of bits"""
-    if number_bits >= 8:
-        if signed:
-            datatype = {8: np.int8,
-                        16: np.int16,
-                        32: np.float32,
-                        64: np.float64}[number_bits]
-        else:
-            datatype = {8: np.uint8,
-                        16: np.uint16,
-                        32: np.float32,
-                        64: np.float64}[number_bits]
-    else:
-        datatype = np.int8 if signed else np.uint8
-    return datatype
-
-#TODO: How does GNU Radio handle this?
 class Pipeline(object):
     """Class which connects blocks linearly, with
         one ring between each block. Does this by creating
@@ -69,15 +49,23 @@ class Pipeline(object):
         and running data through the rings."""
     def __init__(self, blocks):
         self.blocks = blocks
-        self.rings = [Ring() for count in range(
-            self.number_of_rings())]
-    def number_of_rings(self):
-        """Return how many rings will be used in
-            this pipeline."""
-        all_ports = [
-            index for block in self.blocks for index in [
-                port for port in block[1:] if port] if index]
-        return len(np.unique(np.array(all_ports)))
+        self.rings = {}
+        for index in self.unique_ring_names():
+            if isinstance(index, Ring):
+                self.rings[str(index)] = index
+            else:
+                self.rings[index] = Ring()
+    def unique_ring_names(self):
+        """Return a list of unique ring indices"""
+        all_names = []
+        for block in self.blocks:
+            for port in block[1:]:
+                for index in port:
+                    if isinstance(index, Ring):
+                        all_names.append(index)
+                    else:
+                        all_names.append(str(index))
+        return set(all_names)
     def main(self):
         """Start the pipeline, and finish when all threads exit"""
         threads = []
@@ -85,19 +73,44 @@ class Pipeline(object):
             input_rings = []
             output_rings = []
             input_rings.extend(
-                [self.rings[ring_index] for ring_index in block[1]])
+                [self.rings[str(ring_index)] for ring_index in block[1]])
             output_rings.extend(
-                [self.rings[ring_index] for ring_index in block[2]])
-            threads.append(threading.Thread(
-                target=block[0].main,
-                args=[input_rings, output_rings]))
+                [self.rings[str(ring_index)] for ring_index in block[2]])
+            if issubclass(type(block[0]), SourceBlock):
+                threads.append(threading.Thread(
+                    target=block[0].main,
+                    args=[output_rings[0]]))
+            elif issubclass(type(block[0]), SinkBlock):
+                threads.append(threading.Thread(
+                    target=block[0].main,
+                    args=[input_rings[0]]))
+            else:
+                threads.append(threading.Thread(
+                    target=block[0].main,
+                    args=[input_rings, output_rings]))
         for thread in threads:
             thread.daemon = True
             thread.start()
         for thread in threads:
             # Wait for exit
             thread.join()
-
+def insert_zeros_evenly(input_data, number_zeros):
+    """Insert zeros evenly in input_data.
+        These zeros are distibuted evenly throughout
+        the function, to help for binning of oddly
+        shaped arrays.
+    @param[in] input_data 1D array to contain zeros.
+    @param[out] number_zeros Number of zeros that need
+        to be added.
+    @returns input_data with extra zeros"""
+    insert_index = np.floor(
+        np.arange(
+            number_zeros,
+            step=1.0)*float(input_data.size)/number_zeros)
+    output_data = np.insert(
+        input_data, insert_index,
+        np.zeros(number_zeros))
+    return output_data
 class TransformBlock(object):
     """Defines the structure for a transform block"""
     def __init__(self, gulp_size=4096):
@@ -108,6 +121,8 @@ class TransformBlock(object):
         self.output_header = {}
         self.core = -1
     def load_settings(self, input_header):
+        """Load in input header and set up block attributes
+        @param[in] input_header Header sent from input ring"""
         self.output_header = input_header
     def iterate_ring_read(self, input_ring):
         """Iterate through one input ring"""
@@ -133,23 +148,175 @@ class TransformBlock(object):
     def ring_transfer(self, input_ring, output_ring):
         """Iterate through two rings span-by-span"""
         input_ring.resize(self.gulp_size)
-        output_ring.resize(self.gulp_size)
-        with output_ring.begin_writing() as oring:
-            for sequence in input_ring.read(guarantee=True):
-                self.load_settings(sequence.header)
+        for sequence in input_ring.read(guarantee=True):
+            self.load_settings(sequence.header)
+            if self.out_gulp_size is None:
+                self.out_gulp_size = self.gulp_size
+            output_ring.resize(self.out_gulp_size)
+            with output_ring.begin_writing() as oring:
                 with oring.begin_sequence(
                     sequence.name, sequence.time_tag,
                     header=self.output_header,
                     nringlet=sequence.nringlet) as oseq:
                     for ispan in sequence.read(self.gulp_size):
-                        with oseq.reserve(ispan.size) as ospan:
+                        with oseq.reserve(ispan.size*self.out_gulp_size/self.gulp_size) as ospan:
                             yield ispan, ospan
 
+class SourceBlock(object):
+    """Defines the structure for a source block"""
+    def __init__(self, gulp_size=4096):
+        super(SourceBlock, self).__init__()
+        self.gulp_size = gulp_size
+        self.output_header = {}
+        self.core = -1
+    def iterate_ring_write(
+            self, output_ring, sequence_name="",
+            sequence_time_tag=0):
+        """Iterate over output ring
+        @param[in] output_ring Ring to write to
+        @param[in] sequence_name Name to label sequence
+        @param[in] sequence_time_tag Time tag to label sequence
+        """
+        output_ring.resize(self.gulp_size)
+        with output_ring.begin_writing() as oring:
+            with oring.begin_sequence(
+                sequence_name, sequence_time_tag,
+                header=self.output_header,
+                nringlet=1) as oseq:
+                while True:
+                    with oseq.reserve(self.gulp_size) as span:
+                        yield span
+class SinkBlock(object):
+    """Defines the structure for a sink block"""
+    def __init__(self, gulp_size=4096):
+        super(SinkBlock, self).__init__()
+        self.gulp_size = gulp_size
+        self.header = {}
+        self.core = -1
+    def load_settings(self, input_header):
+        """Load in settings from input ring header"""
+        self.header = json.loads(input_header.tostring())
+    def iterate_ring_read(self, input_ring):
+        """Iterate through one input ring
+        @param[in] input_ring Ring to read through"""
+        input_ring.resize(self.gulp_size)
+        for sequence in input_ring.read(guarantee=True):
+            self.load_settings(sequence.header)
+            for span in sequence.read(self.gulp_size):
+                yield span
+class TestingBlock(SourceBlock):
+    """Block for debugging purposes.
+    Allows you to pass arbitrary N-dimensional arrays in initialization,
+    which will be outputted into a ring buffer"""
+    def __init__(self, test_array):
+        """@param[in] test_array A list or numpy array containing test data"""
+        super(TestingBlock, self).__init__()
+        self.test_array = np.array(test_array).astype(np.float32)
+        self.output_header = json.dumps(
+            {'nbit':32,
+             'dtype':str(np.float32),
+             'shape':self.test_array.shape})
+    def main(self, output_ring):
+        """Put the test array onto the output ring
+        @param[in] output_ring Holds the flattend test array in a single span"""
+        self.gulp_size = self.test_array.nbytes
+        for ospan in self.iterate_ring_write(output_ring):
+            ospan.data_view(np.float32)[0][:] = self.test_array.ravel()
+            break
+class WriteHeaderBlock(SinkBlock):
+    """Prints the header of a ring to a file"""
+    def __init__(self, filename):
+        """@param[in] test_array A list or numpy array containing test data"""
+        super(WriteHeaderBlock, self).__init__()
+        self.filename = filename
+    def load_settings(self, input_header):
+        """Load the header from json
+        @param[in] input_header The header from the ring"""
+        write_file = open(self.filename, 'w')
+        write_file.write(str(json.loads(input_header.tostring())))
+    def main(self, input_ring):
+        """Put the header into the file
+        @param[in] input_ring Contains the header in question"""
+        self.gulp_size = 1
+        span_dummy_generator = self.iterate_ring_read(input_ring)
+        span_dummy_generator.next()
+class FFTBlock(TransformBlock):
+    """Performs complex to complex IFFT on input ring data"""
+    def __init__(self, gulp_size):
+        super(FFTBlock, self).__init__()
+        self.nbit = 8
+        self.dtype = np.uint8
+        self.shape = (1, 1)
+    def load_settings(self, input_header):
+        header = json.loads(input_header.tostring())
+        self.nbit = header['nbit']
+        self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
+        if 'frame_shape' in header:
+            self.shape = header['frame_shape']
+        header['nbit'] = 64
+        header['dtype'] = str(np.complex64)
+        self.output_header = json.dumps(header)
     def main(self, input_rings, output_rings):
-        """Initiate the block's transform."""
-        affinity.set_core(self.core)
-
-class WriteAsciiBlock(TransformBlock):
+        """
+        @param[in] input_rings First ring in this list will be used for
+            data
+        @param[out] output_rings First ring in this list will be used for
+            data output."""
+        data_accumulate = None
+        for ispan in self.iterate_ring_read(input_rings[0]):
+            if self.nbit < 8:
+                unpacked_data = unpack(ispan.data_view(self.dtype), self.nbit)
+            else:
+                unpacked_data = ispan.data_view(self.dtype)
+            if data_accumulate is not None:
+                data_accumulate = np.concatenate((data_accumulate, unpacked_data[0]))
+            else:
+                data_accumulate = unpacked_data[0]
+        if self.shape != [1, 1]:
+            data_accumulate = np.reshape(data_accumulate, (self.shape[0], -1))
+        data_accumulate = data_accumulate.astype(np.complex64)
+        self.out_gulp_size = data_accumulate.nbytes
+        outspan_generator = self.iterate_ring_write(output_rings[0])
+        ospan = outspan_generator.next()
+        result = np.fft.fft(data_accumulate)
+        ospan.data_view(np.complex64)[0] = result.ravel()
+class IFFTBlock(TransformBlock):
+    """Performs complex to complex IFFT on input ring data"""
+    def __init__(self, gulp_size):
+        super(IFFTBlock, self).__init__()
+        self.gulp_size = gulp_size
+        self.nbit = 8
+        self.dtype = np.uint8
+    def load_settings(self, input_header):
+        header = json.loads(input_header.tostring())
+        self.nbit = header['nbit']
+        self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
+        header['nbit'] = 64
+        header['dtype'] = str(np.complex64)
+        self.output_header = json.dumps(header)
+    def main(self, input_rings, output_rings):
+        """
+        @param[in] input_rings First ring in this list will be used for
+            data
+        @param[out] output_rings First ring in this list will be used for 
+            data output."""
+        data_accumulate = None
+        for ispan in self.iterate_ring_read(input_rings[0]):
+            if self.nbit < 8:
+                unpacked_data = unpack(ispan.data_view(self.dtype), self.nbit)
+            else:
+                unpacked_data = ispan.data_view(self.dtype)
+            if data_accumulate is not None:
+                data_accumulate = np.concatenate((data_accumulate, unpacked_data[0]))
+            else:
+                data_accumulate = unpacked_data[0]
+        data_accumulate = data_accumulate.astype(np.complex64)
+        self.out_gulp_size = data_accumulate.nbytes
+        outspan_generator = self.iterate_ring_write(output_rings[0])
+        ospan = outspan_generator.next()
+        result = np.fft.ifft(data_accumulate)
+        ospan.data_view(np.complex64)[0][:] = result[:]
+class WriteAsciiBlock(SinkBlock):
     """Copies input ring's data into ascii format
         in a text file."""
     def __init__(self, filename, gulp_size=1048576):
@@ -157,34 +324,46 @@ class WriteAsciiBlock(TransformBlock):
         @param[out] gulp_size How much of the file to write at once"""
         super(WriteAsciiBlock, self).__init__()
         self.filename = filename
-        self.gulp_size = gulp_size 
-        self.datatype = np.uint8
-        ## erase file
-        open(self.filename, "w").close()
+        self.gulp_size = gulp_size
+        self.nbit = 8
+        self.dtype = np.uint8
+        open(self.filename, "w").close() ## erase file
     def load_settings(self, input_header):
         header_dict = json.loads(input_header.tostring())
-        self.datatype = number_of_bits_to_datatype(
-            header_dict['nbit']) 
-    def main(self, input_rings, output_rings):
+        self.nbit = header_dict['nbit']
+        self.dtype = np.dtype(header_dict['dtype'].split()[1].split(".")[1].split("'")[0]).type
+    def main(self, input_ring):
         """Initiate the writing to filename
         @param[in] input_rings First ring in this list will be used for
             data
         @param[out] output_rings This list of rings won't be used."""
-        span_generator = self.iterate_ring_read(input_rings[0])
+        span_generator = self.iterate_ring_read(input_ring)
+        data_accumulate = None
         for span in span_generator:
-            text_file = open(self.filename, 'a')
-            np.savetxt(text_file, span.data_view(self.datatype))
+            if self.nbit < 8:
+                unpacked_data = unpack(span.data_view(self.dtype), self.nbit)
+            else:
+                if self.dtype == np.complex64:
+                    unpacked_data = span.data_view(self.dtype).view(np.float32)
+                else:
+                    unpacked_data = span.data_view(self.dtype)
+            if data_accumulate is not None:
+                data_accumulate = np.concatenate((data_accumulate, unpacked_data[0]))
+            else:
+                data_accumulate = unpacked_data[0]
+        text_file = open(self.filename, 'a')
+        np.savetxt(text_file, data_accumulate.reshape((1,-1)))
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
         super(CopyBlock, self).__init__(gulp_size=gulp_size)
     def main(self, input_rings, output_rings):
+        """Iterate through first ring, copying to each output ring"""
         input_ring = input_rings[0]
         for output_ring in output_rings:
             for ispan, ospan in self.ring_transfer(input_ring, output_ring):
                 bifrost.memory.memcpy2D(ospan.data, ispan.data)
-
-class SigprocReadBlock(TransformBlock):
+class SigprocReadBlock(SourceBlock):
     """This block reads in a sigproc filterbank
     (.fil) file into a ring buffer"""
     def __init__(
@@ -197,15 +376,14 @@ class SigprocReadBlock(TransformBlock):
         @param[in] core Which CPU core to bind to (-1) is
             any
         """
+        super(SigprocReadBlock, self).__init__()
         self.filename = filename
         self.gulp_nframe = gulp_nframe
         self.core = core
-    def main(self, input_rings, output_rings):
-        """Read in the sigproc file to output_rings
-        @param[in] input_rings Should be an empty list, as this is a source
-        @param[out] output_rings List containing rings. First ring will 
-            be used to put the filterbank's data onto"""
-        with SigprocFile().open(self.filename,'rb') as ifile:
+    def main(self, output_ring):
+        """Read in the sigproc file to output_ring
+        @param[in] output_ring Ring to write to"""
+        with SigprocFile().open(self.filename, 'rb') as ifile:
             ifile.read_header()
             ohdr = {}
             ohdr['frame_shape'] = (ifile.nchans, ifile.nifs)
@@ -221,14 +399,13 @@ class SigprocReadBlock(TransformBlock):
             ohdr['fch1'] = float(ifile.header['fch1'])
             ohdr['foff'] = float(ifile.header['foff'])
             self.output_header = json.dumps(ohdr)
-            self.out_gulp_size = self.gulp_nframe*ifile.nchans*ifile.nifs*ifile.nbits/8
-            out_span_generator = self.iterate_ring_write(output_rings[0])
+            self.gulp_size = self.gulp_nframe*ifile.nchans*ifile.nifs*ifile.nbits/8
+            out_span_generator = self.iterate_ring_write(output_ring)
             for span in out_span_generator:
-                size = ifile.file_object.readinto(span.data.data)
-                span.commit(size)
-                if size == 0:
+                output_size = ifile.file_object.readinto(span.data.data)
+                span.commit(output_size)
+                if output_size < self.gulp_size:
                     break
-
 class KurtosisBlock(TransformBlock):
     """This block performs spectral kurtosis and cleaning
         on sigproc-formatted data in rings"""
@@ -242,48 +419,50 @@ class KurtosisBlock(TransformBlock):
             this block. (-1 is any)
         """
         super(KurtosisBlock, self).__init__()
-        self.SAMPLING_RATE = 41.66666666667e-6    # Should pass in header
-        self.N_CHAN = 109
-        self.EXPECTED_V2 = 0.5      # Just use for testing
         self.gulp_size = gulp_size
         self.core = core
+        self.output_header = {}
+        self.settings = {}
+        self.nchan = 1
+        self.dtype = np.uint8
     def load_settings(self, input_header):
         self.output_header = input_header
         self.settings = json.loads(input_header.tostring())
         self.nchan = self.settings["frame_shape"][0]
-        #TODO: Clean this up
         dtype_str = self.settings["dtype"].split()[1].split(".")[1].split("'")[0]
         self.dtype = np.dtype(dtype_str)
     def main(self, input_rings, output_rings):
         """Calls a kurtosis algorithm and uses the result
             to clean the input data of RFI, and move it to the
             output ring."""
+        expected_v2 = 0.5
         for ispan, ospan in self.ring_transfer(input_rings[0], output_rings[0]):
             nsample = ispan.size/self.nchan/(self.settings['nbit']/8)
+            # Raw data -> power array of the right type
             power = ispan.data.reshape(
-                nsample, 
-                self.nchan*self.settings['nbit']/8).view(self.dtype) # Raw data -> power array of the right type
-            # Follow section 3.1 of the Nita paper. 
-            M = power.shape[0] # Number of samples, the sample is a power value in a frequency bin from an FFT, i.e. the beamformer values in a channel
+                nsample,
+                self.nchan*self.settings['nbit']/8).view(self.dtype)
+            # Following section 3.1 of the Nita paper.
+            # the sample is a power value in a frequency bin from an FFT,
+            # i.e. the beamformer values in a channel
+            number_samples = power.shape[0]
             bad_channels = []
             for chan in range(self.nchan):
-                S1 = np.sum(power[:, chan])
-                S2 = np.sum(power[:, chan]**2)
-                V2 = (M/(M-1))*(M*S2/(S1**2) -1)          # Equation 21
-                VarV2 = 24.0/M                            # Equation 23
-                if abs(self.EXPECTED_V2-V2) > 0.1:
+                nita_s1 = np.sum(power[:, chan])
+                nita_s2 = np.sum(power[:, chan]**2)
+                # equation 21
+                nita_v2 = (number_samples/(number_samples-1))*\
+                    (number_samples*nita_s2/(nita_s1**2)-1)
+                if abs(expected_v2-nita_v2) > 0.1:
                     bad_channels.append(chan)
-            if len(bad_channels) > 0:
-                flag_power = power.copy()
-                for chan in range(self.nchan):
-                    if chan in bad_channels: flag_power[:, chan] = 0    # set bad channel to zero
-                ospan.data[0][:] = flag_power.view(dtype=np.uint8).ravel()
-            else:
-                with oseq.reserve(ispan.size) as ospan:
-                    bifrost.memory.memcpy2D(ospan.data, ispan.data)      # Transfer data unchanged
+            flag_power = power.copy()
+            for chan in range(self.nchan):
+                if chan in bad_channels:
+                    flag_power[:, chan] = 0    # set bad channel to zero
+            ospan.data[0][:] = flag_power.view(dtype=np.uint8).ravel()
 
 class DedisperseBlock(object):
-    """This block calculates the dedispersion of 
+    """This block calculates the dedispersion of
         sigproc-formatted data in a ring, and tags
         it in the headers"""
     def __init__(
@@ -293,7 +472,7 @@ class DedisperseBlock(object):
         @param[in] ring Ring containing a 1d
             timeseries with a source affected
             by DM
-        @param[in] core Which OpenMP core to use for 
+        @param[in] core Which OpenMP core to use for
             this block. (-1 is any)
         @param[in] gulp_size How many bytes of the ring to
             read at once.
@@ -314,7 +493,7 @@ class DedisperseBlock(object):
 class FoldBlock(TransformBlock):
     """This block folds a signal into a histogram"""
     def __init__(
-            self, bins, period=1e-3, 
+            self, bins, period=1e-3,
             gulp_size=4096*256, dispersion_measure=0,
             core=-1):
         """
@@ -324,7 +503,7 @@ class FoldBlock(TransformBlock):
             read at once.
         @param[in] dispersion_measure DM of the desired
             source (pc cm^-3)
-        @param[in] core Which OpenMP core to use for 
+        @param[in] core Which OpenMP core to use for
             this block. (-1 is any)
         """
         super(FoldBlock, self).__init__()
@@ -333,6 +512,7 @@ class FoldBlock(TransformBlock):
         self.period = period
         self.dispersion_measure = dispersion_measure 
         self.core = core
+        self.data_settings = {}
     def calculate_bin_indices(
             self, tstart, tsamp, data_size):
         """Calculate the bin that each time sample should be
@@ -346,23 +526,6 @@ class FoldBlock(TransformBlock):
         arrival_time = tstart+tsamp*np.arange(data_size)
         phase = np.fmod(arrival_time, self.period)
         return np.floor(phase/self.period*self.bins).astype(int)
-    def insert_zeros_evenly(self, input_data, number_zeros):
-        """Insert zeros as elements in input_data.
-            These zeros are distibuted evenly throughout
-            the function, to help for binning of oddly
-            shaped arrays.
-        @param[in] input_data 1D array to contain zeros.
-        @param[out] number_zeros Number of zeros that need
-            to be added.
-        @returns input_data with extra zeros"""
-        insert_index = np.floor(
-            np.arange(
-                number_zeros,
-                step=1.0)*float(input_data.size)/number_zeros)
-        output_data = np.insert(
-            input_data, insert_index,
-            np.zeros(number_zeros))
-        return output_data
     def calculate_delay(self, frequency, reference_frequency):
         """Calculate the time delay because of frequency dispersion
         @param[in] frequency The current channel's frequency(MHz)
@@ -376,7 +539,7 @@ class FoldBlock(TransformBlock):
         self.data_settings = json.loads(
             "".join(
                 [chr(item) for item in input_header]))
-        self.output_header = json.dumps({'nbit':32})
+        self.output_header = json.dumps({'nbit':32, 'dtype': str(np.float32)})
     def main(self, input_rings, output_rings):
         """Generate a histogram from the input ring data
         @param[in] input_rings List with first ring containing
@@ -387,12 +550,11 @@ class FoldBlock(TransformBlock):
         histogram = np.reshape(
             np.zeros(self.bins).astype(np.float32),
             (1, self.bins))
-        iterates = 0
+        tstart = None
         for span in self.iterate_ring_read(input_rings[0]):
             nchans = self.data_settings['frame_shape'][0]
-            tstart = self.data_settings['tstart']
-            tstart += iterates*self.data_settings['tsamp']*self.gulp_size*8/self.data_settings['nbit']/nchans
-            iterates += 1
+            if tstart is None:
+                tstart = self.data_settings['tstart']
             frequency = self.data_settings['fch1']
             for chan in range(nchans):
                 modified_tstart = tstart - self.calculate_delay(
@@ -401,15 +563,16 @@ class FoldBlock(TransformBlock):
                 frequency -= self.data_settings['foff']
                 sort_indices = np.argsort(
                     self.calculate_bin_indices(
-                        modified_tstart, self.data_settings['tsamp'], 
+                        modified_tstart, self.data_settings['tsamp'],
                         span.data.shape[1]/nchans))
                 sorted_data = span.data[0][chan::nchans][sort_indices]
                 extra_elements = np.round(self.bins*(1-np.modf(
                     float(span.data.shape[1]/nchans)/self.bins)[0])).astype(int)
-                sorted_data_with_zeros = self.insert_zeros_evenly(
-                    sorted_data, extra_elements)
+                sorted_data = insert_zeros_evenly(sorted_data, extra_elements)
                 histogram += np.sum(
-                    sorted_data_with_zeros.reshape(self.bins, -1), 1).astype(np.float32)
+                    sorted_data.reshape(self.bins, -1), 1).astype(np.float32)
+            tstart += self.data_settings['tsamp']*\
+                self.gulp_size*8/self.data_settings['nbit']/nchans
         self.out_gulp_size = self.bins*4
         out_span_generator = self.iterate_ring_write(output_rings[0])
         out_span = out_span_generator.next()
@@ -419,7 +582,7 @@ class FoldBlock(TransformBlock):
 
 class WaterfallBlock(object):
     """This block creates a waterfall block
-        based on the data in a ring, and stores it 
+        based on the data in a ring, and stores it
         in the headers"""
     def __init__(
             self, ring, imagename,
