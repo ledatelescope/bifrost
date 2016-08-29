@@ -2,9 +2,47 @@
 This file tests all aspects of the Bifrost.block module.
 """
 import unittest
-from bifrost.block import *
+import numpy as np
 from bifrost.ring import Ring
+from bifrost.block import TestingBlock, WriteAsciiBlock, WriteHeaderBlock
+from bifrost.block import SigprocReadBlock, CopyBlock, KurtosisBlock, FoldBlock
+from bifrost.block import IFFTBlock, FFTBlock, Pipeline
 
+class TestIterateRingWrite(unittest.TestCase):
+    """Test the iterate_ring_write function of SourceBlocks/TransformBlocks"""
+    def test_throughput(self):
+        """Read in data with a small throughput size. Expect all to go through."""
+        blocks = []
+        blocks.append((
+            SigprocReadBlock(
+                '/data1/mcranmer/data/fake/1chan8bitNoDM.fil', gulp_nframe=4096),
+            [], [0]))
+        blocks.append((WriteAsciiBlock('.log.txt'), [0], []))
+        Pipeline(blocks).main()
+        log_data = np.loadtxt('.log.txt')
+        self.assertEqual(log_data.size, 12800)
+class TestTestingBlock(unittest.TestCase):
+    """Test the TestingBlock for basic functionality"""
+    def setUp(self):
+        """Initiate blocks list with write asciiBlock"""
+        self.blocks = []
+        self.blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), [0], []))
+    def test_simple_dump(self):
+        """Input some numbers, and ensure they are written to a file"""
+        self.blocks.append((TestingBlock([1, 2, 3]), [], [0]))
+        Pipeline(self.blocks).main()
+        dumped_numbers = np.loadtxt('.log.txt')
+        np.testing.assert_almost_equal(dumped_numbers, [1, 2, 3])
+    def test_multi_dimensional_input(self):
+        """Input a 2 dimensional list, and have this printed"""
+        test_array = [[1, 2], [3, 4]]
+        self.blocks[0] = (WriteAsciiBlock('.log.txt', gulp_size=4*4), [0], [])
+        self.blocks.append((TestingBlock(test_array), [], [0]))
+        self.blocks.append((WriteHeaderBlock('.log2.txt'), [0], []))
+        Pipeline(self.blocks).main()
+        header = eval(open('.log2.txt').read()) #pylint:disable=eval-used
+        dumped_numbers = np.loadtxt('.log.txt').reshape(header['shape'])
+        np.testing.assert_almost_equal(dumped_numbers, test_array)
 class TestCopyBlock(unittest.TestCase):
     """Performs tests of the Copy Block."""
     def setUp(self):
@@ -80,7 +118,6 @@ class TestCopyBlock(unittest.TestCase):
         Pipeline(self.blocks).main()
         test_bytes = open(logfile, 'r').read(500).split(' ')
         self.assertAlmostEqual(np.float(test_bytes[0]), 0.72650784254)
-
 class TestFoldBlock(unittest.TestCase):
     """This tests functionality of the FoldBlock."""
     def setUp(self):
@@ -116,12 +153,12 @@ class TestFoldBlock(unittest.TestCase):
         histogram = self.dump_ring_and_read()
         self.assertEqual(histogram.size, 50)
     def test_show_pulse(self):
+        """Test to see if a pulse is visible in the
+            histogram from pulsar data"""
         self.blocks[0] = (
             SigprocReadBlock(
                 '/data1/mcranmer/data/fake/simple_pulsar_DM0.fil'),
             [], [0])
-        """Test to see if a pulse is visible in the
-            histogram from pulsar data"""
         self.blocks.append((
             FoldBlock(bins=200), [0], [1]))
         histogram = self.dump_ring_and_read()
@@ -140,7 +177,7 @@ class TestFoldBlock(unittest.TestCase):
         self.assertTrue(np.min(histogram) > 1e-10)
         self.assertGreater(
             np.max(histogram)/np.min(histogram), 3)
-    def test_high_DM(self):
+    def test_high_dispersion(self):
         """Test folding on a file with high DM"""
         self.blocks[0] = (
             SigprocReadBlock(
@@ -171,4 +208,124 @@ class TestKurtosisBlock(unittest.TestCase):
         test_byte = open('.log.txt', 'r').read().split(' ')
         test_nums = np.array([float(x) for x in test_byte])
         self.assertLess(np.max(test_nums), 256)
-        self.assertEqual(test_nums.size, 4096)
+        self.assertEqual(test_nums.size, 12800)
+class TestFFTBlock(unittest.TestCase):
+    """This test assures basic functionality of fft block"""
+    def setUp(self):
+        """Assemble a basic pipeline with the FFT block"""
+        self.logfile = '.log.txt'
+        self.blocks = []
+        self.blocks.append((
+            SigprocReadBlock(
+                '/data1/mcranmer/data/fake/1chan8bitNoDM.fil'),
+            [], [0]))
+        self.blocks.append((FFTBlock(gulp_size=4096*8*8*8), [0], [1]))
+        self.blocks.append((WriteAsciiBlock(self.logfile), [1], []))
+    def test_throughput(self):
+        """Test that any data is being put through"""
+        Pipeline(self.blocks).main()
+        test_string = open(self.logfile, 'r').read()
+        self.assertGreater(len(test_string), 0)
+    def test_throughput_size(self):
+        """Number of elements going out should be double that of basic copy"""
+        Pipeline(self.blocks).main()
+        number_fftd = len(open(self.logfile, 'r').read().split('\n'))
+        number_fftd = np.loadtxt(self.logfile).size
+        open(self.logfile, 'w').close()
+        ## Run pipeline again with simple copy
+        self.blocks[1] = (CopyBlock(), [0], [1])
+        Pipeline(self.blocks).main()
+        number_copied = np.loadtxt(self.logfile).size
+        self.assertAlmostEqual(number_fftd, 2*number_copied)
+    def test_data_sizes(self):
+        """Test that different number of bits give correct throughput size"""
+        for iterate in range(5):
+            nbit = 2**iterate
+            if nbit == 8:
+                continue
+            self.blocks[0] = (
+                SigprocReadBlock(
+                    '/data1/mcranmer/data/fake/2chan'+ str(nbit) + 'bitNoDM.fil'),
+                [], [0])
+            open(self.logfile, 'w').close()
+            Pipeline(self.blocks).main()
+            number_fftd = np.loadtxt(self.logfile).astype(np.float32).view(np.complex64).size
+            # Compare with simple copy
+            self.blocks[1] = (CopyBlock(), [0], [1])
+            open(self.logfile, 'w').close()
+            Pipeline(self.blocks).main()
+            number_copied = np.loadtxt(self.logfile).size
+            self.assertEqual(number_fftd, number_copied)
+            # Go back to FFT
+            self.blocks[1] = (FFTBlock(gulp_size=4096*8*8*8), [0], [1])
+    def test_fft_result(self):
+        """Make sure that fft matches what it should!"""
+        open(self.logfile, 'w').close()
+        Pipeline(self.blocks).main()
+        fft_block_result = np.loadtxt(self.logfile).astype(np.float32).view(np.complex64)
+        self.blocks[1] = (CopyBlock(), [0], [1])
+        open(self.logfile, 'w').close()
+        Pipeline(self.blocks).main()
+        normal_fft_result = np.fft.fft(np.loadtxt(self.logfile))
+        np.testing.assert_almost_equal(fft_block_result, normal_fft_result, 2)
+class TestIFFTBlock(unittest.TestCase):
+    """This test assures basic functionality of the ifft block.
+    Requires the FFT block for testing."""
+    def test_simple_ifft(self):
+        """Put test data through a ring buffer and check correctness"""
+        self.logfile = '.log.txt'
+        self.blocks = []
+        test_array = [1, 2, 3]
+        self.blocks.append((TestingBlock(test_array), [], [0]))
+        self.blocks.append((IFFTBlock(gulp_size=3*4), [0], [1]))
+        self.blocks.append((WriteAsciiBlock(self.logfile), [1], []))
+        open(self.logfile, 'w').close()
+        Pipeline(self.blocks).main()
+        true_result = np.fft.ifft(test_array)
+        result = np.loadtxt(self.logfile).astype(np.float32).view(np.complex64)
+        np.testing.assert_almost_equal(result, true_result, 2)
+    def test_equivalent_data_to_copy(self):
+        """Test that the data coming out of this pipeline is equivalent
+        the initial read data"""
+        self.logfile = '.log.txt'
+        self.blocks = []
+        self.blocks.append((
+            SigprocReadBlock(
+                '/data1/mcranmer/data/fake/1chan8bitNoDM.fil'),
+            [], [0]))
+        self.blocks.append((FFTBlock(gulp_size=4096*8*8*8*8), [0], [1]))
+        self.blocks.append((IFFTBlock(gulp_size=4096*8*8*8*8), [1], [2]))
+        self.blocks.append((WriteAsciiBlock(self.logfile), [2], []))
+        open(self.logfile, 'w').close()
+        Pipeline(self.blocks).main()
+        unfft_result = np.loadtxt(self.logfile).astype(np.float32).view(np.complex64)
+        self.blocks[1] = (CopyBlock(), [0], [1])
+        self.blocks[2] = (WriteAsciiBlock(self.logfile), [1], [])
+        del self.blocks[3]
+        open(self.logfile, 'w').close()
+        Pipeline(self.blocks).main()
+        untouched_result = np.loadtxt(self.logfile).astype(np.float32)
+        np.testing.assert_almost_equal(unfft_result, untouched_result, 2)
+class TestPipeline(unittest.TestCase):
+    """Test rigidity and features of the pipeline"""
+    def test_naming_rings(self):
+        """Name the rings instead of numerating them"""
+        blocks = []
+        blocks.append((TestingBlock([1, 2, 3]), [], ['ring1']))
+        blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), ['ring1'], []))
+        open('.log.txt', 'w').close()
+        Pipeline(blocks).main()
+        result = np.loadtxt('.log.txt').astype(np.float32)
+        np.testing.assert_almost_equal(result, [1, 2, 3])
+    def test_pass_rings(self):
+        """Pass rings entirely instead of naming/numerating them"""
+        block_set_one = []
+        block_set_two = []
+        ring1 = Ring()
+        block_set_one.append((TestingBlock([1, 2, 3]), [], [ring1]))
+        block_set_two.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), [ring1], []))
+        open('.log.txt', 'w').close()
+        Pipeline(block_set_one).main() # The ring should communicate between the pipelines
+        Pipeline(block_set_two).main()
+        result = np.loadtxt('.log.txt').astype(np.float32)
+        np.testing.assert_almost_equal(result, [1, 2, 3])
