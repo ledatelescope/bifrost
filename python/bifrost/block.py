@@ -866,3 +866,30 @@ class NumpyBlock(MultiTransformBlock):
                 output_data = [output_data]
             for i in range(len(self.outputs)):
                 outspans[i][:] = output_data[i].ravel()
+class NumpySourceBlock(MultiTransformBlock):
+    """Simulate an incoming stream of data on a ring using an arbitrary generator
+        This block will calculate all of the
+        necessary information for Bifrost based on the passed function."""
+    ring_names = {'out_1': "DLSKJFLDKSJ"}
+    def __init__(self, generator, outputs=1):
+        """Based on the number of inputs/outputs, set up enough ring_names
+            for the pipeline to call."""
+        super(NumpySourceBlock, self).__init__()
+        self.outputs=['out_1']
+        """
+        self.outputs = ['out_%d' % (i+1) for i in range(outputs)]
+        self.ring_names = {}
+        for output_name in self.outputs:
+            ring_description = "Output number " + output_name[4:]
+            self.ring_names[output_name] = ring_description
+        """
+        assert callable(generator)
+        self.generator = generator()
+    def main(self):
+        """Call self.function on all of the input spans"""
+        self.header['out_1'] = {'dtype': 'float32', 'shape': [4]}
+        self.gulp_size['out_1'] = 4*4
+        output_data = self.generator.next()
+        for outspan in self.write('out_1'):
+            outspan[0][:] = output_data.astype(np.float32).ravel()
+            break
