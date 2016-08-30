@@ -626,7 +626,7 @@ class TestNumpySourceBlock(unittest.TestCase):
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 1)
     def test_header_output(self):
-        "Output a header for a ring explicitly"
+        """Output a header for a ring explicitly"""
         def generate_array_and_header():
             """Output the desired header of an array"""
             header = {'dtype': 'complex128', 'nbit': 128}
@@ -637,7 +637,9 @@ class TestNumpySourceBlock(unittest.TestCase):
             self.assertEqual(array.dtype, np.dtype('complex128'))
             self.occurences += 1
         blocks = []
-        blocks.append((NumpySourceBlock(generate_array_and_header, grab_headers=True), {'out_1': 0}))
+        blocks.append((
+            NumpySourceBlock(generate_array_and_header, grab_headers=True),
+            {'out_1': 0}))
         blocks.append((NumpyBlock(assert_expectation, outputs=0), {'in_1': 0}))
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 1)
