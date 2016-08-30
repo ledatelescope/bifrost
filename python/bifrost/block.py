@@ -953,7 +953,8 @@ class NumpySourceBlock(MultiTransformBlock):
             self.gulp_size[ring_name] = output_data[index].nbytes
         for outspans in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
             for i in range(len(self.ring_names)):
-                outspans[i][:] = output_data[i].astype(np.float32).ravel()
+                dtype = self.header['out_%d'%(i+1)]['dtype']
+                outspans[i][:] = output_data[i].astype(np.dtype(dtype).type).ravel()
             try:
                 output_data = self.generator.next()
                 if len(self.ring_names) == 1:
