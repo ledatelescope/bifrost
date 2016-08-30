@@ -587,7 +587,7 @@ class TestNumpySourceBlock(unittest.TestCase):
     def test_multiple_yields(self):
         """Should be able to repeat generation of an array"""
         self.occurences = 0
-        def generate_one_array():
+        def generate_10_arrays():
             """Put out 10 numpy arrays"""
             for i in range(10):
                 yield np.array([1, 2, 3, 4]).astype(np.float32)
@@ -596,8 +596,26 @@ class TestNumpySourceBlock(unittest.TestCase):
             np.testing.assert_almost_equal(array, [1, 2, 3, 4])
             self.occurences += 1
         blocks = []
-        blocks.append((NumpySourceBlock(generate_one_array), {'out_1': 0}))
+        blocks.append((NumpySourceBlock(generate_10_arrays), {'out_1': 0}))
         blocks.append((NumpyBlock(assert_expectation, outputs=0), {'in_1': 0}))
+        Pipeline(blocks).main()
+        assert self.occurences == 10
+    def test_multiple_output_rings(self):
+        """Multiple output ring test."""
+        self.occurences = 0
+        def generate_one_array():
+            """Put out 10x10 numpy arrays"""
+            for i in range(10):
+                yield (np.array([1, 2, 3, 4]).astype(np.float32),)*10
+        def assert_expectation(*args):
+            """Assert the array is as expected"""
+            assert len(args) == 10
+            for array in args:
+                np.testing.assert_almost_equal(array, [1, 2, 3, 4])
+            self.occurences += 1
+        blocks = []
+        blocks.append((NumpySourceBlock(generate_one_array, outputs=10), {'out_%d'%(i+1):i for i in range(10)}))
+        blocks.append((NumpyBlock(assert_expectation, inputs=10, outputs=0), {'in_%d'%(i+1):i for i in range(10)}))
         Pipeline(blocks).main()
         assert self.occurences == 10
         #TODO: Add tests for header output + different sizing, etc.
