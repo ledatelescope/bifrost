@@ -629,7 +629,7 @@ class TestNumpySourceBlock(unittest.TestCase):
         "Output a header for a ring explicitly"
         def generate_array_and_header():
             """Output the desired header of an array"""
-            header = {'dtype': 'complex128'}
+            header = {'dtype': 'complex128', 'nbit': 128}
             yield np.array([1, 2, 3, 4]), header
         def assert_expectation(array):
             "Assert that the array has a complex datatype"
