@@ -545,6 +545,9 @@ class TestNumpySourceBlock(unittest.TestCase):
         call the numpy function, and then put out data on a CPU ring.
         The purpose of this ring is mainly for tests or filling in missing
         functionality."""
+    def setUp(self):
+        """Set up some parameters that every test uses"""
+        self.occurences = 0
     def test_simple_single_generation(self):
         """For single yields, should act like a TestingBlock"""
         def generate_one_array():
@@ -553,13 +556,14 @@ class TestNumpySourceBlock(unittest.TestCase):
         def assert_expectation(array):
             """Assert the array is as expected"""
             np.testing.assert_almost_equal(array, [1, 2, 3, 4])
+            self.occurences += 1
         blocks = []
         blocks.append((NumpySourceBlock(generate_one_array), {'out_1': 0}))
         blocks.append((NumpyBlock(assert_expectation, outputs=0), {'in_1': 0}))
         Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 1)
     def test_multiple_yields(self):
         """Should be able to repeat generation of an array"""
-        self.occurences = 0
         def generate_10_arrays():
             """Put out 10 numpy arrays"""
             for i in range(10):
@@ -572,10 +576,9 @@ class TestNumpySourceBlock(unittest.TestCase):
         blocks.append((NumpySourceBlock(generate_10_arrays), {'out_1': 0}))
         blocks.append((NumpyBlock(assert_expectation, outputs=0), {'in_1': 0}))
         Pipeline(blocks).main()
-        assert self.occurences == 10
+        self.assertEqual(self.occurences, 10)
     def test_multiple_output_rings(self):
         """Multiple output ring test."""
-        self.occurences = 0
         def generate_many_arrays():
             """Put out 10x10 numpy arrays"""
             for i in range(10):
@@ -590,10 +593,9 @@ class TestNumpySourceBlock(unittest.TestCase):
         blocks.append((NumpySourceBlock(generate_many_arrays, outputs=10), {'out_%d'%(i+1):i for i in range(10)}))
         blocks.append((NumpyBlock(assert_expectation, inputs=10, outputs=0), {'in_%d'%(i+1):i for i in range(10)}))
         Pipeline(blocks).main()
-        assert self.occurences == 10
+        self.assertEqual(self.occurences, 10)
     def test_different_types(self):
         """Try to output different type arrays"""
-        self.occurences = 0
         def generate_different_type_arrays():
             """Put out arrays of different types"""
             arrays = []
@@ -605,15 +607,15 @@ class TestNumpySourceBlock(unittest.TestCase):
         def assert_expectation(*args):
             """Assert the arrays are as expected"""
             self.occurences += 1
-            assert len(args) == 5
+            self.assertEqual(len(args), 5)
             for index, array_type in enumerate(['float32', 'float64', 'int8', 'uint8']):
                 self.assertTrue(str(args[index].dtype) == array_type)
-                np.testing.assert_almost_equal(args[index].astype(np.complex64), [1, 2, 3, 4])
+                np.testing.assert_almost_equal(args[index], [1, 2, 3, 4])
             np.testing.assert_almost_equal(args[-1], np.array([1+10j]))
         blocks = []
         blocks.append((NumpySourceBlock(generate_different_type_arrays, outputs=5), {'out_%d'%(i+1):i for i in range(5)}))
         blocks.append((NumpyBlock(assert_expectation, inputs=5, outputs=0), {'in_%d'%(i+1):i for i in range(5)}))
         Pipeline(blocks).main()
-        assert self.occurences == 1
+        self.assertEqual(self.occurences, 1)
         #TODO: Add tests for different types + header output + different sizing, etc.
         #TODO: Add test for Pipeline calling _main, which sets core.
