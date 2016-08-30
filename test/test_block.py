@@ -643,5 +643,28 @@ class TestNumpySourceBlock(unittest.TestCase):
         blocks.append((NumpyBlock(assert_expectation, outputs=0), {'in_1': 0}))
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 1)
+    def test_multi_header_output(self):
+        """Output multiple arrays and headers to fill up rings"""
+        def generate_array_and_header():
+            """Output the desired header of an array"""
+            header_1 = {'dtype': 'complex128', 'nbit': 128}
+            header_2 = {'dtype': 'complex64', 'nbit': 64}
+            yield (
+                np.array([1, 2, 3, 4]), header_1,
+                np.array([1, 2]), header_2)
+        def assert_expectation(array1, array2):
+            "Assert that the arrays have different complex datatypes"
+            np.testing.assert_almost_equal(array1, [1, 2, 3, 4])
+            np.testing.assert_almost_equal(array2, [1, 2])
+            self.assertEqual(array1.dtype, np.dtype('complex128'))
+            self.assertEqual(array2.dtype, np.dtype('complex64'))
+            self.occurences += 1
+        blocks = []
+        blocks.append((
+            NumpySourceBlock(generate_array_and_header, outputs=2, grab_headers=True),
+            {'out_1': 0, 'out_2': 1}))
+        blocks.append((NumpyBlock(assert_expectation, inputs=2, outputs=0), {'in_1': 0, 'in_2': 1}))
+        Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 1)
         #TODO: Add tests for changing output of generator
         #TODO: Add test for Pipeline calling _main, which sets core.
