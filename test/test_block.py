@@ -581,7 +581,7 @@ class TestNumpySourceBlock(unittest.TestCase):
         """Multiple output ring test."""
         def generate_many_arrays():
             """Put out 10x10 numpy arrays"""
-            for i in range(10):
+            for _ in range(10):
                 yield (np.array([1, 2, 3, 4]).astype(np.float32),)*10
         def assert_expectation(*args):
             """Assert the arrays are as expected"""
@@ -590,8 +590,12 @@ class TestNumpySourceBlock(unittest.TestCase):
                 np.testing.assert_almost_equal(array, [1, 2, 3, 4])
             self.occurences += 1
         blocks = []
-        blocks.append((NumpySourceBlock(generate_many_arrays, outputs=10), {'out_%d'%(i+1):i for i in range(10)}))
-        blocks.append((NumpyBlock(assert_expectation, inputs=10, outputs=0), {'in_%d'%(i+1):i for i in range(10)}))
+        blocks.append((
+            NumpySourceBlock(generate_many_arrays, outputs=10),
+            {'out_%d'%(i+1):i for i in range(10)}))
+        blocks.append((
+            NumpyBlock(assert_expectation, inputs=10, outputs=0),
+            {'in_%d'%(i+1):i for i in range(10)}))
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 10)
     def test_different_types(self):
@@ -613,9 +617,29 @@ class TestNumpySourceBlock(unittest.TestCase):
                 np.testing.assert_almost_equal(args[index], [1, 2, 3, 4])
             np.testing.assert_almost_equal(args[-1], np.array([1+10j]))
         blocks = []
-        blocks.append((NumpySourceBlock(generate_different_type_arrays, outputs=5), {'out_%d'%(i+1):i for i in range(5)}))
-        blocks.append((NumpyBlock(assert_expectation, inputs=5, outputs=0), {'in_%d'%(i+1):i for i in range(5)}))
+        blocks.append((
+            NumpySourceBlock(generate_different_type_arrays, outputs=5),
+            {'out_%d'%(i+1):i for i in range(5)}))
+        blocks.append((
+            NumpyBlock(assert_expectation, inputs=5, outputs=0),
+            {'in_%d'%(i+1):i for i in range(5)}))
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 1)
-        #TODO: Add tests for different types + header output + different sizing, etc.
+    def test_header_output(self):
+        "Output a header for a ring explicitly"
+        def generate_array_and_header():
+            """Output the desired header of an array"""
+            header = {'dtype': np.complex128}
+            return np.array([1, 2, 3, 4]), header
+        def assert_expectation(array):
+            "Assert that the array has a complex datatype"
+            np.testing.assert_almost_equal(array, [1, 2, 3, 4])
+            self.assertEqual(array.dtype, np.dtype('complex128'))
+            self.occurences += 1
+        blocks = []
+        blocks.append((NumpySourceBlock(generate_array_and_header, grab_headers=True), {'out_1': 0}))
+        blocks.append((NumpyBlock(assert_expectation, outputs=0), {'in_1': 0}))
+        Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 1)
+        #TODO: Add tests for changing output of generator
         #TODO: Add test for Pipeline calling _main, which sets core.
