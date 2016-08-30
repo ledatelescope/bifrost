@@ -562,7 +562,9 @@ class TestNumpyBlock(unittest.TestCase):
             NumpyBlock(function=np.copy),
             {'in_1': 0, 'out_1': 1}])
         Pipeline(self.blocks).main()
-        self.expected_result = self.global_variable
+        open('.log.txt', 'w').close()
+        np.testing.assert_almost_equal(self.global_variable, [1, 2, 3, 4])
+        self.expected_result = [1, 2, 3, 4]
 class TestNumpySourceBlock(unittest.TestCase):
     """Tests for a block which can call arbitrary functions that work on numpy arrays.
         This should include the many numpy, scipy and astropy functions.
