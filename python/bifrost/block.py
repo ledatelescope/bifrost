@@ -951,6 +951,17 @@ class NumpySourceBlock(MultiTransformBlock):
                 'shape': list(arrays[index].shape),
                 'nbit': arrays[index].nbytes*8//arrays[index].size}
             self.gulp_size[ring_name] = arrays[index].nbytes
+    def load_user_headers(self, headers, arrays):
+        """Load in user defined headers
+            @param[in] headers List of dictionaries from self.generator
+                for each ring's sequence header"""
+        for i, header in enumerate(headers):
+            ring_name = 'out_%d'%(i+1)
+            for parameter in header:
+                self.header[ring_name][parameter] = header[parameter]
+            if 'dtype' in header:
+                assert 'nbit' in header
+                self.gulp_size[ring_name] = arrays[i].size*self.header[ring_name]['nbit']//8
     def main(self):
         """Call self.generator and output the arrays into the output"""
         output_data = self.generator.next()
@@ -964,13 +975,7 @@ class NumpySourceBlock(MultiTransformBlock):
                 arrays = output_data
         self.calculate_output_settings(arrays)
         if self.grab_headers:
-            for i, header in enumerate(headers):
-                ring_name = 'out_%d'%(i+1)
-                for parameter in header:
-                    self.header[ring_name][parameter] = header[parameter]
-                if 'dtype' in header:
-                    assert 'nbit' in header
-                    self.gulp_size[ring_name] = arrays[i].size*self.header[ring_name]['nbit']//8
+            self.load_user_headers(headers, arrays)
         for outspans in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
             for i in range(len(self.ring_names)):
                 dtype = self.header['out_%d'%(i+1)]['dtype']
