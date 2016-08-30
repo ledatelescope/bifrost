@@ -897,7 +897,7 @@ class NumpySourceBlock(MultiTransformBlock):
     """Simulate an incoming stream of data on a ring using an arbitrary generator.
         This block will calculate all of the
         necessary information for Bifrost based on the passed function."""
-    def __init__(self, generator, outputs=1):
+    def __init__(self, generator, outputs=1, grab_headers=False):
         """Based on the number of inputs/outputs, set up enough ring_names
             for the pipeline to call.
             @param[in] generator A function which generates numpy arrays
@@ -911,6 +911,8 @@ class NumpySourceBlock(MultiTransformBlock):
             self.ring_names[output_name] = ring_description
         assert callable(generator)
         self.generator = generator()
+        assert hasattr(self.generator, 'next')
+        self.grab_headers = grab_headers
     def calculate_output_settings(self, arrays):
         """Calculate the outgoing header settings based on the output arrays
             @param[in] arrays The arrays outputted by self.generator"""
@@ -923,11 +925,25 @@ class NumpySourceBlock(MultiTransformBlock):
                 'nbit': arrays[index].nbytes*8//arrays[index].size}
             self.gulp_size[ring_name] = arrays[index].nbytes
     def main(self):
-        """Call self.function on all of the input spans"""
+        """Call self.generator and output the arrays into the output"""
         output_data = self.generator.next()
         if len(self.ring_names) == 1:
             output_data = [output_data]
-        self.calculate_output_settings(output_data)
+        if self.grab_headers:
+            arrays = [output_data[0][0]]
+            header = output_data[0][1]
+            index = 0
+            ring_name = 'out_1'
+            self.header[ring_name] = {
+                'dtype': str(arrays[index].dtype),
+                'shape': list(arrays[index].shape),
+                'nbit': arrays[index].nbytes*8//arrays[index].size}
+            for parameter in header:
+                self.header[ring_name][parameter] = header[parameter]
+            self.gulp_size[ring_name] = arrays[index].size*self.header[ring_name]['nbit']//8
+            output_data = [arrays[index]]
+        else:
+            self.calculate_output_settings(output_data)
         for outspans in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
             for i in range(len(self.ring_names)):
                 dtype = self.header['out_%d'%(i+1)]['dtype']
