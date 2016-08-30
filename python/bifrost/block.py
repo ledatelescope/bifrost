@@ -911,19 +911,23 @@ class NumpySourceBlock(MultiTransformBlock):
             self.ring_names[output_name] = ring_description
         assert callable(generator)
         self.generator = generator()
+    def calculate_output_settings(self, arrays):
+        """Calculate the outgoing header settings based on the output arrays
+            @param[in] arrays The arrays outputted by self.generator"""
+        for index in range(len(self.ring_names)):
+            assert isinstance(arrays[index], np.ndarray)
+            ring_name = 'out_%d' % (index+1)
+            self.header[ring_name] = {
+                'dtype': str(arrays[index].dtype),
+                'shape': list(arrays[index].shape),
+                'nbit': arrays[index].nbytes*8//arrays[index].size}
+            self.gulp_size[ring_name] = arrays[index].nbytes
     def main(self):
         """Call self.function on all of the input spans"""
         output_data = self.generator.next()
         if len(self.ring_names) == 1:
             output_data = [output_data]
-        for index in range(len(self.ring_names)):
-            assert isinstance(output_data[index], np.ndarray)
-            ring_name = 'out_%d' % (index+1)
-            self.header[ring_name] = {
-                'dtype': str(output_data[index].dtype),
-                'shape': list(output_data[index].shape),
-                'nbit': output_data[index].nbytes*8//output_data[index].size}
-            self.gulp_size[ring_name] = output_data[index].nbytes
+        self.calculate_output_settings(output_data)
         for outspans in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
             for i in range(len(self.ring_names)):
                 dtype = self.header['out_%d'%(i+1)]['dtype']
