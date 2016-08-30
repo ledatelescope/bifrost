@@ -894,7 +894,7 @@ class NumpyBlock(MultiTransformBlock):
             for i in range(len(self.outputs)):
                 outspans[i][:] = output_data[i].ravel()
 class NumpySourceBlock(MultiTransformBlock):
-    """Simulate an incoming stream of data on a ring using an arbitrary generator
+    """Simulate an incoming stream of data on a ring using an arbitrary generator.
         This block will calculate all of the
         necessary information for Bifrost based on the passed function."""
     def __init__(self, generator, outputs=1):
@@ -921,20 +921,15 @@ class NumpySourceBlock(MultiTransformBlock):
             ring_name = 'out_%d' % (index+1)
             self.header[ring_name] = {
                 'dtype': str(output_data[index].dtype),
-                'shape': output_data[index].shape}
+                'shape': list(output_data[index].shape),
+                'nbit': output_data[index].nbytes*8//output_data[index].size}
             self.gulp_size[ring_name] = output_data[index].nbytes
-        if len(self.ring_names) == 1:
-            for outspan in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
-                outspan[0][:] = output_data[0].astype(np.float32).ravel()
-                try:
-                    output_data = [self.generator.next()]
-                except StopIteration:
-                    break
-        else:
-            for outspans in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
-                for i in range(len(self.ring_names)):
-                    outspans[i][:] = output_data[i].astype(np.float32).ravel()
-                try:
-                    output_data = self.generator.next()
-                except StopIteration:
-                    break
+        for outspans in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
+            for i in range(len(self.ring_names)):
+                outspans[i][:] = output_data[i].astype(np.float32).ravel()
+            try:
+                output_data = self.generator.next()
+                if len(self.ring_names) == 1:
+                    output_data = [output_data]
+            except StopIteration:
+                break
