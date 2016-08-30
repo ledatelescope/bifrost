@@ -954,30 +954,36 @@ class NumpySourceBlock(MultiTransformBlock):
     def main(self):
         """Call self.generator and output the arrays into the output"""
         output_data = self.generator.next()
-        if len(self.ring_names) == 1:
-            output_data = [output_data]
         if self.grab_headers:
-            arrays = [output_data[0][0]]
-            header = output_data[0][1]
-            index = 0
-            ring_name = 'out_1'
-            self.header[ring_name] = {
-                'dtype': str(arrays[index].dtype),
-                'shape': list(arrays[index].shape),
-                'nbit': arrays[index].nbytes*8//arrays[index].size}
-            for parameter in header:
-                self.header[ring_name][parameter] = header[parameter]
-            self.gulp_size[ring_name] = arrays[index].size*self.header[ring_name]['nbit']//8
-            output_data = [arrays[index]]
+            arrays = output_data[0::2]
+            headers = output_data[1::2]
         else:
-            self.calculate_output_settings(output_data)
+            if len(self.ring_names) == 1:
+                arrays = [output_data]
+            else:
+                arrays = output_data
+        self.calculate_output_settings(arrays)
+        if self.grab_headers:
+            for i, header in enumerate(headers):
+                ring_name = 'out_%d'%(i+1)
+                for parameter in header:
+                    self.header[ring_name][parameter] = header[parameter]
+                if 'dtype' in header:
+                    assert 'nbit' in header
+                    self.gulp_size[ring_name] = arrays[i].size*self.header[ring_name]['nbit']//8
         for outspans in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
             for i in range(len(self.ring_names)):
                 dtype = self.header['out_%d'%(i+1)]['dtype']
-                outspans[i][:] = output_data[i].astype(np.dtype(dtype).type).ravel()
+                outspans[i][:] = arrays[i].astype(np.dtype(dtype).type).ravel()
             try:
                 output_data = self.generator.next()
-                if len(self.ring_names) == 1:
-                    output_data = [output_data]
+                if self.grab_headers:
+                    arrays = output_data[0::2]
+                    headers = output_data[1::2]
+                else:
+                    if len(self.ring_names) == 1:
+                        arrays = [output_data]
+                    else:
+                        arrays = output_data
             except StopIteration:
                 break

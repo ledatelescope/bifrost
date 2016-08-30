@@ -593,7 +593,7 @@ class TestNumpySourceBlock(unittest.TestCase):
         """Should be able to repeat generation of an array"""
         def generate_10_arrays():
             """Put out 10 numpy arrays"""
-            for i in range(10):
+            for _ in range(10):
                 yield np.array([1, 2, 3, 4]).astype(np.float32)
         def assert_expectation(array):
             """Assert the array is as expected"""
