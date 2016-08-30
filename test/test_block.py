@@ -380,10 +380,11 @@ class TestMultiTransformBlock(unittest.TestCase):
         blocks.append([
             MultiAddBlock(),
             {'in_1': 'third_sum', 'in_2':4, 'out_sum': my_ring}])
-        blocks.append([WriteAsciiBlock('.log.txt'), [my_ring], []])
+        def assert_result_of_addition(array):
+            """Make sure that the above arrays add up to what we expect"""
+            np.testing.assert_almost_equal(array, [18, 14])
+        blocks.append((NumpyBlock(assert_result_of_addition, outputs=0), {'in_1': my_ring}))
         Pipeline(blocks).main()
-        summed_result = np.loadtxt('.log.txt')
-        np.testing.assert_almost_equal(summed_result, [18, 14])
     def test_for_bad_ring_definitions(self):
         """Try to pass bad input and outputs"""
         blocks = []
@@ -536,6 +537,32 @@ class TestNumpyBlock(unittest.TestCase):
             NumpyBlock(function=dstack_handler, inputs=number_rings, outputs=1),
             second_connections])
         self.expected_result = np.dstack((self.test_array,)*(len(second_connections)-1)).ravel()
+    def test_zero_outputs(self):
+        """Test zero outputs on NumpyBlock. Nothing should be sent through self.function at init"""
+        def assert_something(array):
+            """Assert the array is only 4 numbers, and return nothing"""
+            np.testing.assert_almost_equal(array, [1, 2, 3, 4])
+        self.blocks.append([
+            NumpyBlock(function=assert_something, outputs=0),
+            {'in_1': 0}])
+        self.blocks.append([
+            NumpyBlock(function=np.copy, outputs=1),
+            {'in_1': 0, 'out_1': 1}])
+        self.expected_result = [1, 2, 3, 4]
+    def test_global_variable_capture(self):
+        """Test that we can pull out a number from a ring using NumpyBlock"""
+        self.global_variable = np.array([])
+        def create_global_variable(array):
+            """Try to append the array to a global variable"""
+            self.global_variable = np.copy(array)
+        self.blocks.append([
+            NumpyBlock(function=create_global_variable, outputs=0),
+            {'in_1': 0}])
+        self.blocks.append([
+            NumpyBlock(function=np.copy),
+            {'in_1': 0, 'out_1': 1}])
+        Pipeline(self.blocks).main()
+        self.expected_result = self.global_variable
 class TestNumpySourceBlock(unittest.TestCase):
     """Tests for a block which can call arbitrary functions that work on numpy arrays.
         This should include the many numpy, scipy and astropy functions.
