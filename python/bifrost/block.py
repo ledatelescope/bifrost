@@ -931,7 +931,7 @@ class NumpySourceBlock(MultiTransformBlock):
             @param[in] outputs The number of numpy arrays generated. Also
                 equal to the number of outgoing rings attached to this block."""
         super(NumpySourceBlock, self).__init__()
-        outputs = ['out_%d' % (i+1) for i in range(outputs)]
+        outputs = ['out_%d'%(i+1) for i in range(outputs)]
         self.ring_names = {}
         for output_name in outputs:
             ring_description = "Output number " + output_name[4:]
@@ -950,9 +950,18 @@ class NumpySourceBlock(MultiTransformBlock):
                 'dtype': str(output_data[index].dtype),
                 'shape': output_data[index].shape}
             self.gulp_size[ring_name] = output_data[index].nbytes
-        for outspan in self.write(*['out_%d' % (i+1) for i in range(len(self.ring_names))]):
-            outspan[0][:] = output_data[0].astype(np.float32).ravel()
-            try:
-                output_data = [self.generator.next()]
-            except StopIteration:
-                break
+        if len(self.ring_names) == 1:
+            for outspan in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
+                outspan[0][:] = output_data[0].astype(np.float32).ravel()
+                try:
+                    output_data = [self.generator.next()]
+                except StopIteration:
+                    break
+        else:
+            for outspans in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
+                for i in range(len(self.ring_names)):
+                    outspans[i][:] = output_data[i].astype(np.float32).ravel()
+                try:
+                    output_data = self.generator.next()
+                except StopIteration:
+                    break
