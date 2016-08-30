@@ -899,7 +899,10 @@ class NumpySourceBlock(MultiTransformBlock):
         necessary information for Bifrost based on the passed function."""
     def __init__(self, generator, outputs=1):
         """Based on the number of inputs/outputs, set up enough ring_names
-            for the pipeline to call."""
+            for the pipeline to call.
+            @param[in] generator A function which generates numpy arrays
+            @param[in] outputs The number of numpy arrays generated. Also
+                equal to the number of outgoing rings attached to this block."""
         super(NumpySourceBlock, self).__init__()
         outputs = ['out_%d' % (i+1) for i in range(outputs)]
         self.ring_names = {}
