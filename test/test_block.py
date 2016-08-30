@@ -575,7 +575,7 @@ class TestNumpySourceBlock(unittest.TestCase):
     def test_simple_single_generation(self):
         """For single yields, should act like a TestingBlock"""
         def generate_one_array():
-            yield np.array([1, 2, 3, 4])
+            yield np.array([1, 2, 3, 4]).astype(np.float32)
         def assert_expectation(array):
             np.testing.assert_almost_equal(array, [1, 2, 3, 4])
         blocks = []
