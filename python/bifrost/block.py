@@ -6,11 +6,11 @@ of a simple transform which works on a span by span basis.
 import json
 import threading
 from contextlib import nested
-import numpy as np
 import matplotlib
 ## Use a graphical backend which supports threading
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
+import numpy as np
 import bifrost
 from bifrost import affinity
 from bifrost.ring import Ring
