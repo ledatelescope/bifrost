@@ -241,8 +241,9 @@ class MultiTransformBlock(object):
             for ring_name in args:
                 try:
                     dtype = np.dtype(self.header[ring_name]['dtype']).type
-                except:
-                    dtype = np.dtype(self.header[ring_name]['dtype'].split()[1].split(".")[1].split("'")[0]).type
+                except TypeError:
+                    numpy_dtype_word = self.header[ring_name]['dtype'].split()[1]
+                    dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
                 dtypes[ring_name] = dtype
             for spans in self.izip(*[sequence.read(self.gulp_size[ring_name]) \
                     for ring_name, sequence in self.izip(args, sequences)]):
@@ -273,8 +274,9 @@ class MultiTransformBlock(object):
                         for ring_name in args:
                             try:
                                 dtype = np.dtype(self.header[ring_name]['dtype']).type
-                            except:
-                                dtype = np.dtype(self.header[ring_name]['dtype'].split()[1].split(".")[1].split("'")[0]).type
+                            except TypeError:
+                                numpy_dtype_word = self.header[ring_name]['dtype'].split()[1]
+                                dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
                             dtypes[ring_name] = dtype
                         yield tuple([out_span.data_view(dtypes[ring_name])[0] for out_span, ring_name in self.izip(out_spans, args)])
 class SplitterBlock(MultiTransformBlock):
@@ -435,9 +437,10 @@ class IFFTBlock(TransformBlock):
         header = json.loads(input_header.tostring())
         self.nbit = header['nbit']
         try:
-            self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
-        except:
             self.dtype = np.dtype(header['dtype']).type
+        except TypeError:
+            numpy_dtype_word = header['dtype'].split()[1]
+            self.dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
         header['nbit'] = 64
         header['dtype'] = str(np.complex64)
         self.output_header = json.dumps(header)
@@ -480,8 +483,9 @@ class WriteAsciiBlock(SinkBlock):
         self.nbit = header_dict['nbit']
         try:
             self.dtype = np.dtype(header_dict['dtype']).type
-        except:
-            self.dtype = np.dtype(header_dict['dtype'].split()[1].split(".")[1].split("'")[0]).type
+        except TypeError:
+            numpy_dtype_word = header_dict['dtype'].split()[1]
+            self.dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
     def main(self, input_ring):
         """Initiate the writing to filename
         @param[in] input_rings First ring in this list will be used for
@@ -857,8 +861,9 @@ class NumpyBlock(MultiTransformBlock):
         for input_name in self.inputs:
             try:
                 dtype = np.dtype(self.header[input_name]['dtype']).type
-            except:
-                dtype = np.dtype(self.header[input_name]['dtype'].split()[1].split(".")[1].split("'")[0]).type
+            except TypeError:
+                numpy_dtype_word = self.header[input_name]['dtype'].split()[1]
+                dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
             array = np.zeros(shape=self.header[input_name]['shape'], dtype=dtype)
             self.gulp_size[input_name] = array.nbytes
             test_input_arrays.append(array)
@@ -885,8 +890,9 @@ class NumpyBlock(MultiTransformBlock):
             for i, input_name in enumerate(self.inputs):
                 try:
                     dtype = np.dtype(self.header[input_name]['dtype']).type
-                except:
-                    dtype = np.dtype(self.header[input_name]['dtype'].split()[1].split(".")[1].split("'")[0]).type
+                except TypeError:
+                    numpy_dtype_word = self.header[input_name]['dtype'].split()[1]
+                    dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
                 inspans[i] = inspans[i].view(dtype).reshape(self.header[input_name]['shape'])
             output_data = self.function(*inspans)
             if len(self.outputs) == 1:

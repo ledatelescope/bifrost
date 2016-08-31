@@ -666,5 +666,6 @@ class TestNumpySourceBlock(unittest.TestCase):
         blocks.append((NumpyBlock(assert_expectation, inputs=2, outputs=0), {'in_1': 0, 'in_2': 1}))
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 1)
+        #TODO: Add tests for defined 'rate' of numpy source block?
         #TODO: Add tests for changing output of generator
         #TODO: Add test for Pipeline calling _main, which sets core.
