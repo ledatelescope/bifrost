@@ -34,7 +34,7 @@ from bifrost.ring import Ring
 from bifrost.block import TestingBlock, WriteAsciiBlock, WriteHeaderBlock
 from bifrost.block import SigprocReadBlock, CopyBlock, KurtosisBlock, FoldBlock
 from bifrost.block import IFFTBlock, FFTBlock, Pipeline, MultiAddBlock
-from bifrost.block import SplitterBlock, NumpyBlock
+from bifrost.block import SplitterBlock, NumpyBlock, NumpySourceBlock
 
 class TestIterateRingWrite(unittest.TestCase):
     """Test the iterate_ring_write function of SourceBlocks/TransformBlocks"""
@@ -380,10 +380,11 @@ class TestMultiTransformBlock(unittest.TestCase):
         blocks.append([
             MultiAddBlock(),
             {'in_1': 'third_sum', 'in_2':4, 'out_sum': my_ring}])
-        blocks.append([WriteAsciiBlock('.log.txt'), [my_ring], []])
+        def assert_result_of_addition(array):
+            """Make sure that the above arrays add up to what we expect"""
+            np.testing.assert_almost_equal(array, [18, 14])
+        blocks.append((NumpyBlock(assert_result_of_addition, outputs=0), {'in_1': my_ring}))
         Pipeline(blocks).main()
-        summed_result = np.loadtxt('.log.txt')
-        np.testing.assert_almost_equal(summed_result, [18, 14])
     def test_for_bad_ring_definitions(self):
         """Try to pass bad input and outputs"""
         blocks = []
@@ -536,3 +537,162 @@ class TestNumpyBlock(unittest.TestCase):
             NumpyBlock(function=dstack_handler, inputs=number_rings, outputs=1),
             second_connections])
         self.expected_result = np.dstack((self.test_array,)*(len(second_connections)-1)).ravel()
+    def test_zero_outputs(self):
+        """Test zero outputs on NumpyBlock. Nothing should be sent through self.function at init"""
+        def assert_something(array):
+            """Assert the array is only 4 numbers, and return nothing"""
+            np.testing.assert_almost_equal(array, [1, 2, 3, 4])
+        self.blocks.append([
+            NumpyBlock(function=assert_something, outputs=0),
+            {'in_1': 0}])
+        self.blocks.append([
+            NumpyBlock(function=np.copy, outputs=1),
+            {'in_1': 0, 'out_1': 1}])
+        self.expected_result = [1, 2, 3, 4]
+    def test_global_variable_capture(self):
+        """Test that we can pull out a number from a ring using NumpyBlock"""
+        self.global_variable = np.array([])
+        def create_global_variable(array):
+            """Try to append the array to a global variable"""
+            self.global_variable = np.copy(array)
+        self.blocks.append([
+            NumpyBlock(function=create_global_variable, outputs=0),
+            {'in_1': 0}])
+        self.blocks.append([
+            NumpyBlock(function=np.copy),
+            {'in_1': 0, 'out_1': 1}])
+        Pipeline(self.blocks).main()
+        open('.log.txt', 'w').close()
+        np.testing.assert_almost_equal(self.global_variable, [1, 2, 3, 4])
+        self.expected_result = [1, 2, 3, 4]
+class TestNumpySourceBlock(unittest.TestCase):
+    """Tests for a block which can call arbitrary functions that work on numpy arrays.
+        This should include the many numpy, scipy and astropy functions.
+        Furthermore, this block should automatically move GPU data to CPU,
+        call the numpy function, and then put out data on a CPU ring.
+        The purpose of this ring is mainly for tests or filling in missing
+        functionality."""
+    def setUp(self):
+        """Set up some parameters that every test uses"""
+        self.occurences = 0
+    def test_simple_single_generation(self):
+        """For single yields, should act like a TestingBlock"""
+        def generate_one_array():
+            """Put out a single numpy array"""
+            yield np.array([1, 2, 3, 4]).astype(np.float32)
+        def assert_expectation(array):
+            """Assert the array is as expected"""
+            np.testing.assert_almost_equal(array, [1, 2, 3, 4])
+            self.occurences += 1
+        blocks = []
+        blocks.append((NumpySourceBlock(generate_one_array), {'out_1': 0}))
+        blocks.append((NumpyBlock(assert_expectation, outputs=0), {'in_1': 0}))
+        Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 1)
+    def test_multiple_yields(self):
+        """Should be able to repeat generation of an array"""
+        def generate_10_arrays():
+            """Put out 10 numpy arrays"""
+            for _ in range(10):
+                yield np.array([1, 2, 3, 4]).astype(np.float32)
+        def assert_expectation(array):
+            """Assert the array is as expected"""
+            np.testing.assert_almost_equal(array, [1, 2, 3, 4])
+            self.occurences += 1
+        blocks = []
+        blocks.append((NumpySourceBlock(generate_10_arrays), {'out_1': 0}))
+        blocks.append((NumpyBlock(assert_expectation, outputs=0), {'in_1': 0}))
+        Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 10)
+    def test_multiple_output_rings(self):
+        """Multiple output ring test."""
+        def generate_many_arrays():
+            """Put out 10x10 numpy arrays"""
+            for _ in range(10):
+                yield (np.array([1, 2, 3, 4]).astype(np.float32),)*10
+        def assert_expectation(*args):
+            """Assert the arrays are as expected"""
+            assert len(args) == 10
+            for array in args:
+                np.testing.assert_almost_equal(array, [1, 2, 3, 4])
+            self.occurences += 1
+        blocks = []
+        blocks.append((
+            NumpySourceBlock(generate_many_arrays, outputs=10),
+            {'out_%d'%(i+1):i for i in range(10)}))
+        blocks.append((
+            NumpyBlock(assert_expectation, inputs=10, outputs=0),
+            {'in_%d'%(i+1):i for i in range(10)}))
+        Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 10)
+    def test_different_types(self):
+        """Try to output different type arrays"""
+        def generate_different_type_arrays():
+            """Put out arrays of different types"""
+            arrays = []
+            for array_type in ['float32', 'float64', 'int8', 'uint8']:
+                numpy_type = np.dtype(array_type).type
+                arrays.append(np.array([1, 2, 3, 4]).astype(numpy_type))
+            arrays.append(np.array([1+10j]))
+            yield arrays
+        def assert_expectation(*args):
+            """Assert the arrays are as expected"""
+            self.occurences += 1
+            self.assertEqual(len(args), 5)
+            for index, array_type in enumerate(['float32', 'float64', 'int8', 'uint8']):
+                self.assertTrue(str(args[index].dtype) == array_type)
+                np.testing.assert_almost_equal(args[index], [1, 2, 3, 4])
+            np.testing.assert_almost_equal(args[-1], np.array([1+10j]))
+        blocks = []
+        blocks.append((
+            NumpySourceBlock(generate_different_type_arrays, outputs=5),
+            {'out_%d'%(i+1):i for i in range(5)}))
+        blocks.append((
+            NumpyBlock(assert_expectation, inputs=5, outputs=0),
+            {'in_%d'%(i+1):i for i in range(5)}))
+        Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 1)
+    def test_header_output(self):
+        """Output a header for a ring explicitly"""
+        def generate_array_and_header():
+            """Output the desired header of an array"""
+            header = {'dtype': 'complex128', 'nbit': 128}
+            yield np.array([1, 2, 3, 4]), header
+        def assert_expectation(array):
+            "Assert that the array has a complex datatype"
+            np.testing.assert_almost_equal(array, [1, 2, 3, 4])
+            self.assertEqual(array.dtype, np.dtype('complex128'))
+            self.occurences += 1
+        blocks = []
+        blocks.append((
+            NumpySourceBlock(generate_array_and_header, grab_headers=True),
+            {'out_1': 0}))
+        blocks.append((NumpyBlock(assert_expectation, outputs=0), {'in_1': 0}))
+        Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 1)
+    def test_multi_header_output(self):
+        """Output multiple arrays and headers to fill up rings"""
+        def generate_array_and_header():
+            """Output the desired header of an array"""
+            header_1 = {'dtype': 'complex128', 'nbit': 128}
+            header_2 = {'dtype': 'complex64', 'nbit': 64}
+            yield (
+                np.array([1, 2, 3, 4]), header_1,
+                np.array([1, 2]), header_2)
+        def assert_expectation(array1, array2):
+            "Assert that the arrays have different complex datatypes"
+            np.testing.assert_almost_equal(array1, [1, 2, 3, 4])
+            np.testing.assert_almost_equal(array2, [1, 2])
+            self.assertEqual(array1.dtype, np.dtype('complex128'))
+            self.assertEqual(array2.dtype, np.dtype('complex64'))
+            self.occurences += 1
+        blocks = []
+        blocks.append((
+            NumpySourceBlock(generate_array_and_header, outputs=2, grab_headers=True),
+            {'out_1': 0, 'out_2': 1}))
+        blocks.append((NumpyBlock(assert_expectation, inputs=2, outputs=0), {'in_1': 0, 'in_2': 1}))
+        Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 1)
+        #TODO: Add tests for defined 'rate' of numpy source block?
+        #TODO: Add tests for changing output of generator
+        #TODO: Add test for Pipeline calling _main, which sets core.
