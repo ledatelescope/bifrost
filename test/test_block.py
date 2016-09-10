@@ -723,3 +723,4 @@ class TestNumpySourceBlock(unittest.TestCase):
         #TODO: Add tests for defined 'rate' of numpy source block?
         #TODO: How to test multiple sequences are not getting generated?
         #TODO: Add test for making sure multi-core speeds up.
+        #TODO: Add timeout test for Pipelines.
