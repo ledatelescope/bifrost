@@ -1,7 +1,7 @@
 * [[Home]]
 * Introductions and examples
  * [[Getting started guide]]
- * [[Installation problems]]
+ * [[Common installation and execution problems]]
 * Reference guides
  * [[Python API]]
  * [[Ring() API]]
