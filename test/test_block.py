@@ -719,3 +719,4 @@ class TestNumpySourceBlock(unittest.TestCase):
         Pipeline(blocks).main()
         #TODO: Add tests for defined 'rate' of numpy source block?
         #TODO: Add test for Pipeline calling _main, which sets core.
+        self.assertEqual(self.occurences, 2)

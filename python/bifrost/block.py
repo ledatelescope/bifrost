@@ -232,6 +232,7 @@ class MultiTransformBlock(object):
         self.rings = {}
         self.header = {}
         self.gulp_size = {}
+        self.trigger_sequence = False
     def flatten(self, *args):
         """Flatten a nested tuple/list of tuples/lists"""
         flattened_list = []
@@ -286,26 +287,29 @@ class MultiTransformBlock(object):
         #http://stackoverflow.com/questions/38834827/multiple-with-statements-in-python-2-7-using-a-list-comprehension
         with nested(*[self.rings[ring_name].begin_writing() \
                 for ring_name in args]) as out_rings:
-            with nested(*[out_ring.begin_sequence(
-                "",
-                0,
-                header=json.dumps(self.header[ring_name]),
-                nringlet=1) \
-                    for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
-                while True:
-                    with nested(*[out_sequence.reserve(self.gulp_size[ring_name]) \
-                            for out_sequence, ring_name in self.izip(
-                                out_sequences,
-                                args)]) as out_spans:
-                        dtypes = {}
-                        for ring_name in args:
-                            try:
-                                dtype = np.dtype(self.header[ring_name]['dtype']).type
-                            except TypeError:
-                                numpy_dtype_word = self.header[ring_name]['dtype'].split()[1]
-                                dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
-                            dtypes[ring_name] = dtype
-                        yield tuple([out_span.data_view(dtypes[ring_name])[0] for out_span, ring_name in self.izip(out_spans, args)])
+            while True:
+                with nested(*[out_ring.begin_sequence(
+                    str(np.random.rand(1, 3)),
+                    int(100*np.random.rand(1)[0]),
+                    header=json.dumps(self.header[ring_name]),
+                    nringlet=1) \
+                        for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
+                    while True:
+                        with nested(*[out_sequence.reserve(self.gulp_size[ring_name]) \
+                                for out_sequence, ring_name in self.izip(
+                                    out_sequences,
+                                    args)]) as out_spans:
+                            dtypes = {}
+                            for ring_name in args:
+                                try:
+                                    dtype = np.dtype(self.header[ring_name]['dtype']).type
+                                except TypeError:
+                                    numpy_dtype_word = self.header[ring_name]['dtype'].split()[1]
+                                    dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
+                                dtypes[ring_name] = dtype
+                            yield tuple([out_span.data_view(dtypes[ring_name])[0] for out_span, ring_name in self.izip(out_spans, args)])
+                        if self.trigger_sequence:
+                            break
 class SplitterBlock(MultiTransformBlock):
     """Block which splits up a ring into two"""
     ring_names = {
@@ -1013,3 +1017,5 @@ class NumpySourceBlock(MultiTransformBlock):
             if self.changing:
                 old_headers = dict(self.header)
                 self.calculate_output_settings(arrays)
+                #temporarily always force new sequence
+                self.trigger_sequence = True
