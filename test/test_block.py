@@ -693,6 +693,25 @@ class TestNumpySourceBlock(unittest.TestCase):
         blocks.append((NumpyBlock(assert_expectation, inputs=2, outputs=0), {'in_1': 0, 'in_2': 1}))
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 1)
+    def test_output_change(self):
+        """Change the output of the source, and expect new sequence"""
+        self.occurences = 0
+
+        def generate_different_arrays():
+            yield np.array([1, 2])
+            yield np.array([1, 2, 3])
+
+        def assert_change(array):
+            if self.occurences == 0:
+                np.testing.assert_almost_equal(array, [1, 2])
+            else:
+                np.testing.assert_almost_equal(array, [1, 2, 3])
+            self.occurences += 1
+
+        blocks = [
+            (NumpySourceBlock(generate_different_arrays), {'out_1': 0}),
+            (NumpyBlock(assert_change, outputs=0), {'in_1': 0})]
+
+        Pipeline(blocks).main()
         #TODO: Add tests for defined 'rate' of numpy source block?
-        #TODO: Add tests for changing output of generator
         #TODO: Add test for Pipeline calling _main, which sets core.
