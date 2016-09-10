@@ -937,7 +937,7 @@ class NumpySourceBlock(MultiTransformBlock):
     """Simulate an incoming stream of data on a ring using an arbitrary generator.
         This block will calculate all of the
         necessary information for Bifrost based on the passed function."""
-    def __init__(self, generator, outputs=1, grab_headers=False, changing=False):
+    def __init__(self, generator, outputs=1, grab_headers=False, changing=True):
         """Based on the number of inputs/outputs, set up enough ring_names
             for the pipeline to call.
             @param[in] generator A function which generates numpy arrays
