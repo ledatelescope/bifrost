@@ -310,6 +310,7 @@ class MultiTransformBlock(object):
                                 dtypes[ring_name] = dtype
                             yield tuple([out_span.data_view(dtypes[ring_name])[0] for out_span, ring_name in self.izip(out_spans, args)])
                         if self.trigger_sequence:
+                            self.trigger_sequence = False
                             break
 class SplitterBlock(MultiTransformBlock):
     """Block which splits up a ring into two"""
@@ -1016,7 +1017,10 @@ class NumpySourceBlock(MultiTransformBlock):
 
             #recalculate if different settings
             if self.changing:
-                old_headers = dict(self.header)
+                old_header = dict(self.header)
                 self.calculate_output_settings(arrays)
                 #temporarily always force new sequence
-                self.trigger_sequence = True
+                for ring_name in self.ring_names:
+                    if old_header[ring_name] != self.header[ring_name]:
+                        self.trigger_sequence = True
+                        break
