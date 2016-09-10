@@ -10,7 +10,7 @@ A stream processing framework for high-throughput applications.
 ```python
 def generate_ten_arrays():
   for i in range(10):
-    yield np.array([1, 2, 3])
+    yield np.array([1, 0, 0])
 
 def array_print(array):
   print array
