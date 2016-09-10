@@ -931,12 +931,13 @@ class NumpySourceBlock(MultiTransformBlock):
     """Simulate an incoming stream of data on a ring using an arbitrary generator.
         This block will calculate all of the
         necessary information for Bifrost based on the passed function."""
-    def __init__(self, generator, outputs=1, grab_headers=False):
+    def __init__(self, generator, outputs=1, grab_headers=False, changing=False):
         """Based on the number of inputs/outputs, set up enough ring_names
             for the pipeline to call.
             @param[in] generator A function which generates numpy arrays
             @param[in] outputs The number of numpy arrays generated. Also
-                equal to the number of outgoing rings attached to this block."""
+                equal to the number of outgoing rings attached to this block.
+            @param[in] changing Whether or not the arrays will be different in shape"""
         super(NumpySourceBlock, self).__init__()
         outputs = ['out_%d'%(i+1) for i in range(outputs)]
         self.ring_names = {}
@@ -947,6 +948,7 @@ class NumpySourceBlock(MultiTransformBlock):
         self.generator = generator()
         assert hasattr(self.generator, 'next')
         self.grab_headers = grab_headers
+        self.changing = changing
 
     def calculate_output_settings(self, arrays):
         """Calculate the outgoing header settings based on the output arrays
@@ -975,6 +977,7 @@ class NumpySourceBlock(MultiTransformBlock):
     def main(self):
         """Call self.generator and output the arrays into the output"""
         output_data = self.generator.next()
+
         if self.grab_headers:
             arrays = output_data[0::2]
             headers = output_data[1::2]
@@ -986,12 +989,15 @@ class NumpySourceBlock(MultiTransformBlock):
         self.calculate_output_settings(arrays)
         if self.grab_headers:
             self.load_user_headers(headers, arrays)
+
         for outspans in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
             for i in range(len(self.ring_names)):
                 dtype = self.header['out_%d'%(i+1)]['dtype']
                 outspans[i][:] = arrays[i].astype(np.dtype(dtype).type).ravel()
+
             try:
                 output_data = self.generator.next()
+
                 if self.grab_headers:
                     arrays = output_data[0::2]
                     headers = output_data[1::2]
@@ -1002,3 +1008,8 @@ class NumpySourceBlock(MultiTransformBlock):
                         arrays = output_data
             except StopIteration:
                 break
+
+            #recalculate if different settings
+            if self.changing:
+                old_headers = dict(self.header)
+                self.calculate_output_settings(arrays)
