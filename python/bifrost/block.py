@@ -1015,11 +1015,9 @@ class NumpySourceBlock(MultiTransformBlock):
             except StopIteration:
                 break
 
-            #recalculate if different settings
             if self.changing:
                 old_header = dict(self.header)
                 self.calculate_output_settings(arrays)
-                #temporarily always force new sequence
                 for ring_name in self.ring_names:
                     if old_header[ring_name] != self.header[ring_name]:
                         self.trigger_sequence = True

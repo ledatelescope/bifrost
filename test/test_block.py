@@ -717,6 +717,7 @@ class TestNumpySourceBlock(unittest.TestCase):
             (NumpyBlock(assert_change, outputs=0), {'in_1': 0})]
 
         Pipeline(blocks).main()
-        #TODO: Add tests for defined 'rate' of numpy source block?
-        #TODO: Add test for Pipeline calling _main, which sets core.
         self.assertEqual(self.occurences, 2)
+        #TODO: Add tests for defined 'rate' of numpy source block?
+        #TODO: How to test multiple sequences are not getting generated?
+        #TODO: Add test for Pipeline calling _main, which sets core.
