@@ -26,6 +26,9 @@ Pipeline(blocks).main()
 # ...
 ```
 
+<!---
+Should put an image of this pipeline here.
+-->
 ## Feature overview:
 
  * Designed for sustained high-throughput stream processing
