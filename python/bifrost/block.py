@@ -237,6 +237,9 @@ class MultiTransformBlock(object):
     def _main(self):
         """Sets core, and calls main"""
         affinity.set_core(-1)
+        for ring_name in self.ring_names:
+            if ring_name not in self.header:
+                self.header[ring_name] = {}
         self.main()
     def flatten(self, *args):
         """Flatten a nested tuple/list of tuples/lists"""
@@ -874,15 +877,18 @@ class NumpyBlock(MultiTransformBlock):
         self.inputs = ['in_%d' % (i+1) for i in range(inputs)]
         self.outputs = ['out_%d' % (i+1) for i in range(outputs)]
         self.ring_names = {}
+        self.create_ring_names()
+        self.function = function
+        assert callable(self.function)
+
+    def create_ring_names(self):
+        """Generate dummy ring descriptions"""
         for input_name in self.inputs:
             ring_description = "Input number " + input_name[3:]
             self.ring_names[input_name] = ring_description
         for output_name in self.outputs:
             ring_description = "Output number " + output_name[4:]
             self.ring_names[output_name] = ring_description
-        self.function = function
-        assert callable(self.function)
-
     def load_settings(self):
         """Generate empty arrays based on input headers."""
         for input_name in self.inputs:
@@ -920,38 +926,39 @@ class NumpyBlock(MultiTransformBlock):
             inspans[i] = inspans[i].view(dtype).reshape(self.header[input_name]['shape'])
         return inspans
 
+    def did_header_change(self, old_header):
+        """See if the new headers are different
+            @param[in] old_header The previous headers"""
+        for ring_name in self.ring_names:
+            if old_header[ring_name] != self.header[ring_name]:
+                return True
+        return False
+
     def main(self):
         """Call self.function on all of the input spans"""
-        # Set up ring writer
-        if len(self.outputs) > 0:
+        number_outputs = len(self.outputs)
+        if number_outputs > 0:
             outspan_generator = self.write(*self.outputs)
-            for output_name in self.outputs:
-                self.header[output_name] = {}
 
-        # 
         for inspans in self.izip(self.read(*self.inputs)):
             inspans = self.reshape_inspans(inspans)
 
-            if len(self.outputs) == 0:
+            if number_outputs == 0:
                 self.function(*inspans)
             else:
-                if len(self.outputs) == 1:
+                if number_outputs == 1:
                     output_arrays = [self.function(*inspans)]
                 else:
                     output_arrays = self.function(*inspans)
-                assert len(self.outputs) == len(output_arrays)
+                assert number_outputs == len(output_arrays)
 
                 old_header = dict(self.header)
                 self.measure_output_settings(output_arrays)
-                for ring_name in self.ring_names:
-                    if old_header[ring_name] != self.header[ring_name]:
-                        self.trigger_sequence = True
+                if self.did_header_change(old_header):
+                    self.trigger_sequence = True
 
-                #Call outspan_generator at end.
                 outspans = outspan_generator.next()
-
-                #Copy in the data.
-                for i in range(len(self.outputs)):
+                for i in range(number_outputs):
                     outspans[i][:] = output_arrays[i].ravel()
 
 class NumpySourceBlock(MultiTransformBlock):

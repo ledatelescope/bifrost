@@ -727,3 +727,4 @@ class TestNumpySourceBlock(unittest.TestCase):
         #TODO: How to test multiple sequences are not getting generated?
         #TODO: Add test for making sure multi-core speeds up.
         #TODO: Add timeout test for Pipelines.
+        #TODO: Need test for when new sequence from one ring and not other.
