@@ -2,7 +2,7 @@ Do you have a problem that is not documented below? No matter how trivial the pr
 
 #### (The program hangs)
 
-This is probably because a Bifrost pipeline was started with an infinite timeout, and some blocks are not ending themselves. Quit the program (by ctrl-\), and make sure every block in your pipeline is reading/writing to its rings as it should.
+This is probably because a Bifrost pipeline was started with an infinite timeout, and some blocks are not ending themselves. Quit the program (by ctrl-\\), and make sure every block in your pipeline is reading/writing to its rings as it should.
 
 #### ImportError: No module named pyclibrary
 
