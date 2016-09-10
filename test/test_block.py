@@ -679,6 +679,7 @@ class TestNumpySourceBlock(unittest.TestCase):
             yield (
                 np.array([1, 2, 3, 4]), header_1,
                 np.array([1, 2]), header_2)
+
         def assert_expectation(array1, array2):
             "Assert that the arrays have different complex datatypes"
             np.testing.assert_almost_equal(array1, [1, 2, 3, 4])
@@ -686,11 +687,13 @@ class TestNumpySourceBlock(unittest.TestCase):
             self.assertEqual(array1.dtype, np.dtype('complex128'))
             self.assertEqual(array2.dtype, np.dtype('complex64'))
             self.occurences += 1
+
         blocks = []
         blocks.append((
             NumpySourceBlock(generate_array_and_header, outputs=2, grab_headers=True),
             {'out_1': 0, 'out_2': 1}))
         blocks.append((NumpyBlock(assert_expectation, inputs=2, outputs=0), {'in_1': 0, 'in_2': 1}))
+
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 1)
     def test_output_change(self):
