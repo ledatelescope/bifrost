@@ -88,7 +88,7 @@ class Pipeline(object):
                 for param_name in block[1]:
                     block[0].rings[param_name] = self.rings[str(block[1][param_name])]
                 threads.append(threading.Thread(
-                    target=block[0].main))
+                    target=block[0]._main))
             else:
                 input_rings = []
                 output_rings = []
@@ -234,6 +234,10 @@ class MultiTransformBlock(object):
         self.header = {}
         self.gulp_size = {}
         self.trigger_sequence = False
+    def _main(self):
+        """Sets up block for runtime after rings are specified, and calls main"""
+        affinity.set_core(-1)
+        self.main()
     def flatten(self, *args):
         """Flatten a nested tuple/list of tuples/lists"""
         flattened_list = []
