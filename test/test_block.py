@@ -690,8 +690,7 @@ class TestNumpySourceBlock(unittest.TestCase):
 
         blocks = []
         blocks.append((
-            NumpySourceBlock(generate_array_and_header, outputs=2, grab_headers=True),
-            {'out_1': 0, 'out_2': 1}))
+            NumpySourceBlock(generate_array_and_header, outputs=2, grab_headers=True), {'out_1': 0, 'out_2': 1}))
         blocks.append((NumpyBlock(assert_expectation, inputs=2, outputs=0), {'in_1': 0, 'in_2': 1}))
 
         Pipeline(blocks).main()
@@ -701,10 +700,12 @@ class TestNumpySourceBlock(unittest.TestCase):
         self.occurences = 0
 
         def generate_different_arrays():
+            """Yield two different arrays"""
             yield np.array([1, 2])
             yield np.array([1, 2, 3])
 
         def assert_change(array):
+            """Assert the input arrays change"""
             if self.occurences == 0:
                 np.testing.assert_almost_equal(array, [1, 2])
             else:

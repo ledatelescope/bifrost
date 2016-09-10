@@ -926,6 +926,7 @@ class NumpyBlock(MultiTransformBlock):
                 output_data = [output_data]
             for i in range(len(self.outputs)):
                 outspans[i][:] = output_data[i].ravel()
+
 class NumpySourceBlock(MultiTransformBlock):
     """Simulate an incoming stream of data on a ring using an arbitrary generator.
         This block will calculate all of the
@@ -946,6 +947,7 @@ class NumpySourceBlock(MultiTransformBlock):
         self.generator = generator()
         assert hasattr(self.generator, 'next')
         self.grab_headers = grab_headers
+
     def calculate_output_settings(self, arrays):
         """Calculate the outgoing header settings based on the output arrays
             @param[in] arrays The arrays outputted by self.generator"""
@@ -957,6 +959,7 @@ class NumpySourceBlock(MultiTransformBlock):
                 'shape': list(arrays[index].shape),
                 'nbit': arrays[index].nbytes*8//arrays[index].size}
             self.gulp_size[ring_name] = arrays[index].nbytes
+
     def load_user_headers(self, headers, arrays):
         """Load in user defined headers
             @param[in] headers List of dictionaries from self.generator
@@ -968,6 +971,7 @@ class NumpySourceBlock(MultiTransformBlock):
             if 'dtype' in header:
                 assert 'nbit' in header
                 self.gulp_size[ring_name] = arrays[i].size*self.header[ring_name]['nbit']//8
+
     def main(self):
         """Call self.generator and output the arrays into the output"""
         output_data = self.generator.next()
