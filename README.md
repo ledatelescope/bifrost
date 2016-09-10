@@ -5,7 +5,28 @@ A stream processing framework for high-throughput applications.
 
 ### [Bifrost Wiki](https://github.com/ledatelescope/bifrost/wiki)
 
-## Feature overview
+## Your first pipeline:
+
+```python
+def generate_ten_arrays():
+  for i in range(10):
+    yield np.array([1, 2, 3])
+
+def array_print(array):
+  print array
+
+blocks = [
+  (NumpySourceBlock(generate_ten_arrays), {'out_1': 'raw'}),
+  (NumpyBlock(np.fft.fft), {'in_1': 'raw', 'out_1':'fft'}),
+  (NumpyBlock(array_print, outputs=0), {'in_1': 'fft'})]
+
+Pipeline(blocks).main()
+# [ 1.+0.j  1.+0.j  1.+0.j]
+# [ 1.+0.j  1.+0.j  1.+0.j]
+# ...
+```
+
+## Feature overview:
 
  * Designed for sustained high-throughput stream processing
  * Python and C++ APIs wrap fast C++/CUDA backend
@@ -19,7 +40,7 @@ A stream processing framework for high-throughput applications.
   - UDP: Fast data capture with memory reordering and unpacking
   - Radio astronomy: High-performance signal processing operations
 
-## Installation
+## Installation:
 
 Edit user.mk to suit your system, then run:
 
@@ -29,7 +50,7 @@ Edit user.mk to suit your system, then run:
 which will install the library and headers into /usr/local/lib and
 /usr/local/include respectively.
 
-## Python interface
+## Python interface:
 
 Install dependencies:
 
