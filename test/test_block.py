@@ -565,6 +565,7 @@ class TestNumpyBlock(unittest.TestCase):
         open('.log.txt', 'w').close()
         np.testing.assert_almost_equal(self.global_variable, [1, 2, 3, 4])
         self.expected_result = [1, 2, 3, 4]
+
 class TestNumpySourceBlock(unittest.TestCase):
     """Tests for a block which can call arbitrary functions that work on numpy arrays.
         This should include the many numpy, scipy and astropy functions.
@@ -714,10 +715,11 @@ class TestNumpySourceBlock(unittest.TestCase):
 
         blocks = [
             (NumpySourceBlock(generate_different_arrays), {'out_1': 0}),
-            (NumpyBlock(assert_change, outputs=0), {'in_1': 0})]
+            (NumpyBlock(np.copy), {'in_1': 0, 'out_1': 1}),
+            (NumpyBlock(assert_change, outputs=0), {'in_1': 1})]
 
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 2)
         #TODO: Add tests for defined 'rate' of numpy source block?
         #TODO: How to test multiple sequences are not getting generated?
-        #TODO: Add test for Pipeline calling _main, which sets core.
+        #TODO: Add test for making sure multi-core speeds up.

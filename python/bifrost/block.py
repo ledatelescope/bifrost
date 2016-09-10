@@ -235,7 +235,7 @@ class MultiTransformBlock(object):
         self.gulp_size = {}
         self.trigger_sequence = False
     def _main(self):
-        """Sets up block for runtime after rings are specified, and calls main"""
+        """Sets core, and calls main"""
         affinity.set_core(-1)
         self.main()
     def flatten(self, *args):
