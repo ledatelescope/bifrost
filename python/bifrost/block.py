@@ -32,6 +32,7 @@ of a simple transform which works on a span by span basis.
 """
 import json
 import threading
+import time
 from contextlib import nested
 import matplotlib
 ## Use a graphical backend which supports threading
@@ -289,7 +290,7 @@ class MultiTransformBlock(object):
                 for ring_name in args]) as out_rings:
             while True:
                 with nested(*[out_ring.begin_sequence(
-                    str(np.random.rand(1, 3)),
+                    str(int(time.time()*1000)),
                     int(100*np.random.rand(1)[0]),
                     header=json.dumps(self.header[ring_name]),
                     nringlet=1) \
