@@ -7,3 +7,7 @@ You have not installed PyCLibrary, or you are using two different python install
 #### OSError: ..../lib/libbifrost.so: undefined symbol: cudaFreeHost
 
 At the make step, nvcc did not link cudaFreeHost into libbifrost.so. You should make sure that config.mk and user.mk are set up for your system, and that your nvcc compiler can compile other CUDA programs. If you are still having trouble, raise an issue.
+
+#### OSError: Can't find library with name libbifrost.so
+
+This means that PyCLibrary can't find your Bifrost installation. Whatever library folders it searches for Bifrost, you do not have the libbifrost.so file there. To fix this, type `echo $LD_LIBRARY_PATH` at your command line. If none of these folders contain the Bifrost installation (which you specified in config.mk), you have found the problem. Perform `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/my/bifrost/installation`, where `/my/bifrost/installation` is the folder where you installed Bifrost. This should add Bifrost to the PyCLibrary search path.
