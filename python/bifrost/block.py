@@ -889,6 +889,7 @@ class NumpyBlock(MultiTransformBlock):
         for output_name in self.outputs:
             ring_description = "Output number " + output_name[4:]
             self.ring_names[output_name] = ring_description
+
     def load_settings(self):
         """Generate empty arrays based on input headers."""
         for input_name in self.inputs:
@@ -900,7 +901,7 @@ class NumpyBlock(MultiTransformBlock):
             array = np.zeros(shape=self.header[input_name]['shape'], dtype=dtype)
             self.gulp_size[input_name] = array.nbytes
 
-    def measure_output_settings(self, out_arrays):
+    def calculate_output_headers(self, out_arrays):
         """Generate headers based on numpy arrays
             @param[in] out_arrays The arrays to measure"""
         for output_index, output_name in enumerate(self.outputs):
@@ -953,7 +954,7 @@ class NumpyBlock(MultiTransformBlock):
                 assert number_outputs == len(output_arrays)
 
                 old_header = dict(self.header)
-                self.measure_output_settings(output_arrays)
+                self.calculate_output_headers(output_arrays)
                 if self.did_header_change(old_header):
                     self.trigger_sequence = True
 
