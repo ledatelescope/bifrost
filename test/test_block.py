@@ -713,7 +713,7 @@ class TestNumpySourceBlock(unittest.TestCase):
             self.occurences += 1
 
         blocks = [
-            (NumpySourceBlock(generate_different_arrays), {'out_1': 0}),
+            (NumpySourceBlock(generate_different_arrays, changing=True), {'out_1': 0}),
             (NumpyBlock(assert_change, outputs=0), {'in_1': 0})]
 
         Pipeline(blocks).main()
