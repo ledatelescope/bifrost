@@ -291,7 +291,7 @@ class MultiTransformBlock(object):
             while True:
                 with nested(*[out_ring.begin_sequence(
                     str(int(time.time()*1000)),
-                    int(100*np.random.rand(1)[0]),
+                    int(time.time()*1000),
                     header=json.dumps(self.header[ring_name]),
                     nringlet=1) \
                         for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
