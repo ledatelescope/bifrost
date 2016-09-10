@@ -921,6 +921,8 @@ class NumpyBlock(MultiTransformBlock):
         """Call self.function on all of the input spans"""
         if len(self.outputs) > 0:
             outspan_generator = self.write(*self.outputs)
+            for output_name in self.outputs:
+                self.header[output_name] = {}
         for allspans in self.izip(self.read(*self.inputs)):
             inspans = allspans
             for i, input_name in enumerate(self.inputs):
