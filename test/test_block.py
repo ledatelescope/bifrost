@@ -691,8 +691,11 @@ class TestNumpySourceBlock(unittest.TestCase):
 
         blocks = []
         blocks.append((
-            NumpySourceBlock(generate_array_and_header, outputs=2, grab_headers=True), {'out_1': 0, 'out_2': 1}))
-        blocks.append((NumpyBlock(assert_expectation, inputs=2, outputs=0), {'in_1': 0, 'in_2': 1}))
+            NumpySourceBlock(generate_array_and_header, outputs=2, grab_headers=True),
+            {'out_1': 0, 'out_2': 1}))
+        blocks.append((
+            NumpyBlock(assert_expectation, inputs=2, outputs=0),
+            {'in_1': 0, 'in_2': 1}))
 
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 1)

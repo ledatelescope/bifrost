@@ -281,7 +281,6 @@ class MultiTransformBlock(object):
             for spans in self.izip(*[sequence.read(self.gulp_size[ring_name]) \
                     for ring_name, sequence in self.izip(args, sequences)]):
                 yield tuple([span.data_view(dtypes[ring_name])[0] for span, ring_name in self.izip(spans, args)])
-                #yield [span.data_view(np.float32)[0] for span in spans]
     def write(self, *args):
         """Iterate over selection of output rings"""
         # resize all rings
@@ -883,17 +882,8 @@ class NumpyBlock(MultiTransformBlock):
             self.ring_names[output_name] = ring_description
         self.function = function
         assert callable(self.function)
+
     def load_settings(self):
-        """Estimate the output settings based on zero matrices
-            of the input shapes and data types"""
-        self.generate_input_arrays()
-        """
-        if len(self.outputs) == 1:
-            self.measure_output_settings([self.function(*test_input_arrays)])
-        elif len(self.outputs) > 1:
-            self.measure_output_settings(self.function(*test_input_arrays))
-        """
-    def generate_input_arrays(self):
         """Generate empty arrays based on input headers."""
         for input_name in self.inputs:
             try:
@@ -903,9 +893,9 @@ class NumpyBlock(MultiTransformBlock):
                 dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
             array = np.zeros(shape=self.header[input_name]['shape'], dtype=dtype)
             self.gulp_size[input_name] = array.nbytes
+
     def measure_output_settings(self, out_arrays):
-        """Measure the settings of the output arrays and set header settings
-            appropriately.
+        """Generate headers based on numpy arrays
             @param[in] out_arrays The arrays to measure"""
         for output_index, output_name in enumerate(self.outputs):
             test_output_array = out_arrays[output_index]
@@ -917,62 +907,52 @@ class NumpyBlock(MultiTransformBlock):
             self.header[output_name]['dtype'] = str(test_output_array.dtype)
             self.header[output_name]['nbit'] = 8*nbytes//nelements
             self.header[output_name]['shape'] = list(test_output_array.shape)
+
+    def reshape_inspans(self, inspans):
+        """Fit the input spans to their headers
+            @param[in] inspans The input spans."""
+        for i, input_name in enumerate(self.inputs):
+            try:
+                dtype = np.dtype(self.header[input_name]['dtype']).type
+            except TypeError:
+                numpy_dtype_word = self.header[input_name]['dtype'].split()[1]
+                dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
+            inspans[i] = inspans[i].view(dtype).reshape(self.header[input_name]['shape'])
+        return inspans
+
     def main(self):
         """Call self.function on all of the input spans"""
+        # Set up ring writer
         if len(self.outputs) > 0:
             outspan_generator = self.write(*self.outputs)
             for output_name in self.outputs:
                 self.header[output_name] = {}
-        for allspans in self.izip(self.read(*self.inputs)):
-            inspans = allspans
-            for i, input_name in enumerate(self.inputs):
-                try:
-                    dtype = np.dtype(self.header[input_name]['dtype']).type
-                except TypeError:
-                    numpy_dtype_word = self.header[input_name]['dtype'].split()[1]
-                    dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
-                inspans[i] = inspans[i].view(dtype).reshape(self.header[input_name]['shape'])
 
-            if len(self.outputs) > 0:
+        # 
+        for inspans in self.izip(self.read(*self.inputs)):
+            inspans = self.reshape_inspans(inspans)
+
+            if len(self.outputs) == 0:
+                self.function(*inspans)
+            else:
                 if len(self.outputs) == 1:
                     output_arrays = [self.function(*inspans)]
                 else:
                     output_arrays = self.function(*inspans)
+                assert len(self.outputs) == len(output_arrays)
 
                 old_header = dict(self.header)
-                assert len(self.outputs) == len(output_arrays)
                 self.measure_output_settings(output_arrays)
                 for ring_name in self.ring_names:
                     if old_header[ring_name] != self.header[ring_name]:
                         self.trigger_sequence = True
-                        break
 
                 #Call outspan_generator at end.
                 outspans = outspan_generator.next()
+
                 #Copy in the data.
                 for i in range(len(self.outputs)):
                     outspans[i][:] = output_arrays[i].ravel()
-            else:
-                self.function(*inspans)
-
-
-        """
-        for allspans in self.izip(self.read(*self.inputs), self.write(*self.outputs)):
-            inspans = allspans[:len(self.inputs)]
-            outspans = allspans[len(self.inputs):]
-            for i, input_name in enumerate(self.inputs):
-                try:
-                    dtype = np.dtype(self.header[input_name]['dtype']).type
-                except TypeError:
-                    numpy_dtype_word = self.header[input_name]['dtype'].split()[1]
-                    dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
-                inspans[i] = inspans[i].view(dtype).reshape(self.header[input_name]['shape'])
-            output_data = self.function(*inspans)
-            if len(self.outputs) == 1:
-                output_data = [output_data]
-            for i in range(len(self.outputs)):
-                outspans[i][:] = output_data[i].ravel()
-                """
 
 class NumpySourceBlock(MultiTransformBlock):
     """Simulate an incoming stream of data on a ring using an arbitrary generator.
