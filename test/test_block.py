@@ -400,6 +400,38 @@ class TestMultiTransformBlock(unittest.TestCase):
             {'bad_ring_name':0, 'in_2':0, 'out_sum': 1}]
         with self.assertRaises(AssertionError):
             Pipeline(blocks).main()
+    def test_multiple_sequences(self):
+        """Try to send multiple sequences through a branching pipeline"""
+
+        def generate_different_arrays():
+            """Yield four different groups of two arrays"""
+            dtypes = ['float32', 'float64', 'complex64', 'int8']
+            shapes = [(4,), (4, 5), (4, 5, 6), (2,)*10]
+            for array_index in range(4):
+                yield np.ones(
+                    shape=shapes[array_index],
+                    dtype=dtypes[array_index])
+                yield 2*np.ones(
+                    shape=shapes[array_index],
+                    dtype=dtypes[array_index])
+
+        def switch_types(array):
+            """Return two copies of the array, one with a different type"""
+            return np.copy(array), np.copy(array).astype(np.complex128)
+
+        def compare_arrays(array1, array2):
+            """Make sure that all arrays coming in are equal"""
+            np.testing.assert_almost_equal(array1, array2)
+
+        blocks = [
+            (NumpySourceBlock(generate_different_arrays), {'out_1': 0}),
+            (NumpyBlock(switch_types, outputs=2), {'in_1': 0, 'out_1': 1, 'out_2': 2}),
+            (FFTBlock(), {'in': 2, 'out': 3}),
+            (IFFTBlock(), {'in': 3, 'out': 4}),
+            (NumpyBlock(compare_arrays, inputs=2, outputs=0), {'in_1': 2, 'in_2': 4})]
+
+        Pipeline(blocks).main()
+
 class TestSplitterBlock(unittest.TestCase):
     """Test a block which splits up incoming data into two rings"""
     def test_simple_half_split(self):
