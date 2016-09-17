@@ -294,19 +294,24 @@ class MultiTransformBlock(object):
         #http://stackoverflow.com/questions/38834827/multiple-with-statements-in-python-2-7-using-a-list-comprehension
         with nested(*[self.rings[ring_name].begin_writing() \
                 for ring_name in args]) as out_rings:
+
             while True:
+
                 with nested(*[out_ring.begin_sequence(
                     str(int(time.time()*1000)),
                     int(time.time()*1000),
                     header=json.dumps(self.header[ring_name]),
                     nringlet=1) \
                         for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
+
                     self.trigger_sequence = False
                     while not self.trigger_sequence:
+
                         with nested(*[out_sequence.reserve(self.gulp_size[ring_name]) \
                                 for out_sequence, ring_name in self.izip(
                                     out_sequences,
                                     args)]) as out_spans:
+
                             dtypes = {}
                             for ring_name in args:
                                 try:
