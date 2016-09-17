@@ -426,8 +426,8 @@ class TestMultiTransformBlock(unittest.TestCase):
         blocks = [
             (NumpySourceBlock(generate_different_arrays), {'out_1': 0}),
             (NumpyBlock(switch_types, outputs=2), {'in_1': 0, 'out_1': 1, 'out_2': 2}),
-            (FFTBlock(), {'in': 2, 'out': 3}),
-            (IFFTBlock(), {'in': 3, 'out': 4}),
+            (NumpyBlock(np.fft.fft), {'in_1': 2, 'out_1': 3}),
+            (NumpyBlock(np.fft.ifft), {'in_1': 3, 'out_1': 4}),
             (NumpyBlock(compare_arrays, inputs=2, outputs=0), {'in_1': 2, 'in_2': 4})]
 
         Pipeline(blocks).main()
