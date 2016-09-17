@@ -301,7 +301,8 @@ class MultiTransformBlock(object):
                     header=json.dumps(self.header[ring_name]),
                     nringlet=1) \
                         for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
-                    while True:
+                    self.trigger_sequence = False
+                    while not self.trigger_sequence:
                         with nested(*[out_sequence.reserve(self.gulp_size[ring_name]) \
                                 for out_sequence, ring_name in self.izip(
                                     out_sequences,
@@ -315,9 +316,6 @@ class MultiTransformBlock(object):
                                     dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
                                 dtypes[ring_name] = dtype
                             yield tuple([out_span.data_view(dtypes[ring_name])[0] for out_span, ring_name in self.izip(out_spans, args)])
-                        if self.trigger_sequence:
-                            self.trigger_sequence = False
-                            break
 class SplitterBlock(MultiTransformBlock):
     """Block which splits up a ring into two"""
     ring_names = {
