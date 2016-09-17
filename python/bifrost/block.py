@@ -286,9 +286,6 @@ class MultiTransformBlock(object):
                 yield tuple([span.data_view(dtypes[ring_name])[0] for span, ring_name in self.izip(spans, args)])
     def write(self, *args):
         """Iterate over selection of output rings"""
-        # resize all rings
-        for ring_name in args:
-            self.rings[ring_name].resize(self.gulp_size[ring_name])
         # list of sequences
         #TODO: Change this code if someone gives a reasonable answer on 
         #http://stackoverflow.com/questions/38834827/multiple-with-statements-in-python-2-7-using-a-list-comprehension
@@ -296,6 +293,9 @@ class MultiTransformBlock(object):
                 for ring_name in args]) as out_rings:
 
             while True:
+                # resize all rings
+                for ring_name in args:
+                    self.rings[ring_name].resize(self.gulp_size[ring_name])
 
                 with nested(*[out_ring.begin_sequence(
                     str(int(time.time()*1000)),
@@ -305,6 +305,7 @@ class MultiTransformBlock(object):
                         for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
 
                     self.trigger_sequence = False
+                    #TODO: Eventually this could be used on each ring individually.
                     while not self.trigger_sequence:
 
                         with nested(*[out_sequence.reserve(self.gulp_size[ring_name]) \
