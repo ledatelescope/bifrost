@@ -434,6 +434,36 @@ class TestMultiTransformBlock(unittest.TestCase):
 
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 8)
+    
+    def test_two_sequences(self):
+        """Make sure multiple sequences only triggered for different headers"""
+
+        def generate_two_different_arrays():
+            for _ in range(10):
+                yield np.ones(4)
+            for _ in range(10):
+                yield np.ones(5)
+
+        current_array = np.ones(4)
+        def monitor_block_sequences(array):
+            """Monitor block for sequence trigger
+            Compare this with the current array (should only be one change).
+            """
+            global current_array
+            global monitor_block
+            if np.array_equal(array, current_array):
+                self.assertFalse(monitor_block.trigger_sequence)
+            else:
+                self.assertTrue(monitor_block.trigger_sequence)
+            current_array = np.copy(array)
+            yield array
+                
+        monitor_block = NumpyBlock(monitor_block_sequences, outputs=0)
+        blocks = [
+            (NumpySourceBlock(generate_two_different_arrays), {'out_1': 0}),
+            (monitor_block, {'in_1': 0, 'out_1': 1})]
+
+        Pipeline(blocks).main()
 
 class TestSplitterBlock(unittest.TestCase):
     """Test a block which splits up incoming data into two rings"""
