@@ -419,8 +419,10 @@ class TestMultiTransformBlock(unittest.TestCase):
             """Return two copies of the array, one with a different type"""
             return np.copy(array), np.copy(array).astype(np.complex128)
 
+        self.occurences = 0
         def compare_arrays(array1, array2):
             """Make sure that all arrays coming in are equal"""
+            self.occurences += 1
             np.testing.assert_almost_equal(array1, array2)
 
         blocks = [
@@ -428,9 +430,10 @@ class TestMultiTransformBlock(unittest.TestCase):
             (NumpyBlock(switch_types, outputs=2), {'in_1': 0, 'out_1': 1, 'out_2': 2}),
             (NumpyBlock(np.fft.fft), {'in_1': 2, 'out_1': 3}),
             (NumpyBlock(np.fft.ifft), {'in_1': 3, 'out_1': 4}),
-            (NumpyBlock(compare_arrays, inputs=2, outputs=0), {'in_1': 2, 'in_2': 4})]
+            (NumpyBlock(compare_arrays, inputs=2, outputs=0), {'in_1': 1, 'in_2': 4})]
 
         Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 8)
 
 class TestSplitterBlock(unittest.TestCase):
     """Test a block which splits up incoming data into two rings"""
