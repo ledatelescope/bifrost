@@ -70,6 +70,21 @@ import time. The LD_LIBRARY_PATH and BIFROST_INCLUDE_PATH environment
 variables can be used to add search paths for these dependencies
 respectively.
 
+## Docker installation
+
+Install dependencies:
+
+ * [Docker Engine](https://docs.docker.com/engine/installation/)
+ * [NVIDIA Docker](https://github.com/NVIDIA/nvidia-docker)
+
+Build Docker image:
+
+    $ make docker
+
+Launch container:
+
+    $ nvidia-docker run --rm -it ledatelescope/bifrost
+
 ## Contributors
 
  * Ben Barsdell
