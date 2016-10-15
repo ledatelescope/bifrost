@@ -26,6 +26,11 @@ uninstall:
 	rm -f $(INSTALL_LIBBIFROST_SO_FILE).$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR)
 .PHONY: uninstall
 
+IMAGE_NAME ?= ledatelescope/bifrost
+docker:
+	docker build -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -t $(IMAGE_NAME) .
+.PHONY: docker
+
 $(INSTALL_LIB_DIR)/%$(SO_EXT): $(LIB_DIR)/%$(SO_EXT)
 	cp $< $@
 	ln -f -s $@ $@.$(LIBBIFROST_MAJOR)
