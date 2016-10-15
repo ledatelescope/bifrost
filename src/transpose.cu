@@ -279,14 +279,15 @@ int transpose(BFsize        ndim,
 		out_alignment = gcd(out_alignment, out_strides[d]);
 	}
 	switch( out_alignment ) {
-	case 16: return aligned_in_out::transpose<ALIGNMENT_IN,16>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case  8: return aligned_in_out::transpose<ALIGNMENT_IN, 8>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case 12:
-	case  4: return aligned_in_out::transpose<ALIGNMENT_IN, 4>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case 14:
-	case 10:
-	case  6:
-	case  2: return aligned_in_out::transpose<ALIGNMENT_IN, 2>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	case sizeof(T): return aligned_in_out::transpose<ALIGNMENT_IN,sizeof(T)>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 16: return aligned_in_out::transpose<ALIGNMENT_IN,16>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case  8: return aligned_in_out::transpose<ALIGNMENT_IN, 8>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 12:
+	//case  4: return aligned_in_out::transpose<ALIGNMENT_IN, 4>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 14:
+	//ncase 10:
+	//case  6:
+	//case  2: return aligned_in_out::transpose<ALIGNMENT_IN, 2>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
 	default: return aligned_in_out::transpose<ALIGNMENT_IN, 1>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
 	}
 }
@@ -305,14 +306,15 @@ int transpose(BFsize        ndim,
 		in_alignment = gcd(in_alignment, in_strides[d]);
 	}
 	switch( in_alignment ) {
-	case 16: return aligned_in::transpose<16>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case  8: return aligned_in::transpose< 8>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case 12:
-	case  4: return aligned_in::transpose< 4>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case 14:
-	case 10:
-	case  6:
-	case  2: return aligned_in::transpose< 2>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	case sizeof(T): return aligned_in::transpose<sizeof(T)>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 16: return aligned_in::transpose<16>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case  8: return aligned_in::transpose< 8>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 12:
+	//case  4: return aligned_in::transpose< 4>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 14:
+	//case 10:
+	//case  6:
+	//case  2: return aligned_in::transpose< 2>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
 	default: return aligned_in::transpose< 1>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
 	}
 }
