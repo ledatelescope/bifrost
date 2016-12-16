@@ -33,7 +33,7 @@
 #include "ring_impl.hpp"
 #include "assert.hpp"
 
-BFstatus bfRingCreate(BFring* ring, BFenum space) {
+BFstatus bfRingCreate(BFring* ring, BFspace space) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_POINTER);
 	BF_TRY_RETURN_ELSE(*ring = new BFring_impl(space),
 	                   *ring = 0);

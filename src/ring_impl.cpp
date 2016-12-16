@@ -71,7 +71,7 @@ public:
 	}
 };
 
-BFring_impl::BFring_impl(BFenum space)
+BFring_impl::BFring_impl(BFspace space)
 	: _space(space), _buf(nullptr),
 	  _ghost_span(0), _span(0), _stride(0), _nringlet(0), _offset0(0),
 	  _tail(0), _head(0), _reserve_head(0),

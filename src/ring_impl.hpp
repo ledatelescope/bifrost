@@ -71,7 +71,7 @@ class BFring_impl {
 	friend class BFwspan_impl;
 	friend class RingReallocLock;
 	
-	BFenum         _space;
+	BFspace        _space;
 	
 	typedef uint8_t*             pointer;
 	typedef uint8_t const* const_pointer;
@@ -161,12 +161,12 @@ class BFring_impl {
 	BFring_impl(BFring_impl&& )                 = delete;
 	BFring_impl& operator=(BFring_impl&& )      = delete;
 public:
-	BFring_impl(BFenum space);
+	BFring_impl(BFspace space);
 	~BFring_impl();
 	void resize(BFsize max_contiguous_span,
 	            BFsize max_total_size,
 	            BFsize max_ringlets);
-	inline BFenum space()    const { return _space; }
+	inline BFspace space()    const { return _space; }
 	//inline BFsize nringlet() const { return _nringlet; }
 	inline void   lock()   { _mutex.lock(); }
 	inline void   unlock() { _mutex.unlock(); }

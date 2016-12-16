@@ -58,7 +58,7 @@ typedef struct BFwspan_impl*       BFwspan;
 // TODO: bfCudaEnabled
 
 // Ring
-BFstatus bfRingCreate(BFring* ring, BFenum space);
+BFstatus bfRingCreate(BFring* ring, BFspace space);
 BFstatus bfRingDestroy(BFring ring);
 BFstatus bfRingResize(BFring ring,
                       BFsize contiguous_span,

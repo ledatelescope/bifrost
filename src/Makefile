@@ -13,10 +13,11 @@ LIBBIFROST_OBJS = \
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
+  cuda.o \
   transpose.o \
+  fft.o
   #correlate.o \
   fdmt.o \
-  cuda.o \
   blas.o \
   transform.o
   #apsynth.o
