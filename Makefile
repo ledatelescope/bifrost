@@ -1,29 +1,27 @@
 
 include config.mk
+include user.mk
 
 LIB_DIR = lib
 INC_DIR = src
-INSTALL_LIBBIFROST_SO_FILE = $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO)
+SRC_DIR = src
 
 all:
-	$(MAKE) -C ./src all
+	$(MAKE) -C $(SRC_DIR) all
 .PHONY: all
-
 test:
-	$(MAKE) -C ./src test
+	$(MAKE) -C $(SRC_DIR) test
 .PHONY: test
-
 clean:
-	$(MAKE) -C ./src clean
+	$(MAKE) -C $(SRC_DIR) clean
 .PHONY: clean
-
-install: all $(INSTALL_LIBBIFROST_SO_FILE) $(INSTALL_INC_DIR)/$(BIFROST_NAME)
+install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME)
 .PHONY: install
-
 uninstall:
-	rm -f $(INSTALL_LIBBIFROST_SO_FILE)
-	rm -f $(INSTALL_LIBBIFROST_SO_FILE).$(LIBBIFROST_MAJOR)
-	rm -f $(INSTALL_LIBBIFROST_SO_FILE).$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR)
+	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO)
+	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ)
+	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN)
+	rm -rf $(INSTALL_INC_DIR)/bifrost/
 .PHONY: uninstall
 
 IMAGE_NAME ?= ledatelescope/bifrost
@@ -31,11 +29,27 @@ docker:
 	docker build -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -t $(IMAGE_NAME) .
 .PHONY: docker
 
-$(INSTALL_LIB_DIR)/%$(SO_EXT): $(LIB_DIR)/%$(SO_EXT)
-	cp $< $@
-	ln -f -s $@ $@.$(LIBBIFROST_MAJOR)
-	ln -f -s $@ $@.$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR)
+# TODO: Consider adding a mode 'develop=1' that makes symlinks instead of copying
+#         the library and headers.
 
-$(INSTALL_INC_DIR)/$(BIFROST_NAME): $(INC_DIR)/$(BIFROST_NAME)
+DRY_RUN ?= 0
+
+$(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN): $(LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN)
+ifeq ($(DRY_RUN),0)
+	cp $< $@
+	ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO).$(LIBBIFROST_MAJOR)
+	ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO)
+else
+	@echo "cp $< $@"
+	@echo "ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO).$(LIBBIFROST_MAJOR)"
+	@echo "ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO)"
+endif
+
+$(INSTALL_INC_DIR)/bifrost: $(INC_DIR)/bifrost/*.h #$(INC_DIR)/bifrost/*.hpp
+ifeq ($(DRY_RUN),0)
 	mkdir -p $@
-	cp $</*.h $@
+	cp $? $@/
+else
+	@echo "mkdir -p $@"
+	@echo "cp $? $@/"
+endif
