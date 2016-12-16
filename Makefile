@@ -24,6 +24,10 @@ uninstall:
 	rm -rf $(INSTALL_INC_DIR)/bifrost/
 .PHONY: uninstall
 
+doc: $(INC_DIR)/bifrost/*.h Doxyfile
+	$(DOXYGEN) Doxyfile
+.PHONY: doc
+
 IMAGE_NAME ?= ledatelescope/bifrost
 docker:
 	docker build -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -t $(IMAGE_NAME) .

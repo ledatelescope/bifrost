@@ -13,6 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         software-properties-common \
         python \
         python-dev \
+        doxygen \
+        nano \
+        vim \
         && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -40,6 +43,7 @@ RUN git clone https://github.com/MatthieuDartiailh/pyclibrary.git && \
 WORKDIR /bifrost
 COPY . .
 RUN make -j && \
+    make doc && \
     make install
 RUN cd python/ && \
     python setup.py install
