@@ -30,10 +30,10 @@
 /*! \file fft.cu
  *  \brief This file wraps cufft functionality into the Bifrost C++ API.
  */
-#include <cufft.h>
-#include "cuda/stream.hpp"
+#include <bifrost/fft.h>
+#include <bifrost/array.h>
 #include "cuda.hpp"
-#include <cuda_runtime_api.h>
+#include <cufft.h>
 #define FFT_FORWARD CUFFT_FORWARD
 #define FFT_INVERSE CUFFT_INVERSE
 #define FFT_C2C CUFFT_C2C 

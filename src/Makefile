@@ -5,19 +5,19 @@ LIBBIFROST_OBJS = \
   affinity.o \
   ring.o \
   ring_impl.o \
+  array.o \
   #address.o \
   udp_socket.o \
   unpack.o \
-  udp_capture.o \
-  array.o
+  udp_capture.o
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
   cuda.o \
   transpose.o \
-  fft.o
-  #correlate.o \
-  fdmt.o \
+  fft.o \
+  #fdmt.o \
+  correlate.o \
   blas.o \
   transform.o
   #apsynth.o
@@ -60,7 +60,7 @@ endif
 ifndef NOCUDA
   CXXFLAGS  += -DBF_CUDA_ENABLED=1
   NVCCFLAGS += -DBF_CUDA_ENABLED=1
-  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas
+  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcufft
 endif
 
 ifndef ANY_ARCH

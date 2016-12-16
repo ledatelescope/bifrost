@@ -52,31 +52,10 @@ typedef enum {
 	BF_SPACE_CUDA_MANAGED = 4  // cudaMallocManaged
 } BFspace;
 
-/// Defines a single atom of data to be passed to a function.
-typedef struct BFarray_ {
-    /*! The data pointer can point towards any type of data, 
-     *  so long as there is a corresponding definition in dtype. 
-     *  This data should be an ndim array, which every element of
-     *  type dtype.
-     */
-    void* data;
-    /*! Where this data is located in memory.
-     *  Used to ensure that operations called are localized within
-     *  that space, such as a CUDA funciton operating on device
-     *  memory.
-     */
-    BFspace space;
-    unsigned dtype;
-    int ndim;
-    BFsize shape[BF_MAX_DIM];
-    BFsize strides[BF_MAX_DIM];
-} BFarray;
-
 BFstatus bfMalloc(void** ptr, BFsize size, BFspace space);
 BFstatus bfFree(void* ptr, BFspace space);
 
-// TODO: Change this to return status as per the library convention
-BFspace bfGetSpace(const void* ptr, BFstatus* status);
+BFstatus bfGetSpace(const void* ptr, BFspace* space);
 
 // Note: This is sync wrt host but async wrt device
 BFstatus bfMemcpy(void*       dst,

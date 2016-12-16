@@ -32,7 +32,7 @@
 
 #if BF_CUDA_ENABLED
   #include "transpose_gpu_kernel.cuh"
-  #include "cuda/stream.hpp"
+  #include "cuda.hpp"
 #else
   typedef int cudaStream_t; // WAR
 #endif
@@ -341,7 +341,8 @@ BFstatus bfTranspose(void*         dst,
 	//	          << src_shape[d] << "\t"
 	//	          << axes[d] << std::endl;
 	//}
-	cuda::scoped_stream stream;
+	//cuda::scoped_stream stream;
+	cudaStream_t stream = g_cuda_stream;
 	BFsize istrides_actual[MAX_NDIM];
 	BFsize ostrides_actual[MAX_NDIM];
 	if( src_strides ) {
