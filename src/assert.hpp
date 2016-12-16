@@ -54,7 +54,7 @@ using std::endl;
   	} while(0)
   #define BF_DEBUG_PRINT(x) \
   	std::cout << __FILE__ << ":" << __LINE__ \
-  	<< " " #x << "\t=\t" << (x) << std::endl
+  	<< " " #x << " = " << (x) << std::endl
   #else
   #define BF_REPORT_ERROR(err)
   #define BF_DEBUG_PRINT(x)
@@ -71,14 +71,19 @@ using std::endl;
 			return (err); \
 		} \
 	} while(0)
-#define BF_TRY(code, onfail) do { \
-		try { code; return BF_STATUS_SUCCESS; } \
+#define BF_TRY_ELSE(code, onfail) do { \
+		try { code; } \
 		catch( BFexception const& err ) { \
 			onfail; \
 			if( err.status() != BF_STATUS_END_OF_DATA ) { \
 				BF_REPORT_ERROR(err.status()); \
 			} \
 			return err.status(); \
+		} \
+		catch(std::bad_alloc const& err) { \
+			onfail; \
+			BF_REPORT_ERROR(BF_STATUS_MEM_ALLOC_FAILED); \
+			return BF_STATUS_MEM_ALLOC_FAILED; \
 		} \
 		catch(std::exception const& err) { \
 			onfail; \
@@ -91,6 +96,10 @@ using std::endl;
 			return BF_STATUS_INTERNAL_ERROR; \
 		} \
 	} while(0)
+#define BF_NO_OP (void)0
+#define BF_TRY(code) BF_TRY_ELSE(code, BF_NO_OP)
+#define BF_TRY_RETURN(code) BF_TRY(code); return BF_STATUS_SUCCESS
+#define BF_TRY_RETURN_ELSE(code, onfail) BF_TRY_ELSE(code, onfail); return BF_STATUS_SUCCESS
 
 #define BF_ASSERT_EXCEPTION(pred, err) \
 	do { \
@@ -101,5 +110,12 @@ using std::endl;
 			throw BFexception(err); \
 		} \
 	} while(0)
-
-#define BF_NO_OP (void)0
+/*
+#define BF_CHECK(call) do {	  \
+	BFstatus status = call; \
+	if( status != BF_STATUS_SUCCESS ) { \
+		BF_REPORT_ERROR(status); \
+		return status; \
+	} \
+} while(0)
+*/

@@ -35,8 +35,8 @@
 
 BFstatus bfRingCreate(BFring* ring, BFenum space) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_POINTER);
-	BF_TRY(*ring = new BFring_impl(space),
-	       *ring = 0);
+	BF_TRY_RETURN_ELSE(*ring = new BFring_impl(space),
+	                   *ring = 0);
 }
 BFstatus bfRingDestroy(BFring ring) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
@@ -48,15 +48,14 @@ BFstatus bfRingResize(BFring ring,
                       BFsize max_total_size,
                       BFsize max_ringlets) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(ring->resize(max_contiguous_span,
+	BF_TRY_RETURN(ring->resize(max_contiguous_span,
 	                    max_total_size,
-	                    max_ringlets),
-	       BF_NO_OP);
+	                    max_ringlets));
 }
 BFstatus bfRingGetSpace(BFring ring, BFspace* space) {
 	BF_ASSERT(ring,  BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(space, BF_STATUS_INVALID_POINTER);
-	BF_TRY(*space = ring->space(), BF_NO_OP);
+	BF_TRY_RETURN(*space = ring->space());
 }
 //BFsize   bfRingGetNRinglet(BFring ring) {
 //	BF_ASSERT(ring, 0);
@@ -64,45 +63,45 @@ BFstatus bfRingGetSpace(BFring ring, BFspace* space) {
 //}
 BFstatus bfRingLock(BFring ring) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(ring->lock(), BF_NO_OP);
+	BF_TRY_RETURN(ring->lock());
 }
 BFstatus bfRingUnlock(BFring ring) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(ring->unlock(), BF_NO_OP);
+	BF_TRY_RETURN(ring->unlock());
 }
 BFstatus bfRingLockedGetData(BFring ring, void** data) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(*data = ring->locked_data(),
-	       *data = 0);
+	BF_TRY_RETURN_ELSE(*data = ring->locked_data(),
+	                   *data = 0);
 }
 BFstatus bfRingLockedGetContiguousSpan(BFring ring, BFsize* size) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(*size = ring->locked_contiguous_span(),
-	       *size = 0);
+	BF_TRY_RETURN_ELSE(*size = ring->locked_contiguous_span(),
+	                   *size = 0);
 }
 BFstatus bfRingLockedGetTotalSpan(BFring ring, BFsize* size) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(*size = ring->locked_total_span(),
-	       *size = 0);
+	BF_TRY_RETURN_ELSE(*size = ring->locked_total_span(),
+	                   *size = 0);
 }
 BFstatus bfRingLockedGetNRinglet(BFring ring, BFsize* n) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(*n = ring->locked_nringlet(),
-	       *n = 0);
+	BF_TRY_RETURN_ELSE(*n = ring->locked_nringlet(),
+	                   *n = 0);
 }
 BFstatus   bfRingLockedGetStride(BFring ring, BFsize* size) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(*size = ring->locked_stride(),
-	       *size = 0);
+	BF_TRY_RETURN_ELSE(*size = ring->locked_stride(),
+	                   *size = 0);
 }
 
 BFstatus bfRingBeginWriting(BFring ring) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(ring->begin_writing(), BF_NO_OP);
+	BF_TRY_RETURN(ring->begin_writing());
 }
 BFstatus bfRingEndWriting(BFring ring) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(ring->end_writing(), BF_NO_OP);
+	BF_TRY_RETURN(ring->end_writing());
 }
 
 BFstatus    bfRingSequenceBegin(BFwsequence* sequence,
@@ -115,10 +114,10 @@ BFstatus    bfRingSequenceBegin(BFwsequence* sequence,
                                 BFoffset     offset_from_head) {
 	BF_ASSERT(sequence, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(ring,     BF_STATUS_INVALID_HANDLE);
-	BF_TRY(*sequence = new BFwsequence_impl(ring, name, time_tag, header_size, header,
-	                                        nringlet, offset_from_head),
+	BF_TRY_RETURN_ELSE(*sequence = new BFwsequence_impl(ring, name, time_tag, header_size, header,
+	                                                    nringlet, offset_from_head),
 	       //ring->begin_sequence(name, header_size, header, nringlet),
-	       *sequence = 0);
+	                   *sequence = 0);
 	/*
 	//BF_TRY(*sequence = new BFsequence_sptr(new BFsequence_impl(ring, name, header_size, header, nringlet)),
 	BF_TRY(*sequence = new BFwsequence_sptr(ring->begin_sequence(name, header_size, header, nringlet)),
@@ -152,10 +151,10 @@ BFstatus bfRingSequenceOpen(BFrsequence* sequence,
 	BF_ASSERT(sequence, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(ring,     BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(name,     BF_STATUS_INVALID_POINTER);
-	BF_TRY(*sequence = new BFrsequence_impl(ring->get_sequence(name),
-	                                        guarantee),
+	BF_TRY_RETURN_ELSE(*sequence = new BFrsequence_impl(ring->get_sequence(name),
+	                                                    guarantee),
 	       //ring->get_sequence(name, guarantee),
-	       *sequence = 0);
+	                   *sequence = 0);
 	//BF_TRY(*sequence = new BFsequence_sptr(ring->get_sequence(name)),
 	//       *sequence = 0);
 }
@@ -166,18 +165,18 @@ BFstatus bfRingSequenceOpenAt(BFrsequence* sequence,
 	BF_ASSERT(sequence, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(ring,     BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(time_tag!=BFoffset(-1), BF_STATUS_INVALID_ARGUMENT);
-	BF_TRY(*sequence = new BFrsequence_impl(ring->get_sequence_at(time_tag),
-	                                        guarantee),
-	       *sequence = 0);
+	BF_TRY_RETURN_ELSE(*sequence = new BFrsequence_impl(ring->get_sequence_at(time_tag),
+	                                                    guarantee),
+	                   *sequence = 0);
 }
 BFstatus bfRingSequenceOpenLatest(BFrsequence* sequence,
                                   BFring       ring,
                                   BFbool       guarantee) {
 	BF_ASSERT(sequence, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(ring,     BF_STATUS_INVALID_HANDLE);
-	BF_TRY(*sequence = new BFrsequence_impl(ring->get_latest_sequence(),
-	                                        guarantee),
-	       *sequence = 0);
+	BF_TRY_RETURN_ELSE(*sequence = new BFrsequence_impl(ring->get_latest_sequence(),
+	                                                    guarantee),
+	                   *sequence = 0);
 	//BF_TRY(*sequence = new BFsequence_sptr(ring->get_latest_sequence()),
 	//       *sequence = 0);
 }
@@ -186,9 +185,9 @@ BFstatus bfRingSequenceOpenEarliest(BFrsequence* sequence,
                                     BFbool       guarantee) {
 	BF_ASSERT(sequence, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(ring,     BF_STATUS_INVALID_HANDLE);
-	BF_TRY(*sequence = new BFrsequence_impl(ring->get_earliest_sequence(),
-	                                        guarantee),
-	       *sequence = 0);
+	BF_TRY_RETURN_ELSE(*sequence = new BFrsequence_impl(ring->get_earliest_sequence(),
+	                                                    guarantee),
+	                   *sequence = 0);
 	//BF_TRY(*sequence = new BFsequence_sptr(ring->get_earliest_sequence()),
 	//       *sequence = 0);
 }
@@ -198,7 +197,7 @@ BFstatus bfRingSequenceNext(BFrsequence sequence) {
 	//BF_ASSERT( sequence, BF_STATUS_INVALID_POINTER);
 	//BF_ASSERT(*sequence, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(sequence, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(sequence->increment_to_next(), BF_NO_OP);
+	BF_TRY_RETURN(sequence->increment_to_next());
 	/*
 	// TODO: This is a bit ugly
 	//         It arose from the need to close the previous seq before opening
@@ -237,8 +236,8 @@ BFstatus bfRingSequenceOpenSame(BFrsequence* sequence,
 	BF_ASSERT(sequence, BF_STATUS_INVALID_POINTER);
 	//BF_TRY(*sequence = new BFrsequence_impl(existing->sequence(),
 	//                                        existing->guaranteed()),
-	BF_TRY(*sequence = new BFrsequence_impl(*existing),
-	       *sequence = 0);
+	BF_TRY_RETURN_ELSE(*sequence = new BFrsequence_impl(*existing),
+	                   *sequence = 0);
 }
 BFstatus bfRingSequenceClose(BFrsequence sequence) {
 	BF_ASSERT(sequence, BF_STATUS_INVALID_HANDLE);
@@ -252,38 +251,38 @@ BFstatus bfRingSequenceClose(BFrsequence sequence) {
 BFstatus    bfRingSequenceGetRing(BFsequence sequence, BFring* ring) {
 	BF_ASSERT(sequence, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(ring,     BF_STATUS_INVALID_POINTER);
-	BF_TRY(*ring = sequence->ring(),
-	       *ring = 0);
+	BF_TRY_RETURN_ELSE(*ring = sequence->ring(),
+	                   *ring = 0);
 }
 BFstatus bfRingSequenceGetName(BFsequence sequence, char const** name) {
 	BF_ASSERT(sequence, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(name,     BF_STATUS_INVALID_POINTER);
-	BF_TRY(*name = sequence->name(),
-	       *name = 0);
+	BF_TRY_RETURN_ELSE(*name = sequence->name(),
+	                   *name = 0);
 }
 BFstatus bfRingSequenceGetTimeTag(BFsequence sequence, BFoffset* time_tag) {
 	BF_ASSERT(sequence, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(time_tag, BF_STATUS_INVALID_POINTER);
-	BF_TRY(*time_tag = sequence->time_tag(),
-	       *time_tag = 0);
+	BF_TRY_RETURN_ELSE(*time_tag = sequence->time_tag(),
+	                   *time_tag = 0);
 }
 BFstatus bfRingSequenceGetHeader(BFsequence sequence, void const** hdr) {
 	BF_ASSERT(sequence, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(hdr,      BF_STATUS_INVALID_POINTER);
-	BF_TRY(*hdr = sequence->header(),
-	       *hdr = 0);
+	BF_TRY_RETURN_ELSE(*hdr = sequence->header(),
+	                   *hdr = 0);
 }
 BFstatus bfRingSequenceGetHeaderSize(BFsequence sequence, BFsize* size) {
 	BF_ASSERT(sequence, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(size,     BF_STATUS_INVALID_POINTER);
-	BF_TRY(*size = sequence->header_size(),
-	       *size = 0);
+	BF_TRY_RETURN_ELSE(*size = sequence->header_size(),
+	                   *size = 0);
 }
 BFstatus bfRingSequenceGetNRinglet(BFsequence sequence, BFsize* n) {
 	BF_ASSERT(sequence, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(n,        BF_STATUS_INVALID_POINTER);
-	BF_TRY(*n = sequence->nringlet(),
-	       *n = 0);
+	BF_TRY_RETURN_ELSE(*n = sequence->nringlet(),
+	                   *n = 0);
 }
 
 BFstatus   bfRingSpanReserve(BFwspan*    span,
@@ -293,16 +292,16 @@ BFstatus   bfRingSpanReserve(BFwspan*    span,
 	BF_ASSERT(span,     BF_STATUS_INVALID_POINTER);
 	//BF_ASSERT(sequence, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(*span = new BFwspan_impl(//sequence,
-	                                ring,
-	                                size),
-	       *span = 0);
+	BF_TRY_RETURN_ELSE(*span = new BFwspan_impl(//sequence,
+	                                            ring,
+	                                            size),
+	                   *span = 0);
 }
 // TODO: Separate setsize/shrink vs. commit methods?
 BFstatus   bfRingSpanCommit(BFwspan span,
                             BFsize  size) {
 	BF_ASSERT(span, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(delete span->commit(size), BF_NO_OP);
+	BF_TRY_RETURN(delete span->commit(size));
 }
 
 BFstatus   bfRingSpanAcquire(BFrspan*    span,
@@ -311,8 +310,8 @@ BFstatus   bfRingSpanAcquire(BFrspan*    span,
                              BFsize      size) {
 	BF_ASSERT(span,     BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(sequence, BF_STATUS_INVALID_HANDLE);
-	BF_TRY(*span = new BFrspan_impl(sequence, offset, size),
-	       *span = 0);
+	BF_TRY_RETURN_ELSE(*span = new BFrspan_impl(sequence, offset, size),
+	                   *span = 0);
 }
 BFstatus   bfRingSpanRelease(BFrspan span) {
 	BF_ASSERT(span, BF_STATUS_INVALID_HANDLE);
@@ -350,36 +349,36 @@ BFstatus bfRingSpanGetSequence(BFspan span, BFsequence* sequence) {
 BFstatus bfRingSpanGetRing(BFspan span, BFring* val) {
 	BF_ASSERT(span, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(val,  BF_STATUS_INVALID_POINTER);
-	BF_TRY(*val = span->ring(),
-	       *val = 0);
+	BF_TRY_RETURN_ELSE(*val = span->ring(),
+	                   *val = 0);
 }
 BFstatus bfRingSpanGetData(BFspan span, void** data) {
 	BF_ASSERT(span, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(data, BF_STATUS_INVALID_POINTER);
-	BF_TRY(*data = span->data(),
-	       *data = 0);
+	BF_TRY_RETURN_ELSE(*data = span->data(),
+	                   *data = 0);
 }
 BFstatus bfRingSpanGetSize(BFspan span, BFsize* val) {
 	BF_ASSERT(span, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(val,  BF_STATUS_INVALID_POINTER);
-	BF_TRY(*val = span->size(),
-	       *val = 0);
+	BF_TRY_RETURN_ELSE(*val = span->size(),
+	                   *val = 0);
 }
 BFstatus bfRingSpanGetStride(BFspan span, BFsize* val) {
 	BF_ASSERT(span, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(val,  BF_STATUS_INVALID_POINTER);
-	BF_TRY(*val = span->stride(),
-	       *val = 0);
+	BF_TRY_RETURN_ELSE(*val = span->stride(),
+	                   *val = 0);
 }
 BFstatus bfRingSpanGetOffset(BFspan span, BFsize* val) {
 	BF_ASSERT(span, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(val,  BF_STATUS_INVALID_POINTER);
-	BF_TRY(*val = span->offset(),
-	       *val = 0);
+	BF_TRY_RETURN_ELSE(*val = span->offset(),
+	                   *val = 0);
 }
 BFstatus bfRingSpanGetNRinglet(BFspan span, BFsize* val) {
 	BF_ASSERT(span, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(val,  BF_STATUS_INVALID_POINTER);
-	BF_TRY(*val = span->nringlet(),
-	       *val = 0);
+	BF_TRY_RETURN_ELSE(*val = span->nringlet(),
+	                   *val = 0);
 }
