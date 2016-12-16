@@ -133,7 +133,7 @@ int transpose(BFsize        ndim,
 	int    ostridez[MAX_NDIM];
 	BFsize sizez = 1;
 	int dd = 0;
-	for( int d=0; d<ndim-1; ++d ) {
+	for( int d=0; d<(int)ndim-1; ++d ) {
 		if( d != islowdim ) {
 			shapez[dd]   = sizes[d];
 			sizez       *= sizes[d];
@@ -275,7 +275,7 @@ int transpose(BFsize        ndim,
               BFsize const* out_strides, // bytes
               cudaStream_t  stream) {
 	BFsize out_alignment = (BFsize)out;
-	for( int d=0; d<ndim; ++d ) {
+	for( int d=0; d<(int)ndim; ++d ) {
 		out_alignment = gcd(out_alignment, out_strides[d]);
 	}
 	switch( out_alignment ) {
@@ -302,7 +302,7 @@ int transpose(BFsize        ndim,
               BFsize const* out_strides, // bytes
               cudaStream_t  stream) {
 	BFsize in_alignment = (BFsize)in;
-	for( int d=0; d<ndim; ++d ) {
+	for( int d=0; d<(int)ndim; ++d ) {
 		in_alignment = gcd(in_alignment, in_strides[d]);
 	}
 	switch( in_alignment ) {

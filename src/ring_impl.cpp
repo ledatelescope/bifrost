@@ -78,15 +78,17 @@ BFring_impl::BFring_impl(BFenum space)
 	  _ghost_dirty(false),
 	  _writing_begun(false), _writing_ended(false), _eod(0),
 	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0) {
-	
-	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM       ||
+
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
-	          space==BF_SPACE_CUDA         ||
-	          space==BF_SPACE_CUDA_HOST    ||
-	          space==BF_SPACE_CUDA_MANAGED ||
+	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM       ||
+	                    space==BF_SPACE_CUDA         ||
+	                    space==BF_SPACE_CUDA_HOST    ||
+	                    space==BF_SPACE_CUDA_MANAGED,
+	                    BF_STATUS_INVALID_ARGUMENT);
+#else
+	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM,
+	                    BF_STATUS_INVALID_ARGUMENT);
 #endif
-	          false,
-	          BF_STATUS_INVALID_ARGUMENT);
 }
 BFring_impl::~BFring_impl() {
 	// TODO: Should check if anything is still open here?
