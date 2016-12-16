@@ -34,9 +34,8 @@
 
 def _load_bifrost_lib():
 	import os
-	# TODO: Keep these up-to-date
-	headers = ["common.h", "affinity.h", "memory.h",
-	    "ring.h", "transpose.h", "fft.h"]
+	import glob
+	
 	library_name = "libbifrost.so"
 	api_prefix   = "bf"
 	header_paths = ["/usr/local/include/bifrost",
@@ -65,14 +64,15 @@ def _load_bifrost_lib():
 	#extra_types = {}
 	#extra_types = {'uint64_t': ctypes.c_uint64}
 	extra_types = {
-		' uint8_t': ctypes.c_uint8,
-		'  int8_t': ctypes.c_int8,
+		 'uint8_t': ctypes.c_uint8,
+		  'int8_t': ctypes.c_int8,
 		'uint16_t': ctypes.c_uint16,
-		' int16_t': ctypes.c_int16,
+		 'int16_t': ctypes.c_int16,
 		'uint32_t': ctypes.c_uint32,
-		' int32_t': ctypes.c_int32,
+		 'int32_t': ctypes.c_int32,
 		'uint64_t': ctypes.c_uint64,
-		' int64_t': ctypes.c_int64
+		 'int64_t': ctypes.c_int64,
+		  'size_t': ctypes.c_ulong
 	}
 	
 	try:
@@ -81,6 +81,12 @@ def _load_bifrost_lib():
 		pass # WAR for annoying "Can only initialise the parser once"
 	header_paths += _get_env_paths(include_env)
 	valid_header_paths = [p for p in header_paths if os.path.exists(p)]
+	
+	# HACK TODO: Decide on what to do here
+	valid_header_paths = valid_header_paths[:1]
+	header_path = valid_header_paths[0]
+	headers = glob.glob(os.path.join(header_path, '*.h'))
+	
 	pyclibrary.utils.add_header_locations(valid_header_paths)
 	try:
 		_parser = CParser(headers, cache=unicode(parser_cache, "utf-8"))
