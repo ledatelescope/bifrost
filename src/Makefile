@@ -6,9 +6,9 @@ LIBBIFROST_OBJS = \
   ring.o \
   ring_impl.o \
   array.o \
-  #address.o \
+  address.o \
   udp_socket.o \
-  unpack.o \
+  #unpack.o \
   udp_capture.o
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
