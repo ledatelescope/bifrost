@@ -77,8 +77,25 @@ LIBBIFROST_SO_STEM      = $(LIB_DIR)/$(LIBBIFROST_NAME)$(SO_EXT)
 LIBBIFROST_SO           = $(LIBBIFROST_SO_STEM).$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR)
 LIBBIFROST_SO_NAME      = $(LIBBIFROST_NAME)$(SO_EXT).$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR)
 
+$(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
+	$(CLEAR_LINE)
+	@echo -n "Generating $(LIBBIFROST_VERSION_FILE)\r"
+	ctags --version | grep -q "Exuberant" || {\
+      echo "*************************************" && \
+      echo "ERROR: Please install exuberant-ctags" && \
+      echo "*************************************" && \
+      false; }
+	echo "VERS_$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) {" > $@
+	echo "  global:" >> $@
+	ctags -x --c-kinds=p $^ | awk '{print "    " $$1 ";"}' >> $@
+	echo "  local:"  >> $@
+	echo "    *;"    >> $@
+	echo "};"        >> $@
+
 # Note: $(LIB) must go at after OBJS
-$(LIBBIFROST_SO): $(LIBBIFROST_OBJS)
+$(LIBBIFROST_SO): $(LIBBIFROST_OBJS) $(LIBBIFROST_VERSION_FILE)
+	$(CLEAR_LINE)
+	@echo -n "Linking $(LIBBIFROST_SO_NAME)\r"
 	mkdir -p $(LIB_DIR)
 	$(LINKER) $(SHARED_FLAG) -Wl,--version-script=$(LIBBIFROST_VERSION_FILE),$(SONAME_FLAG),$(LIBBIFROST_NAME)$(SO_EXT).$(LIBBIFROST_MAJOR) -o $@ $(LIBBIFROST_OBJS) $(LIB) $(LDFLAGS)
 	ln -s -f $(LIBBIFROST_SO_NAME) $(LIBBIFROST_SO_STEM).$(LIBBIFROST_MAJOR)
@@ -93,6 +110,7 @@ all: $(LIBBIFROST_SO)
 
 clean:
 	rm -f *.o *.so *.dylib *.a test_bifrost
+	rm -f $(LIBBIFROST_VERSION_FILE)
 	rm -f $(LIBBIFROST_SO)
 	rm -f $(LIBBIFROST_SO_STEM).$(LIBBIFROST_MAJOR)
 	rm -f $(LIBBIFROST_SO_STEM)
