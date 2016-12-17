@@ -32,6 +32,7 @@
 #include <bifrost/ring.h>
 #include "ring_impl.hpp"
 #include "assert.hpp"
+#include <cstring> // For ::memset
 
 BFstatus bfRingCreate(BFring* ring, BFspace space) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_POINTER);
@@ -381,4 +382,15 @@ BFstatus bfRingSpanGetNRinglet(BFspan span, BFsize* val) {
 	BF_ASSERT(val,  BF_STATUS_INVALID_POINTER);
 	BF_TRY_RETURN_ELSE(*val = span->nringlet(),
 	                   *val = 0);
+}
+BFstatus bfRingSpanGetInfo(BFspan span, BFspan_info* span_info) {
+	BF_ASSERT(span,      BF_STATUS_INVALID_HANDLE);
+	BF_ASSERT(span_info, BF_STATUS_INVALID_POINTER);
+	BF_TRY_RETURN_ELSE(span_info->ring     = span->ring();
+	                   span_info->data     = span->data();
+	                   span_info->size     = span->size();
+	                   span_info->stride   = span->stride();
+	                   span_info->offset   = span->offset();
+	                   span_info->nringlet = span->nringlet(),
+	                   ::memset(span_info, 0, sizeof(BFspan_info)));
 }

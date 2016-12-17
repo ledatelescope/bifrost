@@ -35,7 +35,20 @@
 TODO: New feature: mipmap-ringlets
         Store recursive 2x down-sampled rate versions in ringlets
         How to manage ghost regions?
+      See if can avoid runtime memory allocations (i.e., all the new/delete)
 */
+
+/* 
+ * Ring:     A thread-safe circular memory buffer
+ * Ringlets: Rings may be divided into multiple ringlets to enable time-fastest data ordering
+ * Sequence: A logical range of data with an attached header
+ *   Header:    A chunk of binary data attached to a sequence
+ *   Name:      A string name uniquely identifying a sequence
+ *   Time tag:  An integer number identifying the absolute time/position of a sequence
+ *   Guarantee: Whether read access to a sequence is guaranteed or overwriteable
+ * Span:     A physical range of data (contiguous memory)
+ * 
+ */
 
 #ifndef BF_RING_H_INCLUDE_GUARD_
 #define BF_RING_H_INCLUDE_GUARD_
@@ -60,10 +73,20 @@ typedef struct BFwspan_impl*       BFwspan;
 // Ring
 BFstatus bfRingCreate(BFring* ring, BFspace space);
 BFstatus bfRingDestroy(BFring ring);
+/*! \p bfRingResize requests allocation of memory for the ring
+ * 
+ * \param ring             Handle of ring object
+ * \param contiguous_bytes Max no. contiguous bytes to which access will be required
+ * \param capacity_bytes   Max no. bytes required to be buffered (typically n*\p contiguous_bytes)
+ * \param nringlet         Max no. ringlets required
+ * \return One of the following error codes: \n
+ * \p BIFROST_STATUS_SUCCESS, 
+ * \note This function is thread-safe and can be called multiple times; reallocation
+ * will occur only when necessary.
+ */
 BFstatus bfRingResize(BFring ring,
-                      BFsize contiguous_span,
-                      // TODO: Consider not using 'total' to avoid confusion
-                      BFsize total_span,
+                      BFsize contiguous_bytes,
+                      BFsize capacity_bytes,
                       BFsize nringlet);
 BFstatus bfRingGetSpace(BFring ring, BFspace* space);
 
@@ -129,6 +152,17 @@ BFstatus bfRingSequenceGetHeader(BFsequence sequence, const void** hdr);
 BFstatus bfRingSequenceGetHeaderSize(BFsequence sequence, BFsize* size);
 BFstatus bfRingSequenceGetNRinglet(BFsequence sequence, BFsize* nringlet);
 
+typedef struct {
+	BFring      ring;
+	const char* name;
+	BFoffset    time_tag;
+	const void* header;
+	BFsize      header_size;
+	BFsize      nringlet;
+} BFsequence_info;
+// TODO: Implement this and remove the above individual functions
+BFstatus bfRingSequenceGetInfo(BFsequence sequence, BFsequence_info* sequence_info);
+
 // Write span
 BFstatus bfRingSpanReserve(BFwspan*    span,
                            //BFwsequence sequence,
@@ -148,7 +182,7 @@ BFstatus bfRingSpanStillValid(BFrspan  span,
                               BFoffset offset,
                               BFbool*  valid); // true if span not overwritten beyond offset
 //BFbool bfRingSpanGood(BFrspan span); // true if span opened successfully
-BFstatus bfRingSpanGetSequence(BFspan span, BFrsequence* sequence);
+//BFstatus bfRingSpanGetSequence(BFspan span, BFrsequence* sequence);
 // Any span
 BFstatus bfRingSpanGetRing(BFspan span, BFring* data);
 BFstatus bfRingSpanGetData(BFspan span, void** data);
@@ -156,6 +190,16 @@ BFstatus bfRingSpanGetSize(BFspan  span, BFsize* val);
 BFstatus bfRingSpanGetStride(BFspan span, BFsize* val);
 BFstatus bfRingSpanGetOffset(BFspan span, BFsize* val);
 BFstatus bfRingSpanGetNRinglet(BFspan span, BFsize* val);
+
+typedef struct {
+	BFring      ring;
+	void*       data;
+	BFsize      size;
+	BFsize      stride;
+	BFsize      offset;
+	BFsize      nringlet;
+} BFspan_info;
+BFstatus bfRingSpanGetInfo(BFspan span, BFspan_info* span_info);
 
 #ifdef __cplusplus
 } // extern "C"
