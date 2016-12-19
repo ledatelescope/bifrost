@@ -33,15 +33,25 @@
 //         Always compare positive differences between offsets instead
 //           E.g., offset < tail --> _head-offset > _head-tail
 
+// **TODO: Work out whether/how to do resize inside begin_sequence
+//           ACTUALLY, put this on hold for now (try it out in ring.py first)
+//             The reason is because it requires adding args to the API, and
+//               the functionality may not be needed in some use-cases
+//               (e.g., the udp capture code).
+//             ACTUALLY ACTUALLY, the fact that nringlet is only relevant
+//               when resizing during begin_sequence (i.e., it doesn't make
+//               sense for readers to specify nringlet in a call to resize)
+//               motivates making this change.
+//         Work out whether/how to support independent specification of
+//           buffer_factor.
+
 #include "ring_impl.hpp"
 #include "utils.hpp"
 #include "assert.hpp"
 #include <bifrost/memory.h>
 
-#ifdef BF_CUDA_ENABLED
-	#include <cuda_runtime_api.h>
-	#include <iostream>
-#endif
+#include <bifrost/cuda.h>
+#include "cuda.hpp"
 
 // This implements a lock with the condition that no reads or writes
 //   can be open while it is held.
@@ -119,9 +129,7 @@ void BFring_impl::resize(BFsize contiguous_span,
 	BFsize  new_nringlet   = std::max(nringlet,        _nringlet);
 	//new_ghost_span = round_up(new_ghost_span, bfGetAlignment());
 	//new_span       = round_up(new_span,       bfGetAlignment());
-	bool span_smaller_than_alignment = (new_span < (long unsigned int)BF_ALIGNMENT);
-	if (span_smaller_than_alignment)
-		new_span = (long unsigned int)BF_ALIGNMENT;
+	new_span = std::max(new_span, bfGetAlignment());
 	// Note: This is critical to enable safe overflowing/wrapping of offsets
 	new_span = round_up_pow2(new_span);
 	// This is just to ensure nice indexing
@@ -172,6 +180,7 @@ void BFring_impl::resize(BFsize contiguous_span,
 		           std::min(new_ghost_span, _span) - _ghost_span, _nringlet);
 		_ghost_dirty = true; // TODO: Is this the right thing to do?
 		bfFree(_buf, _space);
+		bfStreamSynchronize();
 	}
 	_buf        = new_buf;
 	_ghost_span = new_ghost_span;
@@ -181,7 +190,8 @@ void BFring_impl::resize(BFsize contiguous_span,
 }
 void BFring_impl::begin_writing() {
 	lock_guard_type lock(_mutex);
-	BF_ASSERT_EXCEPTION(!_writing_begun && !_writing_ended, BF_STATUS_INVALID_STATE);
+	BF_ASSERT_EXCEPTION(!_writing_begun, BF_STATUS_INVALID_STATE);
+	BF_ASSERT_EXCEPTION(!_writing_ended, BF_STATUS_INVALID_STATE);
 	_writing_begun = true;
 }
 void BFring_impl::end_writing() {
@@ -245,12 +255,14 @@ void BFring_impl::_copy_to_ghost(BFoffset buf_offset, BFsize span) {
 	bfMemcpy2D(_buf + (_span + buf_offset), _stride, _space,
 	           _buf + buf_offset,           _stride, _space,
 	           span, _nringlet);
+	bfStreamSynchronize();
 }
 void BFring_impl::_copy_from_ghost(BFoffset buf_offset, BFsize span) {
 	// Copy from the ghost region to the front of the buffer
 	bfMemcpy2D(_buf + buf_offset,           _stride, _space,
 	           _buf + (_span + buf_offset), _stride, _space,
 	           span, _nringlet);
+	bfStreamSynchronize();
 }
 BFsequence_sptr BFring_impl::begin_sequence(const char* name,
                                             BFoffset    time_tag,
@@ -413,40 +425,42 @@ BFsequence_sptr BFsequence_impl::get_next() const {
 }
 
 void BFring_impl::_pull_tail(unique_lock_type& lock) {
-	// This pulls the tail along to satisfy the maximum span between
-	//   _reserve_head and _tail. This must be done whenever _reserve_head
-	//   is updated.
-	// Note: This may cause still_valid() to return false, but the write
-	//         condition will still wait for guaranteed reads before
-	//         allowing data to actually be overwritten. This also means
-	//         that guaranteed reads cannot "cover for" unguaranteed
-	//         siblings that are too slow.
+	// This waits until all guarantees have caught up to the new valid
+	//   buffer region defined by _reserve_head, and then pulls the tail
+	//   along to ensure it is within a distance of _span from _reserve_head.
+	// This must be done whenever _reserve_head is updated.
+	
+	// Note: By using _span, this correctly handles ring resizes that occur
+	//         while waiting on the condition.
+	// TODO: This enables guaranteed reads to "cover for" unguaranteed
+	//         siblings that would be too slow on their own. Is this actually
+	//         a problem, and if so is there any way around it?
+	_write_condition.wait(lock, [&]() {
+			return ((_guarantees.empty() ||
+			         BFoffset(_reserve_head - _get_earliest_guarantee()) <= _span) &&
+			        _nrealloc_pending == 0);
+		});
+	
 	BFoffset cur_span = _reserve_head - _tail;
 	if( cur_span > _span ) {
-		_tail += cur_span - _span;
+		// Pull the tail
+		 _tail += cur_span - _span;
 		// Delete old sequences
 		while( !_sequence_queue.empty() &&
 		       //_sequence_queue.front()->_end != BFsequence_impl::BF_SEQUENCE_OPEN &&
 		       _sequence_queue.front()->is_finished() &&
 		       //_sequence_queue.front()->_end <= _tail ) {
 		       BFoffset(_head - _sequence_queue.front()->_end) >= BFoffset(_head - _tail) ) {
-		    if( !_sequence_queue.front()->_name.empty() ) {
-			  _sequence_map.erase(_sequence_queue.front()->_name);
+			if( !_sequence_queue.front()->_name.empty() ) {
+				_sequence_map.erase(_sequence_queue.front()->_name);
 			}
-		    if( _sequence_queue.front()->_time_tag != BFoffset(-1) ) {
-			    _sequence_time_tag_map.erase(_sequence_queue.front()->_time_tag);
-		    }
+			if( _sequence_queue.front()->_time_tag != BFoffset(-1) ) {
+				_sequence_time_tag_map.erase(_sequence_queue.front()->_time_tag);
+			}
 			//delete _sequence_queue.front();
 			_sequence_queue.pop();
 		}
 	}
-	// Wait for any relevant guarantees
-	_write_condition.wait(lock, [&]() {
-			return ((_guarantees.empty() ||
-			         //_guarantees.begin()->first >= _tail) &&
-			         BFoffset(_head - _get_earliest_guarantee()) <= BFoffset(_head - _tail)) &&
-			        _nrealloc_pending == 0);
-		});
 }
 
 void BFring_impl::reserve_span(BFsize size, BFoffset* begin, void** data) {
@@ -545,63 +559,44 @@ void BFring_impl::acquire_span(BFrsequence rsequence,
 	BF_ASSERT_EXCEPTION(size_,                 BF_STATUS_INVALID_POINTER);
 	BF_ASSERT_EXCEPTION(begin_,                BF_STATUS_INVALID_POINTER);
 	BF_ASSERT_EXCEPTION(data_,                 BF_STATUS_INVALID_POINTER);
+	// Cannot go back beyond the start of the sequence
+	BF_ASSERT_EXCEPTION(offset >= 0,           BF_STATUS_INVALID_ARGUMENT);
 	BFsequence_sptr sequence = rsequence->sequence();
 	unique_lock_type lock(_mutex);
 	BF_ASSERT_EXCEPTION(*size_ <= _ghost_span, BF_STATUS_INVALID_ARGUMENT);
 	
-	// Check that the requested span is within the sequence
-	//std::cout << "acquire_span(offset=" << offset << ", size_=" << *size_ << ")" << std::endl;
-	//std::cout << "  sequence size: " << sequence->end()-sequence->begin() << std::endl;
-	BF_ASSERT_EXCEPTION(!sequence->is_finished() ||
-	                    offset < sequence->end()-sequence->begin(),
-	                    BF_STATUS_END_OF_DATA);
+	BFoffset requested_begin = sequence->begin() + offset;
+	BFoffset requested_end   = requested_begin + *size_;
 	
-	BFoffset begin = sequence->begin() + offset;
-	*begin_ = begin;
+	// This function returns whatever part of the requested span is available
+	//   (meaning not overwritten and not past the end of the sequence).
+	//   It will return a 0-length span if the requested span has been
+	//     completely overwritten.
+	// It throws BF_STATUS_END_OF_DATA if the requested span begins
+	//   after the end of the sequence.
 	
-	// **TODO: Does this break if begin > _head?
-	//           This has implications throughout this function
-	/*
-	BF_DEBUG_PRINT(_head);
-	BF_DEBUG_PRINT(_tail);
-	BF_DEBUG_PRINT(begin);
-	BF_DEBUG_PRINT(sequence->begin());
-	if( sequence->is_finished() ) {
-		BF_DEBUG_PRINT(sequence->end());
-	}
-	else {
-		BF_DEBUG_PRINT(sequence->is_finished());
-	}
-	BF_DEBUG_PRINT(BFdelta(_head - begin));
-	BF_DEBUG_PRINT(BFdelta(_head - _tail));
-	BF_DEBUG_PRINT(BFdelta(_head - begin) <= BFdelta(_head - _tail));
-	BF_ASSERT_EXCEPTION(BFdelta(_head - begin) <= BFdelta(_head - _tail),
-	                    // TODO: BF_STATUS_UNAVAILABLE?
-	                    BF_STATUS_INVALID_ARGUMENT);
-	*/
-	BFsize size = *size_;
+	// Wait until requested span has been written or sequence has ended
 	_read_condition.wait(lock, [&]() {
-			return ((BFdelta(_head - begin) >= BFdelta(size) ||
+			return ((BFdelta(_head         - std::max(requested_begin, _tail)) >=
+			         BFdelta(requested_end - std::max(requested_begin, _tail)) ||
 			         sequence->is_finished()) &&
 			        _nrealloc_pending == 0);
 		});
-	// Check that the requested span is within the sequence
-	BF_ASSERT_EXCEPTION(!sequence->is_finished() ||
-	                    offset < sequence->end() - sequence->begin(),
-	                    BF_STATUS_END_OF_DATA);
+	
+	// Constrain to what is in the buffer (i.e., what hasn't been overwritten)
+	BFoffset begin = std::max(requested_begin, _tail);
+	// Note: This results in size being 0 if the requested span has been
+	//         completely overwritten.
+	BFsize   size  = std::max(requested_end - begin, BFoffset(0));
+	
 	if( sequence->is_finished() ) {
-		size = std::min(size, BFsize(sequence->end()-begin));
+		BF_ASSERT_EXCEPTION(begin < sequence->end(),
+		                    BF_STATUS_END_OF_DATA);
+		size = std::min(size, BFsize(sequence->end() - begin));
 	}
-	*size_ = size;
-	/*
-	// TODO: The size>0 condition here avoids returning an empty last
-	//         span, but we need to think more about how the user should
-	//         be notified of the end of the sequence.
-	BF_ASSERT_EXCEPTION(size > 0 &&
-	                    BFdelta(_head - begin) <= BFdelta(_head - _tail),
-	                    // TODO: BF_STATUS_UNAVAILABLE?
-	                    BF_STATUS_INVALID_ARGUMENT);
-	*/
+	*begin_ = begin;
+	*size_  = size;
+	
 	++_nread_open;
 	_ghost_read(begin, size);
 	*data_ = _buf_pointer(begin);
