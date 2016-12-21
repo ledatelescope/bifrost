@@ -16,8 +16,8 @@ ifndef NOCUDA
   cuda.o \
   transpose.o \
   fft.o \
-  #fdmt.o \
-  correlate.o \
+  fdmt.o \
+  #correlate.o \
   blas.o \
   transform.o
   #apsynth.o
