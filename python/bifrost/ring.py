@@ -26,42 +26,53 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# TODO: Some of this code has gotten a bit hacky
+#         Also consider merging some of the logic into the backend
+
 from libbifrost import _bf, _check, _get, _string2space, _space2string
+from dtype import split_name_nbit, string2numpy
 from GPUArray import GPUArray
 
 import ctypes
 import numpy as np
 
+try:
+	import simplejson as json
+except ImportError:
+	raise Warning("Install simplejson for better performance")
+	import json
+
+# TODO: Should probably move this elsewhere (e.g., utils)
+def split_shape(shape):
+	"""Splits a shape into its ringlet shape and frame shape
+	E.g., (2,3,-1,4,5) -> (2,3), (4,5)
+	"""
+	ringlet_shape = []
+	for i,dim in enumerate(shape):
+		if dim == -1:
+			frame_shape = shape[i+1:]
+			return ringlet_shape, frame_shape
+		ringlet_shape.append(dim)
+	raise ValueError("No time dimension (-1) found in shape")
+
 class Ring(object):
-	def __init__(self, space='system'):
-		space = _string2space(space)
-		#self.obj = None
-		self.obj = _get(_bf.RingCreate(space=space), retarg=0)
+	instance_count = 0
+	def __init__(self, space='system', name=None, owner=None):
+		self.space = space
+		self.obj = _get(_bf.RingCreate(space=_string2space(self.space)), retarg=0)
+		if name is None:
+			name = 'ring_%i' % Ring.instance_count
+			Ring.instance_count += 1
+		self.name = name
+		self.owner = owner
 	def __del__(self):
-		if bool(self.obj):
+		if hasattr(self, "obj") and bool(self.obj):
 			_bf.RingDestroy(self.obj)
-	def resize(self, contiguous_span, total_span=None, nringlet=1,
-	           buffer_factor=4):
-		if total_span is None:
-			total_span = contiguous_span * buffer_factor
+	def resize(self, contiguous_bytes, total_bytes=None, nringlet=1):
 		_check( _bf.RingResize(self.obj,
-		                       contiguous_span,
-		                       total_span,
+		                       contiguous_bytes,
+		                       total_bytes,
 		                       nringlet) )
-	@property
-	def space(self):
-		return _space2string(_get(_bf.RingGetSpace(self.obj)))
-	#def begin_sequence(self, name, header="", nringlet=1):
-	#	return Sequence(ring=self, name=name, header=header, nringlet=nringlet)
-	
-	#def end_sequence(self, sequence):
-	#	return sequence.end()
-	#def _lock(self):
-	#	self._check( self.lib.bfRingLock(self.obj) );
-	#def unlock(self):
-	#	self._check( self.lib.bfRingUnlock(self.obj) );
-	#def lock(self):
-	#	return RingLock(self)
 	def begin_writing(self):
 		return RingWriter(self)
 	def _begin_writing(self):
@@ -80,35 +91,6 @@ class Ring(object):
 			while True:
 				yield cur_seq
 				cur_seq.increment()
-	#def _data(self):
-	#	data_ptr = _get(self.lib.bfRingLockedGetData, self.obj)
-	#	#data_ptr = c_void_p()
-	#	#self._check( self.lib.bfRingLockedGetData(self.obj, pointer(data_ptr)) )
-	#	#data_ptr = data_ptr.value
-	#	#data_ptr = self.lib.bfRingLockedGetData(self.obj)
-	#	if self.space == 'cuda':
-	#		# TODO: See if can wrap this in something like PyCUDA's GPUArray
-	#		#         Ideally actual GPUArray, but it doesn't appear to support wrapping pointers
-	#		return data_ptr
-	#	span     = self._total_span()
-	#	stride   = self._stride()
-	#	nringlet = self._nringlet()
-	#	#print "******", span, stride, nringlet
-	#	BufferType = c_byte*(nringlet*stride)
-	#	data_buffer_ptr = cast(data_ptr, POINTER(BufferType))
-	#	data_buffer     = data_buffer_ptr.contents
-	#	data_array = np.ndarray(shape=(nringlet, span),
-	#	                        strides=(stride, 1) if nringlet > 1 else None,
-	#	                        buffer=data_buffer, dtype=np.uint8)
-	#	return data_array
-	#def _contiguous_span(self):
-	#	return self._get(BFsize, self.lib.bfRingLockedGetContiguousSpan, self.obj)
-	#def _total_span(self):
-	#	return self._get(BFsize, self.lib.bfRingLockedGetTotalSpan, self.obj)
-	#def _nringlet(self):
-	#	return self._get(BFsize, self.lib.bfRingLockedGetNRinglet, self.obj)
-	#def _stride(self):
-	#	return self._get(BFsize, self.lib.bfRingLockedGetStride, self.obj)
 
 class RingWriter(object):
 	def __init__(self, ring):
@@ -118,14 +100,17 @@ class RingWriter(object):
 		return self
 	def __exit__(self, type, value, tb):
 		self.ring.end_writing()
-	def begin_sequence(self, name="", time_tag=-1, header="", nringlet=1):
-		return WriteSequence(ring=self.ring, name=name, time_tag=time_tag,
-		                     header=header, nringlet=nringlet)
+	def begin_sequence(self, header, buf_nframe):
+		return WriteSequence(ring=self.ring,
+		                     header=header,
+		                     buf_nframe=buf_nframe)
 
 class SequenceBase(object):
         """Python object for a ring's sequence (data unit)"""
 	def __init__(self, ring):
 		self._ring = ring
+		self._header = None
+		self._tensor = None
 	@property
 	def _base_obj(self):
 		return ctypes.cast(self.obj, _bf.BFsequence)
@@ -147,14 +132,37 @@ class SequenceBase(object):
 	@property
 	def _header_ptr(self):
 		return _get(_bf.RingSequenceGetHeader(self._base_obj))
-	@property # TODO: Consider not making this a property
+	@property
+	def tensor(self):
+		if self._tensor is not None:
+			return self._tensor
+		header = self.header
+		shape = header['_tensor']['shape']
+		ringlet_shape, frame_shape = split_shape(shape)
+		nringlet       = reduce(lambda x,y:x*y, ringlet_shape, 1)
+		frame_nelement = reduce(lambda x,y:x*y, frame_shape,   1)
+		dtype = header['_tensor']['dtype']
+		_, nbit = split_name_nbit(dtype)
+		assert(nbit % 8 == 0)
+		frame_nbyte = frame_nelement * nbit // 8
+		self._tensor = {}
+		self._tensor['dtype']         = dtype
+		self._tensor['ringlet_shape'] = ringlet_shape
+		self._tensor['nringlet']      = nringlet
+		self._tensor['frame_shape']   = frame_shape
+		self._tensor['frame_nbyte']   = frame_nbyte
+		self._tensor['dtype_nbyte']   = nbit // 8
+		return self._tensor
+	@property
 	def header(self):
+		if self._header is not None:
+			return self._header
 		size = self.header_size
 		if size == 0:
 			# WAR for hdr_buffer_ptr.contents crashing when size == 0
 			hdr_array = np.empty(0, dtype=np.uint8)
 			hdr_array.flags['WRITEABLE'] = False
-			return hdr_array
+			return json.loads(hdr_array.tostring())
 		BufferType = ctypes.c_byte*size
 		hdr_buffer_ptr = ctypes.cast(self._header_ptr, ctypes.POINTER(BufferType))
 		hdr_buffer = hdr_buffer_ptr.contents
@@ -163,23 +171,28 @@ class SequenceBase(object):
 		#hdr_array = buffer(memoryview(hdr_buffer))
 		hdr_array = np.frombuffer(hdr_buffer, dtype=np.uint8)
 		hdr_array.flags['WRITEABLE'] = False
-		return hdr_array
+		self._header = json.loads(hdr_array.tostring())
+		return self._header
 
 class WriteSequence(SequenceBase):
-	def __init__(self, ring, name="", time_tag=-1, header="", nringlet=1):
+	def __init__(self, ring, header, buf_nframe):
 		SequenceBase.__init__(self, ring)
-		# TODO: Allow header to be a string, buffer, or numpy array
-		header_size = len(header)
-		if isinstance(header, np.ndarray):
-			header = header.ctypes.data
-		#print "hdr:", header_size, type(header)
+		self._header = header
+		header_str = json.dumps(header)
+		header_size = len(header_str)
+		gulp_nframe = header['gulp_nframe']
+		tensor = self.tensor
+		# **TODO: Consider moving this into bfRingSequenceBegin
+		self.ring.resize(gulp_nframe*tensor['frame_nbyte'],
+		                  buf_nframe*tensor['frame_nbyte'],
+		                 tensor['nringlet'])
 		offset_from_head = 0
 		self.obj = _get(_bf.RingSequenceBegin(ring=ring.obj,
-		                                      name=name,
-		                                      time_tag=time_tag,
+		                                      name=header['name'],
+		                                      time_tag=header['time_tag'],
 		                                      header_size=header_size,
-		                                      header=header,
-		                                      nringlet=nringlet,
+		                                      header=header_str,
+		                                      nringlet=tensor['nringlet'],
 		                                      offset_from_head=offset_from_head), retarg=0)
 	def __enter__(self):
 		return self
@@ -188,8 +201,8 @@ class WriteSequence(SequenceBase):
 	def end(self):
 		offset_from_head = 0
 		_check(_bf.RingSequenceEnd(self.obj, offset_from_head))
-	def reserve(self, size):
-		return WriteSpan(self.ring, size)
+	def reserve(self, nframe):
+		return WriteSpan(self.ring, self, nframe)
 
 class ReadSequence(SequenceBase):
 	def __init__(self, ring, which='specific', name="", other_obj=None, guarantee=True):
@@ -204,87 +217,164 @@ class ReadSequence(SequenceBase):
 		elif which == 'earliest':
 			self.obj = _get(_bf.RingSequenceOpenEarliest(ring=ring.obj,
 			                                             guarantee=guarantee), retarg=0)
-		#elif which == 'next':
-		#	self._check( self.lib.bfRingSequenceOpenNext(pointer(self.obj), other_obj) )
 		else:
 			raise ValueError("Invalid 'which' parameter; must be one of: 'specific', 'latest', 'earliest'")
+		
 	def __enter__(self):
 		return self
 	def __exit__(self, type, value, tb):
 		self.close()
 	def close(self):
 		_check(_bf.RingSequenceClose(self.obj))
-	#def __next__(self):
-	#	return self.next()
-	#def next(self):
-	#	return ReadSequence(self._ring, which='next', other_obj=self.obj)
 	def increment(self):
-		#self._check( self.lib.bfRingSequenceNext(pointer(self.obj)) )
 		_check(_bf.RingSequenceNext(self.obj))
-	def acquire(self, offset, size):
-		return ReadSpan(self, offset, size)
-	def read(self, span_size, stride=None, begin=0):
+		# Must invalidate cached header and tensor because this is now
+		#   a new sequence.
+		self._header = None
+		self._tensor = None
+	def acquire(self, frame_offset, nframe):
+		return ReadSpan(self, frame_offset, nframe)
+	def read(self, nframe, stride=None, begin=0):
 		if stride is None:
-			stride = span_size
+			stride = nframe
 		offset = begin
 		while True:
-			with self.acquire(offset, span_size) as ispan:
+			with self.acquire(offset, nframe) as ispan:
 				yield ispan
 			offset += stride
+	def resize(self, gulp_nframe, buf_nframe=None, buffer_factor=None):
+		if buf_nframe is None:
+			if buffer_factor is None:
+				buffer_factor = 3
+			buf_nframe = int(np.ceil(gulp_nframe * buffer_factor))
+		tensor = self.tensor
+		return self._ring.resize(gulp_nframe*tensor['frame_nbyte'],
+		                         buf_nframe*tensor['frame_nbyte'])
+
+def accumulate(vals, op='+', init=None, reverse=False):
+	if   op == '+':   op = lambda a,b:a+b
+	elif op == '*':   op = lambda a,b:a*b
+	elif op == 'min': op = lambda a,b:min(a,b)
+	elif op == 'max': op = lambda a,b:max(a,b)
+	results = []
+	if reverse:
+		vals = reversed(list(vals))
+	for i,val in enumerate(vals):
+		if i == 0:
+			results.append(val if init is None else init)
+		else:
+			results.append(op(results[-1], val))
+	if reverse:
+		results = list(reversed(results))
+	return results
 
 class SpanBase(object):
-	def __init__(self, ring, writeable):
-		self._ring = ring
+	def __init__(self, ring, sequence, writeable):
+		self._ring     = ring
+		self._sequence = sequence
 		self.writeable = writeable
-	@property
-	def _base_obj(self):
-		return ctypes.cast(self.obj, _bf.BFspan)
+		self._data = None
+	def _set_base_obj(self, obj):
+		self._base_obj = ctypes.cast(obj, _bf.BFspan)
+		self._cache_info()
+	def _cache_info(self):
+		self._info = _get(_bf.RingSpanGetInfo(self._base_obj))
 	@property
 	def ring(self):
 		return self._ring
 	@property
-	def size(self):
-		return _get(_bf.RingSpanGetSize(self._base_obj))
+	def sequence(self):
+		return self._sequence
 	@property
-	def stride(self):
-		return _get(_bf.RingSpanGetStride(self._base_obj))
+	def tensor(self):
+		return self.sequence.tensor
 	@property
-	def offset(self):
-		return _get(_bf.RingSpanGetOffset(self._base_obj))
+	def _size_bytes(self):
+		return self._info.size
 	@property
-	def nringlet(self):
-		return _get(_bf.RingSpanGetNRinglet(self._base_obj))
+	def _stride_bytes(self):
+		return self._info.stride
+	@property
+	def frame_offset(self):
+		byte_offset = self._info.offset
+		assert(byte_offset % self.frame_nbyte == 0)
+		return byte_offset // self.frame_nbyte
+	@property
+	def _nringlet(self):
+		return self._info.nringlet
 	@property
 	def _data_ptr(self):
-		return _get(_bf.RingSpanGetData(self._base_obj))
+		return self._info.data
+	@property
+	def nframe(self):
+		size_bytes = self._size_bytes
+		assert(size_bytes % self.tensor['frame_nbyte'] == 0)
+		nframe  = size_bytes // self.tensor['frame_nbyte']
+		return nframe
+	@property
+	def shape(self):
+		shape = (self.tensor['ringlet_shape'] +
+		         [self.nframe,] +
+		         self.tensor['frame_shape'])
+		return shape
+	@property
+	def strides(self):
+		tensor = self.tensor
+		strides = [tensor['dtype_nbyte']]
+		for dim in reversed(tensor['frame_shape']):
+			strides.append(dim * strides[-1])
+		if len(tensor['ringlet_shape']) > 0:
+			strides.append(self._stride_bytes) # First ringlet dimension
+		for dim in reversed(tensor['ringlet_shape'][1:]):
+			strides.append(dim * strides[-1])
+		strides = list(reversed(strides))
+		return strides
+	@property
+	def dtype(self):
+		return self.tensor['dtype']
 	@property
 	def data(self):
-		return self.data_view()
+		
+		# TODO: This function used to be super slow due to pyclibrary calls
+		#         Check whether it still is!
+		
+		if self._data is not None:
+			return self._data
+		data_ptr = self._data_ptr
+		
+		space = self.ring.space
+		if space == 'cuda':
+			data_array = GPUArray(shape=self.shape,
+			                      strides=self.strides,
+			                      buffer=data_ptr,
+			                      dtype=string2numpy(self.dtype))
+		else:
+			nringlet     = self._nringlet
+			stride_bytes = self._stride_bytes
+			BufferType = ctypes.c_byte*(nringlet*stride_bytes)
+			data_buffer_ptr = ctypes.cast(data_ptr, ctypes.POINTER(BufferType))
+			data_buffer     = data_buffer_ptr.contents
+			data_array = np.ndarray(shape=self.shape,
+			                        strides=self.strides,
+			                        buffer=data_buffer,
+			                        dtype=string2numpy(self.dtype))
+		return data_array
+	
 	def data_view(self, dtype=np.uint8, shape=-1):
 		itemsize = dtype().itemsize
 		assert( self.size   % itemsize == 0 )
 		assert( self.stride % itemsize == 0 )
 		data_ptr = self._data_ptr
-		#if self.sequence.ring.space == 'cuda':
-		#	# TODO: See if can wrap this in something like PyCUDA's GPUArray
-		#	#         Ideally actual GPUArray, but it doesn't appear to support wrapping pointers
-		#	#           Could also try writing a custom GPUArray implem for this purpose
-		#	return data_ptr
 		span_size  = self.size
 		stride     = self.stride
-		#nringlet   = self.sequence.nringlet
 		nringlet   = self.nringlet
-		#print "******", span_size, stride, nringlet
-		#BufferType = c_byte*(span_size*self.stride)
 		# TODO: We should really map the actual ring memory space and index
 		#         it with offset rather than mapping from the current pointer.
 		BufferType = ctypes.c_byte*(nringlet*stride)
 		data_buffer_ptr = ctypes.cast(data_ptr, ctypes.POINTER(BufferType))
 		data_buffer     = data_buffer_ptr.contents
-		#print len(data_buffer), (nringlet, span_size), (self.stride, 1)
 		_shape   = (nringlet, span_size//itemsize)
 		strides = (self.stride, itemsize) if nringlet > 1 else None
-		#space   = self.sequence.ring.space
 		space   = self.ring.space
 		if space != 'cuda':
 			data_array = np.ndarray(shape=_shape, strides=strides,
@@ -293,39 +383,44 @@ class SpanBase(object):
 			data_array = GPUArray(shape=_shape, strides=strides,
 			                      buffer=data_ptr, dtype=dtype)
 			data_array.flags['SPACE'] = space
-		# Note: This is a non-standard attribute
-		#data_array.flags['SPACE'] = space
 		if not self.writeable:
 			data_array.flags['WRITEABLE'] = False
 		if shape != -1:
 			# TODO: Check that this still wraps the same memory
 			data_array = data_array.reshape(shape)
 		return data_array
-	#@property
-	#def sequence(self):
-	#	return self._sequence
 
 class WriteSpan(SpanBase):
 	def __init__(self,
 	             ring,
-	             size):
-		SpanBase.__init__(self, ring, writeable=True)
-		self.obj = _get(_bf.RingSpanReserve(ring=ring.obj, size=size), retarg=0)
-		self.commit_size = size
-	def commit(self, size):
-		self.commit_size = size
+	             sequence,
+	             nframe):
+		SpanBase.__init__(self, ring, sequence, writeable=True)
+		nbyte = nframe * self.tensor['frame_nbyte']
+		self.obj = _get(_bf.RingSpanReserve(ring=ring.obj, size=nbyte), retarg=0)
+		self._set_base_obj(self.obj)
+		self.commit_nframe = nframe
+		# TODO: Why do exceptions here not show up properly?
+		#raise ValueError("SHOW ME THE ERROR")
+	def commit(self, nframe):
+		self.commit_nframe = nframe
 	def __enter__(self):
 		return self
 	def __exit__(self, type, value, tb):
 		self.close()
 	def close(self):
-		_check(_bf.RingSpanCommit(self.obj, self.commit_size))
+		commit_nbyte = self.commit_nframe * self.tensor['frame_nbyte']
+		_check(_bf.RingSpanCommit(self.obj, commit_nbyte))
 
 class ReadSpan(SpanBase):
-	def __init__(self, sequence, offset, size):
-		SpanBase.__init__(self, sequence.ring, writeable=False)
+	def __init__(self, sequence, frame_offset, nframe):
+		SpanBase.__init__(self, sequence.ring, sequence, writeable=False)
+		tensor = sequence.tensor
 		self.obj = _get(_bf.RingSpanAcquire(sequence=sequence.obj,
-		                                    offset=offset, size=size), retarg=0)
+		                                    offset=frame_offset*tensor['frame_nbyte'],
+		                                    size=nframe*tensor['frame_nbyte']),
+		                retarg=0)
+		self._set_base_obj(self.obj)
 	def __enter__(self):
 		return self
 	def __exit__(self, type, value, tb):
