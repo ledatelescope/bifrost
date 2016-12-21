@@ -28,6 +28,19 @@
 
 from libbifrost import _bf, _check, _get, _string2space
 
+def space_accessible(space, from_spaces):
+	if from_spaces == 'any': # TODO: This is a little bit hacky
+		return True
+	from_spaces = set(from_spaces)
+	if space in from_spaces:
+		return True
+	elif space == 'cuda_host':
+		return 'system' in from_spaces
+	elif space == 'cuda_managed':
+		return 'system' in from_spaces or 'cuda' in from_spaces
+	else:
+		return False
+
 def _get_space(arr):
 	try:             return arr.flags['SPACE']
 	except KeyError: return 'system' # TODO: Dangerous to assume?
