@@ -1,14 +1,14 @@
 ## Contents
 
 0. [Basic Syntax](#syntax)
-1. [Bifrost blocks](#blocks)
-4. [[Ring() API]]
+1. [Blocks](#blocks)
+2. [Pipelines](#pipelines)
 
 ## <a name="syntax">Basic Syntax</a>
 
 As described on the [[Home]] page, Bifrost is made up of blocks, rings, and pipelines. Blocks embody *black box processes*, and rings connect these blocks together. A network of blocks and rings is called a pipeline. Bifrost's Python API mirrors these concepts very closely. 
 
-####Let's dive into an example: here we will perform an FFT on an array, and dump the result to a text file.
+####Let's start on an example: here we will perform an FFT on an array, and dump the result to a text file.
 
 The following code generates a list of three blocks: a `TestingBlock`, which takes a list of numbers during its initialization (which we give as `[1, 2, 3]`, an `FFTBlock`, which performs a one dimensional FFT on our input, and a `WriteAsciiBlock`, which dumps everything given to it into a text file (which we name as `'logfile.txt'`).
 
@@ -155,4 +155,106 @@ class DStackBlock(MultiTransformBlock):
             # is a copy command. Stating outspan=... would 
             # reassign the name "outspan" instead of copying
             # data, so the output ring would receive nothing.
+```
+
+
+## <a name="pipelines">Pipelines</a>
+
+
+
+```python
+#Dummy function to generate data
+def generate_ten_arrays():
+    for i in range(10):
+        yield np.array([1, 2, 3])
+
+#Function to print numpy arrays
+def pprint(array):
+    print array
+
+#The following list will contain all 
+# of the initialized blocks, along 
+# with their 'connections', which 
+# define how blocks connect to eachother
+blocks = []
+
+#Each block is defined as a two-element
+# sublist (a list within the list of blocks). 
+# The first part of the list is
+# an object---like the one I created above.
+# When you create the object, you call the
+# __init__ function, so define any algorithm
+# parameters in that part.
+blocks.append([
+    NumpySourceBlock(generate_ten_arrays()),
+    {'out_1':0}])
+#The second part of this sublist is a dictionary
+# of connections. 'out_1'---the key, refers
+# to the internal ring definition in
+# the block. This would be one of the ring_name's
+# that I defined above for DStackBlock.
+# It gets used internally for organizing 
+# the headers, gulp_sizes, and so on.
+#The 0 is the value. It is the EXTERNAL (!)
+# ring name. It is what we want to call the 
+# ring in the context of this pipeline. 
+# If you are confused because it is a number,
+# note that you could also use a string in
+# place of the 0. For example 'raw_input' 
+# is a valid name. You could define
+# your own Ring() object, and use that in place.
+# So long as you are consistent. Each ring
+# should only be named once as an output, and 
+# as many times as you want as an input. Bifrost
+# will let you know if you have used a ring
+# twice as an output. 
+
+
+#Here I generate an identical block to feed 
+# another ring. Note that the INTERNAL name
+# of the ring is the same as above, as it 
+# is only a marker for the block,
+# but the EXTERNAL name of the ring, the name
+# that our pipeline will use, is different. 
+blocks.append([
+    NumpySourceBlock(generate_ten_arrays()),
+    {'out_1':1}])
+#Here I defined the external ring to be 1. 
+# We must refer to that name later on.
+
+
+#Here we use the block we defined above
+# to stack these inputs together. Note that
+# the 'in_1' and 'in_2' keys are the same
+# names we used in the block definition
+# above. We have assigned these inputs to
+# the rings 0 and 1 in our pipeline, which 
+# are being outputted by the above generators.
+blocks.append([
+    DStackBlock(),
+    {'in_1': 0, 'in_2': 1, 'out': 2}])
+#For the output, we define the external
+# ring to be 2. This will be used later.
+
+#Finally, I want to see if the pipeline has
+# worked, so I print all the outgoing arrays.
+# NumpyBlock by default has inputs=1, outputs=1,
+# so for this block to be satisfied with
+# no output data, we set outputs=0 in the call to
+# the block. 
+blocks.append([
+    NumpyBlock(pprint, outputs=0),
+    {'in_1': 2}])
+#NumpyBlock and NumpySourceBlock have
+# their INTERNAL rings automatically
+# defined as 
+# in_1, in_2, ... and out_1, out_2...,
+# for as many as you wish to make. 
+#Here we set the only input to be 
+# 2 --- the ring that is outputted
+# by the DStackBlock.
+
+#Create a pipeline with these blocks, and
+# execute it (main). 
+Pipeline(blocks).main()
 ```
