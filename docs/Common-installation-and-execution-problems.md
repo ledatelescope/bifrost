@@ -6,7 +6,7 @@ This is probably because a Bifrost pipeline was started with an infinite timeout
 
 #### ImportError: No module named pyclibrary
 
-You have not installed PyCLibrary, or you are using two different python installations (i.e., one installed via apt-get, and one installed from source in a local directory, or one in a virtual environment). Make sure you are using the same Python to install libraries as you are to run programs. Get PyCLibrary from [here](https://github.com/MatthieuDartiailh/pyclibrary).
+You have not installed PyCLibrary, or you are using two different python installations (e.g., one installed via apt-get, and one installed from source in a local directory, or one in a virtual environment). Make sure you are using the same Python to install libraries as you are to run programs. Get PyCLibrary from [here](https://github.com/MatthieuDartiailh/pyclibrary).
 
 #### OSError: ..../lib/libbifrost.so: undefined symbol: cudaFreeHost
 
