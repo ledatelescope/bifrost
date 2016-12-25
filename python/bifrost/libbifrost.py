@@ -40,6 +40,7 @@ def _load_bifrost_lib():
 	library_name = "libbifrost.so"
 	api_prefix   = "bf"
 	header_paths = ["/usr/local/include/bifrost",
+                        "/home/mcranmer/usr/local/include/bifrost",
 					"../src/bifrost"] # TODO: Remove this one?
 	include_env  = 'BIFROST_INCLUDE_PATH'
 	# PYCLIBRARY ISSUE
