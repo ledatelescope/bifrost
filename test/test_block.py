@@ -438,6 +438,7 @@ class TestMultiTransformBlock(unittest.TestCase):
     def test_two_sequences(self):
         """Make sure multiple sequences only triggered for different headers"""
 
+        np.random.seed(44)
         def generate_two_different_arrays():
             """Generate 10 of an array, then 10 of a different array"""
             for _ in range(10):
@@ -445,29 +446,30 @@ class TestMultiTransformBlock(unittest.TestCase):
             for _ in range(10):
                 yield np.random.rand(5)
 
-        self.current_array = np.ones(4)
         self.triggered = False
         self.monitor_block = None
         self.sequence_id = ""
         self.i = 0
 
-        def monitor_block_sequences(array):
-            """Monitor block for sequence trigger
-            Compare this with the current array (should only be one change).
-            """
+        #This array holds all of the
+        #starting numbers. If there
+        #are more than two different
+        #numbers, then there is a problem
+        self.all_sequence_starts = []
 
-            if self.i > 1 and self.i < 4:
+        def monitor_block_sequences(array):
+            """Read the newest sequence, and append the first
+               byte to the all_sequence_starts"""
+
+            #Avoid reading an empty sequence
+            if self.i > 1 and self.i < 11:
                 with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
                     span_gen = curr_seq.read(1)
-                    print span_gen.next().data
-                    self.sequence_id = str(curr_seq)
-            if self.i > 7:
+                    self.all_sequence_starts.append(int(span_gen.next().data[0]))
+            if self.i > 12:
                 with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
                     span_gen = curr_seq.read(1)
-                    print span_gen.next().data
-                    self.sequence_id = str(curr_seq)
-            print self.sequence_id
-            self.current_array = np.copy(array)
+                    self.all_sequence_starts.append(int(span_gen.next().data[0]))
             self.i += 1
             return array
                 
@@ -477,6 +479,9 @@ class TestMultiTransformBlock(unittest.TestCase):
             (self.monitor_block, {'in_1': 0, 'out_1': 1})]
 
         Pipeline(blocks).main()
+
+        unique_starts = len(set(self.all_sequence_starts))
+        self.assertEqual(unique_starts, 2)
 
 class TestSplitterBlock(unittest.TestCase):
     """Test a block which splits up incoming data into two rings"""
