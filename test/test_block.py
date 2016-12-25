@@ -441,9 +441,9 @@ class TestMultiTransformBlock(unittest.TestCase):
         def generate_two_different_arrays():
             """Generate 10 of an array, then 10 of a different array"""
             for _ in range(10):
-                yield np.ones(4)
+                yield np.random.rand(4)
             for _ in range(10):
-                yield np.ones(4)
+                yield np.random.rand(5)
 
         self.current_array = np.ones(4)
         self.triggered = False
@@ -456,9 +456,16 @@ class TestMultiTransformBlock(unittest.TestCase):
             Compare this with the current array (should only be one change).
             """
 
-            if self.i > 0:
-                with self.monitor_block.rings['out_1'].open_latest_sequence() as cur_seq:
-                    self.sequence_id = str(cur_seq)
+            if self.i > 1 and self.i < 4:
+                with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
+                    span_gen = curr_seq.read(1)
+                    print span_gen.next().data
+                    self.sequence_id = str(curr_seq)
+            if self.i > 7:
+                with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
+                    span_gen = curr_seq.read(1)
+                    print span_gen.next().data
+                    self.sequence_id = str(curr_seq)
             print self.sequence_id
             self.current_array = np.copy(array)
             self.i += 1
