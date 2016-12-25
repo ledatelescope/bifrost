@@ -28,4 +28,5 @@ where `/my/bifrost/installation` is the folder where you installed the Bifrost "
 
 Similar to the above error. You need to add the CUDA libraries to the LD_LIBRARY_PATH search path. 
 
-`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/my/cuda/installation`
+For example,
+`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/my/cuda/installation/lib64`
