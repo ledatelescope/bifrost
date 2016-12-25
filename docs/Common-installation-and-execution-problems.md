@@ -23,3 +23,9 @@ This means that PyCLibrary can't find your Bifrost installation. Whatever librar
 `export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/my/bifrost/installation`,
 
 where `/my/bifrost/installation` is the folder where you installed the Bifrost "lib" (in config.mk, this folder is given as `INSTALL_LIB_DIR`). This should add Bifrost to the PyCLibrary search path.
+
+#### OSError: libcudart.so.x.0: cannot open shared object file: No such file or directory
+
+Similar to the above error. You need to add the CUDA libraries to the LD_LIBRARY_PATH search path. 
+
+`export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/my/cuda/installation`
