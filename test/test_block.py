@@ -443,27 +443,25 @@ class TestMultiTransformBlock(unittest.TestCase):
             for _ in range(10):
                 yield np.ones(4)
             for _ in range(10):
-                yield np.ones(5)
+                yield np.ones(4)
 
         self.current_array = np.ones(4)
-        self.will_trigger = False
+        self.triggered = False
         self.monitor_block = None
+        self.sequence_id = ""
+        self.i = 0
 
         def monitor_block_sequences(array):
             """Monitor block for sequence trigger
             Compare this with the current array (should only be one change).
             """
-            if self.will_trigger:
-                #self.assertTrue(self.monitor_block.trigger_sequence)
-                pass
 
-            if np.array_equal(array, self.current_array):
-                self.will_trigger = False
-                #self.assertFalse(self.monitor_block.trigger_sequence)
-            else:
-                self.will_trigger = True
-
+            if self.i > 0:
+                with self.monitor_block.rings['out_1'].open_latest_sequence() as cur_seq:
+                    self.sequence_id = str(cur_seq)
+            print self.sequence_id
             self.current_array = np.copy(array)
+            self.i += 1
             return array
                 
         self.monitor_block = NumpyBlock(monitor_block_sequences)
