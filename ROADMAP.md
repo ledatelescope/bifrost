@@ -10,7 +10,7 @@ stated, the items on this page have not yet been developed.
  * Pulsar search algorithms
    * Harmonic summing, folding
  * Calibration and imaging algorithms
-   * Gridding/degridding, CLEAN
+   * Gridding/degridding, compressive sensing, CLEAN
  * IO (source/sink) blocks for additional astronomy/audio/generic file formats
 
 ## Pipeline features
