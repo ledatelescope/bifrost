@@ -440,7 +440,7 @@ class TestMultiTransformBlock(unittest.TestCase):
 
         np.random.seed(44)
         def generate_two_different_arrays():
-            """Generate 10 of an array, then 10 of a different array"""
+            """Generate 10 of an array shape, then 10 of a different array shape"""
             for _ in range(10):
                 yield np.random.rand(4)
             for _ in range(10):
