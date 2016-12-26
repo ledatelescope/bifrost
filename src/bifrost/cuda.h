@@ -27,12 +27,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*! \file memory.h
- *  \brief Space- (host/device) aware memory management/copy/set functions
- */
-
-#ifndef BF_MEMORY_H_INCLUDE_GUARD_
-#define BF_MEMORY_H_INCLUDE_GUARD_
+#ifndef BF_CUDA_H_INCLUDE_GUARD_
+#define BF_CUDA_H_INCLUDE_GUARD_
 
 #include <bifrost/common.h>
 
@@ -40,48 +36,12 @@
 extern "C" {
 #endif
 
-#ifndef BF_ALIGNMENT
-  #define BF_ALIGNMENT 4096//512
-#endif
-
-typedef enum {
-	BF_SPACE_AUTO         = 0,
-	BF_SPACE_SYSTEM       = 1, // aligned_alloc
-	BF_SPACE_CUDA         = 2, // cudaMalloc
-	BF_SPACE_CUDA_HOST    = 3, // cudaHostAlloc
-	BF_SPACE_CUDA_MANAGED = 4  // cudaMallocManaged
-} BFspace;
-
-BFstatus bfMalloc(void** ptr, BFsize size, BFspace space);
-BFstatus bfFree(void* ptr, BFspace space);
-
-BFstatus bfGetSpace(const void* ptr, BFspace* space);
-
-// Note: This is sync wrt host but async wrt device
-BFstatus bfMemcpy(void*       dst,
-                  BFspace     dst_space,
-                  const void* src,
-                  BFspace     src_space,
-                  BFsize      count);
-BFstatus bfMemcpy2D(void*       dst,
-                    BFsize      dst_stride,
-                    BFspace     dst_space,
-                    const void* src,
-                    BFsize      src_stride,
-                    BFspace     src_space,
-                    BFsize      width,
-                    BFsize      height);
-BFstatus bfMemset(void*   ptr,
-                  BFspace space,
-                  int     value,
-                  BFsize  count);
-BFstatus bfMemset2D(void*   ptr,
-                    BFsize  stride,
-                    BFspace space,
-                    int     value,
-                    BFsize  width,
-                    BFsize  height);
-BFsize bfGetAlignment();
+BFstatus bfStreamGet(void*       stream);
+BFstatus bfStreamSet(void const* stream);
+BFstatus bfStreamSynchronize();
+BFstatus bfDeviceGet(int* device);
+BFstatus bfDeviceSet(int  device);
+BFstatus bfDeviceSetById(const char* pci_bus_id);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -27,28 +27,41 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-//#define FFT_FORWARD CUFFT_FORWARD
-//#define FFT_INVERSE CUFFT_INVERSE
-//#define FFT_C2C CUFFT_C2C
-//#define FFT_R2C CUFFT_R2C
-//#define FFT_C2R CUFFT_C2R
-#include <bifrost/common.h>
-#include <bifrost/array.h>
+#include <bifrost/cuda.h>
+#include "cuda.hpp"
+#include "assert.hpp"
 
-extern "C" {
-BFstatus bfFFTC2C1d(
-    void** input_data, void** output_data, 
-    BFsize nelements, int direction);
-BFstatus bfFFTC2C2d(
-    void** input_data, void** output_data, 
-    BFsize nelements_x, BFsize nelements_y, 
-    int direction);
-BFstatus bfFFTR2C1d(
-    void** input_data, void** output_data, 
-    BFsize nelements);
-BFstatus bfFFTR2C2d(
-    void** input_data, void** output_data, 
-    BFsize nelements_x, BFsize nelements_y);
-BFstatus bfFFT(
-    BFarray *input, BFarray *output, int direction);
+thread_local cudaStream_t g_cuda_stream = cudaStreamPerThread;
+
+BFstatus bfStreamGet(void* stream) {
+	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
+	*(cudaStream_t*)stream = g_cuda_stream;
+	return BF_STATUS_SUCCESS;
+}
+BFstatus bfStreamSet(void const* stream) {
+	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
+	g_cuda_stream = *(cudaStream_t*)stream;
+	return BF_STATUS_SUCCESS;
+}
+BFstatus bfDeviceGet(int* device) {
+	BF_ASSERT(device, BF_STATUS_INVALID_POINTER);
+	BF_CHECK_CUDA(cudaGetDevice(device), BF_STATUS_DEVICE_ERROR);
+	return BF_STATUS_SUCCESS;
+}
+BFstatus bfDeviceSet(int device) {
+	BF_CHECK_CUDA(cudaSetDevice(device), BF_STATUS_DEVICE_ERROR);
+	return BF_STATUS_SUCCESS;
+}
+BFstatus bfDeviceSetById(const char* pci_bus_id) {
+	int device;
+	BF_CHECK_CUDA(cudaDeviceGetByPCIBusId(&device, pci_bus_id),
+	              BF_STATUS_DEVICE_ERROR);
+	return bfDeviceSet(device);
+}
+BFstatus bfStreamSynchronize() {
+#if BF_CUDA_ENABLED
+	BF_CHECK_CUDA(cudaStreamSynchronize(g_cuda_stream),
+	              BF_STATUS_DEVICE_ERROR);
+#endif
+	return BF_STATUS_SUCCESS;
 }

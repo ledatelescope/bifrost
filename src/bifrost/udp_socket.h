@@ -27,64 +27,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*! \file memory.h
- *  \brief Space- (host/device) aware memory management/copy/set functions
- */
-
-#ifndef BF_MEMORY_H_INCLUDE_GUARD_
-#define BF_MEMORY_H_INCLUDE_GUARD_
-
-#include <bifrost/common.h>
+#ifndef BF_UDP_SOCKET_H_INCLUDE_GUARD_
+#define BF_UDP_SOCKET_H_INCLUDE_GUARD_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifndef BF_ALIGNMENT
-  #define BF_ALIGNMENT 4096//512
-#endif
+#include <bifrost/address.h>
 
-typedef enum {
-	BF_SPACE_AUTO         = 0,
-	BF_SPACE_SYSTEM       = 1, // aligned_alloc
-	BF_SPACE_CUDA         = 2, // cudaMalloc
-	BF_SPACE_CUDA_HOST    = 3, // cudaHostAlloc
-	BF_SPACE_CUDA_MANAGED = 4  // cudaMallocManaged
-} BFspace;
+typedef struct BFudpsocket_impl* BFudpsocket;
 
-BFstatus bfMalloc(void** ptr, BFsize size, BFspace space);
-BFstatus bfFree(void* ptr, BFspace space);
-
-BFstatus bfGetSpace(const void* ptr, BFspace* space);
-
-// Note: This is sync wrt host but async wrt device
-BFstatus bfMemcpy(void*       dst,
-                  BFspace     dst_space,
-                  const void* src,
-                  BFspace     src_space,
-                  BFsize      count);
-BFstatus bfMemcpy2D(void*       dst,
-                    BFsize      dst_stride,
-                    BFspace     dst_space,
-                    const void* src,
-                    BFsize      src_stride,
-                    BFspace     src_space,
-                    BFsize      width,
-                    BFsize      height);
-BFstatus bfMemset(void*   ptr,
-                  BFspace space,
-                  int     value,
-                  BFsize  count);
-BFstatus bfMemset2D(void*   ptr,
-                    BFsize  stride,
-                    BFspace space,
-                    int     value,
-                    BFsize  width,
-                    BFsize  height);
-BFsize bfGetAlignment();
+BFstatus bfUdpSocketCreate(BFudpsocket* obj);
+BFstatus bfUdpSocketDestroy(BFudpsocket obj);
+BFstatus bfUdpSocketConnect(BFudpsocket obj, BFaddress remote_addr);
+BFstatus bfUdpSocketBind(   BFudpsocket obj, BFaddress local_addr);
+BFstatus bfUdpSocketShutdown(BFudpsocket obj); // Unblocks recv in another thread
+BFstatus bfUdpSocketClose(BFudpsocket obj);
+BFstatus bfUdpSocketSetTimeout(BFudpsocket obj, double secs);
+BFstatus bfUdpSocketGetTimeout(BFudpsocket obj, double* secs);
+BFstatus bfUdpSocketGetMTU(BFudpsocket obj, int* mtu);
+BFstatus bfUdpSocketGetFD(BFudpsocket obj, int* fd);
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif // BF_MEMORY_H_INCLUDE_GUARD_
+#endif // BF_UDP_SOCKET_H_INCLUDE_GUARD_

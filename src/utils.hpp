@@ -29,6 +29,18 @@
 
 #pragma once
 
+#include <bifrost/common.h>
+#include <bifrost/memory.h>
+#include "cuda.hpp"
+
+#include <stdexcept>
+
+#define BF_DTYPE_IS_COMPLEX(dtype) bool((dtype) & BF_DTYPE_COMPLEX_BIT)
+// **TODO: Add support for string type that encodes up to 255 bytes
+#define BF_DTYPE_NBIT(dtype) \
+	(((dtype) & BF_DTYPE_NBIT_BITS) * (BF_DTYPE_IS_COMPLEX(dtype)+1))
+#define BF_DTYPE_NBYTE(dtype) (BF_DTYPE_NBIT(dtype)/8)
+
 // TODO: Check that these wrap/overflow properly
 inline BFoffset round_up(BFoffset val, BFoffset mult) {
 	return (val == 0 ?
@@ -41,3 +53,42 @@ inline BFoffset round_up_pow2(BFoffset a) {
     return r+1;
 }
 
+inline BFbool space_accessible_from(BFspace space, BFspace from) {
+#if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
+	return space == BF_SPACE_SYSTEM;
+#else
+	switch( from ) {
+	case BF_SPACE_SYSTEM: return (space == BF_SPACE_SYSTEM ||
+	                              space == BF_SPACE_CUDA_HOST ||
+	                              space == BF_SPACE_CUDA_MANAGED);
+	case BF_SPACE_CUDA:   return (space == BF_SPACE_CUDA ||
+	                              space == BF_SPACE_CUDA_MANAGED);
+	// TODO: Need to use something else here?
+	default: throw std::runtime_error("Internal error");
+	}
+#endif
+}
+
+template<int NBIT, typename ConvertType=float, typename AccessType=char>
+struct NbitReader {
+	typedef ConvertType value_type;
+	enum { MASK = (1<<NBIT)-1 };
+	AccessType const* __restrict__ data;
+	NbitReader(void* data_) : data((AccessType*)data_) {}
+#if BF_CUDA_ENABLED
+	__host__ __device__
+#endif
+	inline ConvertType operator[](int n) const {
+		// TODO: Beware of overflow here
+		AccessType word = data[n * NBIT / (sizeof(AccessType)*8)];
+		int k = n % ((sizeof(AccessType)*8) / NBIT);
+		return (word >> (k*NBIT)) & MASK;
+	}
+	inline ConvertType operator*() const {
+		return (*this)[0];
+	}
+};
+
+template<typename T> struct value_type           { typedef typename T::value_type type; };
+template<typename T> struct value_type<T*>       { typedef T       type; };
+template<typename T> struct value_type<T const*> { typedef T const type; };

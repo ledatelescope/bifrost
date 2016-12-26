@@ -26,18 +26,17 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Bifrost pipeline processing library
-"""
+from libbifrost import _bf, _check, _get
 
-__version__    = "0.6"
-__author__     = "Ben Barsdell"
-__copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
-__credits__    = ["Ben Barsdell"]
-__license__    = "BSD 3-Clause"
-__maintainer__ = "Ben Barsdell"
-__email__      = "benbarsdell@gmail.com"
-__status__     = "Development"
+def set_device(device):
+	if isinstance(device, int):
+		_check(_bf.DeviceSet(device))
+	else:
+		_check(_bf.DeviceSetById(device))
+def get_device():
+	return _get(_bf.DeviceGet())
 
-import core, memory, affinity, ring, block, address, udp_socket
-from GPUArray import GPUArray
+# TODO: set/get_stream
+
+def stream_synchronize():
+	_check(_bf.StreamSynchronize())

@@ -32,7 +32,7 @@
 
 #if BF_CUDA_ENABLED
   #include "transpose_gpu_kernel.cuh"
-  #include "cuda/stream.hpp"
+  #include "cuda.hpp"
 #else
   typedef int cudaStream_t; // WAR
 #endif
@@ -86,14 +86,14 @@ T log2(T v) {
 
 template<int ALIGNMENT_IN, int ALIGNMENT_OUT,
          typename T>
-int transpose(BFsize        ndim,
-              BFsize const* sizes,          // elements
-              BFsize const* output_order,
-              T      const* in,
-              BFsize const* in_strides,  // bytes
-              T           * out,
-              BFsize const* out_strides, // bytes
-              cudaStream_t  stream) {
+BFstatus transpose(BFsize        ndim,
+                   BFsize const* sizes,          // elements
+                   BFsize const* output_order,
+                   T      const* in,
+                   BFsize const* in_strides,  // bytes
+                   T           * out,
+                   BFsize const* out_strides, // bytes
+                   cudaStream_t  stream) {
 	enum { ELEMENT_SIZE = sizeof(T) };
 	// TODO: This is currently all tuned for a GTX Titan (sm_35)
 	enum {
@@ -133,7 +133,7 @@ int transpose(BFsize        ndim,
 	int    ostridez[MAX_NDIM];
 	BFsize sizez = 1;
 	int dd = 0;
-	for( int d=0; d<ndim-1; ++d ) {
+	for( int d=0; d<(int)ndim-1; ++d ) {
 		if( d != islowdim ) {
 			shapez[dd]   = sizes[d];
 			sizez       *= sizes[d];
@@ -266,53 +266,55 @@ int transpose(BFsize        ndim,
 }
 } // namespace aligned_in_out
 template<int ALIGNMENT_IN, typename T>
-int transpose(BFsize        ndim,
-              BFsize const* sizes,       // elements
-              BFsize const* output_order,
-              T      const* in,
-              BFsize const* in_strides,  // bytes
-              T           * out,
-              BFsize const* out_strides, // bytes
-              cudaStream_t  stream) {
+BFstatus transpose(BFsize        ndim,
+                   BFsize const* sizes,       // elements
+                   BFsize const* output_order,
+                   T      const* in,
+                   BFsize const* in_strides,  // bytes
+                   T           * out,
+                   BFsize const* out_strides, // bytes
+                   cudaStream_t  stream) {
 	BFsize out_alignment = (BFsize)out;
-	for( int d=0; d<ndim; ++d ) {
+	for( int d=0; d<(int)ndim; ++d ) {
 		out_alignment = gcd(out_alignment, out_strides[d]);
 	}
 	switch( out_alignment ) {
-	case 16: return aligned_in_out::transpose<ALIGNMENT_IN,16>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case  8: return aligned_in_out::transpose<ALIGNMENT_IN, 8>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case 12:
-	case  4: return aligned_in_out::transpose<ALIGNMENT_IN, 4>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case 14:
-	case 10:
-	case  6:
-	case  2: return aligned_in_out::transpose<ALIGNMENT_IN, 2>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	case sizeof(T): return aligned_in_out::transpose<ALIGNMENT_IN,sizeof(T)>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 16: return aligned_in_out::transpose<ALIGNMENT_IN,16>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case  8: return aligned_in_out::transpose<ALIGNMENT_IN, 8>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 12:
+	//case  4: return aligned_in_out::transpose<ALIGNMENT_IN, 4>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 14:
+	//ncase 10:
+	//case  6:
+	//case  2: return aligned_in_out::transpose<ALIGNMENT_IN, 2>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
 	default: return aligned_in_out::transpose<ALIGNMENT_IN, 1>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
 	}
 }
 } // namespace aligned_in
 template<typename T>
-int transpose(BFsize        ndim,
-              BFsize const* sizes,       // elements
-              BFsize const* output_order,
-              T      const* in,
-              BFsize const* in_strides,  // bytes
-              T           * out,
-              BFsize const* out_strides, // bytes
-              cudaStream_t  stream) {
+BFstatus transpose(BFsize        ndim,
+                   BFsize const* sizes,       // elements
+                   BFsize const* output_order,
+                   T      const* in,
+                   BFsize const* in_strides,  // bytes
+                   T           * out,
+                   BFsize const* out_strides, // bytes
+                   cudaStream_t  stream) {
 	BFsize in_alignment = (BFsize)in;
-	for( int d=0; d<ndim; ++d ) {
+	for( int d=0; d<(int)ndim; ++d ) {
 		in_alignment = gcd(in_alignment, in_strides[d]);
 	}
 	switch( in_alignment ) {
-	case 16: return aligned_in::transpose<16>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case  8: return aligned_in::transpose< 8>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case 12:
-	case  4: return aligned_in::transpose< 4>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
-	case 14:
-	case 10:
-	case  6:
-	case  2: return aligned_in::transpose< 2>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	case sizeof(T): return aligned_in::transpose<sizeof(T)>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 16: return aligned_in::transpose<16>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case  8: return aligned_in::transpose< 8>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 12:
+	//case  4: return aligned_in::transpose< 4>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
+	//case 14:
+	//case 10:
+	//case  6:
+	//case  2: return aligned_in::transpose< 2>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
 	default: return aligned_in::transpose< 1>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
 	}
 }
@@ -339,7 +341,8 @@ BFstatus bfTranspose(void*         dst,
 	//	          << src_shape[d] << "\t"
 	//	          << axes[d] << std::endl;
 	//}
-	cuda::scoped_stream stream;
+	//cuda::scoped_stream stream;
+	cudaStream_t stream = g_cuda_stream;
 	BFsize istrides_actual[MAX_NDIM];
 	BFsize ostrides_actual[MAX_NDIM];
 	if( src_strides ) {

@@ -30,9 +30,10 @@
 /*! \file fft.cu
  *  \brief This file wraps cufft functionality into the Bifrost C++ API.
  */
+#include <bifrost/fft.h>
+#include <bifrost/array.h>
+#include "cuda.hpp"
 #include <cufft.h>
-#include "cuda/stream.hpp"
-#include <cuda_runtime_api.h>
 #define FFT_FORWARD CUFFT_FORWARD
 #define FFT_INVERSE CUFFT_INVERSE
 #define FFT_C2C CUFFT_C2C 
@@ -140,7 +141,8 @@ BFstatus bfFFTR2C1d(
     cufftHandle plan;
     cufftPlan1d(&plan, nelements, CUFFT_R2C, 1);
     cufftExecR2C(plan, idata, odata);
-    return cudaGetLastError();
+    BF_CHECK_CUDA(cudaGetLastError(), BF_STATUS_DEVICE_ERROR);
+    return BF_STATUS_SUCCESS;
 }
 
 /*! \brief Calls a 2 dimensional CUDA FFT on real
@@ -174,7 +176,8 @@ BFstatus bfFFTR2C2d(
     cufftHandle plan;
     cufftPlan2d(&plan, nelements_x, nelements_y, CUFFT_R2C);
     cufftExecR2C(plan, idata, odata);
-    return cudaGetLastError();
+    BF_CHECK_CUDA(cudaGetLastError(), BF_STATUS_DEVICE_ERROR);
+    return BF_STATUS_SUCCESS;
 }
 
 /*! \brief Calls a complex FFT function based on 

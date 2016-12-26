@@ -28,11 +28,8 @@
  */
 
 #include <bifrost/memory.h>
-
-#if BF_CUDA_ENABLED
-  #include "cuda/stream.hpp"
-  #include <cuda_runtime_api.h>
-#endif
+#include "utils.hpp"
+#include "cuda.hpp"
 
 #include <cstdlib> // For posix_memalign
 #include <cstring> // For memcpy
@@ -43,45 +40,29 @@ static_assert(BF_IS_POW2(BF_ALIGNMENT), "BF_ALIGNMENT must be a power of 2");
 #undef BF_IS_POW2
 //static_assert(BF_ALIGNMENT >= 8,        "BF_ALIGNMENT must be >= 8");
 
-// TODO: This is duplicated in bfring.cpp; move it to a shared header
-#if defined(BF_DEBUG) && BF_DEBUG
-#define BF_RETURN_ERROR(err) do { \
-		std::cerr << __FILE__ << ":" << __LINE__ \
-		          << "error " << err << ": " \
-		          << bfGetStatusString(err) << std::endl; \
-			return (err); \
-	} while(0)
-#else
-#define BF_RETURN_ERROR(err) return (err)
-#endif // BF_DEBUG
-
-#define BF_ASSERT(pred, err) do { \
-		if( !(pred) ) { \
-			BF_RETURN_ERROR(err); \
-		} \
-	} while(0)
-
-// TODO: Change this to return status as per the library convention
-BFspace bfGetSpace(const void* ptr, BFstatus* status) {
-	if( status ) *status = BF_STATUS_SUCCESS;
+BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 #if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
-	return BF_SPACE_SYSTEM;
+	*space = BF_SPACE_SYSTEM;
 #else
 	cudaPointerAttributes ptr_attrs;
 	cudaPointerGetAttributes(&ptr_attrs, ptr);
 	if( ptr_attrs.isManaged ) {
-		return BF_SPACE_CUDA_MANAGED;
+		*space = BF_SPACE_CUDA_MANAGED;
 	}
-	switch( ptr_attrs.memoryType ) {
-	case cudaMemoryTypeHost:   return BF_SPACE_SYSTEM;
-	case cudaMemoryTypeDevice: return BF_SPACE_CUDA;
-	default: {
-		if( status ) *status = BF_STATUS_INVALID_POINTER;
-		return BF_SPACE_AUTO; // TODO: Any better option than this?
-	}
+	else {
+		switch( ptr_attrs.memoryType ) {
+		case cudaMemoryTypeHost:   *space = BF_SPACE_SYSTEM; break;
+		case cudaMemoryTypeDevice: *space = BF_SPACE_CUDA;   break;
+		default: {
+			*space = BF_SPACE_AUTO; // TODO: Any better option than this?
+			return BF_STATUS_INVALID_POINTER;
+		}
+		}
 	}
 #endif
+	return BF_STATUS_SUCCESS;
 }
+
 BFstatus bfMalloc(void** ptr, BFsize size, BFspace space) {
 	//printf("bfMalloc(%p, %lu, %i)\n", ptr, size, space);
 	void* data;
@@ -122,7 +103,7 @@ BFstatus bfMalloc(void** ptr, BFsize size, BFspace space) {
 BFstatus bfFree(void* ptr, BFspace space) {
 	BF_ASSERT(ptr, BF_STATUS_INVALID_POINTER);
 	if( space == BF_SPACE_AUTO ) {
-		space = bfGetSpace(ptr, 0);
+		bfGetSpace(ptr, &space);
 	}
 	switch( space ) {
 	case BF_SPACE_SYSTEM:       ::free(ptr); break;
@@ -148,8 +129,8 @@ BFstatus bfMemcpy(void*       dst,
 #else
 		// Note: Explicitly dispatching to ::memcpy was found to be much faster
 		//         than using cudaMemcpyDefault.
-		if( src_space == BF_SPACE_AUTO ) src_space = bfGetSpace(src, 0);
-		if( dst_space == BF_SPACE_AUTO ) dst_space = bfGetSpace(dst, 0);
+		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
+		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
 		cudaMemcpyKind kind = cudaMemcpyDefault;
 		switch( src_space ) {
 		case BF_SPACE_SYSTEM: {
@@ -174,8 +155,7 @@ BFstatus bfMemcpy(void*       dst,
 		}
 		default: return BF_STATUS_INVALID_ARGUMENT;
 		}
-		cuda::scoped_stream s;
-		if( cudaMemcpyAsync(dst, src, count, kind, s) != cudaSuccess ) {
+		if( cudaMemcpyAsync(dst, src, count, kind, g_cuda_stream) != cudaSuccess ) {
 			return BF_STATUS_MEM_OP_FAILED;
 		}
 #endif
@@ -213,8 +193,8 @@ BFstatus bfMemcpy2D(void*       dst,
 #else
 		// Note: Explicitly dispatching to ::memcpy was found to be much faster
 		//         than using cudaMemcpyDefault.
-		if( src_space == BF_SPACE_AUTO ) src_space = bfGetSpace(src, 0);
-		if( dst_space == BF_SPACE_AUTO ) dst_space = bfGetSpace(dst, 0);
+		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
+		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
 		cudaMemcpyKind kind = cudaMemcpyDefault;
 		switch( src_space ) {
 		case BF_SPACE_SYSTEM: {
@@ -241,11 +221,10 @@ BFstatus bfMemcpy2D(void*       dst,
 		}
 		default: return BF_STATUS_INVALID_ARGUMENT;
 		}
-		cuda::scoped_stream s;
 		if( cudaMemcpy2DAsync(dst, dst_stride,
 		                      src, src_stride,
 		                      width, height,
-		                      kind, s) != cudaSuccess ) {
+		                      kind, g_cuda_stream) != cudaSuccess ) {
 			return BF_STATUS_MEM_OP_FAILED;
 		}
 #endif
@@ -260,7 +239,7 @@ BFstatus bfMemset(void*   ptr,
 	if( count ) {
 		if( space == BF_SPACE_AUTO ) {
 			// TODO: Check status here
-			space = bfGetSpace(ptr, 0);
+			bfGetSpace(ptr, &space);
 		}
 		switch( space ) {
 		case BF_SPACE_SYSTEM:       ::memset(ptr, value, count); break;
@@ -268,8 +247,7 @@ BFstatus bfMemset(void*   ptr,
 		case BF_SPACE_CUDA_HOST:    ::memset(ptr, value, count); break;
 		case BF_SPACE_CUDA:
 		case BF_SPACE_CUDA_MANAGED: {
-			cuda::scoped_stream s;
-			cudaMemsetAsync(ptr, value, count, s);
+			cudaMemsetAsync(ptr, value, count, g_cuda_stream);
 			break;
 		}
 #endif
@@ -296,7 +274,7 @@ BFstatus bfMemset2D(void*   ptr,
 	BF_ASSERT(ptr, BF_STATUS_INVALID_POINTER);
 	if( width*height ) {
 		if( space == BF_SPACE_AUTO ) {
-			space = bfGetSpace(ptr, 0);
+			bfGetSpace(ptr, &space);
 		}
 		switch( space ) {
 		case BF_SPACE_SYSTEM:       memset2D(ptr, stride, value, width, height); break;
@@ -304,8 +282,7 @@ BFstatus bfMemset2D(void*   ptr,
 		case BF_SPACE_CUDA_HOST:    memset2D(ptr, stride, value, width, height); break;
 		case BF_SPACE_CUDA:
 		case BF_SPACE_CUDA_MANAGED: {
-			cuda::scoped_stream s;
-			cudaMemset2DAsync(ptr, stride, value, width, height, s);
+			cudaMemset2DAsync(ptr, stride, value, width, height, g_cuda_stream);
 			break;
 		}
 #endif

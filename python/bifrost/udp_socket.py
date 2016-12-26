@@ -26,18 +26,31 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Bifrost pipeline processing library
-"""
+from libbifrost import _bf, _check, _get, _string2space, _space2string
 
-__version__    = "0.6"
-__author__     = "Ben Barsdell"
-__copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
-__credits__    = ["Ben Barsdell"]
-__license__    = "BSD 3-Clause"
-__maintainer__ = "Ben Barsdell"
-__email__      = "benbarsdell@gmail.com"
-__status__     = "Development"
+import ctypes
+import numpy as np
 
-import core, memory, affinity, ring, block, address, udp_socket
-from GPUArray import GPUArray
+class UDPSocket(object):
+	def __init__(self):
+		self.obj = _get(_bf.UdpSocketCreate(), retarg=0)
+	def __del__(self):
+		if bool(self.obj):
+			_bf.UdpSocketDestroy(self.obj)
+	def bind(self, local_addr):
+		_check( _bf.UdpSocketBind(self.obj, local_addr.obj) )
+	def connect(self, remote_addr):
+		_check( _bf.UdpSocketConnect(self.obj, remote_addr.obj) )
+	def shutdown(self):
+		_check( _bf.UdpSocketShutdown(self.obj) )
+	@property
+	def mtu(self):
+		return _get(_bf.UdpSocketGetMTU(self.obj))
+	def fileno(self):
+		return _get(_bf.UdpSocketGetFD(self.obj))
+	@property
+	def timeout(self):
+		return _get( _bf.UdpSocketGetTimeout(self.obj) )
+	@timeout.setter
+	def timeout(self, secs):
+		_check( _bf.UdpSocketSetTimeout(self.obj, secs) )

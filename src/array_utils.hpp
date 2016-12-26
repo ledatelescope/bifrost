@@ -27,28 +27,29 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-//#define FFT_FORWARD CUFFT_FORWARD
-//#define FFT_INVERSE CUFFT_INVERSE
-//#define FFT_C2C CUFFT_C2C
-//#define FFT_R2C CUFFT_R2C
-//#define FFT_C2R CUFFT_C2R
-#include <bifrost/common.h>
-#include <bifrost/array.h>
+#pragma once
 
-extern "C" {
-BFstatus bfFFTC2C1d(
-    void** input_data, void** output_data, 
-    BFsize nelements, int direction);
-BFstatus bfFFTC2C2d(
-    void** input_data, void** output_data, 
-    BFsize nelements_x, BFsize nelements_y, 
-    int direction);
-BFstatus bfFFTR2C1d(
-    void** input_data, void** output_data, 
-    BFsize nelements);
-BFstatus bfFFTR2C2d(
-    void** input_data, void** output_data, 
-    BFsize nelements_x, BFsize nelements_y);
-BFstatus bfFFT(
-    BFarray *input, BFarray *output, int direction);
+//const char* dtype2ctype_string(BFdtype dtype);
+inline const char* dtype2ctype_string(BFdtype dtype) {
+	switch( dtype ) {
+	case BF_DTYPE_I8:    return "signed char";
+	case BF_DTYPE_I16:   return "short";
+	case BF_DTYPE_I32:   return "int";
+	case BF_DTYPE_I64:   return "long long";
+	case BF_DTYPE_U8:    return "unsigned char";
+	case BF_DTYPE_U16:   return "unsigned short";
+	case BF_DTYPE_U32:   return "unsigned int";
+	case BF_DTYPE_U64:   return "unsigned long long";
+	case BF_DTYPE_F32:   return "float";
+	case BF_DTYPE_F64:   return "double";
+	case BF_DTYPE_F128:  return "long double";
+	case BF_DTYPE_CI8:   return "Complex<signed char>";//complex<signed char>";
+	case BF_DTYPE_CI16:  return "Complex<short>";//complex<short>";
+	//case BF_DTYPE_CI32:  return "complex<int>";
+	//case BF_DTYPE_CI64:  return "complex<long long>";
+	case BF_DTYPE_CF32:  return "Complex<float>";//complex<float>";
+	//case BF_DTYPE_CF64:  return "complex<double>";
+	//case BF_DTYPE_CF128: return "complex<long double>";
+	default: return 0;
+	}
 }
