@@ -1,24 +1,26 @@
 """@module correlator_pipeline
-This program serves as an example of Bifrost's usage in a correlator pipeline
+This program serves as an example of Bifrost's usage in a correlator pipeline, with kurtosis flagging.
 """
 import numpy as np
-import json
-from bifrost.block import Pipeline
+import json, copy
+from bifrost.block import Pipeline, MultiTransformBlock, SourceBlock, SinkBlock,  NumpyBlock
+import bifrost.affinity as affinity
 
 
-SIZEOF_FLOAT32 = 4
-SIZEOF_FLOAT64 = 8
-SIZEOF_COMPLEX = 8
+# When Python prints a type or turns it to string (for JSON), it gets wrapped in <type >
+def str2type(s):
+  if s == "<type 'numpy.float64'>": return np.float64
+  if s == "<type 'numpy.complex64'>" or s == "complex64": return np.complex64
 
 class Buffer(object):
-    """ Allows the caller to add values in blocks of indeterminate size compared to the buffer size.
+    """ Allows the caller to add values to buffer in blocks of indeterminate size compared to the buffer size.
         If the buffer overflows the remainder is returned to the caller, who can add it later. 
-        In this way the caller can eat up a large buffer  """
+        In this way the caller can eat up data.  """
 
     def __init__(self, size, typ):
-        self.buffer = np.zeros(size, dtype=typ)
-        self.typ = typ
-        self.top = 0
+       self.dtype = typ
+       self.buffer = np.zeros(size, dtype=self.dtype)
+       self.top = 0
 
     def full(self):
         return self.top == len(self.buffer)
@@ -33,6 +35,7 @@ class Buffer(object):
             else:
                 self.buffer[self.top] = values
 	        self.top += 1
+		return None
         else:
           
             # Find out how much we can add in
@@ -45,236 +48,180 @@ class Buffer(object):
 
 
 
-class GenerateVoltages(object):
-    """Generate Gaussian random values being the voltage in 1 stand, 1 polarization"""
+class GenerateVoltages(SourceBlock):
 
-    def __init__(self, out_length):
-        self.out_length = out_length	# Make sure multiple of FFT size
-        self.mu, self.sigma = 0.0, 1.0
-        self.oring_span_size = self.out_length*SIZEOF_FLOAT64;		# because the value is float64
-
-    def main(self, input_rings, output_rings):
-        ohdr = json.dumps({ "LENGTH" : self.out_length })
-        output_rings[0].resize(self.oring_span_size)
-        with output_rings[0].begin_writing() as oring:
-            with oring.begin_sequence("Voltages", header=ohdr) as osequence:
-                for i in range(4):
-                    with osequence.reserve(self.oring_span_size) as wspan:
-			voltages = np.random.normal(self.mu, self.sigma, self.out_length) 
-			#print "V Out", voltages[0]
-			wspan.data[0][:] = voltages.view(dtype=np.uint8)
-                        wspan.commit(self.oring_span_size)
-
-class FFTVoltages(object):
-    """Perform FFTs on voltages and send out one channel i.e. one bin value.
-       Chunk the voltages so the FFT is of size FFT_SIZE  """
-
-    def __init__(self, out_length, fft_size, channel):      
+    def __init__(self, out_length, how_many, core):
+        super(GenerateVoltages, self).__init__()
+	self.mu, self.sigma = 0.0, 1.0
         self.out_length = out_length
-        self.out_buffer = Buffer(out_length, np.complex64)
-        self.fft_size = fft_size
-        self.fft_buffer = Buffer(fft_size, np.float64)
-        self.channel = channel
+        self.how_many = how_many
+        self.dtype = np.float64			# Type of the values return by random
+        header = {
+            'dtype': str(self.dtype),
+            'shape': (out_length,)}
+        self.output_header = json.dumps(header)
+        #print "GenerateVoltages", self.output_header
+        self.core = core
 
-    def main(self, input_rings, output_rings):
-        ohdr = json.dumps({ "LENGTH" : self.out_length })
-        oring_span_size = self.out_length*SIZEOF_COMPLEX
-        output_rings[0].resize(oring_span_size)
+    def main(self, output_ring):
+        affinity.set_core(self.core)
+        i = 0 
+        self.gulp_size = self.out_length*np.dtype(self.dtype).itemsize
+        for ospan in self.iterate_ring_write(output_ring):
+            ospan.data_view(self.dtype)[0][:] = np.random.normal(self.mu, self.sigma, self.out_length)
+	    #print "V "+str(ospan.data_view(self.dtype)[0][:][0])
+            if i == self.how_many: break
+            i += 1
 
-        with output_rings[0].begin_writing() as oring:
-            with oring.begin_sequence("Channel", header=ohdr) as osequence:
-                
-                for iseq in input_rings[0].read():
-                    ihdr = json.loads(iseq.header.tostring())
-	            iring_span_size = ihdr["LENGTH"]*SIZEOF_FLOAT64
-                    input_rings[0].resize(iring_span_size)
-                    for ispan in iseq.read(iring_span_size):
-	                data = ispan.data.view(np.float64)[0]
 
-			remainder = self.fft_buffer.append(data)
-			while self.fft_buffer.full():
-			    print "Do fft", len(remainder)
-	    	            FFT = np.fft.fft(self.fft_buffer.buffer)
-	                    FFT /= self.fft_size
+class PrintOp(SinkBlock):
+ 
+    def __init__(self, core):
+        super(PrintOp, self).__init__()
+        self.core = core
 
-			    self.out_buffer.append(FFT[self.channel])	
+    def load_settings(self, input_header):
+        header = json.loads(input_header.tostring())
+        self.dtype = str2type(header["dtype"])
+        self.gulp_size = header["shape"][0]*np.dtype(self.dtype).itemsize
 
-		            if self.out_buffer.full():     # Don't ever let overflow happen
-			        with osequence.reserve(oring_span_size) as wspan:
-				    #print "Ch Out", channel_value_by_time[0] 
-			            wspan.data[0][:] = self.out_buffer.buffer.view(dtype=np.uint8)
-                        	    wspan.commit(oring_span_size)
-			        self.out_buffer.clear()
+    def main(self, input_ring):
+        affinity.set_core(self.core)
+        inspan_generator = span_generator = self.iterate_ring_read(input_ring)
+        for inspan in inspan_generator:
+
+            print "X "+str(inspan.data_view(self.dtype))
+
+
+
+class Accumulator(MultiTransformBlock):
+    """ Perform some operation on a chunk of data. The chunk size is independent of the incoming and outgoing
+        gulp sizes. Because of this independence, data is accumulated in an internal buffer until the 
+        required amount is obtained for the operation. Another internal output buffer is also maintained so that
+        when enough data is available for output, it can be dumped into the output ring. The The input span size
+        is fixed to the output span size of the previous block (as Bifrost does), the output span size and the
+        buffer size for the operator are specified as parameters.
+        """
+
+    ring_names = {
+        'in_data': "Ring containing arrays to be operated on",
+        'out_data': "Outgoing ring containing the modified input data"}
+
+    def __init__(self, func, op_required_length, out_length, out_dtype, core, args):            
+        super(Accumulator, self).__init__()
+        self.out_length = out_length
+        self.core = core
+        self.func = func
+        self.op_required_length = op_required_length
+        self.out_dtype = out_dtype
+        self.args = args
+
+    def load_settings(self):   
+        """Calculate incoming/outgoing shapes and gulp sizes"""
+        # Only update header if passed output header does not contain
+        # parameters already
+
+        self.header["out_data"] = copy.copy(self.header["in_data"])
+        self.header["out_data"]["dtype"] = str(self.out_dtype)       # must make as str in header
+        self.header["out_data"]["shape"] = (self.out_length,)
+	self.in_dtype = str2type(self.header["in_data"]["dtype"])
+        self.gulp_size["in_data"] = self.header["in_data"]["shape"][0]*np.dtype(self.in_dtype).itemsize
+        self.gulp_size["out_data"] = self.out_length*np.dtype(self.out_dtype).itemsize
+        self.out_buffer = Buffer(self.out_length, self.out_dtype)
+        self.accumulator = Buffer(self.op_required_length, self.in_dtype)
+
+    def main(self):
+        """ Accumulate data, perform an operation 'func' on it, and write the data out """
+	affinity.set_core(self.core)
+
+        outspan_generator = self.write("out_data")
+
+        for data in self.read("in_data"):	# Read spans from the ring
+	    data = data[0]
+
+	    remainder = self.accumulator.append(data)		# Accumulate. 
+
+	    while self.accumulator.full():        # See if internal buffer full. In case span is longer than the buffer, we need to eat it up
+ 
+		self.out_buffer.append(self.func(self.accumulator.buffer, self.args)); 	
+
+		if self.out_buffer.full():     # Don't ever let overflow happen
+                    outspan = outspan_generator.next()
+
+                    outspan[0][:] = self.out_buffer.buffer[:] 
+
+	            self.out_buffer.clear()
 				    
 
-			    self.fft_buffer.clear()
+	        self.accumulator.clear()
+                remainder = self.accumulator.append(remainder)
 
-			    remainder = self.fft_buffer.append(remainder)
+# Define functions that also impose an accumulation of data. These get wrapped in an accumulator block.
 
+def fft(data, args): 
+  channel = args
+  return (np.fft.fft(data)/len(data))[channel]
 
-class Correlate(object):
-    """Perform FFTs on voltages and send out one channel i.e. one bin value.
-       Chunk the voltages so the FFT is of size FFT_SIZE  """
-    def __init__(self, out_length):      
-        self.out_length = out_length
+def correlate(data): return data*np.conj(data)
 
-    def main(self, input_rings, output_rings):
+def integrate(data, args): return np.sum(data)
+   
 
-        ohdr = json.dumps({ "LENGTH" : self.out_length })
-        oring_span_size = self.out_length*SIZEOF_COMPLEX		# Complex numbers
-        output_rings[0].resize(oring_span_size)
-        correlated_value_by_time = np.zeros(0, dtype=np.complex64)	 # output accumulation buffer
+def kurtosis(data, args):
+    fft_size, N = args
+    M = len(data)
+    data = 2*abs(data)/fft_size		# Data has been correlated, but these factors need to be added in
+    S1 = np.sum(data)
+    S2 = np.sum(data**2.0)	
+    #Compute spectral kurtosis estimator
+    Vk_square = (N*M+1)/(M-1)*(M*(S2/(S1**2.0))-1)	# eqn 8 http://mnrasl.oxfordjournals.org/content/406/1/L60.full.pdf
+							# and eqn 50 https://web.njit.edu/~gary/assets/PASP_Published_652409.pdf
+    return Vk_square
 
-        with output_rings[0].begin_writing() as oring:
-            with oring.begin_sequence("Visibility", header=ohdr) as osequence:
-                
-                for iseq in input_rings[0].read():
-                    ihdr = json.loads(iseq.header.tostring())
-	            iring_span_size = ihdr["LENGTH"]*SIZEOF_COMPLEX
-                    input_rings[0].resize(iring_span_size)
-                    for ispan in iseq.read(iring_span_size):
-	                data = ispan.data.view(np.complex64)[0]
-		                          
-		        #print "Num FFTs", num_FFTs, "Ch In", data[0] 
-		
-        	        data = data**2	    # need to buffer
+def kurtosis_variance(data, args):
+  return np.var(data)
 
-			correlated_value_by_time = np.append(correlated_value_by_time, data)
-			if len(correlated_value_by_time) > self.out_length:
-	    	            
-			    with osequence.reserve(oring_span_size) as wspan:
-			        #print "Corr Out", data[0] 
-			        wspan.data[0][:] = correlated_value_by_time[:self.out_length].view(dtype=np.uint8)
-                                wspan.commit(oring_span_size)
-				correlated_value_by_time = correlated_value_by_time[self.out_length:]
-
-				
-class Integrate(object):
-    """Perform FFTs on voltages and send out one channel i.e. one bin value.
-       Chunk the voltages so the FFT is of size FFT_SIZE  """
-
-    def __init__(self, out_length, integration_length):      
-        self.out_length = out_length
-        self.integration_length = integration_length
-
-    def main(self, input_rings, output_rings):
-        ohdr = json.dumps({ "LENGTH" : self.out_length })
-        oring_span_size = self.out_length*SIZEOF_COMPLEX
-        output_rings[0].resize(oring_span_size)
-        channel_value_by_integration = np.zeros(self.out_length, dtype=np.complex64)	 # output accumulation buffer
-        ch_index = 0
-
-        with output_rings[0].begin_writing() as oring:
-            with oring.begin_sequence("Integrated Channel", header=ohdr) as osequence:
-                
-                for iseq in input_rings[0].read():
-                    ihdr = json.loads(iseq.header.tostring())
-	            iring_span_size = ihdr["LENGTH"]*SIZEOF_COMPLEX
-                    input_rings[0].resize(iring_span_size)
-                    for ispan in iseq.read(iring_span_size):
-	                data = ispan.data.view(np.complex64)[0]
-		        
-                        num_integrations = len(data)/self.integration_length			# Assuming data is a multiple of integration length. 
-		        #print "Num FFTs", num_FFTs, "V In", data[0] 
-		
-        	        for i, chunk in enumerate(np.split(data, num_integrations)):
-
-                            channel_value_by_integration[ch_index] = np.sum(chunk)
-			    ch_index += 1
-
-		            if ch_index == self.out_length:
-			        with osequence.reserve(oring_span_size) as wspan:
-				    #print "Ch Out", channel_value_by_integration[0] 
-			            wspan.data[0][:] = channel_value_by_integration.view(dtype=np.uint8)
-                        	    wspan.commit(oring_span_size)
-
-				ch_index = 0
-
-
-class Kurtosis(object):
-    """Perform FFTs on voltages and send out one channel i.e. one bin value.
-       Chunk the voltages so the FFT is of size FFT_SIZE  """
-
-    def __init__(self, out_length, fft_size, N, M):   
-        self.out_length = out_length
-        self.fft_size = fft_size
-        self.M = M
-        self.N = N
-
-    def main(self, input_rings, output_rings):
-        ohdr = json.dumps({ "LENGTH" : self.out_length })
-        oring_span_size = self.out_length*SIZEOF_FLOAT32
-        output_rings[0].resize(oring_span_size)
-        kurtosis = np.zeros(self.out_length, dtype=np.float32)	 	# output accumulation buffer
-        ch_index = 0
-
-        with output_rings[0].begin_writing() as oring:
-            with oring.begin_sequence("Kurtosis", header=ohdr) as osequence:
-                
-                for iseq in input_rings[0].read():
-                    ihdr = json.loads(iseq.header.tostring())
-	            iring_span_size = ihdr["LENGTH"]*SIZEOF_COMPLEX
-                    input_rings[0].resize(iring_span_size)
-                    for ispan in iseq.read(iring_span_size):
-	                data = ispan.data.view(np.complex64)[0]
-			data = 2*abs(data)/self.fft_size	# Data has been correlated, but these factors need to be added in, and turned to PSD
-		    
-                        num_Ms = len(data)/self.M			# Assuming data is a multiple of M length. 
-		        #print "Num Ms", num_Ms, "I In", data[0] 
-		
-        	        for i, chunk in enumerate(np.split(data, num_Ms)):
-			    S1 = np.sum(chunk)
-			    S2 = np.sum(chunk**2.0)
-
-		
-				#Compute spectral kurtosis estimator
-			    Vk_square = (self.N*self.M+1)/(self.M-1)*(self.M*(S2/(S1**2.0))-1)
-			    kurtosis[ch_index] = Vk_square
-			    ch_index += 1
-
-		            if ch_index == self.out_length:
-			        with osequence.reserve(oring_span_size) as wspan:
-				    #print "K Out", kurtosis[0] 
-			            wspan.data[0][:] = kurtosis.view(dtype=np.uint8)
-                        	    wspan.commit(oring_span_size)
-
-				ch_index = 0
-  
-class PrintOp(object):
-    def main(self, input_rings, output_rings):
-        num_received = 0
- 
-	for iseq in input_rings[0].read():
-            ihdr = json.loads(iseq.header.tostring())
-	    ring_span_size = ihdr["LENGTH"]*SIZEOF_FLOAT32
-            input_rings[0].resize(ring_span_size)
-	    for ispan in iseq.read(ring_span_size):
-		data = ispan.data.view(np.float32)[0]
-		#print "K In", data[0] 	
-		num_received += len(data)
-
-        print "Total received", num_received
-
-# Lots of reductions happen
-voltage_out_buf_length = 1024*1024
-# FFT performs a reduction. For each FFT, only 1 value comes out - the FFT component for one channel
-fft_size = 1024
-fft_out_buf_length = 1024
-# Correlation does not do a reduction
-correlate_out_buf_length = 1024
-# Integration does a reduction
-integrate_out_buf_len = 10
-integ_length = 32
+# Assemble the pipeline. Most blocks are accumulators, but some are not. There is a NumpyBlock (correlate).
 
 blocks = []
-blocks.append((GenerateVoltages(voltage_out_buf_length), [], [0]))
-blocks.append((FFTVoltages(fft_size, fft_out_buf_length, 20), [0], [1]))
-blocks.append((Correlate(correlate_out_buf_length), [1], [2]))
-blocks.append((Integrate(integrate_out_buf_len, integ_length), [2], [3]))
-blocks.append((Kurtosis(2, 1024, 10, 10), [3], [4]))
-blocks.append((PrintOp(), [4], []))
+voltage_chunk_size = 1024*1024; how_many_chunks = 1024*1024*1024; core = 0
+blocks.append((GenerateVoltages(voltage_chunk_size, how_many_chunks, core), [], ["voltages"]))
+
+fft_size = 1024; channel_values_buffer_size = 1024; which_channel = 10; core += 1
+blocks.append((Accumulator(fft, fft_size, channel_values_buffer_size, np.complex64, core, (which_channel)), 
+	{"in_data": "voltages", "out_data": "channel" }))
+
+blocks.append((NumpyBlock(correlate), {'in_1': 'channel', 'out_1': 'auto_correlate'}))
+
+integration_length = 1024; integrated_values_buffer_size = 1024; core += 1
+blocks.append((Accumulator(integrate, integration_length, integrated_values_buffer_size, np.complex64, core, ()), 
+	{"in_data": "auto_correlate", "out_data": "integrated" }))
+
+M = integrated_values_buffer_size; N = integration_length; kurtosis_buffer_size = 1; core += 1
+blocks.append((Accumulator(kurtosis, M, kurtosis_buffer_size, np.float64, core, (fft_size, N)), 
+	{"in_data": "integrated", "out_data": "kurtosis" }))
+
+variance_length = 1024; kurtosis_variance_buffer_size = 10; core += 1
+blocks.append((Accumulator(kurtosis_variance, variance_length, kurtosis_variance_buffer_size, np.float64, core, ()), 
+	{"in_data": "kurtosis", "out_data": "kurtosis_variance" }))
+
+core += 1
+blocks.append((PrintOp(core), ["kurtosis_variance"], []))
+
+
+
+# Print what all the reductions give us. Find out how much data gets consumed to produce 1 variance value.
+n = variance_length*M*integration_length*fft_size		# voltages
+print "Num required voltage values", n
+print "Reduction factor", ( "(%e)" % (float(1)/n) )
+print "Threshold?", 4.0*M**2/((M-1)*(M+2)*(M+3))    # See eqn 53/54 in https://web.njit.edu/~gary/assets/PASP_Published_652409.pdf
+
+if voltage_chunk_size*how_many_chunks < n:
+  print "Error, there is not enough data to reduce to a variance value"
+  exit(1)
+
+# Run
 Pipeline(blocks).main()
-exit()
 
 
 
