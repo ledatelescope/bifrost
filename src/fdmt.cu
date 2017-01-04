@@ -252,7 +252,9 @@ class BFfdmt_impl {
 	typedef int    IType;
 	typedef double FType;
 	typedef int2   IndexPair;
+public: // HACK WAR for what looks like a bug in the CUDA 7.0 compiler
 	typedef float  DType;
+private:
 	IType _nchan;
 	IType _max_delay;
 	FType _f0;
