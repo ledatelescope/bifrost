@@ -8,8 +8,8 @@ LIBBIFROST_OBJS = \
   array.o \
   address.o \
   udp_socket.o \
-  #unpack.o \
-  udp_capture.o
+  udp_capture.o \
+  #unpack.o
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
