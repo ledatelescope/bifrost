@@ -31,9 +31,11 @@
 
 #include <bifrost/common.h>
 #include <bifrost/memory.h>
+#include <bifrost/array.h>
 #include "cuda.hpp"
 
 #include <stdexcept>
+#include <cstring> // For ::memcpy
 
 #define BF_DTYPE_IS_COMPLEX(dtype) bool((dtype) & BF_DTYPE_COMPLEX_BIT)
 // **TODO: Add support for string type that encodes up to 255 bytes
@@ -67,6 +69,67 @@ inline BFbool space_accessible_from(BFspace space, BFspace from) {
 	default: throw std::runtime_error("Internal error");
 	}
 #endif
+}
+
+inline int get_dtype_nbyte(BFdtype dtype) {
+	int  nbit    = dtype & BF_DTYPE_NBIT_BITS;
+	bool complex = dtype & BF_DTYPE_COMPLEX_BIT;
+	if( complex ) {
+		nbit *= 2;
+	}
+	//assert(nbit % 8 == 0);
+	return nbit / 8;
+}
+
+inline bool shapes_equal(const BFarray* a,
+                         const BFarray* b) {
+	if( a->ndim != b->ndim ) {
+		return false;
+	}
+	for( int d=0; d<a->ndim; ++d ) {
+		if( a->shape[d] != b->shape[d] ) {
+			return false;
+		}
+	}
+	return true;
+}
+
+inline BFsize capacity_bytes(const BFarray* array) {
+	return array->strides[0] * array->shape[0];
+}
+inline bool is_contiguous(const BFarray* array) {
+	BFsize logical_size = get_dtype_nbyte(array->dtype);
+	for( int d=0; d<array->ndim; ++d ) {
+		logical_size *= array->shape[d];
+	}
+	BFsize physical_size = capacity_bytes(array);
+	return logical_size == physical_size;
+}
+inline BFsize num_contiguous_elements(const BFarray* array ) {
+	// Assumes array is contiguous
+	return capacity_bytes(array) / BF_DTYPE_NBYTE(array->dtype);
+}
+
+// Merges together contiguous dimensions
+//   Copies (shallow) 'in' to 'out' and writes new ndim, shape, and strides
+inline void squeeze_contiguous_dims(BFarray const* in,
+                                    BFarray*       out) {
+	::memcpy(out, in, sizeof(BFarray));
+	int odim = 0;
+	int32_t osize = 1;
+	for( int idim=0; idim<in->ndim; ++idim ) {
+		osize *= in->shape[idim];
+		int32_t logical_stride = in->strides[idim+1]*in->shape[idim+1];
+		bool is_padded_dim = (in->strides[idim] != logical_stride);
+		bool is_last_dim = (idim == in->ndim-1);
+		if( is_last_dim || is_padded_dim ) {
+			out->shape[odim]   = osize;
+			out->strides[odim] = in->strides[idim];
+			osize = 1;
+			++odim;
+		}
+	}
+	out->ndim = odim;
 }
 
 template<int NBIT, typename ConvertType=float, typename AccessType=char>
