@@ -107,7 +107,7 @@ BFstatus bfArrayCopy(const BFarray* dst,
 		                  src->data, src->strides[0], src->space,
 		                  shape[1], shape[0]);
 	} else {
-		return BF_STATUS_UNSUPPORTED; // TODO: Should support the general case
+		BF_ASSERT(false, BF_STATUS_UNSUPPORTED); // TODO: Should support the general case
 	}
 }
 BFstatus bfArrayMemset(const BFarray* dst,
@@ -131,7 +131,7 @@ BFstatus bfArrayMemset(const BFarray* dst,
 		return bfMemset2D(dst->data, dst->strides[0], dst->space,
 		                  value, shape[1], shape[0]);
 	} else {
-		return BF_STATUS_UNSUPPORTED; // TODO: Should support the general case
+		BF_ASSERT(false, BF_STATUS_UNSUPPORTED); // TODO: Should support the general case
 	}
 }
 

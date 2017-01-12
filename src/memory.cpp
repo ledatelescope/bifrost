@@ -139,7 +139,7 @@ BFstatus bfMemcpy(void*       dst,
 			case BF_SPACE_SYSTEM: ::memcpy(dst, src, count); return BF_STATUS_SUCCESS;
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
 			// TODO: BF_SPACE_CUDA_MANAGED
-			default: return BF_STATUS_INVALID_ARGUMENT;
+			default: BF_ASSERT(false, BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
 		}
@@ -149,14 +149,14 @@ BFstatus bfMemcpy(void*       dst,
 			case BF_SPACE_SYSTEM: kind = cudaMemcpyDeviceToHost; break;
 			case BF_SPACE_CUDA:   kind = cudaMemcpyDeviceToDevice; break;
 			// TODO: BF_SPACE_CUDA_MANAGED
-			default: return BF_STATUS_INVALID_ARGUMENT;
+			default: BF_ASSERT(false, BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
 		}
-		default: return BF_STATUS_INVALID_ARGUMENT;
+		default: BF_ASSERT(false, BF_STATUS_INVALID_ARGUMENT);
 		}
 		if( cudaMemcpyAsync(dst, src, count, kind, g_cuda_stream) != cudaSuccess ) {
-			return BF_STATUS_MEM_OP_FAILED;
+			BF_ASSERT(false, BF_STATUS_MEM_OP_FAILED);
 		}
 #endif
 	}
@@ -204,7 +204,7 @@ BFstatus bfMemcpy2D(void*       dst,
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
 			// TODO: Is this the right thing to do?
 			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
-			default: return BF_STATUS_INVALID_ARGUMENT;
+			default: BF_ASSERT(false, BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
 		}
@@ -215,17 +215,17 @@ BFstatus bfMemcpy2D(void*       dst,
 			case BF_SPACE_CUDA:   kind = cudaMemcpyDeviceToDevice; break;
 			// TODO: Is this the right thing to do?
 			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
-			default: return BF_STATUS_INVALID_ARGUMENT;
+			default: BF_ASSERT(false, BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
 		}
-		default: return BF_STATUS_INVALID_ARGUMENT;
+		default: BF_ASSERT(false, BF_STATUS_INVALID_ARGUMENT);
 		}
 		if( cudaMemcpy2DAsync(dst, dst_stride,
 		                      src, src_stride,
 		                      width, height,
 		                      kind, g_cuda_stream) != cudaSuccess ) {
-			return BF_STATUS_MEM_OP_FAILED;
+			BF_ASSERT(false, BF_STATUS_MEM_OP_FAILED);
 		}
 #endif
 	}
@@ -251,7 +251,7 @@ BFstatus bfMemset(void*   ptr,
 			break;
 		}
 #endif
-		default: return BF_STATUS_INVALID_ARGUMENT;
+		default: BF_ASSERT(false, BF_STATUS_INVALID_ARGUMENT);
 		}
 	}
 	return BF_STATUS_SUCCESS;
@@ -286,7 +286,7 @@ BFstatus bfMemset2D(void*   ptr,
 			break;
 		}
 #endif
-		default: return BF_STATUS_INVALID_ARGUMENT;
+		default: BF_ASSERT(false, BF_STATUS_INVALID_ARGUMENT);
 		}
 	}
 	return BF_STATUS_SUCCESS;
