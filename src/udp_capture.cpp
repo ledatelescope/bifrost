@@ -55,8 +55,8 @@ using bifrost::ring::WriteSequence;
 #endif
 
 #ifndef BF_HWLOC_ENABLED
-//#define BF_HWLOC_ENABLED 0
-#define BF_HWLOC_ENABLED 1
+#define BF_HWLOC_ENABLED 0
+//#define BF_HWLOC_ENABLED 1
 #endif
 
 #define BF_UNPACK_FACTOR 1

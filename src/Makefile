@@ -48,6 +48,11 @@ ifdef HWLOC
   CXXFLAGS   += -DBF_HWLOC_ENABLED=1
 endif
 
+ifdef VMA
+  LIB        += -lvma
+  CXXFLAGS   += -DBF_VMA_ENABLED=1
+endif
+
 ifdef ALIGNMENT
   CXXFLAGS   += -DBF_ALIGNMENT=$(ALIGNMENT)
   NVCCFLAGS  += -DBF_ALIGNMENT=$(ALIGNMENT)

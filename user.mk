@@ -23,3 +23,5 @@ ALIGNMENT ?= 4096 # Memory allocation alignment
 #NOCUDA     = 1 # Disable CUDA support
 #ANY_ARCH   = 1 # Disable native architecture compilation
 #CUDA_DEBUG = 1 # Enable CUDA debugging (nvcc -G)
+#HWLOC      = 1 # Enable use of hwloc library for memory binding in udp_capture
+#VMA        = 1 # Enable use of Mellanox libvma in udp_capture
