@@ -37,25 +37,25 @@ CXXFLAGS  += -std=c++11 -fPIC -fopenmp
 NVCCFLAGS += -std=c++11 -Xcompiler "-fPIC" $(NVCC_GENCODE)
 
 ifndef NODEBUG
-  CXXFLAGS  += -g -DBF_DEBUG=1
-  NVCCFLAGS += -g -DBF_DEBUG=1
+  CPPFLAGS  += -DBF_DEBUG=1
+  CXXFLAGS  += -g
+  NVCCFLAGS += -g
 endif
 
 LIB += -lgomp
 
 ifdef HWLOC
   LIB        += -lhwloc
-  CXXFLAGS   += -DBF_HWLOC_ENABLED=1
+  CPPFLAGS   += -DBF_HWLOC_ENABLED=1
 endif
 
 ifdef VMA
   LIB        += -lvma
-  CXXFLAGS   += -DBF_VMA_ENABLED=1
+  CPPFLAGS   += -DBF_VMA_ENABLED=1
 endif
 
 ifdef ALIGNMENT
-  CXXFLAGS   += -DBF_ALIGNMENT=$(ALIGNMENT)
-  NVCCFLAGS  += -DBF_ALIGNMENT=$(ALIGNMENT)
+  CPPFLAGS   += -DBF_ALIGNMENT=$(ALIGNMENT)
 endif
 
 ifdef CUDA_DEBUG
@@ -63,8 +63,7 @@ ifdef CUDA_DEBUG
 endif
 
 ifndef NOCUDA
-  CXXFLAGS  += -DBF_CUDA_ENABLED=1
-  NVCCFLAGS += -DBF_CUDA_ENABLED=1
+  CPPFLAGS  += -DBF_CUDA_ENABLED=1
   LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcufft
 endif
 
