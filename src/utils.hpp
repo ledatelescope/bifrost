@@ -54,6 +54,77 @@ inline BFoffset round_up_pow2(BFoffset a) {
     for( int i=1; i<=(int)sizeof(BFoffset)*8/2; i<<=1 ) r |= r >> i;
     return r+1;
 }
+inline BFoffset div_round_up(BFoffset n, BFoffset d) {
+	return (n == 0 ?
+	        0 :
+	        (n-1)/d+1);
+}
+
+inline bool is_big_endian() {
+	union {
+		uint32_t i;
+		int8_t   c[4];
+	} ic = {0x01020304};
+	return (ic.c[0] == 1);
+}
+
+inline void byteswap_impl(uint64_t value, uint64_t* result) {
+	*result =
+		((value & 0xFF00000000000000u) >> 56u) |
+		((value & 0x00FF000000000000u) >> 40u) |
+		((value & 0x0000FF0000000000u) >> 24u) |
+		((value & 0x000000FF00000000u) >>  8u) |
+		((value & 0x00000000FF000000u) <<  8u) |
+		((value & 0x0000000000FF0000u) << 24u) |
+		((value & 0x000000000000FF00u) << 40u) |
+		((value & 0x00000000000000FFu) << 56u);
+}
+inline void byteswap_impl(uint32_t value, uint32_t* result) {
+	*result =
+		((value & 0xFF000000u) >> 24u) |
+		((value & 0x00FF0000u) >>  8u) |
+		((value & 0x0000FF00u) <<  8u) |
+		((value & 0x000000FFu) << 24u);
+}
+inline void byteswap_impl(uint16_t value, uint16_t* result) {
+	*result =
+		((value & 0xFF00u) >> 8u) |
+		((value & 0x00FFu) << 8u);
+}
+
+template<typename T, typename U>
+inline T type_pun(U x) {
+	union {
+		T t;
+		U u;
+	} punner;
+	punner.u = x;
+	return punner.t;
+}
+
+template<typename T>
+inline typename std::enable_if<sizeof(T)==8>::type
+byteswap(T value, T* result) {
+	return byteswap_impl(type_pun<uint64_t>(value),
+	                     (uint64_t*)result);
+}
+template<typename T>
+inline typename std::enable_if<sizeof(T)==4>::type
+byteswap(T value, T* result) {
+	return byteswap_impl(type_pun<uint64_t>(value),
+	                     (uint32_t*)result);
+}
+template<typename T>
+inline typename std::enable_if<sizeof(T)==2>::type
+byteswap(T value, T* result) {
+	return byteswap_impl(type_pun<uint64_t>(value),
+	                     (uint16_t*)result);
+}
+template<typename T>
+inline typename std::enable_if<sizeof(T)==1>::type
+byteswap(T value, T* result) {
+	*result = value;
+}
 
 inline BFbool space_accessible_from(BFspace space, BFspace from) {
 #if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
