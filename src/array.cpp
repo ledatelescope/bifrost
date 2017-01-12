@@ -83,7 +83,8 @@ BFstatus bfArrayCopy(const BFarray* dst,
                      const BFarray* src) {
 	BF_ASSERT(dst, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(src, BF_STATUS_INVALID_POINTER);
-	BF_ASSERT(shapes_equal(dst, src), BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT(shapes_equal(dst, src),   BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT(dst->dtype == src->dtype, BF_STATUS_INVALID_DTYPE);
 	
 	// Try squeezing contiguous dims together to reduce memory layout complexity
 	BFarray dst_squeezed, src_squeezed;
