@@ -41,21 +41,27 @@ static_assert(BF_IS_POW2(BF_ALIGNMENT), "BF_ALIGNMENT must be a power of 2");
 //static_assert(BF_ALIGNMENT >= 8,        "BF_ALIGNMENT must be >= 8");
 
 BFstatus bfGetSpace(const void* ptr, BFspace* space) {
+	BF_ASSERT(ptr, BF_STATUS_INVALID_POINTER);
 #if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
 	*space = BF_SPACE_SYSTEM;
 #else
 	cudaPointerAttributes ptr_attrs;
-	cudaPointerGetAttributes(&ptr_attrs, ptr);
-	if( ptr_attrs.isManaged ) {
+	cudaError_t ret = cudaPointerGetAttributes(&ptr_attrs, ptr);
+	BF_ASSERT(ret == cudaSuccess || ret == cudaErrorInvalidValue,
+	          BF_STATUS_DEVICE_ERROR);
+	if( ret == cudaErrorInvalidValue ) {
+		// Note: cudaPointerGetAttributes only works for memory allocated with
+		//         CUDA API functions, so if it fails we just assume sysmem.
+		*space = BF_SPACE_SYSTEM;
+	} else if( ptr_attrs.isManaged ) {
 		*space = BF_SPACE_CUDA_MANAGED;
-	}
-	else {
+	} else {
 		switch( ptr_attrs.memoryType ) {
 		case cudaMemoryTypeHost:   *space = BF_SPACE_SYSTEM; break;
 		case cudaMemoryTypeDevice: *space = BF_SPACE_CUDA;   break;
 		default: {
-			*space = BF_SPACE_AUTO; // TODO: Any better option than this?
-			return BF_STATUS_INVALID_POINTER;
+			// This should never be reached
+			BF_ASSERT(false, BF_STATUS_INTERNAL_ERROR);
 		}
 		}
 	}
