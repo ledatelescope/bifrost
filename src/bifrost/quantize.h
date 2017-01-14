@@ -46,6 +46,9 @@ extern "C" {
  *  \param in    Input array with 32-bit datatype of kind f/cf
  *  \param out   Output array with 8/16/32-bit datatype of kind i/u/ci
  *  \param scale Scale factor by which to multiply the input values
+ *  \note Unsigned types are clipped to [0,2**nbit)
+ *  \note Signed types are clipped to (-2**nbit,2**nbit)
+ *  \note Rounding uses round-to-nearest-even policy
 */
 BFstatus bfQuantize(BFarray const* in,
                     BFarray const* out,

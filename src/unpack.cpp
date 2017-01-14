@@ -34,7 +34,7 @@
 // sign_extend == false => output is scaled by 2**(8-nbit) (faster)
 
 template<int NBIT, typename K, typename T>
-inline void sign_extend_8bit(T& val) {
+inline void rshift_subwords(T& val) {
 	for( int k=0; k<(int)(sizeof(T)/sizeof(K)); ++k ) {
 		((K*)&val)[k] >>= NBIT;
 	}
@@ -43,22 +43,23 @@ inline void sign_extend_8bit(T& val) {
 inline void unpack(uint8_t   ival,
                    uint16_t& oval,
                    bool      byte_reverse,
-                   bool      sign_extend,
+                   bool      align_msb,
                    bool      conjugate) {
-	// Note: Ignores sign_extend and conjugate
+	// Note: Ignores conjugate
 	if( byte_reverse ) {
-		// ABCDEFGH........
-		// ....EFGH....ABCD
-		oval = ival << 8;
-		oval = (oval | (oval >> 12)) & 0x0F0F;
-	} else {
 		// ........ABCDEFGH
-		// ....ABCD....EFGH
-		oval = (ival | (ival <<  4)) & 0x0F0F;
+		// EFGH....ABCD....
+		oval = ival;
+		oval = (oval | (oval << 12)) & 0xF0F0;
+	} else {
+		// ....ABCDEFGH....
+		// ABCD....EFGH....
+		oval = ival << 4;
+		oval = (oval | (oval <<  4)) & 0xF0F0;
 	}
-	if( sign_extend ) {
+	if( !align_msb ) {
 		// >>>>ABCD>>>>EFGH
-		sign_extend_8bit<4,uint8_t>(oval);
+		oval >>= 4;
 	}
 }
 
@@ -66,21 +67,21 @@ inline void unpack(uint8_t   ival,
 inline void unpack(uint8_t   ival,
                    uint32_t& oval,
                    bool      byte_reverse,
-                   bool      sign_extend,
+                   bool      align_msb,
                    bool      conjugate) {
-	// Note: Ignores sign_extend and conjugate
-	// ........................ABCDEFGH
-	// ............ABCD............EFGH
-	// ......AB......CD......EF......GH
-	oval = ival;
-	oval = (oval | (oval << 12)) & 0x000F000F;
-	oval = (oval | (oval <<  6)) & 0x03030303;
+	// Note: Ignores conjugate
+	// ..................ABCDEFGH......
+	// ......ABCD............EFGH......
+	// AB......CD......EF......GH......
+	oval = ival << 6;
+	oval = (oval | (oval << 12)) & 0x03C003C0;
+	oval = (oval | (oval <<  6)) & 0xC0C0C0C0;
 	if( byte_reverse) {
 		byteswap(oval, &oval);
 	}
-	if( sign_extend ) {
+	if( !align_msb ) {
 		// >>>>>>AB>>>>>>CD>>>>>>EF>>>>>>GH
-		sign_extend_8bit<6,uint8_t>(oval);
+		oval >>= 6;
 	}
 }
 
@@ -88,30 +89,30 @@ inline void unpack(uint8_t   ival,
 inline void unpack(uint8_t   ival,
                    uint64_t& oval,
                    bool      byte_reverse,
-                   bool      sign_extend,
+                   bool      align_msb,
                    bool      conjugate) {
-	// Note: Ignores sign_extend and conjugate
-	// ........................................................ABCDEFGH
-	// ............................ABCD............................EFGH
-	// ..............AB..............CD..............EF..............GH
-	// .......A.......B.......C.......D.......E.......F.......G.......H
-	oval = ival;
-	oval = (oval | (oval << 28)) & 0x0000000F0000000F;
-	oval = (oval | (oval << 14)) & 0x0003000300030003;
-	oval = (oval | (oval <<  7)) & 0x0101010101010101;
+	// Note: Ignores conjugate
+	// .................................................ABCDEFGH.......
+	// .....................ABCD............................EFGH.......
+	// .......AB..............CD..............EF..............GH.......
+	// A.......B.......C.......D.......E.......F.......G.......H.......
+	oval = ival << 7;
+	oval = (oval | (oval << 28)) & 0x0000078000000780;
+	oval = (oval | (oval << 14)) & 0x0180018001800180;
+	oval = (oval | (oval <<  7)) & 0x8080808080808080;
 	if( byte_reverse) {
 		byteswap(oval, &oval);
 	}
-	if( sign_extend ) {
+	if( !align_msb ) {
 		// >>>>>>>A>>>>>>>B>>>>>>>C>>>>>>>D
-		sign_extend_8bit<7,uint8_t>(oval);
+		oval >>= 7;
 	}
 }
 
-template<typename T>
-inline void conjugate_8bit(T& val) {
-	for( int k=1; k<(int)sizeof(T); k+=2 ) {
-		int8_t& val_imag = ((int8_t*)&val)[k];
+template<typename K, typename T>
+inline void conjugate_subwords(T& val) {
+	for( int k=1; k<(int)(sizeof(T)/sizeof(K)); k+=2 ) {
+		K& val_imag = ((K*)&val)[k];
 		val_imag = -val_imag;
 	}
 }
@@ -120,31 +121,32 @@ inline void conjugate_8bit(T& val) {
 inline void unpack(uint8_t  ival,
                    int16_t& oval,
                    bool     byte_reverse,
-                   bool     sign_extend,
+                   bool     align_msb,
                    bool     conjugate) {
 	if( byte_reverse ) {
 		// ........ABCDEFGH
 		// EFGH....ABCD....
-		oval = (ival | (ival << 12)) & 0xF0F0;
+		oval = ival;
+		oval = (oval | (oval << 12)) & 0xF0F0;
 	} else {
-		// ABCDEFGH........
+		// ....ABCDEFGH....
 		// ABCD....EFGH....
-		oval = ival << 8;
-		oval = (oval | (oval >>  4)) & 0xF0F0;
+		oval = ival << 4;
+		oval = (oval | (oval <<  4)) & 0xF0F0;
 	}
-	if( sign_extend ) {
+	if( !align_msb ) {
 		// >>>>ABCD>>>>EFGH
-		sign_extend_8bit<4,int8_t>(oval);
+		rshift_subwords<4,int8_t>(oval);
 	}
 	if( conjugate ) {
-		conjugate_8bit(oval);
+		conjugate_subwords<int8_t>(oval);
 	}
 }
 // 4x 2-bit --> 4x 8-bit (signed)
 inline void unpack(uint8_t  ival,
                    int32_t& oval,
                    bool     byte_reverse,
-                   bool     sign_extend,
+                   bool     align_msb,
                    bool     conjugate) {
 	// ..................ABCDEFGH......
 	// ......ABCD............EFGH......
@@ -155,19 +157,19 @@ inline void unpack(uint8_t  ival,
 	if( byte_reverse) {
 		byteswap(oval, &oval);
 	}
-	if( sign_extend ) {
+	if( !align_msb ) {
 		// >>>>>>AB>>>>>>CD>>>>>>EF>>>>>>GH
-		sign_extend_8bit<6,int8_t>(oval);
+		rshift_subwords<6,int8_t>(oval);
 	}
 	if( conjugate ) {
-		conjugate_8bit(oval);
+		conjugate_subwords<int8_t>(oval);
 	}
 }
 // 8x 1-bit --> 8x 8-bit (signed)
 inline void unpack(uint8_t  ival,
                    int64_t& oval,
                    bool     byte_reverse,
-                   bool     sign_extend,
+                   bool     align_msb,
                    bool     conjugate) {
 	// .................................................ABCDEFGH.......
 	// .....................ABCD............................EFGH.......
@@ -180,31 +182,30 @@ inline void unpack(uint8_t  ival,
 	if( byte_reverse) {
 		byteswap(oval, &oval);
 	}
-	if( sign_extend ) {
+	if( !align_msb ) {
 		// >>>>>>>A>>>>>>>B>>>>>>>C>>>>>>>D
-		sign_extend_8bit<7,int8_t>(oval);
+		rshift_subwords<7,int8_t>(oval);
 	}
 	if( conjugate ) {
-		conjugate_8bit(oval);
+		conjugate_subwords<int8_t>(oval);
 	}
 }
 
 template<typename IType, typename OType>
 struct UnpackFunctor {
 	bool byte_reverse;
-	bool sign_extend;
+	bool align_msb;
 	bool conjugate;
 	UnpackFunctor(bool byte_reverse_,
-	              bool sign_extend_,
+	              bool align_msb_,
 	              bool conjugate_)
 		: byte_reverse(byte_reverse_),
-		  sign_extend(sign_extend_),
+		  align_msb(align_msb_),
 		  conjugate(conjugate_) {}
 	void operator()(IType ival, OType& oval) const {
-		unpack(ival, oval, byte_reverse, sign_extend, conjugate);
+		unpack(ival, oval, byte_reverse, align_msb, conjugate);
 	}
 };
-
 
 template<typename T, typename U, typename Func, typename Size>
 void foreach_simple_cpu(T const* in,
@@ -222,7 +223,6 @@ BFstatus bfUnpack(BFarray const* in,
                   BFbool         align_msb) {
 	BF_ASSERT(in,  BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(out, BF_STATUS_INVALID_POINTER);
-	BF_ASSERT(in->space == out->space, BF_STATUS_INVALID_SPACE);
 	BF_ASSERT(!out->immutable, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(shapes_equal(in, out), BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT(BF_DTYPE_IS_COMPLEX( in->dtype) ==
@@ -246,10 +246,11 @@ BFstatus bfUnpack(BFarray const* in,
 	// TODO: Support CUDA space
 	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM),
 	          BF_STATUS_UNSUPPORTED_SPACE);
+	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM),
+	          BF_STATUS_UNSUPPORTED_SPACE);
 	
 	size_t nelement = num_contiguous_elements(in);
 	bool byteswap    = ( in->big_endian != is_big_endian());
-	bool sign_extend = !align_msb;
 	bool conjugate   = (in->conjugated != out->conjugated);
 	
 #define CALL_FOREACH_SIMPLE_CPU_UNPACK(itype,otype) \
@@ -257,7 +258,7 @@ BFstatus bfUnpack(BFarray const* in,
 	                   (otype*)out->data, \
 	                   nelement, \
 	                   UnpackFunctor<itype,otype>(byteswap, \
-	                                              sign_extend, \
+	                                              align_msb, \
 	                                              conjugate))
 	if( out->dtype == BF_DTYPE_I8 ||
 	           out->dtype == BF_DTYPE_CI8 ) {

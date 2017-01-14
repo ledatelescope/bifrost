@@ -95,7 +95,7 @@ void foreach_simple_cpu(T const* in,
                         Func     func) {
 	for( Size i=0; i<nelement; ++i ) {
 		func(in[i], out[i]);
-		std::cout << std::hex << (int)in[i] << " --> " << (int)out[i] << std::endl;
+		//std::cout << std::hex << (int)in[i] << " --> " << (int)out[i] << std::endl;
 	}
 }
 
@@ -104,7 +104,6 @@ BFstatus bfQuantize(BFarray const* in,
                     double         scale) {
 	BF_ASSERT(in,  BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(out, BF_STATUS_INVALID_POINTER);
-	BF_ASSERT(in->space == out->space, BF_STATUS_INVALID_SPACE);
 	BF_ASSERT(!out->immutable, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(shapes_equal(in, out), BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT(BF_DTYPE_IS_COMPLEX( in->dtype) ==
@@ -126,6 +125,8 @@ BFstatus bfQuantize(BFarray const* in,
 	
 	// TODO: Support CUDA space
 	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM),
+	          BF_STATUS_UNSUPPORTED_SPACE);
+	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM),
 	          BF_STATUS_UNSUPPORTED_SPACE);
 	
 	size_t nelement = num_contiguous_elements(in);
