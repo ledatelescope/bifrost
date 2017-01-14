@@ -29,6 +29,7 @@
 
 #include <bifrost/transpose.h>
 #include "assert.hpp"
+#include "utils.hpp"
 
 #if BF_CUDA_ENABLED
   #include "transpose_gpu_kernel.cuh"
@@ -332,9 +333,8 @@ BFstatus bfTranspose(void*         dst,
 	BF_ASSERT(dst && src, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(ndim >= 2, BF_STATUS_INVALID_ARGUMENT);
 	// TODO: Implement BF_SPACE_AUTO
-	BF_ASSERT(space == BF_SPACE_CUDA ||
-	          space == BF_SPACE_CUDA_MANAGED,
-	          BF_STATUS_UNSUPPORTED);
+	BF_ASSERT(space_accessible_from(space, BF_SPACE_CUDA),
+	          BF_STATUS_UNSUPPORTED_SPACE);
 	//for( int d=0; d<ndim; ++d ) {
 	//	std::cout << dst_strides[d] << "\t"
 	//	          << src_strides[d] << "\t"

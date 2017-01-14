@@ -689,7 +689,8 @@ BFstatus bfFdmtInit(BFfdmt  plan,
                     void*   plan_storage,
                     BFsize* plan_storage_size) {
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
-	BF_ASSERT(space == BF_SPACE_CUDA, BF_STATUS_UNSUPPORTED_SPACE);
+	BF_ASSERT(space_accessible_from(space, BF_SPACE_CUDA),
+	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_TRY(plan->init(nchan, max_delay, f0, df, exponent));
 	BF_TRY_RETURN(plan->init_plan_storage(plan_storage, plan_storage_size));
 }
