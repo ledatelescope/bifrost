@@ -51,8 +51,7 @@ def raw_malloc(size, space):
 def raw_free(ptr, space='auto'):
 	_check(_bf.Free(ptr, _string2space(space)))
 def raw_get_space(ptr):
-	# TODO: bfGetSpace currently has a funny call signature
-	raise NotImplemented("bfGetSpace")
+	return _get(_bf.GetSpace(ptr))
 
 def alignment():
 	ret, _ = _bf.GetAlignment()
