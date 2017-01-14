@@ -26,21 +26,32 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Bifrost pipeline processing library
-"""
+from pipeline import TransformBlock
+import bifrost as bf
 
-__version__    = "0.6"
-__author__     = "Ben Barsdell"
-__copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
-__credits__    = ["Ben Barsdell"]
-__license__    = "BSD 3-Clause"
-__maintainer__ = "Ben Barsdell"
-__email__      = "benbarsdell@gmail.com"
-__status__     = "Development"
+from copy import deepcopy
 
-import core, memory, affinity, ring, block, address, udp_socket
-import pipeline
-import device
-#import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
-from GPUArray import GPUArray
+class TransposeBlock(TransformBlock):
+	def __init__(self, iring, axes, *args, **kwargs):
+		super(TransposeBlock, self).__init__([iring], *args, **kwargs)
+		self.axes = axes
+		self.space = iring.space
+	def on_sequence(self, iseqs):
+		iseq = iseqs[0]
+		ihdr = iseq.header
+		itensor = ihdr['_tensor']
+		ohdr = deepcopy(ihdr)
+		# Permute metadata of axes
+		for item in ['shape', 'labels', 'scales', 'units']:
+			ohdr['_tensor'][item] = [ihdr['_tensor'][item][axis]
+			                         for axis in self.axes]
+		return [ohdr], [None]
+	def on_data(self, ispans, ospans):
+		# TODO: bf.memory.transpose should support system space too
+		if bf.memory.space_accessible(self.space, ['cuda']):
+			bf.memory.transpose(ospans[0].data, ispans[0].data, self.axes)
+		else:
+			ospans[0].data[...] = np.transpose(ispans[0].data, self.axes)
+
+def transpose(iring, axes, *args, **kwargs):
+	return TransposeBlock(iring, axes, *args, **kwargs).orings[0]

@@ -26,21 +26,40 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Bifrost pipeline processing library
-"""
+import bifrost as bf
 
-__version__    = "0.6"
-__author__     = "Ben Barsdell"
-__copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
-__credits__    = ["Ben Barsdell"]
-__license__    = "BSD 3-Clause"
-__maintainer__ = "Ben Barsdell"
-__email__      = "benbarsdell@gmail.com"
-__status__     = "Development"
+import threading
 
-import core, memory, affinity, ring, block, address, udp_socket
-import pipeline
-import device
-#import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
-from GPUArray import GPUArray
+class TempStorage(object):
+	def __init__(self, space):
+		self.space = space
+		self.size  = 0
+		self.ptr   = None
+		self.lock  = threading.Lock()
+	def __del__(self):
+		self._free()
+	def allocate(self, size):
+		return TempStorageAllocation(self, size)
+	def _allocate(self, size):
+		if size > self.size:
+			self._free()
+			self.ptr = bf.memory.raw_malloc(size, self.space)
+			self.size = size
+	def _free(self):
+		if self.ptr:
+			bf.memory.raw_free(self.ptr, self.space)
+			self.ptr  = None
+			self.size = 0
+class TempStorageAllocation(object):
+	def __init__(self, parent, size):
+		self.parent = parent
+		self.parent.lock.acquire()
+		self.parent._allocate(size)
+		self.size = parent.size
+		self.ptr  = parent.ptr
+	def release(self):
+		self.parent.lock.release()
+	def __enter__(self):
+		return self
+	def __exit__(self, type, value, tb):
+		self.release()

@@ -26,21 +26,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Bifrost pipeline processing library
-"""
+from pipeline import TransformBlock
+import bifrost.array
 
-__version__    = "0.6"
-__author__     = "Ben Barsdell"
-__copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
-__credits__    = ["Ben Barsdell"]
-__license__    = "BSD 3-Clause"
-__maintainer__ = "Ben Barsdell"
-__email__      = "benbarsdell@gmail.com"
-__status__     = "Development"
+from copy import deepcopy
 
-import core, memory, affinity, ring, block, address, udp_socket
-import pipeline
-import device
-#import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
-from GPUArray import GPUArray
+class CopyBlock(TransformBlock):
+	def __init__(self, iring, space, *args, **kwargs):
+		super(CopyBlock, self).__init__([iring], *args, **kwargs)
+		self.orings = [self.create_ring(space=space)]
+	def on_sequence(self, iseqs):
+		ohdr = deepcopy(iseqs[0].header)
+		return [ohdr], [None]
+	def on_data(self, ispans, ospans):
+		bifrost.array.copy(ospans[0].data, ispans[0].data)
+
+def copy(iring, space, *args, **kwargs):
+	return CopyBlock(iring, space, *args, **kwargs).orings[0]

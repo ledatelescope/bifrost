@@ -26,21 +26,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Bifrost pipeline processing library
-"""
+import pint
 
-__version__    = "0.6"
-__author__     = "Ben Barsdell"
-__copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
-__credits__    = ["Ben Barsdell"]
-__license__    = "BSD 3-Clause"
-__maintainer__ = "Ben Barsdell"
-__email__      = "benbarsdell@gmail.com"
-__status__     = "Development"
-
-import core, memory, affinity, ring, block, address, udp_socket
-import pipeline
-import device
-#import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
-from GPUArray import GPUArray
+def convert_units(value, old_units, new_units):
+	ureg = pint.UnitRegistry()
+	old_quantity = value * ureg.parse_expression(old_units)
+	new_quantity = old_quantity.to(new_units)
+	return new_quantity.m
