@@ -139,6 +139,7 @@ BFstatus bfMemcpy(void*       dst,
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
 		cudaMemcpyKind kind = cudaMemcpyDefault;
 		switch( src_space ) {
+		case BF_SPACE_CUDA_HOST: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
@@ -203,6 +204,7 @@ BFstatus bfMemcpy2D(void*       dst,
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
 		cudaMemcpyKind kind = cudaMemcpyDefault;
 		switch( src_space ) {
+		case BF_SPACE_CUDA_HOST: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
@@ -251,7 +253,7 @@ BFstatus bfMemset(void*   ptr,
 		case BF_SPACE_SYSTEM:       ::memset(ptr, value, count); break;
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST:    ::memset(ptr, value, count); break;
-		case BF_SPACE_CUDA:
+		case BF_SPACE_CUDA: // Fall-through
 		case BF_SPACE_CUDA_MANAGED: {
 			cudaMemsetAsync(ptr, value, count, g_cuda_stream);
 			break;
@@ -286,7 +288,7 @@ BFstatus bfMemset2D(void*   ptr,
 		case BF_SPACE_SYSTEM:       memset2D(ptr, stride, value, width, height); break;
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST:    memset2D(ptr, stride, value, width, height); break;
-		case BF_SPACE_CUDA:
+		case BF_SPACE_CUDA: // Fall-through
 		case BF_SPACE_CUDA_MANAGED: {
 			cudaMemset2DAsync(ptr, stride, value, width, height, g_cuda_stream);
 			break;
