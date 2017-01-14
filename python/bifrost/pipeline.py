@@ -27,16 +27,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import bifrost as bf
-from bifrost.ring import Ring
+from bifrost.ring2 import Ring
 from temp_storage import TempStorage
 
 from collections import defaultdict
 from contextlib2 import ExitStack
 import threading
-
-# HACK TESTING
-import time
-import random
 
 def izip(*iterables):
 	while True:
@@ -340,8 +336,6 @@ class TransformBlock(Block):
 				                              islice.start)
 				                    for (iseq,islice)
 				                    in zip(iseqs,islices)]):
-					
-					time.sleep(random.random()*0.1) # HACK TESTING
 					
 					with ExitStack() as ospan_stack:
 						ospans = self.reserve_spans(ospan_stack, oseqs, ispans)

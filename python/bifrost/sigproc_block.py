@@ -27,7 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from pipeline import SourceBlock
-from sigproc import SigprocFile
+from sigproc2 import SigprocFile
 
 from copy import deepcopy
 
