@@ -26,24 +26,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Bifrost pipeline processing library
-"""
+import unittest
+import numpy as np
+import bifrost as bf
 
-__version__    = "0.6"
-__author__     = "Ben Barsdell"
-__copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
-__credits__    = ["Ben Barsdell"]
-__license__    = "BSD 3-Clause"
-__maintainer__ = "Ben Barsdell"
-__email__      = "benbarsdell@gmail.com"
-__status__     = "Development"
-
-import core, memory, affinity, ring, block, address, udp_socket
-import pipeline
-import device
-#import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
-from GPUArray import GPUArray
-from ndarray import ndarray, asarray
-from unpack import unpack
-from quantize import quantize
+class NDArrayTest(unittest.TestCase):
+	def setUp(self):
+		self.known_vals  = [[0,1],[2,3],[4,5]]
+		self.known_array = np.array(self.known_vals, dtype=np.float32)
+	def test_construct(self):
+		a = bf.ndarray(self.known_vals, dtype='f32')
+		np.testing.assert_equal(a, self.known_array)
+	def test_assign(self):
+		b = bf.ndarray(shape=(3,2), dtype='f32')
+		b[...] = self.known_array
+		np.testing.assert_equal(b, self.known_array)
+	def test_space_copy(self):
+		c = bf.ndarray(self.known_vals, dtype='f32')
+		c = c.copy(space='cuda').copy(space='cuda_host').copy(space='system')
+		np.testing.assert_equal(c, self.known_array)
+	def test_view(self):
+		d = bf.ndarray(self.known_vals, dtype='f32')
+		d = d.view(dtype='cf32')
+		np.testing.assert_equal(d, np.array([[0+1j],[2+3j],[4+5j]]))
+	def test_str(self):
+		e = bf.ndarray(self.known_vals, dtype='f32', space='cuda')
+		self.assertEqual(str(e), str(self.known_array))
+	def test_repr(self):
+		f = bf.ndarray(self.known_vals, dtype='f32', space='cuda')
+		repr_f = repr(f)
+		# Note: This chops off the class name
+		repr_f = repr_f[repr_f.find('('):]
+		repr_k = repr(self.known_array)
+		repr_k = repr_k[repr_k.find('('):]
+		self.assertEqual(repr_f, repr_k)
