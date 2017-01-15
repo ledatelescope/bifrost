@@ -1,4 +1,4 @@
-# Bifrost
+# Bifrost [![Build Status](https://travis-ci.org/ledatelescope/bifrost.svg?branch=master)](https://travis-ci.org/ledatelescope/bifrost)
 
 A stream processing framework for high-throughput applications.
 
