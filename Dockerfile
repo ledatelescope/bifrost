@@ -26,15 +26,10 @@ RUN curl -fSsL -O https://bootstrap.pypa.io/get-pip.py && \
     rm get-pip.py
 RUN pip --no-cache-dir install \
         setuptools \
-        ipykernel \
-        jupyter \
         matplotlib \
         numpy \
-        scipy \
-        sklearn \
-        simplejson \
-        && \
-    python -m ipykernel.kernelspec
+        contextlib2 \
+        simplejson
 
 RUN git clone https://github.com/MatthieuDartiailh/pyclibrary.git && \
     cd pyclibrary && \
