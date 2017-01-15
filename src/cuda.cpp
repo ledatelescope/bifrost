@@ -31,32 +31,50 @@
 #include "cuda.hpp"
 #include "assert.hpp"
 
+#if BF_CUDA_ENABLED
 thread_local cudaStream_t g_cuda_stream = cudaStreamPerThread;
+#endif
 
 BFstatus bfStreamGet(void* stream) {
 	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
+#if BF_CUDA_ENABLED
 	*(cudaStream_t*)stream = g_cuda_stream;
+#else
+	BF_ASSERT(false, BF_STATUS_INVALID_STATE);
+#endif
 	return BF_STATUS_SUCCESS;
 }
 BFstatus bfStreamSet(void const* stream) {
 	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
+#if BF_CUDA_ENABLED
 	g_cuda_stream = *(cudaStream_t*)stream;
+#endif
 	return BF_STATUS_SUCCESS;
 }
 BFstatus bfDeviceGet(int* device) {
 	BF_ASSERT(device, BF_STATUS_INVALID_POINTER);
+#if BF_CUDA_ENABLED
 	BF_CHECK_CUDA(cudaGetDevice(device), BF_STATUS_DEVICE_ERROR);
+#else
+	*device = -1;
+#endif
 	return BF_STATUS_SUCCESS;
 }
 BFstatus bfDeviceSet(int device) {
+#if BF_CUDA_ENABLED
 	BF_CHECK_CUDA(cudaSetDevice(device), BF_STATUS_DEVICE_ERROR);
+#endif
 	return BF_STATUS_SUCCESS;
 }
 BFstatus bfDeviceSetById(const char* pci_bus_id) {
+#if BF_CUDA_ENABLED
 	int device;
 	BF_CHECK_CUDA(cudaDeviceGetByPCIBusId(&device, pci_bus_id),
 	              BF_STATUS_DEVICE_ERROR);
 	return bfDeviceSet(device);
+#else
+	return BF_STATUS_SUCCESS;
+#endif
 }
 BFstatus bfStreamSynchronize() {
 #if BF_CUDA_ENABLED

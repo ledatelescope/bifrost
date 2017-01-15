@@ -3,6 +3,7 @@ LIBBIFROST_OBJS = \
   common.o \
   memory.o \
   affinity.o \
+  cuda.o \
   ring.o \
   ring_impl.o \
   array.o \
@@ -14,7 +15,6 @@ LIBBIFROST_OBJS = \
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
-  cuda.o \
   transpose.o \
   fft.o \
   fdmt.o \
