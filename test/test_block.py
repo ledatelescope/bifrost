@@ -43,7 +43,7 @@ class TestIterateRingWrite(unittest.TestCase):
         blocks = []
         blocks.append((
             SigprocReadBlock(
-                '/data1/mcranmer/data/fake/1chan8bitNoDM.fil', gulp_nframe=4096),
+                './data/1chan8bitNoDM.fil', gulp_nframe=4096),
             [], [0]))
         blocks.append((WriteAsciiBlock('.log.txt'), [0], []))
         Pipeline(blocks).main()
@@ -80,7 +80,7 @@ class TestCopyBlock(unittest.TestCase):
         self.blocks = []
         self.blocks.append((
             SigprocReadBlock(
-                '/data1/mcranmer/data/fake/1chan8bitNoDM.fil'),
+                './data/1chan8bitNoDM.fil'),
             [], [0]))
     def test_simple_copy(self):
         """Test which performs a read of a sigproc file,
@@ -139,7 +139,7 @@ class TestCopyBlock(unittest.TestCase):
         self.blocks = []
         self.blocks.append((
             SigprocReadBlock(
-                '/data1/mcranmer/data/fake/256chan32bitNoDM.fil'),
+                './data/256chan32bitNoDM.fil'),
             [], [0]))
         self.blocks.append((CopyBlock(), [0], [1]))
         self.blocks.append((WriteAsciiBlock(logfile), [1], []))
@@ -155,7 +155,7 @@ class TestFoldBlock(unittest.TestCase):
         self.blocks = []
         self.blocks.append((
             SigprocReadBlock(
-                '/data1/mcranmer/data/fake/pulsar_noisey_NoDM.fil'),
+                './data/pulsar_noisey_NoDM.fil'),
             [], [0]))
     def dump_ring_and_read(self):
         """Dump block to ring, read in as histogram"""
@@ -185,7 +185,7 @@ class TestFoldBlock(unittest.TestCase):
             histogram from pulsar data"""
         self.blocks[0] = (
             SigprocReadBlock(
-                '/data1/mcranmer/data/fake/simple_pulsar_DM0.fil'),
+                './data/simple_pulsar_DM0.fil'),
             [], [0])
         self.blocks.append((
             FoldBlock(bins=200), [0], [1]))
@@ -197,7 +197,7 @@ class TestFoldBlock(unittest.TestCase):
         """See if many channels work with folding"""
         self.blocks[0] = (
             SigprocReadBlock(
-                '/data1/mcranmer/data/fake/simple_pulsar_DM0_128ch.fil'),
+                './data/simple_pulsar_DM0_128ch.fil'),
             [], [0])
         self.blocks.append((
             FoldBlock(bins=200), [0], [1]))
@@ -209,7 +209,7 @@ class TestFoldBlock(unittest.TestCase):
         """Test folding on a file with high DM"""
         self.blocks[0] = (
             SigprocReadBlock(
-                '/data1/mcranmer/data/fake/simple_pulsar_DM10_128ch.fil'),
+                './data/simple_pulsar_DM10_128ch.fil'),
             [], [0])
         self.blocks.append((
             FoldBlock(bins=200, dispersion_measure=10, core=0),
@@ -226,7 +226,7 @@ class TestKurtosisBlock(unittest.TestCase):
         (does this by checking consistency of shape/datatype)"""
         blocks = []
         blocks.append((
-            SigprocReadBlock('/data1/mcranmer/data/fake/1chan8bitNoDM.fil'),
+            SigprocReadBlock('./data/1chan8bitNoDM.fil'),
             [], [0]))
         blocks.append((
             KurtosisBlock(), [0], [1]))
@@ -245,7 +245,7 @@ class TestFFTBlock(unittest.TestCase):
         self.blocks = []
         self.blocks.append((
             SigprocReadBlock(
-                '/data1/mcranmer/data/fake/1chan8bitNoDM.fil'),
+                './data/1chan8bitNoDM.fil'),
             [], [0]))
         self.blocks.append((FFTBlock(gulp_size=4096*8*8*8), [0], [1]))
         self.blocks.append((WriteAsciiBlock(self.logfile), [1], []))
@@ -273,7 +273,7 @@ class TestFFTBlock(unittest.TestCase):
                 continue
             self.blocks[0] = (
                 SigprocReadBlock(
-                    '/data1/mcranmer/data/fake/2chan'+ str(nbit) + 'bitNoDM.fil'),
+                    './data/2chan'+ str(nbit) + 'bitNoDM.fil'),
                 [], [0])
             open(self.logfile, 'w').close()
             Pipeline(self.blocks).main()
@@ -319,7 +319,7 @@ class TestIFFTBlock(unittest.TestCase):
         self.blocks = []
         self.blocks.append((
             SigprocReadBlock(
-                '/data1/mcranmer/data/fake/1chan8bitNoDM.fil'),
+                './data/1chan8bitNoDM.fil'),
             [], [0]))
         self.blocks.append((FFTBlock(gulp_size=4096*8*8*8*8), [0], [1]))
         self.blocks.append((IFFTBlock(gulp_size=4096*8*8*8*8), [1], [2]))
