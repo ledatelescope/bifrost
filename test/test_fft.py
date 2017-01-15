@@ -49,21 +49,17 @@ class TestFFTHandles1DComplex(unittest.TestCase):
         self.output_data.set(1j*np.arange(5).astype(np.complex64))
     def test_forwardfft(self):
         """Computes a forward FFT and checks accuracy of result"""
-        input_array = self.input_data.as_BFarray(3)
-        output_array = self.output_data.as_BFarray(3)
+        input_array = self.input_data.as_BFarray()
+        output_array = self.output_data.as_BFarray()
         fft(input_array, output_array)
         self.output_data.buffer = output_array.data
         local_data = self.output_data.get()
         self.assertAlmostEqual(local_data[0],10-5j,places=4)
     def test_inversefft(self):
         """Computes an inverse FFT and checks accuracy of result"""
-        input_array = self.input_data.as_BFarray(3)
-        output_array = self.output_data.as_BFarray(3)
+        input_array = self.input_data.as_BFarray()
+        output_array = self.output_data.as_BFarray()
         ifft(input_array, output_array)
         self.output_data.buffer = output_array.data
         local_data = self.output_data.get()
         self.assertAlmostEqual(local_data[1],-12.8455+4.33277j,places=4)
-
-
-
-

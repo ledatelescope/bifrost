@@ -30,6 +30,8 @@ from libbifrost import _bf, _check, _get, _string2space
 from bifrost.memory import _get_space
 from bifrost.dtype import numpy2bifrost
 
+import numpy as np
+
 def _array2bifrost(array):
 	a = _bf.BFarray()
 	a.data      = array.ctypes.data
@@ -41,6 +43,8 @@ def _array2bifrost(array):
 		a.shape[d] = array.shape[d]
 	for d in xrange(len(array.strides)):
 		a.strides[d] = array.strides[d]
+	a.big_endian = (not np.dtype(array.dtype).isnative)
+	a.conjugated = False
 	return a
 
 def copy(dst, src):

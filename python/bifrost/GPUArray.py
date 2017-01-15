@@ -29,8 +29,9 @@
 import ctypes
 import numpy as np
 from memory import raw_malloc, raw_free, memset, memcpy, memcpy2D
+from libbifrost import _check, _string2space
 from bifrost.libbifrost import _bf
-
+from array import _array2bifrost
 
 class GPUArray(object):
 	def __init__(self, shape, dtype, buffer=None, offset=0, strides=None):
@@ -38,7 +39,8 @@ class GPUArray(object):
                 shape = tuple(np.array(shape).ravel().astype(np.uint64))
 		if strides is None:
 			# This magic came from http://stackoverflow.com/a/32874295
-			strides = itemsize*np.r_[1,np.cumprod(shape[::-1][:-1])][::-1]
+			strides = itemsize*np.r_[1,np.cumprod(shape[::-1][:-1],
+			                                      dtype=np.int64)][::-1]
 		self.shape   = shape
 		self.dtype   = dtype
 		self.buffer  = buffer
@@ -114,25 +116,5 @@ class GPUArray(object):
 		else:
 			raise RuntimeError("Copying with this data layout is unsupported")
 		return self
-        def as_BFarray(self, bf_max_dimensions):
-                data_void_pointer = ctypes.cast(
-                    self.buffer, ctypes.c_void_p)
-                cuda_space = 2
-                #nelements = np.zeros(
-                #    shape=bf_max_dimensions)
-                #nelements[:len(self.shape)] += self.shape
-                #nelements = nelements.ctypes.data_as(
-                #    ctypes.c_ulong*bf_max_dimensions)
-                shape = self.shape
-                shape = (_bf.BFsize*bf_max_dimensions)(*list(shape))
-                #nelements = 
-                    #(ctypes.c_uint64*bf_max_dimensions)(*
-                #TODO: Fix this test code
-                strides = (_bf.BFsize*bf_max_dimensions)(*list(shape))
-                #dtype = _bf.BFsize(1)
-                ndim = len(self.shape)
-                BFarray = _bf.BFarray(
-                    data_void_pointer, cuda_space,
-                    1, 1,
-                    shape, strides)
-                return BFarray
+	def as_BFarray(self):
+		return _array2bifrost(self)
