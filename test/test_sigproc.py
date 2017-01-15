@@ -188,34 +188,6 @@ class Test_16bit_2chan(unittest.TestCase):
         file2.read_header()
         file2.read_data()
         np.testing.assert_array_equal(file1.read_data(),file2.read_data())
-class Test_break_local_storage(unittest.TestCase):
-    def setUp(self):
-        self.myfile = SigprocFile()
-        self.myfile.open('./data/256chan32bitNoDMLargeDuration.fil',mode='r+b')
-        self.myfile.read_header()
-    def tearDown(self):
-        self.myfile.close()
-    def test_data_read_timed(self):
-        """Test data to see if read in reasonable amount of time"""
-        start_time = time.clock()
-        data = self.myfile.read_data(-3)
-        assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
-        self.assertEqual(data.shape[0], 3)
-    def test_data_read_timed_2(self):
-        start_time = time.clock()
-        data = self.myfile.read_data(0, 3)
-        assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
-        self.assertEqual(data.shape[0], 3)
-    def test_data_read_timed_3(self):
-        start_time = time.clock()
-        data = self.myfile.read_data(-30000, -30000+3)
-        assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
-        self.assertEqual(data.shape[0], 3)
-    def test_data_read_timed_4(self):
-        start_time = time.clock()
-        data = self.myfile.read_data(30000, 30000+3)
-        assert time.clock()-start_time < 0.1, "Taking too long to read. (Probably reading in entire file.)"
-        self.assertEqual(data.shape[0], 3)
 class Test_data_slicing(unittest.TestCase):
     def setUp(self):
         self.myfile = SigprocFile()
