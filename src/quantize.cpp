@@ -165,10 +165,10 @@ BFstatus bfQuantize(BFarray const* in,
 		case BF_DTYPE_U32: {
 			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,double,uint32_t); break;
 		}
-		default: BF_ASSERT(false, BF_STATUS_UNSUPPORTED_DTYPE);
+		default: BF_FAIL("Supported bfQuantize output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 		}
 	} else {
-		BF_ASSERT(false, BF_STATUS_UNSUPPORTED_DTYPE);
+		BF_FAIL("Supported bfQuantize input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 #undef CALL_FOREACH_SIMPLE_CPU_QUANTIZE
 	return BF_STATUS_SUCCESS;

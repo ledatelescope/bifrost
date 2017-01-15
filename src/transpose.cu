@@ -384,6 +384,6 @@ BFstatus bfTranspose(void*         dst,
 #undef DEFINE_TYPE_CASE
 	case 0: return BF_STATUS_SUCCESS; // Do nothing on zero-size data
 	//default: std::printf("UNSUPPORTED ELEMENT SIZE\n"); return -1;
-	default: BF_ASSERT(false, BF_STATUS_UNSUPPORTED);
+	default: BF_FAIL("Valid bfTranspose element_size", BF_STATUS_UNSUPPORTED);
 	}
 }

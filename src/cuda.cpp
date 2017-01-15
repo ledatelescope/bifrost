@@ -40,7 +40,7 @@ BFstatus bfStreamGet(void* stream) {
 #if BF_CUDA_ENABLED
 	*(cudaStream_t*)stream = g_cuda_stream;
 #else
-	BF_ASSERT(false, BF_STATUS_INVALID_STATE);
+	BF_FAIL("Built with CUDA support (bfStreamGet)", BF_STATUS_INVALID_STATE);
 #endif
 	return BF_STATUS_SUCCESS;
 }
