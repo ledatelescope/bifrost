@@ -7,4 +7,4 @@ services:
 
 before_install:
     - make docker
-    - docker run --rm ledatelescope/bifrost "/bifrost/test/travis.sh"
+    - docker run --rm ledatelescope/bifrost /bin/sh -c "cd /bifrost/test && sh ./travis.sh"
