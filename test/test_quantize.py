@@ -26,18 +26,26 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get
-from array import _array2bifrost
-
-from ndarray import asarray
-
-import ctypes
+import unittest
 import numpy as np
+import bifrost as bf
 
-def unpack(src, dst, align_msb=False):
-	src_bf = asarray(src).as_BFarray()
-	dst_bf = asarray(dst).as_BFarray()
-	_check(_bf.Unpack(src_bf,
-	                  dst_bf,
-	                  align_msb))
-	return dst
+class QuantizeTest(unittest.TestCase):
+	def run_quantize_from_cf32_test(self, out_dtype):
+		iarray = bf.ndarray([[0.4+0.5j, 1.4+1.5j],
+		                  [2.4+2.5j, 3.4+3.5j],
+		                  [4.4+4.5j, 5.4+5.5j]],
+		                 dtype='cf32')
+		oarray = bf.ndarray(shape=iarray.shape, dtype=out_dtype)
+		oarray_known = bf.ndarray([[(0,0), (1,2)],
+		                        [(2,2), (3,4)],
+		                        [(4,4), (5,6)]],
+		                       dtype=out_dtype)
+		bf.quantize(iarray, oarray)
+		np.testing.assert_equal(oarray, oarray_known)
+	def test_cf32_to_ci8(self):
+		self.run_quantize_from_cf32_test('ci8')
+	def test_cf32_to_ci16(self):
+		self.run_quantize_from_cf32_test('ci16')
+	def test_cf32_to_ci32(self):
+		self.run_quantize_from_cf32_test('ci32')

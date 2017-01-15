@@ -26,18 +26,40 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get
-from array import _array2bifrost
-
-from ndarray import asarray
-
-import ctypes
+import unittest
 import numpy as np
+import bifrost as bf
 
-def unpack(src, dst, align_msb=False):
-	src_bf = asarray(src).as_BFarray()
-	dst_bf = asarray(dst).as_BFarray()
-	_check(_bf.Unpack(src_bf,
-	                  dst_bf,
-	                  align_msb))
-	return dst
+class UnpackTest(unittest.TestCase):
+	def run_unpack_to_ci8_test(self, iarray):
+		oarray = bf.ndarray(shape=iarray.shape, dtype='ci8')
+		oarray_known = bf.ndarray([[(0, 1), (2, 3)],
+		                           [(4, 5), (6, 7)],
+		                           [(-8, -7), (-6, -5)]],
+		                          dtype='ci8')
+		bf.unpack(iarray, oarray)
+		np.testing.assert_equal(oarray, oarray_known)
+	def test_ci4_to_ci8(self):
+		iarray = bf.ndarray([[(0x10,),(0x32,)],
+		                     [(0x54,),(0x76,)],
+		                     [(0x98,),(0xBA,)]],
+		                    dtype='ci4')
+		self.run_unpack_to_ci8_test(iarray)
+	def test_ci4_to_ci8_byteswap(self):
+		iarray = bf.ndarray([[(0x01,),(0x23,)],
+		                     [(0x45,),(0x67,)],
+		                     [(0x89,),(0xAB,)]],
+		                    dtype='ci4')
+		self.run_unpack_to_ci8_test(iarray.byteswap())
+	def test_ci4_to_ci8_conjugate(self):
+		iarray = bf.ndarray([[(0xF0,),(0xD2,)],
+		                     [(0xB4,),(0x96,)],
+		                     [(0x78,),(0x5A,)]],
+		                    dtype='ci4')
+		self.run_unpack_to_ci8_test(iarray.conj())
+	def test_ci4_to_ci8_byteswap_conjugate(self):
+		iarray = bf.ndarray([[(0x0F,),(0x2D,)],
+		                     [(0x4B,),(0x69,)],
+		                     [(0x87,),(0xA5,)]],
+		                    dtype='ci4')
+		self.run_unpack_to_ci8_test(iarray.byteswap().conj())
