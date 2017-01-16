@@ -79,11 +79,13 @@ def _load_bifrost_lib():
 		pyclibrary.auto_init(extra_types=extra_types)
 	except RuntimeError:
 		pass # WAR for annoying "Can only initialise the parser once"
-	header_paths += _get_env_paths(include_env)
+	header_paths = _get_env_paths(include_env) + header_paths
 	valid_header_paths = [p for p in header_paths if os.path.exists(p)]
 	
 	# HACK TODO: Decide on what to do here
 	valid_header_paths = valid_header_paths[:1]
+	if len(valid_header_paths) == 0:
+		raise ValueError("No valid Bifrost header paths found. Run make install or set BIFROST_INCLUDE_PATH.")
 	header_path = valid_header_paths[0]
 	headers = glob.glob(os.path.join(header_path, '*.h'))
 	
