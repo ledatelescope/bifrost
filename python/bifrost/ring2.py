@@ -39,7 +39,7 @@ import numpy as np
 try:
 	import simplejson as json
 except ImportError:
-	raise Warning("Install simplejson for better performance")
+	print "WARNING: Install simplejson for better performance"
 	import json
 
 # TODO: Should probably move this elsewhere (e.g., utils)
