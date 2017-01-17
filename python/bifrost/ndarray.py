@@ -43,6 +43,7 @@ from bifrost.libbifrost import _bf, _check
 import device
 from DataType import DataType
 from Space import Space
+import sys
 
 # TODO: The stuff here makes array.py redundant (and outdated)
 
@@ -91,6 +92,16 @@ class ndarray(np.ndarray):
 			    strides is not None or
 			    native is not None):
 				raise ValueError('Invalid combination of arguments when base is specified')
+			if 'pycuda' in sys.modules:
+				from pycuda.gpuarray import GPUArray as pycuda_GPUArray
+				if isinstance(base, pycuda_GPUArray):
+					return ndarray.__new__(cls,
+					                       space='cuda',
+					                       buffer=int(base.gpudata),
+					                       shape=base.shape,
+					                       dtype=base.dtype,
+					                       strides=base.strides,
+					                       native=np.dtype(base.dtype).isnative)
 			if dtype is not None:
 				dtype = DataType(dtype)
 			if space is None and dtype is None:
@@ -168,9 +179,10 @@ class ndarray(np.ndarray):
 				ownbuffer = raw_malloc(nbyte, space)
 				buffer = ownbuffer
 			else:
-				#space = _get(_bf.GetSpace(buffer))
-				# TODO: raw_get_space should probably return string, and needs a better name
-				space = str(Space(raw_get_space(buffer)))
+				if space is None:
+					#space = _get(_bf.GetSpace(buffer))
+					# TODO: raw_get_space should probably return string, and needs a better name
+					space = str(Space(raw_get_space(buffer)))
 			# TODO: Should move np.dtype() into as_numpy_dtype?
 			dtype_np = np.dtype(dtype.as_numpy_dtype())
 			if not native:
@@ -280,3 +292,9 @@ class ndarray(np.ndarray):
 	#	# TODO: Need to implement type conversion
 	#	#val = asarray(val, dtype=self.bf.dtype, space=self.bf.space)
 	#	copy(self[key], val)
+	def as_GPUArray(self, *args, **kwargs):
+		from pycuda.gpuarray import GPUArray as pycuda_GPUArray
+		g  = pycuda_GPUArray(shape=self.shape, dtype=self.dtype, *args, **kwargs)
+		ga = asarray(g)
+		copy(ga, self)
+		return g
