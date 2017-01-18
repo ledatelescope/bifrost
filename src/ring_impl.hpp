@@ -180,6 +180,7 @@ public:
 	
 	void begin_writing();
 	void end_writing();
+	inline bool writing_ended() { return _writing_ended; }
 	
 	BFsequence_sptr begin_sequence(const char* name,
 	                               BFoffset    time_tag,

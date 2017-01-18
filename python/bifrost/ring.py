@@ -68,8 +68,12 @@ class Ring(object):
 		_check( _bf.RingBeginWriting(self.obj) );
 	def end_writing(self):
 		_check( _bf.RingEndWriting(self.obj) );
+	def writing_ended(self):
+		return _get( _bf.RingWritingEnded(self.obj) )
 	def open_sequence(self, name, guarantee=True):
 		return ReadSequence(self, name=name, guarantee=guarantee)
+	def open_sequence_at(self, time_tag, guarantee=True):
+		return ReadSequence(self, which='at', time_tag=time_tag, guarantee=guarantee)
 	def open_latest_sequence(self, guarantee=True):
 		return ReadSequence(self, which='latest', guarantee=guarantee)
 	def open_earliest_sequence(self, guarantee=True):
@@ -192,7 +196,8 @@ class WriteSequence(SequenceBase):
 		return WriteSpan(self.ring, size)
 
 class ReadSequence(SequenceBase):
-	def __init__(self, ring, which='specific', name="", other_obj=None, guarantee=True):
+	def __init__(self, ring, which='specific', name="", time_tag=None,
+	             other_obj=None, guarantee=True):
 		SequenceBase.__init__(self, ring)
 		self._ring = ring
 		if which == 'specific':
@@ -204,6 +209,10 @@ class ReadSequence(SequenceBase):
 		elif which == 'earliest':
 			self.obj = _get(_bf.RingSequenceOpenEarliest(ring=ring.obj,
 			                                             guarantee=guarantee), retarg=0)
+		elif which == 'at':
+			self.obj = _get(_bf.RingSequenceOpenAt(ring=ring.obj,
+			                                       time_tag=time_tag,
+			                                       guarantee=guarantee), retarg=0)
 		#elif which == 'next':
 		#	self._check( self.lib.bfRingSequenceOpenNext(pointer(self.obj), other_obj) )
 		else:
