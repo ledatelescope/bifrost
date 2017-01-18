@@ -46,7 +46,7 @@ class UDPCapture(object):
 		                                     sequence_callback=sequence_callback,
 		                                     core=core), retarg=0)
 	def __del__(self):
-		if bool(self.obj):
+		if hasattr(self, 'obj') and bool(self.obj):
 			_bf.UdpCaptureDestroy(self.obj)
 	def __enter__(self):
 		return self
