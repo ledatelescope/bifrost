@@ -87,6 +87,10 @@ Build Docker image:
 
     $ make docker
 
+For CPU-only builds:
+
+    $ make docker-cpu
+
 Launch container:
 
     $ nvidia-docker run --rm -it ledatelescope/bifrost

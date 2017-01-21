@@ -28,9 +28,17 @@ doc: $(INC_DIR)/bifrost/*.h Doxyfile
 	$(DOXYGEN) Doxyfile
 .PHONY: doc
 
+
+#GPU Docker build
 IMAGE_NAME ?= ledatelescope/bifrost
 docker:
-	docker build -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -t $(IMAGE_NAME) .
+	docker build -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile.gpu -t $(IMAGE_NAME) .
+.PHONY: docker
+
+#CPU-only Docker build
+IMAGE_NAME ?= ledatelescope/bifrost
+docker-cpu:
+	docker build -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile.cpu -t $(IMAGE_NAME) .
 .PHONY: docker
 
 # TODO: Consider adding a mode 'develop=1' that makes symlinks instead of copying
