@@ -228,7 +228,23 @@ class SinkBlock(object):
 class MultiTransformBlock(object):
     """Defines functions and attributes for a block with multi input/output"""
     def __init__(self):
-        """Set up dictionaries for holding ring settings"""
+        """
+        Set up dictionaries for holding ring settings
+        
+        self.rings Dictionary which holds the ring objects. Keys
+            are the ring_names defined in class.
+        self.header Dictionary which holds dictionary headers
+            for each ring.
+        self.gulp_size How many bytes to open on each read/write
+            of input or output rings.
+        self.trigger_sequence A trigger boolean which causes all
+            output rings to start a new sequence at the next
+            iteration of write(). The header and gulp_size settings
+            at this time will be used to set the sequence. This
+            trigger is to be called within the read/write loop
+            of main(). The next loop iteration will return
+            outspans which were allocated on new sequences.
+        """
         super(MultiTransformBlock, self).__init__()
         self.rings = {}
         self.header = {}
@@ -304,7 +320,12 @@ class MultiTransformBlock(object):
                     nringlet=1) \
                         for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
 
+                    # This variable, as documented in __init__, acts as a trigger
+                    # to cause a new sequence to generated. Set it to be True
+                    # in the read/write loop, and the next outspans will be allocated
+                    # on a new sequence.
                     self.trigger_sequence = False
+
                     #TODO: Eventually this could be used on each ring individually.
                     while not self.trigger_sequence:
 
