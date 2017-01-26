@@ -39,11 +39,12 @@ __maintainer__ = "Ben Barsdell"
 __email__      = "benbarsdell@gmail.com"
 __status__     = "Development"
 
+# TODO: Decide how to organise the namespace
 import core, memory, affinity, ring, block, address, udp_socket
 import pipeline
 import device
+from ndarray import ndarray, asarray, empty_like, zeros_like
 #import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
-from GPUArray import GPUArray
-from ndarray import ndarray, asarray
-from unpack import unpack
-from quantize import quantize
+#from transpose import transpose
+#from unpack import unpack
+#from quantize import quantize

@@ -27,12 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from libbifrost import _bf, _check, _get
-from array import _array2bifrost
-
 from ndarray import asarray
-
-import ctypes
-import numpy as np
 
 def unpack(src, dst, align_msb=False):
 	src_bf = asarray(src).as_BFarray()

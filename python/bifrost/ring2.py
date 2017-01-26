@@ -30,8 +30,8 @@
 #         Also consider merging some of the logic into the backend
 
 from libbifrost import _bf, _check, _get, _string2space, _space2string
-from dtype import split_name_nbit, string2numpy
-from GPUArray import GPUArray
+from DataType import DataType
+from ndarray import ndarray
 
 import ctypes
 import numpy as np
@@ -142,7 +142,7 @@ class SequenceBase(object):
 		nringlet       = reduce(lambda x,y:x*y, ringlet_shape, 1)
 		frame_nelement = reduce(lambda x,y:x*y, frame_shape,   1)
 		dtype = header['_tensor']['dtype']
-		_, nbit = split_name_nbit(dtype)
+		nbit = DataType(dtype).itemsize_bits
 		assert(nbit % 8 == 0)
 		frame_nbyte = frame_nelement * nbit // 8
 		self._tensor = {}
@@ -187,6 +187,7 @@ class WriteSequence(SequenceBase):
 		                  buf_nframe*tensor['frame_nbyte'],
 		                 tensor['nringlet'])
 		offset_from_head = 0
+		# TODO: How to allow time_tag to be optional? Probably need to plumb support through to backend.
 		self.obj = _get(_bf.RingSequenceBegin(ring=ring.obj,
 		                                      name=header['name'],
 		                                      time_tag=header['time_tag'],
@@ -343,51 +344,13 @@ class SpanBase(object):
 		data_ptr = self._data_ptr
 		
 		space = self.ring.space
-		if space == 'cuda':
-			data_array = GPUArray(shape=self.shape,
-			                      strides=self.strides,
-			                      buffer=data_ptr,
-			                      dtype=string2numpy(self.dtype))
-		else:
-			nringlet     = self._nringlet
-			stride_bytes = self._stride_bytes
-			BufferType = ctypes.c_byte*(nringlet*stride_bytes)
-			data_buffer_ptr = ctypes.cast(data_ptr, ctypes.POINTER(BufferType))
-			data_buffer     = data_buffer_ptr.contents
-			data_array = np.ndarray(shape=self.shape,
-			                        strides=self.strides,
-			                        buffer=data_buffer,
-			                        dtype=string2numpy(self.dtype))
-		return data_array
-	
-	def data_view(self, dtype=np.uint8, shape=-1):
-		itemsize = dtype().itemsize
-		assert( self.size   % itemsize == 0 )
-		assert( self.stride % itemsize == 0 )
-		data_ptr = self._data_ptr
-		span_size  = self.size
-		stride     = self.stride
-		nringlet   = self.nringlet
-		# TODO: We should really map the actual ring memory space and index
-		#         it with offset rather than mapping from the current pointer.
-		BufferType = ctypes.c_byte*(nringlet*stride)
-		data_buffer_ptr = ctypes.cast(data_ptr, ctypes.POINTER(BufferType))
-		data_buffer     = data_buffer_ptr.contents
-		_shape   = (nringlet, span_size//itemsize)
-		strides = (self.stride, itemsize) if nringlet > 1 else None
-		space   = self.ring.space
-		if space != 'cuda':
-			data_array = np.ndarray(shape=_shape, strides=strides,
-			                        buffer=data_buffer, dtype=dtype)
-		else:
-			data_array = GPUArray(shape=_shape, strides=strides,
-			                      buffer=data_ptr, dtype=dtype)
-			data_array.flags['SPACE'] = space
-		if not self.writeable:
-			data_array.flags['WRITEABLE'] = False
-		if shape != -1:
-			# TODO: Check that this still wraps the same memory
-			data_array = data_array.reshape(shape)
+		
+		data_array = ndarray(space=space,
+		                     shape=self.shape,
+		                     strides=self.strides,
+		                     buffer=data_ptr,
+		                     dtype=self.dtype)
+		
 		return data_array
 
 class WriteSpan(SpanBase):

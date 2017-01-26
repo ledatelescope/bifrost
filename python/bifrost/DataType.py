@@ -61,41 +61,44 @@ class DataType(object):
 			for i,char in enumerate(t):
 				if char.isdigit():
 					break
-			self.kind =     t[:i]
-			self.nbit = int(t[i:])
+			self._kind =     t[:i]
+			self._nbit = int(t[i:])
 		elif isinstance(t, _bf.BFdtype): # Note: This is actually just a c_int
 			t = int(t)
-			self.nbit = t & BF_DTYPE_NBIT_BITS
+			self._nbit = t & BF_DTYPE_NBIT_BITS
 			kindmap = {_bf.BF_DTYPE_INT_TYPE:   'i',
 			           _bf.BF_DTYPE_UINT_TYPE:  'u',
 			           _bf.BF_DTYPE_FLOAT_TYPE: 'f'}
 			is_complex = bool(t & _bf.BF_DTYPE_COMPLEX_BIT)
-			self.kind = kindmap[t & _bf.BF_DTYPE_TYPE_BITS]
+			self._kind = kindmap[t & _bf.BF_DTYPE_TYPE_BITS]
 			if is_complex:
-				self.kind = 'c' + self.kind
+				self._kind = 'c' + self._kind
 		elif isinstance(t, DataType):
-			self.nbit = t.nbit
-			self.kind = t.kind
+			self._nbit = t._nbit
+			self._kind = t._kind
 		else:
 			t = np.dtype(t) # Raises TypeError if t is invalid
-			self.nbit = t.itemsize*8
-			if t.kind not in ['i', 'u', 'f', 'c', 'V']:
+			self._nbit = t.itemsize*8
+			if t.kind not in ['i', 'u', 'f', 'c', 'V', 'b']:
 				raise TypeError('Unsupported data type: %s' % str(t))
-			self.kind = t.kind
+			self._kind = t.kind
 			if t.kind == 'c':
-				self.nbit /= 2   # Bifrost uses convention of nbit per real component
-				self.kind = 'cf' # Numpy only supports floating-point complex types
+				self._nbit /= 2   # Bifrost uses convention of nbit per real component
+				self._kind = 'cf' # Numpy only supports floating-point complex types
 			elif t.kind == 'V': # WAR to support custom integer complex types
-				self.nbit /= 2
+				self._nbit /= 2
 				if t in [ci4, ci8, ci16, ci32, ci64]:
-					self.kind = 'ci'
+					self._kind = 'ci'
 				elif t in [cf16]:
-					self.kind = 'cf'
+					self._kind = 'cf'
 				else:
 					raise TypeError('Unsupported data type: %s' % str(t))
+			elif t.kind == 'b':
+				# Note: Represents booleans as uint8 inside Bifrost
+				self._kind = 'u'
 	def __eq__(self, other):
-		return (self.kind == other.kind and
-		        self.nbit == other.nbit)
+		return (self._kind == other._kind and
+		        self._nbit == other._nbit)
 	def __ne__(self, other):
 		return not (self == other)
 	def as_BFdtype(self):
@@ -117,7 +120,7 @@ class DataType(object):
 			'cf': {16: _bf.BF_DTYPE_CF16,  32: _bf.BF_DTYPE_CF32,
 			       64: _bf.BF_DTYPE_CF64, 128: _bf.BF_DTYPE_CF128}
 		}
-		return typemap[self.kind][self.nbit]
+		return typemap[self._kind][self._nbit]
 	def as_numpy_dtype(self):
 		typemap = {
 			'i':  {  8: np.int8,  16: np.int16,
@@ -136,15 +139,15 @@ class DataType(object):
 			'cf': {16: cf16,           32: np.complex64,
 			       64: np.complex128, 128: np.complex256}
 		}
-		return np.dtype(typemap[self.kind][self.nbit])
+		return np.dtype(typemap[self._kind][self._nbit])
 	def __str__(self):
-		return '%s%i' % (self.kind, self.nbit)
+		return '%s%i' % (self._kind, self._nbit)
 	@property
 	def is_complex(self):
-		return self.kind[0] == 'c'
+		return self._kind[0] == 'c'
 	@property
 	def itemsize_bits(self):
-		return self.nbit * (1 + self.is_complex)
+		return self._nbit * (1 + self.is_complex)
 	@property
 	def itemsize(self):
 		item_nbit = self.itemsize_bits

@@ -28,6 +28,7 @@
 
 from pipeline import TransformBlock
 import bifrost as bf
+import bifrost.transpose
 
 from copy import deepcopy
 
@@ -49,7 +50,7 @@ class TransposeBlock(TransformBlock):
 	def on_data(self, ispans, ospans):
 		# TODO: bf.memory.transpose should support system space too
 		if bf.memory.space_accessible(self.space, ['cuda']):
-			bf.memory.transpose(ospans[0].data, ispans[0].data, self.axes)
+			bf.transpose.transpose(ospans[0].data, ispans[0].data, self.axes)
 		else:
 			ospans[0].data[...] = np.transpose(ispans[0].data, self.axes)
 

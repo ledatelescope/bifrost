@@ -27,7 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from libbifrost import _bf, _check, _get, _string2space
-from bifrost.array import _array2bifrost
+from ndarray import asarray
 
 import ctypes
 import numpy as np
@@ -36,7 +36,7 @@ class Fdmt(object):
 	def __init__(self):
 		self.obj = _get(_bf.FdmtCreate(), retarg=0)
 	def __del__(self):
-		if bool(self.obj):
+		if hasattr(self, 'obj') and bool(self.obj):
 			_bf.FdmtDestroy(self.obj)
 	def init(self, nchan, max_delay, f0, df, exponent=-2.0, space='cuda'):
 		space = _string2space(space)
@@ -45,15 +45,23 @@ class Fdmt(object):
 	def execute(self, idata, odata, negative_delays=False):
 		# TODO: Work out how to integrate CUDA stream
 		psize = None
-		_check( _bf.FdmtExecute(self.obj, _array2bifrost(idata), _array2bifrost(odata),
+		_check( _bf.FdmtExecute(self.obj,
+		                        asarray(idata).as_BFarray(),
+		                        asarray(odata).as_BFarray(),
 		                        negative_delays,
 		                        0, psize) )
+		return odata
 	def get_workspace_size(self, idata, odata):
-		return _get( _bf.FdmtExecute(self.obj, _array2bifrost(idata), _array2bifrost(odata),
+		return _get( _bf.FdmtExecute(self.obj,
+		                             asarray(idata).as_BFarray(),
+		                             asarray(odata).as_BFarray(),
 		                        False, 0) )
 	def execute_workspace(self, idata, odata, workspace_ptr, workspace_size,
 	                      negative_delays=False):
 		size = _bf.BFsize(workspace_size)
-		_check( _bf.FdmtExecute(self.obj, _array2bifrost(idata), _array2bifrost(odata),
+		_check( _bf.FdmtExecute(self.obj,
+		                        asarray(idata).as_BFarray(),
+		                        asarray(odata).as_BFarray(),
 		                        negative_delays,
 		                        workspace_ptr, ctypes.pointer(size)) )
+		return odata

@@ -41,10 +41,6 @@ def space_accessible(space, from_spaces):
 	else:
 		return False
 
-def _get_space(arr):
-	try:             return arr.flags['SPACE']
-	except KeyError: return 'system' # TODO: Dangerous to assume?
-
 def raw_malloc(size, space):
 	ptr = _get(_bf.Malloc(size=size, space=_string2space(space)), retarg=0)
 	return ptr
@@ -56,6 +52,12 @@ def raw_get_space(ptr):
 def alignment():
 	ret, _ = _bf.GetAlignment()
 	return ret
+
+# **TODO: Deprecate below here!
+
+def _get_space(arr):
+	try:             return arr.flags['SPACE']
+	except KeyError: return 'system' # TODO: Dangerous to assume?
 
 # Note: These functions operate on numpy or GPU arrays
 def memcpy(dst, src):
@@ -86,25 +88,4 @@ def memset2D(dst, val=0):
 	space = _string2space(_get_space(dst))
 	_check(_bf.Memset2D(dst.ctypes.data, dst.strides[0], space,
 	                    val, dst.shape[1], dst.shape[0]))
-def transpose(dst, src, axes=None):
-	dst_space = _string2space(_get_space(dst))
-	src_space = _string2space(_get_space(src))
-	assert( dst_space    == src_space )
-	assert( dst.itemsize == src.itemsize )
-	assert( dst.ndim     == src.ndim )
-	if axes is None:
-		# Default to reversing the dims
-		axes = [src.ndim-1-d for d in xrange(src.ndim)]
-	assert( len(axes) == src.ndim )
-	arraytype = _bf.BFsize*src.ndim
-	dst_strides = arraytype(*dst.strides)
-	src_strides = arraytype(*src.strides)
-	shape_array = arraytype(*src.shape)
-	axes_array  = arraytype(*axes)
-	_check(_bf.Transpose(dst.ctypes.data, dst_strides,
-	                     src.ctypes.data, src_strides,
-	                     src_space,
-	                     src.itemsize,
-	                     src.ndim,
-	                     shape_array,
-	                     axes_array))
+

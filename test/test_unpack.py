@@ -29,6 +29,7 @@
 import unittest
 import numpy as np
 import bifrost as bf
+import bifrost.unpack
 
 class UnpackTest(unittest.TestCase):
 	def run_unpack_to_ci8_test(self, iarray):
@@ -37,7 +38,7 @@ class UnpackTest(unittest.TestCase):
 		                           [(4, 5), (6, 7)],
 		                           [(-8, -7), (-6, -5)]],
 		                          dtype='ci8')
-		bf.unpack(iarray, oarray)
+		bf.unpack.unpack(iarray, oarray)
 		np.testing.assert_equal(oarray, oarray_known)
 	def test_ci4_to_ci8(self):
 		iarray = bf.ndarray([[(0x10,),(0x32,)],

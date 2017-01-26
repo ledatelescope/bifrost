@@ -27,7 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from pipeline import TransformBlock
-import bifrost.array
+import ndarray
 
 from copy import deepcopy
 
@@ -39,7 +39,7 @@ class CopyBlock(TransformBlock):
 		ohdr = deepcopy(iseqs[0].header)
 		return [ohdr], [None]
 	def on_data(self, ispans, ospans):
-		bifrost.array.copy(ospans[0].data, ispans[0].data)
+		ndarray.copy(ospans[0].data, ispans[0].data)
 
 def copy(iring, space, *args, **kwargs):
 	return CopyBlock(iring, space, *args, **kwargs).orings[0]

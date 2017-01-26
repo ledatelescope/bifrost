@@ -38,7 +38,7 @@ TODO: Some calls result in segfault with space=cuda (e.g., __getitem__ returning
 
 import ctypes
 import numpy as np
-from memory import raw_malloc, raw_free, raw_get_space, memset, memcpy, memcpy2D, space_accessible
+from memory import raw_malloc, raw_free, raw_get_space, space_accessible
 from bifrost.libbifrost import _bf, _check
 import device
 from DataType import DataType
@@ -53,6 +53,13 @@ def asarray(arr, space=None):
 	else:
 		return ndarray(arr, space=space)
 
+def empty_like(arr, space=None):
+	if space is None:
+		space = arr.bf.space
+	arr = asarray(arr)
+	return ndarray(shape=arr.shape, dtype=arr.bf.dtype, space=space,
+	               native=arr.bf.native, conjugated=arr.bf.conjugated)
+
 def copy(dst, src):
 	dst_bf = asarray(dst)
 	src_bf = asarray(src)
@@ -60,11 +67,20 @@ def copy(dst, src):
 	    space_accessible(src_bf.bf.space, ['system'])):
 		np.copyto(dst_bf, src_bf)
 	else:
-		dst_bf = dst.as_BFarray()
-		src_bf = src.as_BFarray()
-		_check(_bf.ArrayCopy(dst_bf, src_bf))
-		# TODO: Decide where/when these need to be called
-		device.stream_synchronize()
+		_check(_bf.ArrayCopy(dst_bf.as_BFarray(), src_bf.as_BFarray()))
+		if dst_bf.bf.space != src_bf.bf.space:
+			# TODO: Decide where/when these need to be called
+			device.stream_synchronize()
+	return dst
+
+def zeros_like(arr, space=None):
+	ret = empty_like(arr, space)
+	memset(ret, 0)
+	return ret
+
+def memset(dst, value):
+	dst_bf = asarray(dst)
+	_check(_bf.ArrayMemset(dst_bf.as_BFarray(), value))
 	return dst
 
 class BFArrayInfo(object):
@@ -120,6 +136,8 @@ class ndarray(np.ndarray):
 						base = np.array(base, dtype=DataType(dtype).as_numpy_dtype())
 					else:
 						base = np.array(base)
+				if not isinstance(base, ndarray) and dtype is not None:
+					base = base.astype(dtype.as_numpy_dtype())
 				base = ndarray(base) # View base as bf.ndarray
 				if dtype is not None and base.bf.dtype != dtype:
 					raise TypeError('Unable to convert type %s to %s during array construction' % (base.bf.dtype, dtype))
@@ -215,7 +233,7 @@ class ndarray(np.ndarray):
 			conjugated = False
 			self.bf = BFArrayInfo(space, dtype, native, conjugated)
 	def __del__(self):
-		if self.bf.ownbuffer:
+		if hasattr(self, 'bf') and self.bf.ownbuffer:
 			raw_free(self.bf.ownbuffer, self.bf.space)
 	def as_BFarray(self):
 		a = _bf.BFarray()

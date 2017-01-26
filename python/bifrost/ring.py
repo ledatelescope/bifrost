@@ -27,7 +27,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from libbifrost import _bf, _check, _get, _string2space, _space2string
-from GPUArray import GPUArray
+#from GPUArray import GPUArray
+from ndarray import ndarray
 
 import ctypes
 import numpy as np
@@ -295,6 +296,7 @@ class SpanBase(object):
 		strides = (self.stride, itemsize) if nringlet > 1 else None
 		#space   = self.sequence.ring.space
 		space   = self.ring.space
+		"""
 		if space != 'cuda':
 			data_array = np.ndarray(shape=_shape, strides=strides,
 			                        buffer=data_buffer, dtype=dtype)
@@ -302,6 +304,12 @@ class SpanBase(object):
 			data_array = GPUArray(shape=_shape, strides=strides,
 			                      buffer=data_ptr, dtype=dtype)
 			data_array.flags['SPACE'] = space
+		"""
+		
+		data_array = ndarray(shape=_shape, strides=strides,
+		                     buffer=data_ptr, dtype=dtype,
+		                     space=space)
+		
 		# Note: This is a non-standard attribute
 		#data_array.flags['SPACE'] = space
 		if not self.writeable:

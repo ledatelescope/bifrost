@@ -60,3 +60,9 @@ class NDArrayTest(unittest.TestCase):
 		repr_k = repr(self.known_array)
 		repr_k = repr_k[repr_k.find('('):]
 		self.assertEqual(repr_f, repr_k)
+	def test_zeros_like(self):
+		g = bf.ndarray(self.known_vals, dtype='f32', space='cuda')
+		g = bf.zeros_like(g)
+		g = g.copy('system')
+		known = np.zeros_like(self.known_array)
+		np.testing.assert_equal(g, known)
