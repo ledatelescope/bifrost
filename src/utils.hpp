@@ -74,7 +74,7 @@ bool is_pow2(T v) {
 	return v && !(v & (v - 1));
 }
 template<typename T>
-T log2(T v) {
+T ilog2(T v) {
 	T r;
 	T shift;
 	r =     (v > 0xFFFFFFFF) << 5; v >>= r;
