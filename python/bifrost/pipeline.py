@@ -251,10 +251,15 @@ class SourceBlock(Block):
 		self.sourcenames = sourcenames
 		default_space = 'cuda_host' if bf.core.cuda_enabled() else 'system'
 		self.orings = [self.create_ring(space=default_space)]
+		self._seq_count = 0
 	def main(self, orings):
 		for sourcename in self.sourcenames:
 			with self.create_reader(sourcename) as ireader:
 				oheaders = self.on_sequence(ireader, sourcename)
+				for ohdr in oheaders:
+					if 'time_tag' not in ohdr:
+						ohdr['time_tag'] = self._seq_count
+				self._seq_count += 1
 				with ExitStack() as oseq_stack:
 					oseqs = self.begin_sequences(oseq_stack, orings, oheaders, igulp_nframes=[])
 					while True:
@@ -299,10 +304,15 @@ class TransformBlock(Block):
 		super(TransformBlock, self).__init__(irings, *args, **kwargs)
 		self.guarantee = guarantee
 		self.orings = [self.create_ring(space=iring.space) for iring in irings]
+		self._seq_count = 0
 	def main(self, orings):
 		for iseqs in izip(*[iring.read(guarantee=self.guarantee)
 		                    for iring in self.irings]):
 			oheaders, islices = self.on_sequence(iseqs)
+			for ohdr in oheaders:
+				if 'time_tag' not in ohdr:
+					ohdr['time_tag'] = self._seq_count
+			self._seq_count += 1
 			
 			# Allow passing None to mean slice(gulp_nframe)
 			if islices is None:
