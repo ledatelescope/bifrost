@@ -31,21 +31,15 @@
 #define BF_TRANSPOSE_H_INCLUDE_GUARD_
 
 #include <bifrost/common.h>
-#include <bifrost/memory.h>
+#include <bifrost/array.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-BFstatus bfTranspose(void*         dst,
-                     BFsize const* dst_strides,
-                     void   const* src,
-                     BFsize const* src_strides,
-                     BFspace       space,
-                     BFsize        element_size,
-                     BFsize        ndim,
-                     BFsize const* src_shape,
-                     BFsize const* axes);
+BFstatus bfTranspose(BFarray const* in,
+                     BFarray const* out,
+                     int     const* axes);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -50,9 +50,14 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 	BF_ASSERT(ret == cudaSuccess || ret == cudaErrorInvalidValue,
 	          BF_STATUS_DEVICE_ERROR);
 	if( ret == cudaErrorInvalidValue ) {
+		// TODO: Is there a better way to find out how a pointer was allocated?
+		//         Alternatively, is there a way to prevent this from showing
+		//           up in cuda-memcheck?
 		// Note: cudaPointerGetAttributes only works for memory allocated with
 		//         CUDA API functions, so if it fails we just assume sysmem.
 		*space = BF_SPACE_SYSTEM;
+		// WAR to avoid the ignored failure showing up later
+		cudaGetLastError();
 	} else if( ptr_attrs.isManaged ) {
 		*space = BF_SPACE_CUDA_MANAGED;
 	} else {

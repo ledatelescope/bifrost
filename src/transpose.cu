@@ -42,58 +42,31 @@
 #include <algorithm>
 #include <limits>
 
-#include <cassert> // TODO: TESTING ONLY
-
 template<int N> struct aligned_type     { typedef char  type; };
 template<>      struct aligned_type< 2> { typedef short type; };
 template<>      struct aligned_type< 4> { typedef int   type; };
 template<>      struct aligned_type< 8> { typedef int2  type; };
 template<>      struct aligned_type<16> { typedef int4  type; };
 
-namespace typed {
-template<typename T>
-inline T gcd(T u, T v) {
-	return (v == 0) ? u : gcd(v, u % v);
-}
-namespace aligned_in {
-namespace aligned_in_out {
-
-template<typename T>
-T div_up(T n, T d) {
-	return (n-1)/d+1;
-}
-template<typename T>
-bool is_pow2(T v) {
-	return v && !(v & (v - 1));
-}
-template<typename T>
-T log2(T v) {
-	T r;
-	T shift;
-	r =     (v > 0xFFFFFFFF) << 5; v >>= r;
-	shift = (v > 0xFFFF    ) << 4; v >>= shift; r |= shift;
-	shift = (v > 0xFF      ) << 3; v >>= shift; r |= shift;
-	shift = (v > 0xF       ) << 2; v >>= shift; r |= shift;
-	shift = (v > 0x3       ) << 1; v >>= shift; r |= shift;
-	                                            r |= (v >> 1);
-	return r;
-}
-
-//inline int find_odim(BFsize const* output_order, int ndim, int dim) {
+//inline int find_odim(int const* output_order, int ndim, int dim) {
 //	return std::find(output_order, output_order+ndim, dim) - output_order;
 //}
 #define FIND_ODIM_(dim)	\
 	(int(std::find(output_order, output_order+ndim, (dim)) - output_order))
 
+namespace typed {
+namespace aligned_in {
+namespace aligned_in_out {
+
 template<int ALIGNMENT_IN, int ALIGNMENT_OUT,
          typename T>
-BFstatus transpose(BFsize        ndim,
-                   BFsize const* sizes,          // elements
-                   BFsize const* output_order,
+BFstatus transpose(int           ndim,
+                   long   const* sizes,          // elements
+                   int    const* output_order,
                    T      const* in,
-                   BFsize const* in_strides,  // bytes
+                   long   const* in_strides,  // bytes
                    T           * out,
-                   BFsize const* out_strides, // bytes
+                   long   const* out_strides, // bytes
                    cudaStream_t  stream) {
 	enum { ELEMENT_SIZE = sizeof(T) };
 	// TODO: This is currently all tuned for a GTX Titan (sm_35)
@@ -123,16 +96,16 @@ BFstatus transpose(BFsize        ndim,
 		//return -1;
 		return BF_STATUS_UNSUPPORTED;
 	}
-	BFsize width       = sizes[ifastdim];
-	BFsize height      = sizes[islowdim];//ofastdim];
-	BFsize  in_stride  =  in_strides[islowdim];
-	BFsize out_stride  = out_strides[oslowdim];//oslowdim)]; // TODO
+	long width       = sizes[ifastdim];
+	long height      = sizes[islowdim];//ofastdim];
+	long  in_stride  =  in_strides[islowdim];
+	long out_stride  = out_strides[oslowdim];//oslowdim)]; // TODO
 	
-	BFsize ndimz = std::max(ndim-2, BFsize(0));
-	int    shapez[MAX_NDIM];
-	int    istridez[MAX_NDIM];
-	int    ostridez[MAX_NDIM];
-	BFsize sizez = 1;
+	int  ndimz = std::max(ndim-2, int(0));
+	int  shapez[MAX_NDIM];
+	int  istridez[MAX_NDIM];
+	int  ostridez[MAX_NDIM];
+	long sizez = 1;
 	int dd = 0;
 	for( int d=0; d<(int)ndim-1; ++d ) {
 		if( d != islowdim ) {
@@ -155,18 +128,18 @@ BFstatus transpose(BFsize        ndim,
 	block.x = TILE_DIM;
 	block.y = BLOCK_ROWS;
 	block.z = 1;
-	grid.x = std::min(div_up(width,  (BFsize)TILE_DIM), (BFsize)65535);
-	grid.y = std::min(div_up(height, (BFsize)TILE_DIM), (BFsize)65535);
+	grid.x = std::min(div_up(width,  (long)TILE_DIM), (long)65535);
+	grid.y = std::min(div_up(height, (long)TILE_DIM), (long)65535);
 	// Note: inner_idepth*outer_idepth == inner_odepth*outer_odepth
-	//grid.z = std::min(inner_idepth*outer_idepth,        (BFsize)65535);
-	grid.z = std::min(sizez,        (BFsize)65535);
+	//grid.z = std::min(inner_idepth*outer_idepth,        (long)65535);
+	grid.z = std::min(sizez,        (long)65535);
 	//std::printf("ALIGN IN:  %i %lu\n", ALIGNMENT_IN, sizeof(typename aligned_type<ALIGNMENT_IN>::type));
 	//std::printf("ALIGN ouT: %i %lu\n", ALIGNMENT_OUT, sizeof(typename aligned_type<ALIGNMENT_OUT>::type));
 	
 	bool can_use_int = (sizes[0]*in_strides[0] <
-	                    (BFsize)std::numeric_limits<int>::max() &&
+	                    (long)std::numeric_limits<int>::max() &&
 	                    sizes[0]*out_strides[0] <
-	                    (BFsize)std::numeric_limits<int>::max());
+	                    (long)std::numeric_limits<int>::max());
 #if BF_CUDA_ENABLED
 	if( ELEMENT_SIZE ==  6 ||
 	    ELEMENT_SIZE ==  8 ||
@@ -212,7 +185,7 @@ BFstatus transpose(BFsize        ndim,
 			<TILE_DIM,BLOCK_ROWS,CONDITIONAL_WRITE,
 			 typename aligned_type<ALIGNMENT_IN>::type,
 			 typename aligned_type<ALIGNMENT_OUT>::type,
-			 T, BFsize>
+			 T, long>
 			<<<grid,block,0,stream>>>(width, height,
 			                          in, in_stride,
 			                          out, out_stride,
@@ -267,17 +240,17 @@ BFstatus transpose(BFsize        ndim,
 }
 } // namespace aligned_in_out
 template<int ALIGNMENT_IN, typename T>
-BFstatus transpose(BFsize        ndim,
-                   BFsize const* sizes,       // elements
-                   BFsize const* output_order,
+BFstatus transpose(int           ndim,
+                   long   const* sizes,       // elements
+                   int    const* output_order,
                    T      const* in,
-                   BFsize const* in_strides,  // bytes
+                   long   const* in_strides,  // bytes
                    T           * out,
-                   BFsize const* out_strides, // bytes
+                   long   const* out_strides, // bytes
                    cudaStream_t  stream) {
-	BFsize out_alignment = (BFsize)out;
-	for( int d=0; d<(int)ndim; ++d ) {
-		out_alignment = gcd(out_alignment, out_strides[d]);
+	unsigned long out_alignment = (unsigned long)out;
+	for( int d=0; d<ndim; ++d ) {
+		out_alignment = gcd(out_alignment, (unsigned long)out_strides[d]);
 	}
 	switch( out_alignment ) {
 	case sizeof(T): return aligned_in_out::transpose<ALIGNMENT_IN,sizeof(T)>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
@@ -294,17 +267,17 @@ BFstatus transpose(BFsize        ndim,
 }
 } // namespace aligned_in
 template<typename T>
-BFstatus transpose(BFsize        ndim,
-                   BFsize const* sizes,       // elements
-                   BFsize const* output_order,
-                   T      const* in,
-                   BFsize const* in_strides,  // bytes
-                   T           * out,
-                   BFsize const* out_strides, // bytes
-                   cudaStream_t  stream) {
-	BFsize in_alignment = (BFsize)in;
-	for( int d=0; d<(int)ndim; ++d ) {
-		in_alignment = gcd(in_alignment, in_strides[d]);
+BFstatus transpose(int            ndim,
+                   long    const* sizes,       // elements
+                   int     const* output_order,
+                   T       const* in,
+                   long    const* in_strides,  // bytes
+                   T            * out,
+                   long    const* out_strides, // bytes
+                   cudaStream_t   stream) {
+	unsigned long in_alignment = (unsigned long)in;
+	for( int d=0; d<ndim; ++d ) {
+		in_alignment = gcd(in_alignment, (unsigned long)in_strides[d]);
 	}
 	switch( in_alignment ) {
 	case sizeof(T): return aligned_in::transpose<sizeof(T)>(ndim,sizes,output_order,in,in_strides,out,out_strides,stream);
@@ -321,69 +294,50 @@ BFstatus transpose(BFsize        ndim,
 }
 } // namespace typed
 
-BFstatus bfTranspose(void*         dst,
-                     BFsize const* dst_strides,
-                     void   const* src,
-                     BFsize const* src_strides,
-                     BFspace       space,
-                     BFsize        element_size,
-                     BFsize        ndim,
-                     BFsize const* src_shape,
-                     BFsize const* axes) {
-	BF_ASSERT(dst && src, BF_STATUS_INVALID_POINTER);
-	BF_ASSERT(ndim >= 2, BF_STATUS_INVALID_ARGUMENT);
-	// TODO: Implement BF_SPACE_AUTO
-	BF_ASSERT(space_accessible_from(space, BF_SPACE_CUDA),
+BFstatus bfTranspose(BFarray const* in,
+                     BFarray const* out,
+                     int     const* axes) {
+	BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
+	BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
+	BF_ASSERT(axes, BF_STATUS_INVALID_POINTER);
+	BF_ASSERT(in->ndim >= 2,         BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT(out->ndim == in->ndim, BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_CUDA),
 	          BF_STATUS_UNSUPPORTED_SPACE);
-	//for( int d=0; d<ndim; ++d ) {
-	//	std::cout << dst_strides[d] << "\t"
-	//	          << src_strides[d] << "\t"
-	//	          << src_shape[d] << "\t"
-	//	          << axes[d] << std::endl;
-	//}
-	//cuda::scoped_stream stream;
-	cudaStream_t stream = g_cuda_stream;
-	BFsize istrides_actual[MAX_NDIM];
-	BFsize ostrides_actual[MAX_NDIM];
-	if( src_strides ) {
-		// TODO: Consider supporting strides on fastest dims
-		//assert( in_strides[ndim-1] == element_size );
-		BF_ASSERT(src_strides[ndim-1] == element_size,
-		          BF_STATUS_UNSUPPORTED);
-		for( int d=0; d<(int)ndim; ++d ) {
-			istrides_actual[d] = src_strides[d];
-		}
+	BF_ASSERT(in->dtype == out->dtype, BF_STATUS_INVALID_DTYPE);
+	
+	int element_size = BF_DTYPE_NBYTE(in->dtype);
+	int ndim = in->ndim;
+	
+	// Handle negative axis numbers
+	int axes_actual[BF_MAX_DIMS];
+	for( int d=0; d<ndim; ++d ) {
+		int x = axes[d];
+		axes_actual[d] = x < 0 ? ndim + x : x;
+		BF_ASSERT(out->shape[d] == in->shape[axes_actual[d]],
+		          BF_STATUS_INVALID_SHAPE);
 	}
-	else {
-		istrides_actual[ndim-1] = element_size;
-		for( int d=(int)ndim-2; d>=0; --d ) {
-			istrides_actual[d] = istrides_actual[d+1] * src_shape[d+1];
-		}
-	}
-	if( dst_strides ) {
-		//assert( dst_strides[ndim-1] == element_size );
-		BF_ASSERT(dst_strides[ndim-1] == element_size,
-		          BF_STATUS_UNSUPPORTED);
-		for( int d=0; d<(int)ndim; ++d ) {
-			ostrides_actual[d] = dst_strides[d];
-		}
-	}
-	else {
-		ostrides_actual[ndim-1] = element_size;
-		for( int d=(int)ndim-2; d>=0; --d ) {
-			ostrides_actual[d] = ostrides_actual[d+1] * src_shape[axes[d+1]];
-		}
-	}
+	
 	switch( element_size ) {
 #define DEFINE_TYPE_CASE(N)	  \
-	case N: return typed::transpose(ndim,src_shape,axes,(type_of_size<N>*)src,istrides_actual,(type_of_size<N>*)dst,ostrides_actual,stream);
-		DEFINE_TYPE_CASE( 1); DEFINE_TYPE_CASE( 2); DEFINE_TYPE_CASE( 3); DEFINE_TYPE_CASE( 4);
-		DEFINE_TYPE_CASE( 5); DEFINE_TYPE_CASE( 6); DEFINE_TYPE_CASE( 7); DEFINE_TYPE_CASE( 8);
-		DEFINE_TYPE_CASE( 9); DEFINE_TYPE_CASE(10); DEFINE_TYPE_CASE(11); DEFINE_TYPE_CASE(12);
-		DEFINE_TYPE_CASE(13); DEFINE_TYPE_CASE(14); DEFINE_TYPE_CASE(15); DEFINE_TYPE_CASE(16);
+	case N: return typed::transpose(ndim, \
+	                                in->shape, \
+	                                axes_actual, \
+	                                (type_of_size<N>*)in->data, \
+	                                in->strides, \
+	                                (type_of_size<N>*)out->data, \
+	                                out->strides, \
+	                                g_cuda_stream);
+		DEFINE_TYPE_CASE( 1); DEFINE_TYPE_CASE( 2);
+		DEFINE_TYPE_CASE( 3); DEFINE_TYPE_CASE( 4);
+		DEFINE_TYPE_CASE( 5); DEFINE_TYPE_CASE( 6);
+		DEFINE_TYPE_CASE( 7); DEFINE_TYPE_CASE( 8);
+		DEFINE_TYPE_CASE( 9); DEFINE_TYPE_CASE(10);
+		DEFINE_TYPE_CASE(11); DEFINE_TYPE_CASE(12);
+		DEFINE_TYPE_CASE(13); DEFINE_TYPE_CASE(14);
+		DEFINE_TYPE_CASE(15); DEFINE_TYPE_CASE(16);
 #undef DEFINE_TYPE_CASE
-	case 0: return BF_STATUS_SUCCESS; // Do nothing on zero-size data
-	//default: std::printf("UNSUPPORTED ELEMENT SIZE\n"); return -1;
-	default: BF_FAIL("Valid bfTranspose element_size", BF_STATUS_UNSUPPORTED);
+	default: BF_FAIL("Valid bfTranspose element size",
+	                 BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 }

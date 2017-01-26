@@ -611,6 +611,7 @@ public:
 		//bool reverse_time = (in->strides[in->ndim-1] < 0);
 		bool reverse_time = negative_delays;
 		
+		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 #define LAUNCH_FDMT_INIT_KERNEL(IterType) \
 		BF_ASSERT_EXCEPTION(/*abs*/(in->strides[in->ndim-1]) == sizeof(value_type<IterType>::type), BF_STATUS_UNSUPPORTED_STRIDE); \
 		launch_fdmt_init_kernel(ntime, _nchan, _reverse_band, reverse_time, \
@@ -720,8 +721,8 @@ BFstatus bfFdmtExecute(BFfdmt         plan,
 		// Just requesting exec_storage_size, not ready to execute yet
 		return BF_STATUS_SUCCESS;
 	}
-	BF_ASSERT( in->space == BF_SPACE_CUDA, BF_STATUS_INVALID_SPACE);
-	BF_ASSERT(out->space == BF_SPACE_CUDA, BF_STATUS_INVALID_SPACE);
+	BF_ASSERT(space_accessible_from( in->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
+	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
 	BF_TRY_RETURN(plan->execute(in, out, ntime, negative_delays));
 }
 

@@ -86,7 +86,7 @@ typedef enum BFdtype_ {
 	BF_DTYPE_CF64  =  64 | BF_DTYPE_FLOAT_TYPE | BF_DTYPE_COMPLEX_BIT,
 	BF_DTYPE_CF128 = 128 | BF_DTYPE_FLOAT_TYPE | BF_DTYPE_COMPLEX_BIT
 } BFdtype;
-
+/*
 typedef struct BFdtype_info_ {
 	int32_t nbit;
 	int32_t type;
@@ -96,22 +96,23 @@ typedef struct BFdtype_info_ {
 } BFdtype_info;
 
 // TODO: Implement this
-BFstatus bfTypeInfo(BFdtype dtype, BFdtype_info* info);/* {
+BFstatus bfTypeInfo(BFdtype dtype, BFdtype_info* info); {
 	BF_ASSERT(info, BF_STATUS_INVALID_POINTER);
 	info->nbit       = (dtype & BF_DTYPE_NBIT_BITS);
 	info->type       = (dtype & BF_DTYPE_TYPE_BITS) >> 8; // TODO: Avoid magic number
 	info->is_signed  = (dtype & BF_DTYPE_SIGNED_BIT);
 	info->is_complex = (dtype & BF_DTYPE_COMPLEX_BIT);
 	
-	}*/
+	}
+*/
 
 typedef struct BFarray_ {
 	void*    data;
 	BFspace  space;
 	BFdtype  dtype;
-	int32_t  ndim;
-	int32_t  shape[BF_MAX_DIMS];   // Elements
-	int32_t  strides[BF_MAX_DIMS]; // Bytes
+	int      ndim;
+	long     shape[BF_MAX_DIMS];   // Elements
+	long     strides[BF_MAX_DIMS]; // Bytes
 	bool     immutable;
 	//char     big_endian; // TODO: Better to be 'native_endian' (or 'byteswap') instead?
 	bool     big_endian; // TODO: Better to be 'native_endian' (or 'byteswap') instead?

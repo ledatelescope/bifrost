@@ -60,6 +60,33 @@ inline BFoffset div_round_up(BFoffset n, BFoffset d) {
 	        (n-1)/d+1);
 }
 
+template<typename T>
+inline T gcd(T u, T v) {
+	return (v == 0) ? u : gcd(v, u % v);
+}
+
+template<typename T>
+T div_up(T n, T d) {
+	return (n-1)/d+1;
+}
+template<typename T>
+bool is_pow2(T v) {
+	return v && !(v & (v - 1));
+}
+template<typename T>
+T log2(T v) {
+	T r;
+	T shift;
+	r =     (v > 0xFFFFFFFF) << 5; v >>= r;
+	shift = (v > 0xFFFF    ) << 4; v >>= shift; r |= shift;
+	shift = (v > 0xFF      ) << 3; v >>= shift; r |= shift;
+	shift = (v > 0xF       ) << 2; v >>= shift; r |= shift;
+	shift = (v > 0x3       ) << 1; v >>= shift; r |= shift;
+	                                            r |= (v >> 1);
+	return r;
+
+}
+
 inline bool is_big_endian() {
 	union {
 		uint32_t i;

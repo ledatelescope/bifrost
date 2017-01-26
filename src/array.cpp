@@ -96,10 +96,10 @@ BFstatus bfArrayCopy(const BFarray* dst,
 	}
 	
 	int ndim = dst->ndim;
-	int32_t const* shape = &dst->shape[0];
+	long const* shape = &dst->shape[0];
 	
 	if( is_contiguous(src) && is_contiguous(dst) ) {
-		BFsize size = dst->strides[0] * dst->shape[0];
+		long size = dst->strides[0] * dst->shape[0];
 		return bfMemcpy(dst->data, dst->space,
 		                src->data, src->space,
 		                size);
@@ -122,10 +122,10 @@ BFstatus bfArrayMemset(const BFarray* dst,
 	dst = &dst_squeezed;
 	
 	int ndim = dst->ndim;
-	int32_t const* shape = &dst->shape[0];
+	long const* shape = &dst->shape[0];
 	
 	if( is_contiguous(dst) ) {
-		BFsize size = dst->strides[0] * dst->shape[0];
+		long size = dst->strides[0] * dst->shape[0];
 		return bfMemset(dst->data, dst->space,
 		                value, size);
 	} else if( ndim == 2 ) {
