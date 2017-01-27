@@ -199,7 +199,6 @@ BFstatus bfFFT(
     // TODO: Set up BF dtype enum.
     // TODO: Make this function support type conversion
     // TODO: Enable multiple GPU support.
-    cufftHandle fftPlan; 
     if (input->dtype == 0)
     {
         if (input->ndim == 1)
