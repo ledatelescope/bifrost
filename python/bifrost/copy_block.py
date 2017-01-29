@@ -32,8 +32,10 @@ import ndarray
 from copy import deepcopy
 
 class CopyBlock(TransformBlock):
-	def __init__(self, iring, space, *args, **kwargs):
+	def __init__(self, iring, space=None, *args, **kwargs):
 		super(CopyBlock, self).__init__([iring], *args, **kwargs)
+		if space is None:
+			space = self.irings[0].space
 		self.orings = [self.create_ring(space=space)]
 	def on_sequence(self, iseqs):
 		ohdr = deepcopy(iseqs[0].header)
@@ -42,4 +44,4 @@ class CopyBlock(TransformBlock):
 		ndarray.copy(ospans[0].data, ispans[0].data)
 
 def copy(iring, space, *args, **kwargs):
-	return CopyBlock(iring, space, *args, **kwargs).orings[0]
+	return CopyBlock(iring, space, *args, **kwargs)

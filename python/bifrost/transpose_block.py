@@ -36,7 +36,7 @@ class TransposeBlock(TransformBlock):
 	def __init__(self, iring, axes, *args, **kwargs):
 		super(TransposeBlock, self).__init__([iring], *args, **kwargs)
 		self.axes = axes
-		self.space = iring.space
+		self.space = self.orings[0].space
 	def on_sequence(self, iseqs):
 		iseq = iseqs[0]
 		ihdr = iseq.header
@@ -69,4 +69,4 @@ class TransposeBlock(TransformBlock):
 			ospans[0].data[...] = np.transpose(ispans[0].data, self.axes)
 
 def transpose(iring, axes, *args, **kwargs):
-	return TransposeBlock(iring, axes, *args, **kwargs).orings[0]
+	return TransposeBlock(iring, axes, *args, **kwargs)

@@ -178,6 +178,12 @@ class Pipeline(BlockScope):
 thread_local.pipeline_stack.append(Pipeline())
 thread_local.blockscope_stack.append(get_default_pipeline())
 
+def get_ring(block_or_ring):
+	try:
+		return block_or_ring.orings[0]
+	except AttributeError:
+		return block_or_ring
+
 class Block(BlockScope):
 	instance_counts = defaultdict(lambda: 0)
 	def __init__(self, irings,
@@ -192,6 +198,8 @@ class Block(BlockScope):
 		self.pipeline = get_default_pipeline()
 		self.pipeline.blocks.append(self)
 		
+		# Allow Block instances to be passed in place of rings
+		irings = [get_ring(iring) for iring in irings]
 		self.irings = irings
 		valid_inp_spaces = self.define_valid_input_spaces()
 		for i, (iring, valid_spaces) in enumerate(zip(irings, valid_inp_spaces)):
@@ -241,7 +249,6 @@ class Block(BlockScope):
 		"""Return set of valid spaces (or 'any') for each input"""
 		return ['any']*len(self.irings)
 
-
 class SourceBlock(Block):
 	def __init__(self, sourcenames, gulp_nframe, *args, **kwargs):
 		super(SourceBlock, self).__init__([], *args, gulp_nframe=gulp_nframe, **kwargs)
@@ -278,6 +285,7 @@ class SourceBlock(Block):
 		return []
 	def create_reader(self, sourcename):
 		"""Return an object to use for reading source data"""
+		# TODO: Should return a dummy reader object here?
 		raise NotImplementedError
 	def on_sequence(self, reader, sourcename):
 		"""Return header for each output"""
@@ -297,10 +305,13 @@ def _span_slice(soft_slice):
 # TODO: Consider renaming this MultiTransformBlock and making a subclass TransformBlock
 #         that provides the same functionality but with only a single input and output ring.
 class TransformBlock(Block):
-	def __init__(self, irings, guarantee=True, *args, **kwargs):
-		super(TransformBlock, self).__init__(irings, *args, **kwargs)
+	def __init__(self, irings_, guarantee=True, *args, **kwargs):
+		super(TransformBlock, self).__init__(irings_, *args, **kwargs)
+		# Note: Must use self.irings rather than irings_ because they may
+		#         actually be Block instances.
 		self.guarantee = guarantee
-		self.orings = [self.create_ring(space=iring.space) for iring in irings]
+		self.orings = [self.create_ring(space=iring.space)
+		               for iring in self.irings]
 		self._seq_count = 0
 	def main(self, orings):
 		for iseqs in izip(*[iring.read(guarantee=self.guarantee)

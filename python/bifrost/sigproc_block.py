@@ -38,9 +38,6 @@ def mjd2unix(mjd):
 	return (mjd - 40587) * 86400
 
 class SigprocSourceBlock(SourceBlock):
-	def __init__(self, sourcenames, gulp_nframe, *args, **kwargs):
-		super(SigprocSourceBlock, self).__init__(sourcenames, gulp_nframe,
-		                                         *args, **kwargs)
 	def create_reader(self, sourcename):
 		return SigprocFile(sourcename)
 	def on_sequence(self, ireader, sourcename):
@@ -110,4 +107,4 @@ class SigprocSourceBlock(SourceBlock):
 
 def read_sigproc(filenames, gulp_nframe, *args, **kwargs):
 	return SigprocSourceBlock(filenames, gulp_nframe,
-	                          *args, **kwargs).orings[0]
+	                          *args, **kwargs)

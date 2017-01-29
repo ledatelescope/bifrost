@@ -40,7 +40,7 @@ class FdmtBlock(TransformBlock):
 	             exponent=-2.0, negative_delays=False,
 	             *args, **kwargs):
 		super(FdmtBlock, self).__init__([iring], *args, **kwargs)
-		self.space    = iring.space
+		self.space    = self.orings[0].space
 		self.max_dm   = max_dm
 		self.kdm      = 4.148741601e3 # MHz**2 cm**3 s / pc
 		self.dm_units = 'pc cm^-3'
@@ -103,4 +103,4 @@ class FdmtBlock(TransformBlock):
 		#              deadlocking. Not sure if there's any way around this.
 
 def fdmt(iring, max_dm, *args, **kwargs):
-	return FdmtBlock(iring, max_dm, *args, **kwargs).orings[0]
+	return FdmtBlock(iring, max_dm, *args, **kwargs)
