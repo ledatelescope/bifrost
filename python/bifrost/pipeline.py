@@ -153,15 +153,6 @@ class BlockScope(object):
 				g.subgraph(child.dot_graph())
 		return g
 
-class PipelineContext(object):
-	def __init__(self, pipeline):
-		self.pipeline = pipeline
-		thread_local.pipeline_stack.append(pipeline)
-	def __enter__(self):
-		return self
-	def __exit__(self, type, value, tb):
-		assert(thread_local.pipeline_stack.pop() is self.pipeline)
-
 class Pipeline(BlockScope):
 	def __init__(self, **kwargs):
 		super(Pipeline, self).__init__(**kwargs)
@@ -176,6 +167,11 @@ class Pipeline(BlockScope):
 		print "Waiting for blocks to finish"
 		for thread in threads:
 			thread.join()
+	def __enter__(self):
+		thread_local.pipeline_stack.append(self)
+		return self
+	def __exit__(self, type, value, tb):
+		assert(thread_local.pipeline_stack.pop() is self)
 
 # Create the default pipeline object
 thread_local.pipeline_stack.append(Pipeline())
