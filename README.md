@@ -64,6 +64,11 @@ which will install the library and headers into /usr/local/lib and
 Install dependencies:
 
  * [PyCLibrary fork](https://github.com/MatthieuDartiailh/pyclibrary)
+ * Numpy
+ * contextlib2
+ * pint
+
+    $ sudo pip install numpy contextlib2 pint
 
 Install bifrost module:
 
