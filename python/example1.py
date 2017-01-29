@@ -94,9 +94,9 @@ def main():
 	h_filterbank = scrunch(h_filterbank, 16, core=0)
 	d_filterbank = copy(h_filterbank, space='cuda', gpu=0, core=2)
 	with bfp.block_scope(core=2, gpu=0):
-		d_filterbankT     = transpose(d_filterbank, [1,2,0])
+		d_filterbankT     = transpose(d_filterbank, ['polarisation','frequency','time'])#[1,2,0])
 		d_dispersionbankT = fdmt(d_filterbankT, max_dm=282.52)
-		d_dispersionbank  = transpose(d_dispersionbankT, [2,0,1])
+		d_dispersionbank  = transpose(d_dispersionbankT, ['time','polarisation','dispersion measure'])#[2,0,1])
 	h_dispersionbank = copy(d_dispersionbank, space='system', core=3)
 	write_pgm(h_dispersionbank, core=3)
 	
