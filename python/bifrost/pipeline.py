@@ -33,6 +33,7 @@ from temp_storage import TempStorage
 from collections import defaultdict
 from contextlib2 import ExitStack
 import threading
+import time
 
 def izip(*iterables):
 	while True:
@@ -337,18 +338,25 @@ class TransformBlock(Block):
 			
 			with ExitStack() as oseq_stack:
 				oseqs = self.begin_sequences(oseq_stack, orings, oheaders, igulp_nframes)
+				prev_time = time.time()
 				for ispans in izip(*[iseq.read(islice.stop - islice.start,
 				                              islice.step,
 				                              islice.start)
 				                    for (iseq,islice)
 				                    in zip(iseqs,islices)]):
-					
+					cur_time = time.time()
+					acquire_time = cur_time - prev_time
+					prev_time = cur_time
 					with ExitStack() as ospan_stack:
 						ospans = self.reserve_spans(ospan_stack, oseqs, ispans)
+						cur_time = time.time()
+						reserve_time = cur_time - prev_time
+						prev_time = cur_time
 						# *TODO: See if can fuse together multiple on_data calls here before
 						#          calling stream_synchronize().
 						#        Consider passing .data instead of rings here
 						ostrides = self.on_data(ispans, ospans)
+						# TODO: // Default to not spinning the CPU: cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
 						bf.device.stream_synchronize()
 						# Allow returning None to indicate complete consumption
 						if ostrides is None:
@@ -357,6 +365,12 @@ class TransformBlock(Block):
 						            for (ostride,ospan) in zip(ostrides,ospans)]
 						for ospan, ostride in zip(ospans, ostrides):
 							ospan.commit(ostride)
+					cur_time = time.time()
+					process_time = cur_time - prev_time
+					prev_time = cur_time
+					# TODO: Do something with *_time variables (e.g., WAMP PUB)
+					#total_time = acquire_time + reserve_time + process_time
+					#print acquire_time / total_time, reserve_time / total_time, process_time / total_time
 	def define_output_nframes(self, input_nframes):
 		"""Return output nframe for each output, given input_nframes.
 		"""
