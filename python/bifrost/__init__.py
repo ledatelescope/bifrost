@@ -30,8 +30,8 @@
 Bifrost pipeline processing library
 """
 
-__version__    = "0.6"
-__author__     = "Ben Barsdell"
+from .version import __version__
+__author__     = "The Bifrost Authors"
 __copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
 __credits__    = ["Ben Barsdell"]
 __license__    = "BSD 3-Clause"

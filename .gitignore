@@ -1,4 +1,7 @@
 doc
+version.py
+.log*.txt
+test/data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
