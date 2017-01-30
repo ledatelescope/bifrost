@@ -6,14 +6,24 @@ LIB_DIR = lib
 INC_DIR = src
 SRC_DIR = src
 
-all:
-	$(MAKE) -C $(SRC_DIR) all
+BIFROST_PYTHON_VERSION_FILE = python/bifrost/version.py
+
+all: libbifrost $(BIFROST_PYTHON_VERSION_FILE)
 .PHONY: all
+
+libbifrost:
+	$(MAKE) -C $(SRC_DIR) all
+.PHONY: libbifrost
+
+$(BIFROST_PYTHON_VERSION_FILE): config.mk
+	@echo "__version__ = \"$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR).$(LIBBIFROST_PATCH)\"" > $@
+
 test:
 	$(MAKE) -C $(SRC_DIR) test
 .PHONY: test
 clean:
 	$(MAKE) -C $(SRC_DIR) clean
+	rm -f $(BIFROST_PYTHON_VERSION_FILE)
 .PHONY: clean
 install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME)
 .PHONY: install
@@ -28,9 +38,17 @@ doc: $(INC_DIR)/bifrost/*.h Doxyfile
 	$(DOXYGEN) Doxyfile
 .PHONY: doc
 
+
+#GPU Docker build
 IMAGE_NAME ?= ledatelescope/bifrost
 docker:
-	docker build -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -t $(IMAGE_NAME) .
+	docker build -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile.gpu -t $(IMAGE_NAME) .
+.PHONY: docker
+
+#CPU-only Docker build
+IMAGE_NAME ?= ledatelescope/bifrost
+docker-cpu:
+	docker build -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile.cpu -t $(IMAGE_NAME) .
 .PHONY: docker
 
 # TODO: Consider adding a mode 'develop=1' that makes symlinks instead of copying

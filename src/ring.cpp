@@ -104,6 +104,10 @@ BFstatus bfRingEndWriting(BFring ring) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
 	BF_TRY_RETURN(ring->end_writing());
 }
+BFstatus bfRingWritingEnded(BFring ring, BFbool* writing_ended) {
+	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
+	BF_TRY_RETURN(*writing_ended = ring->writing_ended());
+}
 
 BFstatus    bfRingSequenceBegin(BFwsequence* sequence,
                                 BFring       ring,

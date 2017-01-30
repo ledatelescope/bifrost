@@ -30,8 +30,8 @@
 Bifrost pipeline processing library
 """
 
-__version__    = "0.6"
-__author__     = "Ben Barsdell"
+from .version import __version__
+__author__     = "The Bifrost Authors"
 __copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
 __credits__    = ["Ben Barsdell"]
 __license__    = "BSD 3-Clause"
@@ -39,5 +39,12 @@ __maintainer__ = "Ben Barsdell"
 __email__      = "benbarsdell@gmail.com"
 __status__     = "Development"
 
+# TODO: Decide how to organise the namespace
 import core, memory, affinity, ring, block, address, udp_socket
-from GPUArray import GPUArray
+import pipeline
+import device
+from ndarray import ndarray, asarray, empty_like, zeros_like
+#import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
+#from transpose import transpose
+#from unpack import unpack
+#from quantize import quantize

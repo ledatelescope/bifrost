@@ -29,63 +29,11 @@
 
 #include <bifrost/array.h>
 #include "assert.hpp"
+#include "utils.hpp"
 
 #include <cassert>
 #include <cstring>
 
-inline int get_dtype_nbyte(BFdtype dtype) {
-	int  nbit    = dtype & BF_DTYPE_NBIT_BITS;
-	bool complex = dtype & BF_DTYPE_COMPLEX_BIT;
-	if( complex ) {
-		nbit *= 2;
-	}
-	assert(nbit % 8 == 0);
-	return nbit / 8;
-}
-
-inline bool shapes_equal(const BFarray* a,
-                         const BFarray* b) {
-	if( a->ndim != b->ndim ) {
-		return false;
-	}
-	for( int d=0; d<a->ndim; ++d ) {
-		if( a->shape[d] != b->shape[d] ) {
-			return false;
-		}
-	}
-	return true;
-}
-
-inline bool is_contiguous(const BFarray* array) {
-	BFsize logical_size = get_dtype_nbyte(array->dtype);
-	for( int d=0; d<array->ndim; ++d ) {
-		logical_size *= array->shape[d];
-	}
-	BFsize physical_size = array->strides[0] * array->shape[0];
-	return logical_size == physical_size;
-}
-
-// Merges together contiguous dimensions
-//   Copies (shallow) 'in' to 'out' and writes new ndim, shape, and strides
-inline void squeeze_contiguous_dims(BFarray const* in,
-                                    BFarray*       out) {
-	::memcpy(out, in, sizeof(BFarray));
-	int odim = 0;
-	int32_t osize = 1;
-	for( int idim=0; idim<in->ndim; ++idim ) {
-		osize *= in->shape[idim];
-		int32_t logical_stride = in->strides[idim+1]*in->shape[idim+1];
-		bool is_padded_dim = (in->strides[idim] != logical_stride);
-		bool is_last_dim = (idim == in->ndim-1);
-		if( is_last_dim || is_padded_dim ) {
-			out->shape[odim]   = osize;
-			out->strides[odim] = in->strides[idim];
-			osize = 1;
-			++odim;
-		}
-	}
-	out->ndim = odim;
-}
 /*
 const char* dtype2ctype_string(BFdtype dtype) {
 	switch( dtype ) {
@@ -135,7 +83,8 @@ BFstatus bfArrayCopy(const BFarray* dst,
                      const BFarray* src) {
 	BF_ASSERT(dst, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(src, BF_STATUS_INVALID_POINTER);
-	BF_ASSERT(shapes_equal(dst, src), BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT(shapes_equal(dst, src),   BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT(dst->dtype == src->dtype, BF_STATUS_INVALID_DTYPE);
 	
 	// Try squeezing contiguous dims together to reduce memory layout complexity
 	BFarray dst_squeezed, src_squeezed;
@@ -147,10 +96,10 @@ BFstatus bfArrayCopy(const BFarray* dst,
 	}
 	
 	int ndim = dst->ndim;
-	int32_t const* shape = &dst->shape[0];
+	long const* shape = &dst->shape[0];
 	
 	if( is_contiguous(src) && is_contiguous(dst) ) {
-		BFsize size = dst->strides[0] * dst->shape[0];
+		long size = dst->strides[0] * dst->shape[0];
 		return bfMemcpy(dst->data, dst->space,
 		                src->data, src->space,
 		                size);
@@ -159,7 +108,7 @@ BFstatus bfArrayCopy(const BFarray* dst,
 		                  src->data, src->strides[0], src->space,
 		                  shape[1], shape[0]);
 	} else {
-		return BF_STATUS_UNSUPPORTED; // TODO: Should support the general case
+		BF_FAIL("Supported bfArrayCopy array layout", BF_STATUS_UNSUPPORTED); // TODO: Should support the general case
 	}
 }
 BFstatus bfArrayMemset(const BFarray* dst,
@@ -173,17 +122,17 @@ BFstatus bfArrayMemset(const BFarray* dst,
 	dst = &dst_squeezed;
 	
 	int ndim = dst->ndim;
-	int32_t const* shape = &dst->shape[0];
+	long const* shape = &dst->shape[0];
 	
 	if( is_contiguous(dst) ) {
-		BFsize size = dst->strides[0] * dst->shape[0];
+		long size = dst->strides[0] * dst->shape[0];
 		return bfMemset(dst->data, dst->space,
 		                value, size);
 	} else if( ndim == 2 ) {
 		return bfMemset2D(dst->data, dst->strides[0], dst->space,
 		                  value, shape[1], shape[0]);
 	} else {
-		return BF_STATUS_UNSUPPORTED; // TODO: Should support the general case
+		BF_FAIL("Supported bfArrayMemset array layout", BF_STATUS_UNSUPPORTED); // TODO: Should support the general case
 	}
 }
 

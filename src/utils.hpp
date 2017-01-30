@@ -31,9 +31,11 @@
 
 #include <bifrost/common.h>
 #include <bifrost/memory.h>
+#include <bifrost/array.h>
 #include "cuda.hpp"
 
 #include <stdexcept>
+#include <cstring> // For ::memcpy
 
 #define BF_DTYPE_IS_COMPLEX(dtype) bool((dtype) & BF_DTYPE_COMPLEX_BIT)
 // **TODO: Add support for string type that encodes up to 255 bytes
@@ -52,6 +54,104 @@ inline BFoffset round_up_pow2(BFoffset a) {
     for( int i=1; i<=(int)sizeof(BFoffset)*8/2; i<<=1 ) r |= r >> i;
     return r+1;
 }
+inline BFoffset div_round_up(BFoffset n, BFoffset d) {
+	return (n == 0 ?
+	        0 :
+	        (n-1)/d+1);
+}
+
+template<typename T>
+inline T gcd(T u, T v) {
+	return (v == 0) ? u : gcd(v, u % v);
+}
+
+template<typename T>
+T div_up(T n, T d) {
+	return (n-1)/d+1;
+}
+template<typename T>
+bool is_pow2(T v) {
+	return v && !(v & (v - 1));
+}
+template<typename T>
+T ilog2(T v) {
+	T r;
+	T shift;
+	r =     (v > 0xFFFFFFFF) << 5; v >>= r;
+	shift = (v > 0xFFFF    ) << 4; v >>= shift; r |= shift;
+	shift = (v > 0xFF      ) << 3; v >>= shift; r |= shift;
+	shift = (v > 0xF       ) << 2; v >>= shift; r |= shift;
+	shift = (v > 0x3       ) << 1; v >>= shift; r |= shift;
+	                                            r |= (v >> 1);
+	return r;
+
+}
+
+inline bool is_big_endian() {
+	union {
+		uint32_t i;
+		int8_t   c[4];
+	} ic = {0x01020304};
+	return (ic.c[0] == 1);
+}
+
+inline void byteswap_impl(uint64_t value, uint64_t* result) {
+	*result =
+		((value & 0xFF00000000000000u) >> 56u) |
+		((value & 0x00FF000000000000u) >> 40u) |
+		((value & 0x0000FF0000000000u) >> 24u) |
+		((value & 0x000000FF00000000u) >>  8u) |
+		((value & 0x00000000FF000000u) <<  8u) |
+		((value & 0x0000000000FF0000u) << 24u) |
+		((value & 0x000000000000FF00u) << 40u) |
+		((value & 0x00000000000000FFu) << 56u);
+}
+inline void byteswap_impl(uint32_t value, uint32_t* result) {
+	*result =
+		((value & 0xFF000000u) >> 24u) |
+		((value & 0x00FF0000u) >>  8u) |
+		((value & 0x0000FF00u) <<  8u) |
+		((value & 0x000000FFu) << 24u);
+}
+inline void byteswap_impl(uint16_t value, uint16_t* result) {
+	*result =
+		((value & 0xFF00u) >> 8u) |
+		((value & 0x00FFu) << 8u);
+}
+
+template<typename T, typename U>
+inline T type_pun(U x) {
+	union {
+		T t;
+		U u;
+	} punner;
+	punner.u = x;
+	return punner.t;
+}
+
+template<typename T>
+inline typename std::enable_if<sizeof(T)==8>::type
+byteswap(T value, T* result) {
+	return byteswap_impl(type_pun<uint64_t>(value),
+	                     (uint64_t*)result);
+}
+template<typename T>
+inline typename std::enable_if<sizeof(T)==4>::type
+byteswap(T value, T* result) {
+	return byteswap_impl(type_pun<uint64_t>(value),
+	                     (uint32_t*)result);
+}
+template<typename T>
+inline typename std::enable_if<sizeof(T)==2>::type
+byteswap(T value, T* result) {
+	return byteswap_impl(type_pun<uint64_t>(value),
+	                     (uint16_t*)result);
+}
+template<typename T>
+inline typename std::enable_if<sizeof(T)==1>::type
+byteswap(T value, T* result) {
+	*result = value;
+}
 
 inline BFbool space_accessible_from(BFspace space, BFspace from) {
 #if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
@@ -67,6 +167,67 @@ inline BFbool space_accessible_from(BFspace space, BFspace from) {
 	default: throw std::runtime_error("Internal error");
 	}
 #endif
+}
+
+inline int get_dtype_nbyte(BFdtype dtype) {
+	int  nbit    = dtype & BF_DTYPE_NBIT_BITS;
+	bool complex = dtype & BF_DTYPE_COMPLEX_BIT;
+	if( complex ) {
+		nbit *= 2;
+	}
+	//assert(nbit % 8 == 0);
+	return nbit / 8;
+}
+
+inline bool shapes_equal(const BFarray* a,
+                         const BFarray* b) {
+	if( a->ndim != b->ndim ) {
+		return false;
+	}
+	for( int d=0; d<a->ndim; ++d ) {
+		if( a->shape[d] != b->shape[d] ) {
+			return false;
+		}
+	}
+	return true;
+}
+
+inline BFsize capacity_bytes(const BFarray* array) {
+	return array->strides[0] * array->shape[0];
+}
+inline bool is_contiguous(const BFarray* array) {
+	BFsize logical_size = get_dtype_nbyte(array->dtype);
+	for( int d=0; d<array->ndim; ++d ) {
+		logical_size *= array->shape[d];
+	}
+	BFsize physical_size = capacity_bytes(array);
+	return logical_size == physical_size;
+}
+inline BFsize num_contiguous_elements(const BFarray* array ) {
+	// Assumes array is contiguous
+	return capacity_bytes(array) / BF_DTYPE_NBYTE(array->dtype);
+}
+
+// Merges together contiguous dimensions
+//   Copies (shallow) 'in' to 'out' and writes new ndim, shape, and strides
+inline void squeeze_contiguous_dims(BFarray const* in,
+                                    BFarray*       out) {
+	::memcpy(out, in, sizeof(BFarray));
+	int odim = 0;
+	int32_t osize = 1;
+	for( int idim=0; idim<in->ndim; ++idim ) {
+		osize *= in->shape[idim];
+		int32_t logical_stride = in->strides[idim+1]*in->shape[idim+1];
+		bool is_padded_dim = (in->strides[idim] != logical_stride);
+		bool is_last_dim = (idim == in->ndim-1);
+		if( is_last_dim || is_padded_dim ) {
+			out->shape[odim]   = osize;
+			out->strides[odim] = in->strides[idim];
+			osize = 1;
+			++odim;
+		}
+	}
+	out->ndim = odim;
 }
 
 template<int NBIT, typename ConvertType=float, typename AccessType=char>

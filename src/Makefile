@@ -3,17 +3,18 @@ LIBBIFROST_OBJS = \
   common.o \
   memory.o \
   affinity.o \
+  cuda.o \
   ring.o \
   ring_impl.o \
   array.o \
   address.o \
   udp_socket.o \
-  #unpack.o \
-  udp_capture.o
+  udp_capture.o \
+  unpack.o \
+  quantize.o
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
-  cuda.o \
   transpose.o \
   fft.o \
   fdmt.o \
@@ -37,20 +38,25 @@ CXXFLAGS  += -std=c++11 -fPIC -fopenmp
 NVCCFLAGS += -std=c++11 -Xcompiler "-fPIC" $(NVCC_GENCODE)
 
 ifndef NODEBUG
-  CXXFLAGS  += -g -DBF_DEBUG=1
-  NVCCFLAGS += -g -DBF_DEBUG=1
+  CPPFLAGS  += -DBF_DEBUG=1
+  CXXFLAGS  += -g
+  NVCCFLAGS += -g
 endif
 
 LIB += -lgomp
 
 ifdef HWLOC
   LIB        += -lhwloc
-  CXXFLAGS   += -DBF_HWLOC_ENABLED=1
+  CPPFLAGS   += -DBF_HWLOC_ENABLED=1
+endif
+
+ifdef VMA
+  LIB        += -lvma
+  CPPFLAGS   += -DBF_VMA_ENABLED=1
 endif
 
 ifdef ALIGNMENT
-  CXXFLAGS   += -DBF_ALIGNMENT=$(ALIGNMENT)
-  NVCCFLAGS  += -DBF_ALIGNMENT=$(ALIGNMENT)
+  CPPFLAGS   += -DBF_ALIGNMENT=$(ALIGNMENT)
 endif
 
 ifdef CUDA_DEBUG
@@ -58,8 +64,7 @@ ifdef CUDA_DEBUG
 endif
 
 ifndef NOCUDA
-  CXXFLAGS  += -DBF_CUDA_ENABLED=1
-  NVCCFLAGS += -DBF_CUDA_ENABLED=1
+  CPPFLAGS  += -DBF_CUDA_ENABLED=1
   LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcufft
 endif
 

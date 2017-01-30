@@ -1,4 +1,4 @@
-# Bifrost
+# Bifrost [![Build Status](https://travis-ci.org/ledatelescope/bifrost.svg?branch=master)](https://travis-ci.org/ledatelescope/bifrost)
 
 A stream processing framework for high-throughput applications.
 
@@ -64,6 +64,11 @@ which will install the library and headers into /usr/local/lib and
 Install dependencies:
 
  * [PyCLibrary fork](https://github.com/MatthieuDartiailh/pyclibrary)
+ * Numpy
+ * contextlib2
+ * pint
+
+    $ sudo pip install numpy contextlib2 pint
 
 Install bifrost module:
 
@@ -86,6 +91,10 @@ Install dependencies:
 Build Docker image:
 
     $ make docker
+
+For CPU-only builds:
+
+    $ make docker-cpu
 
 Launch container:
 

@@ -110,6 +110,7 @@ BFstatus bfRingLockedGetStride(BFring ring, BFsize* val);
 //         series of sequences.
 BFstatus bfRingBeginWriting(BFring ring);
 BFstatus bfRingEndWriting(BFring ring);
+BFstatus bfRingWritingEnded(BFring ring, BFbool* writing_ended);
 
 // Sequence write
 BFstatus bfRingSequenceBegin(BFwsequence* sequence,
@@ -128,6 +129,13 @@ BFstatus bfRingSequenceOpen(BFrsequence* sequence,
                             BFring       ring,
                             const char*  name,
                             BFbool       guarantee);
+// Note: This function only works if time_tag resides within the buffer
+//         (or in its overwritten history) at the time of the call.
+//         If time_tag falls before the first sequence currently in the
+//           buffer, the function returns BF_STATUS_INVALID_ARGUMENT.
+//         If time_tag falls after the current head of the buffer,
+//           the returned sequence may turn out not to be the one that
+//           time_tag actually ends up falling into.
 BFstatus bfRingSequenceOpenAt(BFrsequence* sequence,
                               BFring       ring,
                               BFoffset     time_tag,

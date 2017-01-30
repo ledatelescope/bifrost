@@ -26,25 +26,40 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _string2space
-from bifrost.memory import _get_space
-from bifrost.dtype import numpy2bifrost
+import bifrost as bf
 
-def _array2bifrost(array):
-	a = _bf.BFarray()
-	a.data      = array.ctypes.data
-	a.space     = _string2space(_get_space(array))
-	a.dtype     = numpy2bifrost(array.dtype)
-	a.immutable = not array.flags['WRITEABLE']
-	a.ndim      = len(array.shape)
-	for d in xrange(len(array.shape)):
-		a.shape[d] = array.shape[d]
-	for d in xrange(len(array.strides)):
-		a.strides[d] = array.strides[d]
-	return a
+import threading
 
-def copy(dst, src):
-	dst = _array2bifrost(dst)
-	src = _array2bifrost(src)
-	_check(_bf.ArrayCopy(dst, src))
-	return dst
+class TempStorage(object):
+	def __init__(self, space):
+		self.space = space
+		self.size  = 0
+		self.ptr   = None
+		self.lock  = threading.Lock()
+	def __del__(self):
+		self._free()
+	def allocate(self, size):
+		return TempStorageAllocation(self, size)
+	def _allocate(self, size):
+		if size > self.size:
+			self._free()
+			self.ptr = bf.memory.raw_malloc(size, self.space)
+			self.size = size
+	def _free(self):
+		if self.ptr:
+			bf.memory.raw_free(self.ptr, self.space)
+			self.ptr  = None
+			self.size = 0
+class TempStorageAllocation(object):
+	def __init__(self, parent, size):
+		self.parent = parent
+		self.parent.lock.acquire()
+		self.parent._allocate(size)
+		self.size = parent.size
+		self.ptr  = parent.ptr
+	def release(self):
+		self.parent.lock.release()
+	def __enter__(self):
+		return self
+	def __exit__(self, type, value, tb):
+		self.release()

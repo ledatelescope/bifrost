@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
@@ -29,10 +28,26 @@
 
 from setuptools import setup, find_packages
 
+# Parse version.py to extract __version__ value
+with open('bifrost/version.py', 'r') as version_file:
+	for line in version_file:
+		line = line.strip()
+		if len(line) == 0 or line[0] == '#':
+			continue
+		if '__version__' in line:
+			__version__ = line.split('=', 1)[1].strip()
+			__version__ = ''.join([c for c in __version__
+			                       if c.isalnum() or c in ".-_"])
+
 setup(name='Bifrost',
-      version='0.6',
+      version=__version__,
       description='Pipeline processing framework',
       author='Ben Barsdell',
       author_email='benbarsdell@gmail.com',
-      url='',
-      packages=find_packages())
+      url='https://github.com/ledatelescope/bifrost',
+      packages=find_packages(),
+      install_requires=[
+          "numpy>=1.8.1",
+          "contextlib2>=0.4.0",
+          "pint>=0.7.0"
+      ])

@@ -35,7 +35,7 @@ class UDPSocket(object):
 	def __init__(self):
 		self.obj = _get(_bf.UdpSocketCreate(), retarg=0)
 	def __del__(self):
-		if bool(self.obj):
+		if hasattr(self, 'obj') and bool(self.obj):
 			_bf.UdpSocketDestroy(self.obj)
 	def bind(self, local_addr):
 		_check( _bf.UdpSocketBind(self.obj, local_addr.obj) )

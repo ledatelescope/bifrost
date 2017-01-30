@@ -351,6 +351,17 @@ BFsequence_sptr BFring_impl::get_sequence(const char* name) {
 }
 BFsequence_sptr BFring_impl::get_sequence_at(BFoffset time_tag) {
 	lock_guard_type lock(_mutex);
+	// Note: This function only works if time_tag resides within the buffer
+	//         (or in its overwritten history) at the time of the call.
+	//         There is no way for the function to know if a time_tag
+	//           representing the future will actually fall within the current
+	//           sequence or in a later one, and thus the returned sequence
+	//           may turn out to be incorrect.
+	//         If time_tag falls before the first sequence currently in the
+	//           buffer, the function returns BF_STATUS_INVALID_ARGUMENT.
+	//         TLDR; only use time_tag values representing times that have
+	//           already happened, and be careful not to call this function
+	//           before the very first sequence has been created.
 	auto iter = _sequence_time_tag_map.upper_bound(time_tag);
 	BF_ASSERT_EXCEPTION(iter != _sequence_time_tag_map.begin(),
 	                    BF_STATUS_INVALID_ARGUMENT);

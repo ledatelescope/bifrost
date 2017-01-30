@@ -38,7 +38,7 @@ class Address(object):
 		                                  port=port,
 		                                  family=family), retarg=0)
 	def __del__(self):
-		if bool(self.obj):
+		if hasattr(self, 'obj') and bool(self.obj):
 			_bf.AddressDestroy(self.obj)
 	@property
 	def family(self):

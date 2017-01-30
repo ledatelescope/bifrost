@@ -252,7 +252,9 @@ class BFfdmt_impl {
 	typedef int    IType;
 	typedef double FType;
 	typedef int2   IndexPair;
+public: // HACK WAR for what looks like a bug in the CUDA 7.0 compiler
 	typedef float  DType;
+private:
 	IType _nchan;
 	IType _max_delay;
 	FType _f0;
@@ -609,6 +611,7 @@ public:
 		//bool reverse_time = (in->strides[in->ndim-1] < 0);
 		bool reverse_time = negative_delays;
 		
+		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 #define LAUNCH_FDMT_INIT_KERNEL(IterType) \
 		BF_ASSERT_EXCEPTION(/*abs*/(in->strides[in->ndim-1]) == sizeof(value_type<IterType>::type), BF_STATUS_UNSUPPORTED_STRIDE); \
 		launch_fdmt_init_kernel(ntime, _nchan, _reverse_band, reverse_time, \
@@ -687,7 +690,8 @@ BFstatus bfFdmtInit(BFfdmt  plan,
                     void*   plan_storage,
                     BFsize* plan_storage_size) {
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
-	BF_ASSERT(space == BF_SPACE_CUDA, BF_STATUS_UNSUPPORTED_SPACE);
+	BF_ASSERT(space_accessible_from(space, BF_SPACE_CUDA),
+	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_TRY(plan->init(nchan, max_delay, f0, df, exponent));
 	BF_TRY_RETURN(plan->init_plan_storage(plan_storage, plan_storage_size));
 }
@@ -704,11 +708,11 @@ BFstatus bfFdmtExecute(BFfdmt         plan,
                        void*          exec_storage,
                        BFsize*        exec_storage_size) {
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
+	BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
+	BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
 	BF_ASSERT( in->shape[ in->ndim-2] == plan->nchan(),     BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT(out->shape[out->ndim-2] == plan->max_delay(), BF_STATUS_INVALID_SHAPE);
-	BF_ASSERT(  in->shape[in->ndim-1] == out->shape[out->ndim-1],   BF_STATUS_INVALID_SHAPE);
-	BF_ASSERT( in->space == BF_SPACE_CUDA, BF_STATUS_INVALID_SPACE);
-	BF_ASSERT(out->space == BF_SPACE_CUDA, BF_STATUS_INVALID_SPACE);
+	BF_ASSERT(  in->shape[in->ndim-1] == out->shape[out->ndim-1], BF_STATUS_INVALID_SHAPE);
 	// TODO: BF_ASSERT(...);
 	size_t ntime = in->shape[in->ndim-1];
 	bool ready;
@@ -717,10 +721,8 @@ BFstatus bfFdmtExecute(BFfdmt         plan,
 		// Just requesting exec_storage_size, not ready to execute yet
 		return BF_STATUS_SUCCESS;
 	}
-	BF_ASSERT(in,  BF_STATUS_INVALID_POINTER);
-	BF_ASSERT(out, BF_STATUS_INVALID_POINTER);
-	BF_ASSERT( in->space == BF_SPACE_CUDA, BF_STATUS_INVALID_SPACE);
-	BF_ASSERT(out->space == BF_SPACE_CUDA, BF_STATUS_INVALID_SPACE);
+	BF_ASSERT(space_accessible_from( in->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
+	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
 	BF_TRY_RETURN(plan->execute(in, out, ntime, negative_delays));
 }
 
