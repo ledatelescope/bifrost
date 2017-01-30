@@ -43,12 +43,12 @@ class CallbackBlock(CopyBlock):
 		super(CallbackBlock, self).__init__(iring, *args, **kwargs)
 		self.seq_callback  = seq_callback
 		self.data_callback = data_callback
-	def on_sequence(self, iseqs):
-		self.seq_callback(iseqs[0])
-		return super(CallbackBlock, self).on_sequence(iseqs)
-	def on_data(self, ispans, ospans):
-		self.data_callback(ispans[0], ospans[0])
-		return super(CallbackBlock, self).on_data(ispans, ospans)
+	def on_sequence(self, iseq):
+		self.seq_callback(iseq)
+		return super(CallbackBlock, self).on_sequence(iseq)
+	def on_data(self, ispan, ospan):
+		self.data_callback(ispan, ospan)
+		return super(CallbackBlock, self).on_data(ispan, ospan)
 
 class PipelineTest(unittest.TestCase):
 	def setUp(self):
@@ -70,7 +70,13 @@ class PipelineTest(unittest.TestCase):
 			data = read_sigproc([self.fil_file], gulp_nframe)
 			data = CallbackBlock(data, check_sequence, check_data)
 			pipeline.run()
-	def test_copy(self):
+	def test_simple_copy(self):
+		gulp_nframe = 101
+		with bfp.Pipeline() as pipeline:
+			data = read_sigproc([self.fil_file], gulp_nframe)
+			data = copy(data)
+			pipeline.run()
+	def test_cuda_copy(self):
 		gulp_nframe = 101
 		with bfp.Pipeline() as pipeline:
 			data = read_sigproc([self.fil_file], gulp_nframe)

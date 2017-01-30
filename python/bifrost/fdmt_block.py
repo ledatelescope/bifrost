@@ -39,7 +39,7 @@ class FdmtBlock(TransformBlock):
 	def __init__(self, iring, max_dm,
 	             exponent=-2.0, negative_delays=False,
 	             *args, **kwargs):
-		super(FdmtBlock, self).__init__([iring], *args, **kwargs)
+		super(FdmtBlock, self).__init__(iring, *args, **kwargs)
 		self.space    = self.orings[0].space
 		self.max_dm   = max_dm
 		self.kdm      = 4.148741601e3 # MHz**2 cm**3 s / pc
@@ -49,9 +49,8 @@ class FdmtBlock(TransformBlock):
 		self.fdmt     = Fdmt()
 	def define_valid_input_spaces(self):
 		"""Return set of valid spaces (or 'any') for each input"""
-		return [('cuda',)]
-	def on_sequence(self, iseqs):
-		iseq = iseqs[0]
+		return ('cuda',)
+	def on_sequence(self, iseq):
 		ihdr = iseq.header
 		itensor = ihdr['_tensor']
 		nchan    = itensor['shape' ][-2]
@@ -83,19 +82,18 @@ class FdmtBlock(TransformBlock):
 		ohdr['bw']           = nchan*df_
 		ohdr['bw_units']     = itensor['units'][-2]
 		gulp_nframe = self.gulp_nframe or ihdr['gulp_nframe']
-		return [ohdr], [slice(0, gulp_nframe + self.max_delay, gulp_nframe)]
-	def on_data(self, ispans, ospans):
-		ispan, ospan = ispans[0], ospans[0]
+		return ohdr, slice(0, gulp_nframe + self.max_delay, gulp_nframe)
+	def on_data(self, ispan, ospan):
 		if ispan.nframe <= self.max_delay:
 			# Cannot fully process any frames
-			return [0]
+			return 0
 		
 		size = self.fdmt.get_workspace_size(ispan.data, ospan.data)
 		with self.get_temp_storage(self.space).allocate(size) as temp_storage:
 			self.fdmt.execute_workspace(ispan.data, ospan.data,
 			                            temp_storage.ptr, temp_storage.size,
 			                            negative_delays=self.negative_delays)
-		return [ispan.nframe - self.max_delay]
+		return ispan.nframe - self.max_delay
 		# ***TODO: Need to tell downstream blocks the *stride*, not the
 		#            reserve size, because the stride is what determines
 		#            how much output this block generates each gulp.

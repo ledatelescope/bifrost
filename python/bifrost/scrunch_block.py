@@ -34,28 +34,28 @@ from copy import deepcopy
 
 class ScrunchBlock(TransformBlock):
 	def __init__(self, iring, factor, *args, **kwargs):
-		super(ScrunchBlock, self).__init__([iring], *args, **kwargs)
+		super(ScrunchBlock, self).__init__(iring, *args, **kwargs)
 		assert(type(factor) == int)
 		self.factor = factor
 	def define_valid_input_spaces(self):
 		"""Return set of valid spaces (or 'any') for each input"""
-		return [('system',)]
-	def define_output_nframes(self, input_nframes):
+		return ('system',)
+	def define_output_nframes(self, input_nframe):
 		"""Return output nframe for each output, given input_nframes.
 		"""
-		if any([nframe % self.factor != 0 for nframe in input_nframes]):
+		if input_nframe % self.factor != 0:
 			raise ValueError("Scrunch factor does not divide gulp size")
-		return [nframe//self.factor for nframe in input_nframes]
-	def on_sequence(self, iseqs):
-		ohdr = deepcopy(iseqs[0].header)
+		return input_nframe // self.factor
+	def on_sequence(self, iseq):
+		ohdr = deepcopy(iseq.header)
 		ohdr['_tensor']['scales'][0][1] *= self.factor
-		return [ohdr], [None]
-	def on_data(self, ispans, ospans):
-		in_nframe = ispans[0].nframe
+		return ohdr
+	def on_data(self, ispan, ospan):
+		in_nframe = ispan.nframe
 		out_nframe = in_nframe // self.factor
-		idata = ispans[0].data
-		ospans[0].data[...] = idata.reshape((out_nframe,self.factor)+idata.shape[1:]).mean(axis=1)
-		return [out_nframe]
+		idata = ispan.data
+		ospan.data[...] = idata.reshape((out_nframe,self.factor)+idata.shape[1:]).mean(axis=1)
+		return out_nframe
 
 def scrunch(iring, factor, *args, **kwargs):
 	return ScrunchBlock(iring, factor, *args, **kwargs).orings[0]

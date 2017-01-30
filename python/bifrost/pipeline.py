@@ -201,7 +201,7 @@ class Block(BlockScope):
 		# Allow Block instances to be passed in place of rings
 		irings = [get_ring(iring) for iring in irings]
 		self.irings = irings
-		valid_inp_spaces = self.define_valid_input_spaces()
+		valid_inp_spaces = self._define_valid_input_spaces()
 		for i, (iring, valid_spaces) in enumerate(zip(irings, valid_inp_spaces)):
 			if not bf.memory.space_accessible(iring.space, valid_spaces):
 				raise ValueError("Block %s input %i's space must be accessible from one of: %s" %
@@ -227,7 +227,7 @@ class Block(BlockScope):
 		return [exit_stack.enter_context(oring.begin_writing())
 		        for oring in orings]
 	def begin_sequences(self, exit_stack, orings, oheaders, igulp_nframes):
-		ogulp_nframes = self.define_output_nframes(igulp_nframes)
+		ogulp_nframes = self._define_output_nframes(igulp_nframes)
 		for ohdr, ogulp_nframe in zip(oheaders, ogulp_nframes):
 			ohdr['gulp_nframe'] = ogulp_nframe
 		# Note: This always specifies buffer_factor=1 on the assumption that
@@ -238,13 +238,17 @@ class Block(BlockScope):
 		        for (oring,ohdr,obuf_nframe) in zip(orings,oheaders,obuf_nframes)]
 	def reserve_spans(self, exit_stack, oseqs, ispans):
 		igulp_nframes = [span.nframe for span in ispans]
-		ogulp_nframes = self.define_output_nframes(igulp_nframes)
+		ogulp_nframes = self._define_output_nframes(igulp_nframes)
 		return [exit_stack.enter_context(oseq.reserve(ogulp_nframe))
 		        for (oseq,ogulp_nframe) in zip(oseqs,ogulp_nframes)]
+	def _define_output_nframes(self, input_nframes):
+		return self.define_output_nframes(input_nframes)
 	def define_output_nframes(self, input_nframes):
 		"""Return output nframe for each output, given input_nframes.
 		"""
 		raise NotImplementedError
+	def _define_valid_input_spaces(self):
+		return self.define_valid_input_spaces()
 	def define_valid_input_spaces(self):
 		"""Return set of valid spaces (or 'any') for each input"""
 		return ['any']*len(self.irings)
@@ -302,11 +306,9 @@ def _span_slice(soft_slice):
 	             soft_slice.stop,
 	             soft_slice.step or (soft_slice.stop - start))
 
-# TODO: Consider renaming this MultiTransformBlock and making a subclass TransformBlock
-#         that provides the same functionality but with only a single input and output ring.
-class TransformBlock(Block):
+class MultiTransformBlock(Block):
 	def __init__(self, irings_, guarantee=True, *args, **kwargs):
-		super(TransformBlock, self).__init__(irings_, *args, **kwargs)
+		super(MultiTransformBlock, self).__init__(irings_, *args, **kwargs)
 		# Note: Must use self.irings rather than irings_ because they may
 		#         actually be Block instances.
 		self.guarantee = guarantee
@@ -316,7 +318,7 @@ class TransformBlock(Block):
 	def main(self, orings):
 		for iseqs in izip(*[iring.read(guarantee=self.guarantee)
 		                    for iring in self.irings]):
-			oheaders, islices = self.on_sequence(iseqs)
+			oheaders, islices = self._on_sequence(iseqs)
 			for ohdr in oheaders:
 				if 'time_tag' not in ohdr:
 					ohdr['time_tag'] = self._seq_count
@@ -366,7 +368,7 @@ class TransformBlock(Block):
 						# *TODO: See if can fuse together multiple on_data calls here before
 						#          calling stream_synchronize().
 						#        Consider passing .data instead of rings here
-						ostrides = self.on_data(ispans, ospans)
+						ostrides = self._on_data(ispans, ospans)
 						# TODO: // Default to not spinning the CPU: cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
 						bf.device.stream_synchronize()
 						# Allow returning None to indicate complete consumption
@@ -382,6 +384,10 @@ class TransformBlock(Block):
 					# TODO: Do something with *_time variables (e.g., WAMP PUB)
 					#total_time = acquire_time + reserve_time + process_time
 					#print acquire_time / total_time, reserve_time / total_time, process_time / total_time
+	def _on_sequence(self, iseqs):
+		return self.on_sequence(iseqs)
+	def _on_data(self, ispans, ospans):
+		return self.on_data(ispans, ospans)
 	def define_output_nframes(self, input_nframes):
 		"""Return output nframe for each output, given input_nframes.
 		"""
@@ -393,4 +399,67 @@ class TransformBlock(Block):
 	def on_data(self, ispans, ospans):
 		"""Process data from from ispans to ospans and return the number of
 		frames to commit for each output (or None to commit complete spans)."""
+		raise NotImplementedError
+
+class TransformBlock(MultiTransformBlock):
+	def __init__(self, iring, *args, **kwargs):
+		super(TransformBlock, self).__init__([iring], *args, **kwargs)
+		self.iring = self.irings[0]
+	def _define_valid_input_spaces(self):
+		spaces = self.define_valid_input_spaces()
+		return [spaces]
+	def define_valid_input_spaces(self):
+		"""Return set of valid spaces (or 'any') for the input"""
+		return 'any'
+	def _define_output_nframes(self, input_nframes):
+		output_nframe = self.define_output_nframes(input_nframes[0])
+		return [output_nframe]
+	def define_output_nframes(self, input_nframe):
+		"""Return number of frames that will be produced given input_nframe
+		"""
+		return input_nframe
+	def _on_sequence(self, iseqs):
+		ret = self.on_sequence(iseqs[0])
+		if isinstance(ret, tuple):
+			ohdr, islice = ret
+		else:
+			ohdr = ret
+			islice = None
+		return [ohdr], [islice]
+	def on_sequence(self, iseq):
+		"""Return oheader or (oheader, islice)"""
+		raise NotImplementedError
+	def _on_data(self, ispans, ospans):
+		nframe_commit = self.on_data(ispans[0], ospans[0])
+		return [nframe_commit]
+	def on_data(self, ispan, ospan):
+		"""Return the number of output frames to commit, or None to commit all
+		"""
+		raise NotImplementedError
+
+# TODO: Need something like on_sequence_end to allow closing open files etc.
+class SinkBlock(MultiTransformBlock):
+	def __init__(self, iring, *args, **kwargs):
+		super(SinkBlock, self).__init__([iring], *args, **kwargs)
+		self.orings = []
+		self.iring  = self.irings[0]
+	def _define_valid_input_spaces(self):
+		spaces = self.define_valid_input_spaces()
+		return [spaces]
+	def define_valid_input_spaces(self):
+		"""Return set of valid spaces (or 'any') for the input"""
+		return 'any'
+	def _define_output_nframes(self, input_nframes):
+		return []
+	def _on_sequence(self, iseqs):
+		islice = self.on_sequence(iseqs[0])
+		return [], [islice]
+	def on_sequence(self, iseq):
+		"""Return islice or None to use simple striding"""
+		raise NotImplementedError
+	def _on_data(self, ispans, ospans):
+		self.on_data(ispans[0])
+		return []
+	def on_data(self, ispan):
+		"""Return nothing"""
 		raise NotImplementedError

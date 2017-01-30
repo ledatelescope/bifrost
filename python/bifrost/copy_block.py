@@ -33,15 +33,15 @@ from copy import deepcopy
 
 class CopyBlock(TransformBlock):
 	def __init__(self, iring, space=None, *args, **kwargs):
-		super(CopyBlock, self).__init__([iring], *args, **kwargs)
+		super(CopyBlock, self).__init__(iring, *args, **kwargs)
 		if space is None:
-			space = self.irings[0].space
+			space = self.iring.space
 		self.orings = [self.create_ring(space=space)]
-	def on_sequence(self, iseqs):
-		ohdr = deepcopy(iseqs[0].header)
-		return [ohdr], [None]
-	def on_data(self, ispans, ospans):
-		ndarray.copy(ospans[0].data, ispans[0].data)
+	def on_sequence(self, iseq):
+		ohdr = deepcopy(iseq.header)
+		return ohdr
+	def on_data(self, ispan, ospan):
+		ndarray.copy(ospan.data, ispan.data)
 
-def copy(iring, space, *args, **kwargs):
+def copy(iring, space=None, *args, **kwargs):
 	return CopyBlock(iring, space, *args, **kwargs)

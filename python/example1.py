@@ -37,20 +37,20 @@ import os
 import numpy as np
 
 # This is a (very hacky) sink block for writing data as a greyscale PGM image
-class PgmWriterBlock(bfp.TransformBlock):
+class PgmWriterBlock(bfp.SinkBlock):
 	def __init__(self, iring, outpath='', filename_callback=None,
 	             *args, **kwargs):
-		super(PgmWriterBlock, self).__init__([iring], *args, **kwargs)
+		super(PgmWriterBlock, self).__init__(iring, *args, **kwargs)
 		self.outpath = outpath
-		self.filename_callback = filename_callback or PgmWriterBlock.default_filename_callback
-		self.orings = []
+		self.filename_callback = (filename_callback or
+		                          PgmWriterBlock.default_filename_callback)
 	@staticmethod
 	def default_filename_callback(ihdr):
 		return ihdr['name'] + '.pgm'
-	def on_sequence(self, iseqs):
+	def on_sequence(self, iseq):
 		"""Return: oheaders (one per output) and islices (one per input)
 		"""
-		ihdr = iseqs[0].header
+		ihdr = iseq.header
 		dtype = ihdr['_tensor']['dtype']
 		shape = ihdr['_tensor']['shape']
 		maxval = 255
@@ -60,12 +60,11 @@ class PgmWriterBlock(bfp.TransformBlock):
 		# HACK This sets the height to gulp_nframe because we don't know the
 		#        sequence length apriori.
 		self.outfile.write("%i %i\n%i\n" % (shape[-1], ihdr['gulp_nframe'], maxval))
-		return [], [None]
 	# **TODO: Need something like on_sequence_end, or a proper SinkBlock class
-	def on_data(self, ispans, ospans):
+	def on_data(self, ispan):
 		"""Process data from from ispans to ospans and return the number of
 		frames to commit for each output (or None to commit complete spans)."""
-		data = ispans[0].data
+		data = ispan.data
 		print "PgmWriterBlock.on_data()"
 		# HACK TESTING
 		if data.dtype != np.uint8:
