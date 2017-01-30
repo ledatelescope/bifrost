@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
@@ -34,5 +33,10 @@ setup(name='Bifrost',
       description='Pipeline processing framework',
       author='Ben Barsdell',
       author_email='benbarsdell@gmail.com',
-      url='',
-      packages=find_packages())
+      url='https://github.com/ledatelescope/bifrost',
+      packages=find_packages(),
+      install_requires=[
+          "numpy>=1.8.1",
+          "contextlib2>=0.4.0",
+          "pint>=0.7.0"
+      ])
