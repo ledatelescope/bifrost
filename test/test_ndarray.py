@@ -66,3 +66,21 @@ class NDArrayTest(unittest.TestCase):
 		g = g.copy('system')
 		known = np.zeros_like(self.known_array)
 		np.testing.assert_equal(g, known)
+	def test_getitem(self):
+		g = bf.ndarray(self.known_vals, space='cuda')
+		np.testing.assert_equal(g[0].copy('system'),     self.known_array[0])
+		np.testing.assert_equal(g[(0,)].copy('system'),  self.known_array[(0,)])
+		np.testing.assert_equal(int(g[0,0]),             self.known_array[0,0])
+		np.testing.assert_equal(g[:1,1:].copy('system'), self.known_array[:1,1:])
+	def test_setitem(self):
+		g = bf.zeros_like(self.known_vals, space='cuda')
+		g[...] = self.known_vals
+		np.testing.assert_equal(g.copy('system'), self.known_vals)
+		g[:1,1:] = [[999]]
+		np.testing.assert_equal(g.copy('system'), np.array([[0,999],[2,3],[4,5]]))
+		g[0,0] = 888
+		np.testing.assert_equal(g.copy('system'), np.array([[888,999],[2,3],[4,5]]))
+		g[0] = [99,88]
+		np.testing.assert_equal(g.copy('system'), np.array([[99,88],[2,3],[4,5]]))
+		g[:,1] = [77,66,55]
+		np.testing.assert_equal(g.copy('system'), np.array([[99,77],[2,66],[4,55]]))

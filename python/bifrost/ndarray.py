@@ -305,11 +305,29 @@ class ndarray(np.ndarray):
 			space = self.bf.space
 		# Note: This makes an actual copy as long as space is not None
 		return ndarray(self, space=space)
-	# TODO: Re-enable this when done testing
-	#def __setitem__(self, key, val):
-	#	# TODO: Need to implement type conversion
-	#	#val = asarray(val, dtype=self.bf.dtype, space=self.bf.space)
-	#	copy(self[key], val)
+	def _key_returns_scalar(self, key):
+		# Returns True if self[key] would return a scalar (i.e., not a view)
+		if isinstance(key, tuple):
+			if len(key) == len(self.shape):
+				if all([not isinstance(k, slice) for k in key]):
+					return True
+		elif not isinstance(key, slice):
+			if self.shape == 1:
+				return True
+		return False
+	def __getitem__(self, key):
+		if self._key_returns_scalar(key):
+			return super(ndarray, self._system_accessible_copy()).__getitem__(key)
+		return super(ndarray, self).__getitem__(key)
+	def __setitem__(self, key, val):
+		if self._key_returns_scalar(key):
+			# HACK WAR to turn key into slice to avoid scalar (non-view) result
+			#   from __getitem__.
+			if isinstance(key, tuple):
+				key = (slice(key[0],key[0]+1),) + key[1:]
+			else:
+				key = slice(key,key+1)
+		copy(self[key], val)
 	def as_GPUArray(self, *args, **kwargs):
 		from pycuda.gpuarray import GPUArray as pycuda_GPUArray
 		g  = pycuda_GPUArray(shape=self.shape, dtype=self.dtype, *args, **kwargs)
