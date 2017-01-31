@@ -99,14 +99,15 @@ BFstatus bfArrayCopy(const BFarray* dst,
 	long const* shape = &dst->shape[0];
 	
 	if( is_contiguous(src) && is_contiguous(dst) ) {
-		long size = dst->strides[0] * dst->shape[0];
+		long size_bytes = dst->strides[0] * dst->shape[0];
 		return bfMemcpy(dst->data, dst->space,
 		                src->data, src->space,
-		                size);
+		                size_bytes);
 	} else if( ndim == 2 ) {
+		long itemsize_bytes = BF_DTYPE_NBYTE(src->dtype);
 		return bfMemcpy2D(dst->data, dst->strides[0], dst->space,
 		                  src->data, src->strides[0], src->space,
-		                  shape[1], shape[0]);
+		                  shape[1]*itemsize_bytes, shape[0]);
 	} else {
 		BF_FAIL("Supported bfArrayCopy array layout", BF_STATUS_UNSUPPORTED); // TODO: Should support the general case
 	}
@@ -125,12 +126,13 @@ BFstatus bfArrayMemset(const BFarray* dst,
 	long const* shape = &dst->shape[0];
 	
 	if( is_contiguous(dst) ) {
-		long size = dst->strides[0] * dst->shape[0];
+		long size_bytes = dst->strides[0] * dst->shape[0];
 		return bfMemset(dst->data, dst->space,
-		                value, size);
+		                value, size_bytes);
 	} else if( ndim == 2 ) {
+		long itemsize_bytes = BF_DTYPE_NBYTE(dst->dtype);
 		return bfMemset2D(dst->data, dst->strides[0], dst->space,
-		                  value, shape[1], shape[0]);
+		                  value, shape[1]*itemsize_bytes, shape[0]);
 	} else {
 		BF_FAIL("Supported bfArrayMemset array layout", BF_STATUS_UNSUPPORTED); // TODO: Should support the general case
 	}

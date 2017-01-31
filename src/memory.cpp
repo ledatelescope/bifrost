@@ -194,8 +194,8 @@ BFstatus bfMemcpy2D(void*       dst,
                     const void* src,
                     BFsize      src_stride,
                     BFspace     src_space,
-                    BFsize      width,
-                    BFsize      height) {
+                    BFsize      width,    // bytes
+                    BFsize      height) { // rows
 	if( width*height ) {
 		BF_ASSERT(dst, BF_STATUS_INVALID_POINTER);
 		BF_ASSERT(src, BF_STATUS_INVALID_POINTER);
@@ -281,8 +281,8 @@ BFstatus bfMemset2D(void*   ptr,
                     BFsize  stride,
                     BFspace space,
                     int     value,
-                    BFsize  width,
-                    BFsize  height) {
+                    BFsize  width,    // bytes
+                    BFsize  height) { // rows
 	BF_ASSERT(ptr, BF_STATUS_INVALID_POINTER);
 	if( width*height ) {
 		if( space == BF_SPACE_AUTO ) {
