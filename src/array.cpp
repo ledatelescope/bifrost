@@ -103,11 +103,12 @@ BFstatus bfArrayCopy(const BFarray* dst,
 		return bfMemcpy(dst->data, dst->space,
 		                src->data, src->space,
 		                size_bytes);
-	} else if( ndim == 2 ) {
+	} else if( ndim == 1 || ndim == 2 ) {
 		long itemsize_bytes = BF_DTYPE_NBYTE(src->dtype);
+		long width_bytes = (ndim == 2 ? shape[1] : 1) * itemsize_bytes;
 		return bfMemcpy2D(dst->data, dst->strides[0], dst->space,
 		                  src->data, src->strides[0], src->space,
-		                  shape[1]*itemsize_bytes, shape[0]);
+		                  width_bytes, shape[0]);
 	} else {
 		BF_FAIL("Supported bfArrayCopy array layout", BF_STATUS_UNSUPPORTED); // TODO: Should support the general case
 	}
@@ -129,10 +130,11 @@ BFstatus bfArrayMemset(const BFarray* dst,
 		long size_bytes = dst->strides[0] * dst->shape[0];
 		return bfMemset(dst->data, dst->space,
 		                value, size_bytes);
-	} else if( ndim == 2 ) {
+	} else if( ndim == 1 || ndim == 2 ) {
 		long itemsize_bytes = BF_DTYPE_NBYTE(dst->dtype);
+		long width_bytes = (ndim == 2 ? shape[1] : 1) * itemsize_bytes;
 		return bfMemset2D(dst->data, dst->strides[0], dst->space,
-		                  value, shape[1]*itemsize_bytes, shape[0]);
+		                  value, width_bytes, shape[0]);
 	} else {
 		BF_FAIL("Supported bfArrayMemset array layout", BF_STATUS_UNSUPPORTED); // TODO: Should support the general case
 	}
