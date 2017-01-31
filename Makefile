@@ -6,9 +6,10 @@ LIB_DIR = lib
 INC_DIR = src
 SRC_DIR = src
 
-BIFROST_PYTHON_VERSION_FILE = python/bifrost/version.py
+BIFROST_PYTHON_DIR = python
+BIFROST_PYTHON_VERSION_FILE = $(BIFROST_PYTHON_DIR)/bifrost/version.py
 
-all: libbifrost $(BIFROST_PYTHON_VERSION_FILE)
+all: libbifrost $(BIFROST_PYTHON_VERSION_FILE) python
 .PHONY: all
 
 libbifrost:
@@ -26,6 +27,7 @@ clean:
 	rm -f $(BIFROST_PYTHON_VERSION_FILE)
 .PHONY: clean
 install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME)
+	$(MAKE) -C $(BIFROST_PYTHON_DIR) install
 .PHONY: install
 uninstall:
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO)
@@ -38,6 +40,9 @@ doc: $(INC_DIR)/bifrost/*.h Doxyfile
 	$(DOXYGEN) Doxyfile
 .PHONY: doc
 
+python:
+	$(MAKE) -C $(BIFROST_PYTHON_DIR) build
+.PHONY: python
 
 #GPU Docker build
 IMAGE_NAME ?= ledatelescope/bifrost
