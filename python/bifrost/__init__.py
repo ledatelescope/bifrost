@@ -30,7 +30,13 @@
 Bifrost pipeline processing library
 """
 
-from .version import __version__
+try:
+	from .version import __version__
+except ImportError:
+	print "*************************************************************************"
+	print "Please run `make` from the root of the source tree to generate version.py"
+	print "*************************************************************************"
+	raise
 __author__     = "The Bifrost Authors"
 __copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
 __credits__    = ["Ben Barsdell"]
