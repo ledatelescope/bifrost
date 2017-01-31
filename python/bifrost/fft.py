@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """This file wraps the bifrost FFT functions."""
-from bifrost.libbifrost import _bf
+from bifrost.libbifrost import _bf, _check
 
 def fft(input_data, output_data, direction="forward"):
     """Computes a fourier transform on input_data
@@ -38,8 +38,8 @@ def fft(input_data, output_data, direction="forward"):
         direction_code = 1
     else:
         direction_code = -1
-    error = _bf.FFT(input_data, output_data, direction_code)
-    return error()
+    _check(_bf.FFT(input_data, output_data, direction_code))
+    return True
 
 def ifft(input_data, output_data):
     """Gives numpy syntax for bifrost, by simply
