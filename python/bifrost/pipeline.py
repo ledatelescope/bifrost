@@ -162,7 +162,8 @@ class Pipeline(BlockScope):
 		return PipelineContext(self)
 	def run(self):
 		print "Launching %i blocks" % len(self.blocks)
-		threads = [threading.Thread(target=block.run) for block in self.blocks]
+		threads = [threading.Thread(target=block.run, name=block.name)
+		           for block in self.blocks]
 		for thread in threads:
 			thread.start()
 		print "Waiting for blocks to finish"
