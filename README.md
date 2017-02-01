@@ -55,14 +55,6 @@ Install dependencies:
 
     $ sudo apt-get install exuberant-ctags
 
-Edit **user.mk** to suit your system, then run:
-
-    $ make -j
-    $ sudo make install
-
-which will install the library and headers into /usr/local/lib and
-/usr/local/include respectively.
-
 ### Python interface
 
 Install dependencies:
@@ -71,13 +63,25 @@ Install dependencies:
  * Numpy
  * contextlib2
  * pint
+ 
 
-    $ sudo pip install numpy contextlib2 pint
+```
+$ sudo pip install numpy contextlib2 pint
+```
 
-Install bifrost module:
+### Bifrost installation
 
-    $ cd python/
-    $ sudo python setup.py install
+Edit **user.mk** to suit your system, then run:
+
+    $ make -j
+    $ sudo make install 
+
+which will install the library and headers into /usr/local/lib and
+/usr/local/include respectively.
+
+You can call the following for a local Python installation:
+
+    $ sudo make install PYINSTALLFLAGS="--prefix=$HOME/usr/local"
 
 Note that the bifrost module's use of PyCLibrary means it must have
 access to both the bifrost shared library and the bifrost headers at
