@@ -7,6 +7,8 @@ CXXFLAGS      ?= -O3 -Wall -Wpedantic
 NVCCFLAGS     ?= -O3 -Xcompiler "-Wall" #-Xptxas -v
 LDFLAGS       ?=
 DOXYGEN       ?= doxygen
+PYBUILDFLAGS   ?=
+PYINSTALLFLAGS ?=
 
 #GPU_ARCHS     ?= 30 32 35 37 50 52 53 # Nap time!
 #GPU_ARCHS     ?= 35 52

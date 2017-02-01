@@ -7,9 +7,9 @@ while [ "$1" != "" ]; do
             export INSTALL_LIB_DIR=$JENKINS_HOME/usr/local/lib
             export INSTALL_INC_DIR=$JENKINS_HOME/usr/local/include
             NVCC=/usr/local/cuda-6.5/bin/nvcc make -j
-            make install
-            cd python
-            python setup.py install --prefix=$JENKINS_HOME/usr/local
+            make install PYINSTALLFLAGS="--prefix=$JENKINS_HOME/usr/local"
+            #cd python
+            #python setup.py install --prefix=$JENKINS_HOME/usr/local
             ;;
         --test )
             export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$JENKINS_HOME/usr/local/lib:/usr/local/cuda-6.5/targets/x86_64-linux/lib:/usr/local/cuda-6.5/targets/x86_64-linux/lib
