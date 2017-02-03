@@ -23,6 +23,7 @@ test:
 	$(MAKE) -C $(SRC_DIR) test
 .PHONY: test
 clean:
+	$(MAKE) -C $(BIFROST_PYTHON_DIR) clean || true
 	$(MAKE) -C $(SRC_DIR) clean
 	rm -f $(BIFROST_PYTHON_VERSION_FILE)
 .PHONY: clean
