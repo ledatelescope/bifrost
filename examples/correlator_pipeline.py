@@ -7,6 +7,11 @@ from bifrost.block import Pipeline, MultiTransformBlock, SourceBlock, SinkBlock,
 import bifrost.affinity as affinity
 
 
+SIZEOF_FLOAT32 = 4
+SIZEOF_FLOAT64 = 8
+SIZEOF_COMPLEX = 8
+
+
 # When Python prints a type or turns it to string (for JSON), it gets wrapped in <type >
 def str2type(s):
   if s == "<type 'numpy.float64'>": return np.float64
@@ -182,18 +187,22 @@ def kurtosis_variance(data, args):
   return np.var(data)
 
 # Assemble the pipeline. Most blocks are accumulators, but some are not. There is a NumpyBlock (correlate).
+# Parameters for realistic simulation of LEDA correlator:
+# - FFT size is 8192
+# - after correlation, the number of samples integrated into 9 secs dump is 216000
+# - other buffer size have to be extracted from the GPU programs, i.e. what is used in PSRDADA
 
 blocks = []
-voltage_chunk_size = 1024*1024; how_many_chunks = 1024*1024*1024; core = 0
+voltage_chunk_size = 1024; how_many_chunks = 1024*1024*1024*1024; core = 0
 blocks.append((GenerateVoltages(voltage_chunk_size, how_many_chunks, core), [], ["voltages"]))
 
-fft_size = 1024; channel_values_buffer_size = 1024; which_channel = 10; core += 1
+fft_size = 8192; channel_values_buffer_size = 216000; which_channel = 10; core += 1
 blocks.append((Accumulator(fft, fft_size, channel_values_buffer_size, np.complex64, core, (which_channel)), 
 	{"in_data": "voltages", "out_data": "channel" }))
 
 blocks.append((NumpyBlock(correlate), {'in_1': 'channel', 'out_1': 'auto_correlate'}))
 
-integration_length = 1024; integrated_values_buffer_size = 1024; core += 1
+integration_length = 216000; integrated_values_buffer_size = 128; core += 1
 blocks.append((Accumulator(integrate, integration_length, integrated_values_buffer_size, np.complex64, core, ()), 
 	{"in_data": "auto_correlate", "out_data": "integrated" }))
 
@@ -201,11 +210,10 @@ M = integrated_values_buffer_size; N = integration_length; kurtosis_buffer_size 
 blocks.append((Accumulator(kurtosis, M, kurtosis_buffer_size, np.float64, core, (fft_size, N)), 
 	{"in_data": "integrated", "out_data": "kurtosis" }))
 
-variance_length = 1024; kurtosis_variance_buffer_size = 10; core += 1
+variance_length = 128; kurtosis_variance_buffer_size = 1; core += 1
 blocks.append((Accumulator(kurtosis_variance, variance_length, kurtosis_variance_buffer_size, np.float64, core, ()), 
 	{"in_data": "kurtosis", "out_data": "kurtosis_variance" }))
 
-core += 1
 blocks.append((PrintOp(core), ["kurtosis_variance"], []))
 
 
@@ -213,6 +221,7 @@ blocks.append((PrintOp(core), ["kurtosis_variance"], []))
 # Print what all the reductions give us. Find out how much data gets consumed to produce 1 variance value.
 n = variance_length*M*integration_length*fft_size		# voltages
 print "Num required voltage values", n
+print "Num outputs", int(voltage_chunk_size*how_many_chunks/n)
 print "Reduction factor", ( "(%e)" % (float(1)/n) )
 print "Threshold?", 4.0*M**2/((M-1)*(M+2)*(M+3))    # See eqn 53/54 in https://web.njit.edu/~gary/assets/PASP_Published_652409.pdf
 
