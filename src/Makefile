@@ -10,6 +10,7 @@ LIBBIFROST_OBJS = \
   address.o \
   udp_socket.o \
   udp_capture.o \
+  udp_transmit.o \
   unpack.o \
   quantize.o
 ifndef NOCUDA
