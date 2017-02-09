@@ -101,7 +101,6 @@ class BinaryFileReadBlock(bfp.SourceBlock):
                 }
         return [ohdr]
     
-    @timeit
     def on_data(self, reader, ospans):
         indata = reader.read()
         
@@ -132,7 +131,6 @@ class BinaryFileWriteBlock(bfp.SinkBlock):
         new_filename = iseq.header['name'] + '.' + self.file_ext
         self.current_fileobj = open(new_filename, 'w')
     
-    @timeit
     def on_data(self, ispan):
         self.current_fileobj.write(ispan.data.tobytes())
 
