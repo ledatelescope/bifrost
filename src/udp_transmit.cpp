@@ -114,15 +114,16 @@ class BFudptransmit_impl {
 	std::fstream       _stat_log;
 	pid_t              _pid;
 	
-	inline struct msghdr _build_msghdr(char *packet, unsigned int len) {
+	inline struct msghdr _build_msghdr(char* packet, unsigned int len) {
 		struct msghdr msg;
-		struct iovec iov;
+		struct iovec iov[1];
+		
+		iov[0].iov_base = packet;
+		iov[0].iov_len = len;
 		
 		memset(&msg, 0, sizeof(msg));
-		msg.msg_iov = &iov;
+		msg.msg_iov = iov;
 		msg.msg_iovlen = 1;
-		iov.iov_base = packet;
-		iov.iov_len = len;
 		
 		return msg;
 	}
@@ -153,7 +154,7 @@ public:
 		// Fill in known parameters which don't change
 		_type_log.seekp(0);
 		_type_log << "TYPE = "
-			     << "transmit" << endl;
+			     << "generic" << endl;
 		_type_log.flush();
 	}
 	inline void close_logs() {
@@ -171,8 +172,13 @@ public:
 	BFudptransmit_status send(char *packet, unsigned int len) {
 		ssize_t state;
 		struct msghdr msg;
+		struct iovec iov[1];
 		
-		msg = _build_msghdr(packet, len);
+		memset(&msg, 0, sizeof(msg));
+		msg.msg_iov = iov;
+		msg.msg_iovlen = 1;
+		iov[0].iov_base = packet;
+		iov[0].iov_len = len;
 		
 		state = _transmit.send( &msg );
 		if( state == -1 ) {
@@ -195,19 +201,24 @@ public:
 		ssize_t state;
 		unsigned int i;
 		struct mmsghdr *mmsg = NULL;
+		struct iovec *iovs = NULL;
 		
 		mmsg = (struct mmsghdr *) malloc(sizeof(struct mmsghdr)*npackets);
+		iovs = (struct iovec *) malloc(sizeof(struct iovec)*npackets);
+		memset(mmsg, 0, sizeof(struct mmsghdr)*npackets);
 		for(i=0; i<npackets; i++) {
-			mmsg[i].msg_hdr = _build_msghdr(packets+i*len, len);
+			mmsg[i].msg_hdr.msg_iov = &iovs[i];
+			mmsg[i].msg_hdr.msg_iovlen = 1;
+			iovs[i].iov_base = (packets + i*len);
+			iovs[i].iov_len = len;
 		}
 		
 		state = _transmit.sendmany(mmsg, npackets);
+		free(mmsg);
+		free(iovs);
 		if( state == -1 ) {
-			free(mmsg);
 			return BF_TRANSMIT_ERROR;
 		}
-		
-		free(mmsg);
 		
 		const PacketStats* stats = _transmit.get_stats();
 		_stat_log.seekp(0);

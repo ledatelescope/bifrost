@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
-from libbifrost import _bf, _check, _get, _string2space, _space2string
+from libbifrost import _bf, _check, _get
 
 import ctypes
 import numpy as np
 
 def _packet2pointer(packet):
-	buf = ctypes.create_string_buffer(packet)
-	len = ctype.sizeof(buf)
-	return ctypes.pointer(buf), len
+	buf = ctypes.c_char_p(packet)
+	siz = ctypes.c_uint( len(packet) )
+	return buf, siz
 
 
 def _packets2pointer(packets):
-	count = len(packets)
-	buf = ctypes.create_string_buffer("".join(packets))
-	len = ctypes.sizeof(buf)/count
-	return ctypes.pointer(buf), len, count
+	count = ctypes.c_uint( len(packets) )
+	buf = ctypes.c_char_p("".join(packets))
+	siz = ctypes.c_uint( len(packets[0]) )
+	return buf, siz, count
 
 
 class UDPTransmit(object):
@@ -30,9 +30,9 @@ class UDPTransmit(object):
 	def __exit__(self, type, value, tb):
 		pass
 	def send(self, packet):
-		ptr, len = _packet2pointer(packet)
-		return _get( _bf.UdpTransmitSend(self.obj, ptr, len) )
+		ptr, siz = _packet2pointer(packet)
+		return _get( _bf.UdpTransmitSend(self.obj, ptr, siz) )
 	def sendmany(self, packets):
 		assert(type(packets) is list)
-		ptr, len, count = _packets2pointer(packets)
-		return _get( _bf.UdpTransmitSendMany(self.obj, ptr, len, count) )
+		ptr, siz, count = _packets2pointer(packets)
+		return _get( _bf.UdpTransmitSendMany(self.obj, ptr, siz, count) )
