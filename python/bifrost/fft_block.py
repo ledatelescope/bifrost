@@ -37,6 +37,7 @@ class FFTBlock(TransformBlock):
 
     def on_sequence(self, iseq):
         ohdr = deepcopy(iseq.header)
+        ohdr['_tensor']['dtype'] = 'cf32'
         return ohdr
     
     def on_data(self, ispan, ospan):
