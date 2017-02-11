@@ -32,6 +32,7 @@ of a simple transform which works on a span by span basis.
 """
 import json
 import threading
+import time
 from contextlib import nested
 import matplotlib
 ## Use a graphical backend which supports threading
@@ -87,7 +88,7 @@ class Pipeline(object):
                 for param_name in block[1]:
                     block[0].rings[param_name] = self.rings[str(block[1][param_name])]
                 threads.append(threading.Thread(
-                    target=block[0].main))
+                    target=block[0]._main))
             else:
                 input_rings = []
                 output_rings = []
@@ -227,11 +228,35 @@ class SinkBlock(object):
 class MultiTransformBlock(object):
     """Defines functions and attributes for a block with multi input/output"""
     def __init__(self):
-        """Set up dictionaries for holding ring settings"""
+        """
+        Set up dictionaries for holding ring settings
+        
+        self.rings Dictionary which holds the ring objects. Keys
+            are the ring_names defined in class.
+        self.header Dictionary which holds dictionary headers
+            for each ring.
+        self.gulp_size How many bytes to open on each read/write
+            of input or output rings.
+        self.trigger_sequence A trigger boolean which causes all
+            output rings to start a new sequence at the next
+            iteration of write(). The header and gulp_size settings
+            at this time will be used to set the sequence. This
+            trigger is to be called within the read/write loop
+            of main(). The next loop iteration will return
+            outspans which were allocated on new sequences.
+        """
         super(MultiTransformBlock, self).__init__()
         self.rings = {}
         self.header = {}
         self.gulp_size = {}
+        self.trigger_sequence = False
+    def _main(self):
+        """Sets core, and calls main"""
+        affinity.set_core(-1)
+        for ring_name in self.ring_names:
+            if ring_name not in self.header:
+                self.header[ring_name] = {}
+        self.main()
     def flatten(self, *args):
         """Flatten a nested tuple/list of tuples/lists"""
         flattened_list = []
@@ -275,37 +300,49 @@ class MultiTransformBlock(object):
             for spans in self.izip(*[sequence.read(self.gulp_size[ring_name]) \
                     for ring_name, sequence in self.izip(args, sequences)]):
                 yield tuple([span.data_view(dtypes[ring_name])[0] for span, ring_name in self.izip(spans, args)])
-                #yield [span.data_view(np.float32)[0] for span in spans]
     def write(self, *args):
         """Iterate over selection of output rings"""
-        # resize all rings
-        for ring_name in args:
-            self.rings[ring_name].resize(self.gulp_size[ring_name])
         # list of sequences
         #TODO: Change this code if someone gives a reasonable answer on 
         #http://stackoverflow.com/questions/38834827/multiple-with-statements-in-python-2-7-using-a-list-comprehension
         with nested(*[self.rings[ring_name].begin_writing() \
                 for ring_name in args]) as out_rings:
-            with nested(*[out_ring.begin_sequence(
-                "",
-                0,
-                header=json.dumps(self.header[ring_name]),
-                nringlet=1) \
-                    for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
-                while True:
-                    with nested(*[out_sequence.reserve(self.gulp_size[ring_name]) \
-                            for out_sequence, ring_name in self.izip(
-                                out_sequences,
-                                args)]) as out_spans:
-                        dtypes = {}
-                        for ring_name in args:
-                            try:
-                                dtype = np.dtype(self.header[ring_name]['dtype']).type
-                            except TypeError:
-                                numpy_dtype_word = self.header[ring_name]['dtype'].split()[1]
-                                dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
-                            dtypes[ring_name] = dtype
-                        yield tuple([out_span.data_view(dtypes[ring_name])[0] for out_span, ring_name in self.izip(out_spans, args)])
+
+            while True:
+                # resize all rings
+                for ring_name in args:
+                    self.rings[ring_name].resize(self.gulp_size[ring_name])
+
+                with nested(*[out_ring.begin_sequence(
+                    str(int(time.time()*1000)),
+                    int(time.time()*1000),
+                    header=json.dumps(self.header[ring_name]),
+                    nringlet=1) \
+                        for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
+
+                    # This variable, as documented in __init__, acts as a trigger
+                    # to cause a new sequence to generated. Set it to be True
+                    # in the read/write loop, and the next outspans will be allocated
+                    # on a new sequence.
+                    self.trigger_sequence = False
+
+                    #TODO: Eventually this could be used on each ring individually.
+                    while not self.trigger_sequence:
+
+                        with nested(*[out_sequence.reserve(self.gulp_size[ring_name]) \
+                                for out_sequence, ring_name in self.izip(
+                                    out_sequences,
+                                    args)]) as out_spans:
+
+                            dtypes = {}
+                            for ring_name in args:
+                                try:
+                                    dtype = np.dtype(self.header[ring_name]['dtype']).type
+                                except TypeError:
+                                    numpy_dtype_word = self.header[ring_name]['dtype'].split()[1]
+                                    dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
+                                dtypes[ring_name] = dtype
+                            yield tuple([out_span.data_view(dtypes[ring_name])[0] for out_span, ring_name in self.izip(out_spans, args)])
 class SplitterBlock(MultiTransformBlock):
     """Block which splits up a ring into two"""
     ring_names = {
@@ -865,26 +902,21 @@ class NumpyBlock(MultiTransformBlock):
         self.inputs = ['in_%d' % (i+1) for i in range(inputs)]
         self.outputs = ['out_%d' % (i+1) for i in range(outputs)]
         self.ring_names = {}
+        self.create_ring_names()
+        self.function = function
+        assert callable(self.function)
+
+    def create_ring_names(self):
+        """Generate dummy ring descriptions"""
         for input_name in self.inputs:
             ring_description = "Input number " + input_name[3:]
             self.ring_names[input_name] = ring_description
         for output_name in self.outputs:
             ring_description = "Output number " + output_name[4:]
             self.ring_names[output_name] = ring_description
-        self.function = function
-        assert callable(self.function)
+
     def load_settings(self):
-        """Estimate the output settings based on zero matrices
-            of the input shapes and data types"""
-        test_input_arrays = self.generate_input_arrays()
-        if len(self.outputs) == 1:
-            self.measure_output_settings([self.function(*test_input_arrays)])
-        elif len(self.outputs) > 1:
-            self.measure_output_settings(self.function(*test_input_arrays))
-    def generate_input_arrays(self):
-        """Generate empty input arrays to test self.function, based on
-            input headers."""
-        test_input_arrays = []
+        """Generate empty arrays based on input headers."""
         for input_name in self.inputs:
             try:
                 dtype = np.dtype(self.header[input_name]['dtype']).type
@@ -893,14 +925,12 @@ class NumpyBlock(MultiTransformBlock):
                 dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
             array = np.zeros(shape=self.header[input_name]['shape'], dtype=dtype)
             self.gulp_size[input_name] = array.nbytes
-            test_input_arrays.append(array)
-        return test_input_arrays
-    def measure_output_settings(self, test_arrays):
-        """Measure the settings of the output arrays and set header settings
-            appropriately.
-            @param[in] test_arrays The test arrays to measure"""
+
+    def calculate_output_headers(self, out_arrays):
+        """Generate headers based on numpy arrays
+            @param[in] out_arrays The arrays to measure"""
         for output_index, output_name in enumerate(self.outputs):
-            test_output_array = test_arrays[output_index]
+            test_output_array = out_arrays[output_index]
             assert isinstance(test_output_array, np.ndarray)
             nbytes = test_output_array.nbytes
             nelements = test_output_array.size
@@ -909,33 +939,65 @@ class NumpyBlock(MultiTransformBlock):
             self.header[output_name]['dtype'] = str(test_output_array.dtype)
             self.header[output_name]['nbit'] = 8*nbytes//nelements
             self.header[output_name]['shape'] = list(test_output_array.shape)
+
+    def reshape_inspans(self, inspans):
+        """Fit the input spans to their headers
+            @param[in] inspans The input spans."""
+        for i, input_name in enumerate(self.inputs):
+            try:
+                dtype = np.dtype(self.header[input_name]['dtype']).type
+            except TypeError:
+                numpy_dtype_word = self.header[input_name]['dtype'].split()[1]
+                dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
+            inspans[i] = inspans[i].view(dtype).reshape(self.header[input_name]['shape'])
+        return inspans
+
+    def did_header_change(self, old_header):
+        """See if the new headers are different
+            @param[in] old_header The previous headers"""
+        for ring_name in self.ring_names:
+            if old_header[ring_name] != self.header[ring_name]:
+                return True
+        return False
+
     def main(self):
         """Call self.function on all of the input spans"""
-        for allspans in self.izip(self.read(*self.inputs), self.write(*self.outputs)):
-            inspans = allspans[:len(self.inputs)]
-            outspans = allspans[len(self.inputs):]
-            for i, input_name in enumerate(self.inputs):
-                try:
-                    dtype = np.dtype(self.header[input_name]['dtype']).type
-                except TypeError:
-                    numpy_dtype_word = self.header[input_name]['dtype'].split()[1]
-                    dtype = np.dtype(numpy_dtype_word.split(".")[1].split("'")[0]).type
-                inspans[i] = inspans[i].view(dtype).reshape(self.header[input_name]['shape'])
-            output_data = self.function(*inspans)
-            if len(self.outputs) == 1:
-                output_data = [output_data]
-            for i in range(len(self.outputs)):
-                outspans[i][:] = output_data[i].ravel()
+        number_outputs = len(self.outputs)
+        if number_outputs > 0:
+            outspan_generator = self.write(*self.outputs)
+
+        for inspans in self.izip(self.read(*self.inputs)):
+            inspans = self.reshape_inspans(inspans)
+
+            if number_outputs == 0:
+                self.function(*inspans)
+            else:
+                if number_outputs == 1:
+                    output_arrays = [self.function(*inspans)]
+                else:
+                    output_arrays = self.function(*inspans)
+                assert number_outputs == len(output_arrays)
+
+                old_header = dict(self.header)
+                self.calculate_output_headers(output_arrays)
+                if self.did_header_change(old_header):
+                    self.trigger_sequence = True
+
+                outspans = outspan_generator.next()
+                for i in range(number_outputs):
+                    outspans[i][:] = output_arrays[i].ravel()
+
 class NumpySourceBlock(MultiTransformBlock):
     """Simulate an incoming stream of data on a ring using an arbitrary generator.
         This block will calculate all of the
         necessary information for Bifrost based on the passed function."""
-    def __init__(self, generator, outputs=1, grab_headers=False):
+    def __init__(self, generator, outputs=1, grab_headers=False, changing=True):
         """Based on the number of inputs/outputs, set up enough ring_names
             for the pipeline to call.
             @param[in] generator A function which generates numpy arrays
             @param[in] outputs The number of numpy arrays generated. Also
-                equal to the number of outgoing rings attached to this block."""
+                equal to the number of outgoing rings attached to this block.
+            @param[in] changing Whether or not the arrays will be different in shape"""
         super(NumpySourceBlock, self).__init__()
         outputs = ['out_%d'%(i+1) for i in range(outputs)]
         self.ring_names = {}
@@ -946,6 +1008,8 @@ class NumpySourceBlock(MultiTransformBlock):
         self.generator = generator()
         assert hasattr(self.generator, 'next')
         self.grab_headers = grab_headers
+        self.changing = changing
+
     def calculate_output_settings(self, arrays):
         """Calculate the outgoing header settings based on the output arrays
             @param[in] arrays The arrays outputted by self.generator"""
@@ -957,6 +1021,7 @@ class NumpySourceBlock(MultiTransformBlock):
                 'shape': list(arrays[index].shape),
                 'nbit': arrays[index].nbytes*8//arrays[index].size}
             self.gulp_size[ring_name] = arrays[index].nbytes
+
     def load_user_headers(self, headers, arrays):
         """Load in user defined headers
             @param[in] headers List of dictionaries from self.generator
@@ -968,9 +1033,11 @@ class NumpySourceBlock(MultiTransformBlock):
             if 'dtype' in header:
                 assert 'nbit' in header
                 self.gulp_size[ring_name] = arrays[i].size*self.header[ring_name]['nbit']//8
+
     def main(self):
         """Call self.generator and output the arrays into the output"""
         output_data = self.generator.next()
+
         if self.grab_headers:
             arrays = output_data[0::2]
             headers = output_data[1::2]
@@ -982,12 +1049,15 @@ class NumpySourceBlock(MultiTransformBlock):
         self.calculate_output_settings(arrays)
         if self.grab_headers:
             self.load_user_headers(headers, arrays)
+
         for outspans in self.write(*['out_%d'%(i+1) for i in range(len(self.ring_names))]):
             for i in range(len(self.ring_names)):
                 dtype = self.header['out_%d'%(i+1)]['dtype']
                 outspans[i][:] = arrays[i].astype(np.dtype(dtype).type).ravel()
+
             try:
                 output_data = self.generator.next()
+
                 if self.grab_headers:
                     arrays = output_data[0::2]
                     headers = output_data[1::2]
@@ -998,3 +1068,11 @@ class NumpySourceBlock(MultiTransformBlock):
                         arrays = output_data
             except StopIteration:
                 break
+
+            if self.changing:
+                old_header = dict(self.header)
+                self.calculate_output_settings(arrays)
+                for ring_name in self.ring_names:
+                    if old_header[ring_name] != self.header[ring_name]:
+                        self.trigger_sequence = True
+                        break

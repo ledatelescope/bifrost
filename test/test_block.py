@@ -400,6 +400,89 @@ class TestMultiTransformBlock(unittest.TestCase):
             {'bad_ring_name':0, 'in_2':0, 'out_sum': 1}]
         with self.assertRaises(AssertionError):
             Pipeline(blocks).main()
+    def test_multiple_sequences(self):
+        """Try to send multiple sequences through a branching pipeline"""
+
+        def generate_different_arrays():
+            """Yield four different groups of two arrays"""
+            dtypes = ['float32', 'float64', 'complex64', 'int8']
+            shapes = [(4,), (4, 5), (4, 5, 6), (2,)*10]
+            for array_index in range(4):
+                yield np.ones(
+                    shape=shapes[array_index],
+                    dtype=dtypes[array_index])
+                yield 2*np.ones(
+                    shape=shapes[array_index],
+                    dtype=dtypes[array_index])
+
+        def switch_types(array):
+            """Return two copies of the array, one with a different type"""
+            return np.copy(array), np.copy(array).astype(np.complex128)
+
+        self.occurences = 0
+        def compare_arrays(array1, array2):
+            """Make sure that all arrays coming in are equal"""
+            self.occurences += 1
+            np.testing.assert_almost_equal(array1, array2)
+
+        blocks = [
+            (NumpySourceBlock(generate_different_arrays), {'out_1': 0}),
+            (NumpyBlock(switch_types, outputs=2), {'in_1': 0, 'out_1': 1, 'out_2': 2}),
+            (NumpyBlock(np.fft.fft), {'in_1': 2, 'out_1': 3}),
+            (NumpyBlock(np.fft.ifft), {'in_1': 3, 'out_1': 4}),
+            (NumpyBlock(compare_arrays, inputs=2, outputs=0), {'in_1': 1, 'in_2': 4})]
+
+        Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 8)
+    
+    def test_two_sequences(self):
+        """Make sure multiple sequences only triggered for different headers"""
+
+        np.random.seed(44)
+        def generate_two_different_arrays():
+            """Generate 10 of an array shape, then 10 of a different array shape"""
+            for _ in range(10):
+                yield np.random.rand(4)
+            for _ in range(10):
+                yield np.random.rand(5)
+
+        self.triggered = False
+        self.monitor_block = None
+        self.sequence_id = ""
+        self.i = 0
+
+        #This array holds all of the
+        #starting numbers. If there
+        #are more than two different
+        #numbers, then there is a problem
+        self.all_sequence_starts = []
+
+        def monitor_block_sequences(array):
+            """Read the newest sequence, and append the first
+               byte to the all_sequence_starts"""
+
+            #Avoid reading an empty sequence
+            if self.i > 1 and self.i < 11:
+                with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
+                    span_gen = curr_seq.read(1)
+                    self.all_sequence_starts.append(int(span_gen.next().data[0]))
+            if self.i > 12:
+                with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
+                    span_gen = curr_seq.read(1)
+                    self.all_sequence_starts.append(int(span_gen.next().data[0]))
+            self.i += 1
+            return array
+                
+        self.monitor_block = NumpyBlock(monitor_block_sequences)
+        blocks = [
+            (NumpySourceBlock(generate_two_different_arrays), {'out_1': 0}),
+            (self.monitor_block, {'in_1': 0, 'out_1': 1})]
+
+        Pipeline(blocks).main()
+
+        unique_starts = len(set(self.all_sequence_starts))
+        self.assertEqual(unique_starts, 2)
+
 class TestSplitterBlock(unittest.TestCase):
     """Test a block which splits up incoming data into two rings"""
     def test_simple_half_split(self):
@@ -565,6 +648,7 @@ class TestNumpyBlock(unittest.TestCase):
         open('.log.txt', 'w').close()
         np.testing.assert_almost_equal(self.global_variable, [1, 2, 3, 4])
         self.expected_result = [1, 2, 3, 4]
+
 class TestNumpySourceBlock(unittest.TestCase):
     """Tests for a block which can call arbitrary functions that work on numpy arrays.
         This should include the many numpy, scipy and astropy functions.
@@ -679,6 +763,7 @@ class TestNumpySourceBlock(unittest.TestCase):
             yield (
                 np.array([1, 2, 3, 4]), header_1,
                 np.array([1, 2]), header_2)
+
         def assert_expectation(array1, array2):
             "Assert that the arrays have different complex datatypes"
             np.testing.assert_almost_equal(array1, [1, 2, 3, 4])
@@ -686,13 +771,43 @@ class TestNumpySourceBlock(unittest.TestCase):
             self.assertEqual(array1.dtype, np.dtype('complex128'))
             self.assertEqual(array2.dtype, np.dtype('complex64'))
             self.occurences += 1
+
         blocks = []
         blocks.append((
             NumpySourceBlock(generate_array_and_header, outputs=2, grab_headers=True),
             {'out_1': 0, 'out_2': 1}))
-        blocks.append((NumpyBlock(assert_expectation, inputs=2, outputs=0), {'in_1': 0, 'in_2': 1}))
+        blocks.append((
+            NumpyBlock(assert_expectation, inputs=2, outputs=0),
+            {'in_1': 0, 'in_2': 1}))
+
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 1)
+    def test_output_change(self):
+        """Change the output of the source, and expect new sequence"""
+        self.occurences = 0
+
+        def generate_different_arrays():
+            """Yield two different arrays"""
+            yield np.array([1, 2])
+            yield np.array([1, 2, 3])
+
+        def assert_change(array):
+            """Assert the input arrays change"""
+            if self.occurences == 0:
+                np.testing.assert_almost_equal(array, [1, 2])
+            else:
+                np.testing.assert_almost_equal(array, [1, 2, 3])
+            self.occurences += 1
+
+        blocks = [
+            (NumpySourceBlock(generate_different_arrays), {'out_1': 0}),
+            (NumpyBlock(np.copy), {'in_1': 0, 'out_1': 1}),
+            (NumpyBlock(assert_change, outputs=0), {'in_1': 1})]
+
+        Pipeline(blocks).main()
+        self.assertEqual(self.occurences, 2)
         #TODO: Add tests for defined 'rate' of numpy source block?
-        #TODO: Add tests for changing output of generator
-        #TODO: Add test for Pipeline calling _main, which sets core.
+        #TODO: How to test multiple sequences are not getting generated?
+        #TODO: Add test for making sure multi-core speeds up.
+        #TODO: Add timeout test for Pipelines.
+        #TODO: Need test for when new sequence from one ring and not other.
