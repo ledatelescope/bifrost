@@ -46,6 +46,7 @@ CXXFLAGS  += -std=c++11 -fPIC -fopenmp
 NVCCFLAGS += -std=c++11 -Xcompiler "-fPIC" $(NVCC_GENCODE)
 
 #NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
+#NVCCFLAGS += --expt-relaxed-constexpr
 
 ifndef NODEBUG
   CPPFLAGS  += -DBF_DEBUG=1
@@ -110,6 +111,7 @@ $(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
 	echo "    *;"    >> $@
 	echo "};"        >> $@
 
+ifndef NOCUDA
 fft.o: fft.cu bifrost/fft.h
 	# Note: This needs to be compiled with "-dc" to make CUFFT callbacks work
 	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" $(TARGET_ARCH) -dc $(OUTPUT_OPTION) $<
@@ -117,13 +119,17 @@ _cuda_device_link.o: fft.o
 	$(CLEAR_LINE)
 	@echo -n "Linking _cuda_device_link.o\r"
 	$(NVCC) -dlink -o $@ $(NVCCFLAGS) fft.o -lcufft_static
+CUDA_DEVICE_LINK_OBJ = _cuda_device_link.o
+else
+CUDA_DEVICE_LINK_OBJ =
+endif
 
 # Note: $(LIB) must go at after OBJS
-$(LIBBIFROST_SO): $(LIBBIFROST_OBJS) $(LIBBIFROST_VERSION_FILE) _cuda_device_link.o
+$(LIBBIFROST_SO): $(LIBBIFROST_OBJS) $(LIBBIFROST_VERSION_FILE) $(CUDA_DEVICE_LINK_OBJ)
 	$(CLEAR_LINE)
 	@echo -n "Linking $(LIBBIFROST_SO_NAME)\r"
 	mkdir -p $(LIB_DIR)
-	$(LINKER) $(SHARED_FLAG) -Wl,--version-script=$(LIBBIFROST_VERSION_FILE),$(SONAME_FLAG),$(LIBBIFROST_NAME)$(SO_EXT).$(LIBBIFROST_MAJOR) -o $@ $(LIBBIFROST_OBJS) _cuda_device_link.o $(LIB) $(LDFLAGS)
+	$(LINKER) $(SHARED_FLAG) -Wl,--version-script=$(LIBBIFROST_VERSION_FILE),$(SONAME_FLAG),$(LIBBIFROST_NAME)$(SO_EXT).$(LIBBIFROST_MAJOR) -o $@ $(LIBBIFROST_OBJS) $(CUDA_DEVICE_LINK_OBJ) $(LIB) $(LDFLAGS)
 	ln -s -f $(LIBBIFROST_SO_NAME) $(LIBBIFROST_SO_STEM).$(LIBBIFROST_MAJOR)
 	ln -s -f $(LIBBIFROST_SO_NAME) $(LIBBIFROST_SO_STEM)
 	$(CLEAR_LINE)

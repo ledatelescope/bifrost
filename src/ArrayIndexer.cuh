@@ -96,13 +96,13 @@ public:
 		_default_offset = &this->at(default_inds) - _data;
 	}
 	__host__ __device__
-	inline static constexpr I size() {
+	inline static /*constexpr*/ I size() {
 		// TODO: Replace this with a metafunction
-		I size = 1;
+		I size_ = 1;
 		for( int d=0; d<NDIM; ++d ) {
-			size *= Shape::values[d];
+			size_ *= Shape::values[d];
 		}
-		return size;
+		return size_;
 	}
 	// Implicit conversion to T
 	__host__ __device__

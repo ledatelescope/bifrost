@@ -41,7 +41,9 @@
 #include <bifrost/fft.h>
 #include "assert.hpp"
 #include "utils.hpp"
+#include "cuda.hpp"
 #include "ShapeIndexer.cuh"
+#include "ArrayIndexer.cuh"
 #include <thrust/device_vector.h>
 
 #include <cufft.h>
