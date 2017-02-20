@@ -33,7 +33,6 @@
 
 #ifndef BF_COMMON_H_INCLUDE_GUARD_
 #define BF_COMMON_H_INCLUDE_GUARD_
-#define BF_MAX_DIM 3
 
 #include <stddef.h>
 #include <stdint.h>

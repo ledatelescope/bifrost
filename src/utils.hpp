@@ -33,7 +33,9 @@
 #include <bifrost/memory.h>
 #include <bifrost/array.h>
 #include "cuda.hpp"
+#include "IndexArray.cuh"
 
+#include <algorithm>
 #include <stdexcept>
 #include <cstring> // For ::memcpy
 
@@ -192,6 +194,14 @@ inline bool shapes_equal(const BFarray* a,
 	return true;
 }
 
+inline long shape_size(int ndim, const long shape[BF_MAX_DIMS]) {
+	long size = 1;
+	for( int d=0; d<ndim; ++d ) {
+		size *= shape[d];
+	}
+	return size;
+}
+
 inline BFsize capacity_bytes(const BFarray* array) {
 	return array->strides[0] * array->shape[0];
 }
@@ -210,8 +220,10 @@ inline BFsize num_contiguous_elements(const BFarray* array ) {
 
 // Merges together contiguous dimensions
 //   Copies (shallow) 'in' to 'out' and writes new ndim, shape, and strides
+/*
 inline void squeeze_contiguous_dims(BFarray const* in,
-                                    BFarray*       out) {
+                                    BFarray*       out,
+                                    unsigned long  keep_mask=0) {
 	::memcpy(out, in, sizeof(BFarray));
 	int odim = 0;
 	int32_t osize = 1;
@@ -220,7 +232,8 @@ inline void squeeze_contiguous_dims(BFarray const* in,
 		int32_t logical_stride = in->strides[idim+1]*in->shape[idim+1];
 		bool is_padded_dim = (in->strides[idim] != logical_stride);
 		bool is_last_dim = (idim == in->ndim-1);
-		if( is_last_dim || is_padded_dim ) {
+		bool is_keep_dim = keep_mask & (1<<idim);
+		if( is_last_dim || is_padded_dim || is_keep_dim ) {
 			out->shape[odim]   = osize;
 			out->strides[odim] = in->strides[idim];
 			osize = 1;
@@ -228,6 +241,159 @@ inline void squeeze_contiguous_dims(BFarray const* in,
 		}
 	}
 	out->ndim = odim;
+}
+*/
+// Merges together dimensions, keeping only those with the corresponding bit
+//   set in keep_mask.
+inline void flatten(BFarray const* in,
+                    BFarray*       out,
+                    unsigned long  keep_mask=0) {
+	::memcpy(out, in, sizeof(BFarray));
+	int odim = 0;
+	long osize = 1;
+	for( int idim=0; idim<in->ndim; ++idim ) {
+		osize *= in->shape[idim];
+		bool is_last_dim = (idim == in->ndim-1);
+		bool is_keep_dim = keep_mask & (1ul<<idim);
+		if( is_last_dim || is_keep_dim ) {
+			out->shape[odim]   = osize;
+			out->strides[odim] = in->strides[idim];
+			osize = 1;
+			++odim;
+		}
+	}
+	out->ndim = odim;
+}
+inline void flatten_shape(int*          ndim_ptr,
+                          long          shape[BF_MAX_DIMS],
+                          unsigned long keep_mask=0) {
+	int ndim = *ndim_ptr;
+	int odim = 0;
+	long osize = 1;
+	for( int idim=0; idim<ndim; ++idim ) {
+		osize *= shape[idim];
+		bool is_last_dim = (idim == ndim-1);
+		bool is_keep_dim = keep_mask & (1ul<<idim);
+		if( is_last_dim || is_keep_dim ) {
+			shape[odim++] = osize;
+			osize = 1;
+		}
+	}
+	*ndim_ptr = odim;
+}
+/*
+inline void flatten_contiguous_dims(BFarray const* in,
+                                    BFarray*       out,
+                                    unsigned long  keep_mask=0) {
+	// Note: Need to keep the dim _before_ the padded dim, hence the >> 1
+	keep_mask |= padded_dims_mask(in) >> 1;
+	return flatten(in, out, keep_mask);
+}
+*/
+// Returns mask where a 1-bit indicates that the next corresponding dim is
+//   padded.
+// Note: Uses next dim instead of actual because this is what's needed
+//         for flatten().
+inline unsigned long padded_dims_mask(BFarray const* arr) {
+	unsigned long mask = 0;
+	// Note: Padding does not make sense for first dim
+	for( int d=1; d<arr->ndim; ++d ) {
+		long logical_stride  = arr->strides[d]*arr->shape[d];
+		long physical_stride = arr->strides[d-1];
+		bool padded = (logical_stride != physical_stride);
+		mask |= ((unsigned long)padded) << (d-1);
+	}
+	return mask;
+}
+// Returns mask where a 1-bit indicates that the corresponding dim must be
+//   broadcast to match shape.
+inline unsigned long broadcast_dims_mask(BFarray const* arr,
+                                         int            ndim,
+                                         const long     shape[BF_MAX_DIMS]) {
+	unsigned long mask = 0;
+	for( int d=0; d<std::min(ndim, arr->ndim); ++d ) {
+		long length = arr->shape[d];
+		// Index dim (tail-aligned broadcasting)
+		int bd = d + std::max(ndim - arr->ndim, 0);
+		if( length != shape[bd] ) {
+			if( length == 1 ) {
+				mask |= 1ul << bd;
+			} else {
+				// Unbroadcastable
+				return (unsigned long)-1; // TODO: Should really report error somehow
+			}
+		}
+	}
+	return mask;
+}
+
+inline bool broadcast_shapes(int  narray,
+                             BFarray const*const* arrays,
+                             long shape[BF_MAX_DIMS],
+                             int* ndim_ptr) {
+	int ndim = 0;
+	for( int i=0; i<narray; ++i ) {
+		// Find number of broadcast dims
+		ndim = std::max(ndim, arrays[i]->ndim);
+	}
+	for( int bd=0; bd<ndim; ++bd ) {
+		// Initialize all broadcast dims to 1
+		shape[bd] = 1;
+	}
+	//std::cout << "NDIM = " << ndim << std::endl;
+	for( int i=0; i<narray; ++i ) {
+		for( int d=0; d<arrays[i]->ndim; ++d ) {
+			// Dims are right-aligned relative to broadcast shape
+			int bd = d + (ndim - arrays[i]->ndim);
+			long& blength = shape[bd];
+			long   length = arrays[i]->shape[d];
+			if( length < 1 ) {
+				// Invalid array shape
+				//std::cout << "INVALID " << length << std::endl;
+				return false;
+			} else if( blength == 1 ) {
+				// Initialize this broadcast dim
+				blength = length;
+			} else if( length != 1 && length != blength ) {
+				// Cannot be broadcast
+				//std::cout << "NOBROADCAST " << length << " != " << blength << std::endl;
+				return false;
+			}
+		}
+	}
+	*ndim_ptr = ndim;
+	return true;
+}
+
+template<typename I>
+inline void* array_get_pointer(BFarray const* arr,
+                               IndexArray<I,BF_MAX_DIMS> const& inds) {
+	I offset = 0;
+	for( int d=0; d<arr->ndim; ++d ) {
+		I length = arr->shape[d];
+		I stride = arr->strides[d];
+		if( length == 1 ) {
+			// Broadcasting
+			continue;
+		}
+		I ind = inds[d];
+		if( ind < 0 ) {
+			// Reverse indexing
+			ind += length;
+		}
+		offset += ind*stride;
+	}
+	return &((char*)arr->data)[offset];
+}
+
+template<typename T>
+inline size_t argmax_first(T const* arr, size_t n) {
+	return std::max_element(arr, arr+n) - arr;
+}
+template<typename T>
+inline size_t argmax_last(T const* arr, size_t n) {
+	std::reverse_iterator<T const*> beg(arr+n);
+	return n-1 - (std::max_element(beg, beg+n) - beg);
 }
 
 template<int NBIT, typename ConvertType=float, typename AccessType=char>
