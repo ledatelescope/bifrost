@@ -40,4 +40,4 @@ def set_openmp_cores(cores):
 	#         Note that the base type of the pointer type could be
 	#           derived via a reverse lookup table.
 	#           E.g., Inverse of POINTER(c_int)-->LP_c_int
-	_check(_bf.AffinitySetOpenMPCores(len(cores), _array('int', cores)))
+	_check(_bf.AffinitySetOpenMPCores(len(cores), _array(cores, 'int')))

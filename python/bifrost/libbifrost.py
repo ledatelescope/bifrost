@@ -104,15 +104,41 @@ bf = _bf                  # External access to library
 
 # Internal helper functions below
 
-def _array(typ, size_or_vals):
+#def _array(typ, size_or_vals):
+def _array(size_or_vals, dtype=None):
 	from pyclibrary import build_array
+	import ctypes
+	if size_or_vals is None:
+		return None
 	try:
 		_ = iter(size_or_vals)
-		vals = size_or_vals
-		return build_array(_bf, typ, size=len(vals), vals=vals)
 	except TypeError:
+		# Not iterable, so assume it's the size and create an empty array
 		size = size_or_vals
-		return build_array(_bf, typ, size=size)
+		return build_array(_bf, dtype, size=size)
+	else:
+		# Iterable, so convert it to a ctypes array
+		vals = size_or_vals
+		if len(vals) == 0:
+			return None
+		if dtype is None:
+			# Try to deduce type
+			if isinstance(vals[0], int):
+				dtype = ctypes.c_int
+			elif isinstance(vals[0], float):
+				dtype = ctypes.c_double
+			elif isinstance(vals[0], basestring):
+				dtype = ctypes.c_char_p
+			elif isinstance(vals[0], _bf.BFarray):
+				# Note: PyCLibrary does this automatically for scalar args,
+				#         but we must do it manually here for arrays.
+				dtype = ctypes.POINTER(_bf.BFarray)
+				vals = [ctypes.pointer(val) for val in vals]
+			#else:
+			#	dtype = type(vals[0])
+			else:
+				raise TypeError("Cannot deduce C type from ", type(vals[0]))
+		return build_array(_bf, dtype, size=len(vals), vals=vals)
 
 def _check(f):
 	status, args = f
