@@ -27,13 +27,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import bifrost as bf
-from bifrost.ring2 import Ring
+from bifrost.ring2 import Ring, ring_view
 from temp_storage import TempStorage
 
 from collections import defaultdict
 from contextlib2 import ExitStack
 import threading
 import time
+from copy import copy
 
 def izip(*iterables):
 	while True:
@@ -161,12 +162,12 @@ class Pipeline(BlockScope):
 	def as_default(self):
 		return PipelineContext(self)
 	def run(self):
-		print "Launching %i blocks" % len(self.blocks)
+		#print "Launching %i blocks" % len(self.blocks)
 		threads = [threading.Thread(target=block.run, name=block.name)
 		           for block in self.blocks]
 		for thread in threads:
 			thread.start()
-		print "Waiting for blocks to finish"
+		#print "Waiting for blocks to finish"
 		for thread in threads:
 			thread.join()
 	def __enter__(self):
@@ -184,6 +185,12 @@ def get_ring(block_or_ring):
 		return block_or_ring.orings[0]
 	except AttributeError:
 		return block_or_ring
+
+def block_view(block, header_transform):
+	new_block = copy(block)
+	new_block.orings = [ring_view(oring, header_transform)
+	                    for oring in new_block.orings]
+	return new_block
 
 class Block(BlockScope):
 	instance_counts = defaultdict(lambda: 0)

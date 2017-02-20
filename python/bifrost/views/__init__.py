@@ -26,32 +26,4 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Bifrost pipeline processing library
-"""
-
-try:
-	from .version import __version__
-except ImportError:
-	print "*************************************************************************"
-	print "Please run `make` from the root of the source tree to generate version.py"
-	print "*************************************************************************"
-	raise
-__author__     = "The Bifrost Authors"
-__copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
-__credits__    = ["Ben Barsdell"]
-__license__    = "BSD 3-Clause"
-__maintainer__ = "Ben Barsdell"
-__email__      = "benbarsdell@gmail.com"
-__status__     = "Development"
-
-# TODO: Decide how to organise the namespace
-import core, memory, affinity, ring, block, address, udp_socket
-import pipeline
-import device
-from ndarray import ndarray, asarray, empty_like, empty, zeros_like, zeros
-import views
-#import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
-#from transpose import transpose
-#from unpack import unpack
-#from quantize import quantize
+from .basic_views import split_axis, astype
