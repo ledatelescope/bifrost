@@ -27,28 +27,40 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-//#define FFT_FORWARD CUFFT_FORWARD
-//#define FFT_INVERSE CUFFT_INVERSE
-//#define FFT_C2C CUFFT_C2C
-//#define FFT_R2C CUFFT_R2C
-//#define FFT_C2R CUFFT_C2R
+#ifndef BF_FFT_H_INCLUDE_GUARD_
+#define BF_FFT_H_INCLUDE_GUARD_
+
 #include <bifrost/common.h>
 #include <bifrost/array.h>
 
+#ifdef __cplusplus
 extern "C" {
-BFstatus bfFFTC2C1d(
-    void** input_data, void** output_data, 
-    BFsize nelements, int direction);
-BFstatus bfFFTC2C2d(
-    void** input_data, void** output_data, 
-    BFsize nelements_x, BFsize nelements_y, 
-    int direction);
-BFstatus bfFFTR2C1d(
-    void** input_data, void** output_data, 
-    BFsize nelements);
-BFstatus bfFFTR2C2d(
-    void** input_data, void** output_data, 
-    BFsize nelements_x, BFsize nelements_y);
-BFstatus bfFFT(
-    BFarray *input, BFarray *output, int direction);
-}
+#endif
+
+typedef struct BFfft_impl* BFfft;
+
+BFstatus bfFftCreate(BFfft* plan_ptr);
+BFstatus bfFftInit(BFfft          plan,
+                   BFarray const* iarray,
+                   BFarray const* oarray,
+                   int            ndim,
+                   int     const* axes,
+                   size_t*        tmp_storage_size);
+// in, out = complex, complex => [i]fft
+// in, out = real, complex    => rfft
+// in, out = complex, real    => irfft
+// in, out = real, real       => ERROR
+// tmp_storage_size If NULL, library will allocate storage automatically
+BFstatus bfFftExecute(BFfft          plan,
+                      BFarray const* iarray,
+                      BFarray const* oarray,
+                      BFbool         inverse,
+                      void*          tmp_storage,
+                      size_t         tmp_storage_size);
+BFstatus bfFftDestroy(BFfft plan);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
+
+#endif // BF_FFT_H_INCLUDE_GUARD_

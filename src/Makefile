@@ -37,6 +37,8 @@ NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS), \
 CXXFLAGS  += -std=c++11 -fPIC -fopenmp
 NVCCFLAGS += -std=c++11 -Xcompiler "-fPIC" $(NVCC_GENCODE)
 
+#NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
+
 ifndef NODEBUG
   CPPFLAGS  += -DBF_DEBUG=1
   CXXFLAGS  += -g
@@ -65,7 +67,7 @@ endif
 
 ifndef NOCUDA
   CPPFLAGS  += -DBF_CUDA_ENABLED=1
-  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcufft
+  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -lcufft_static -lculibos
 endif
 
 ifndef ANY_ARCH
@@ -100,12 +102,20 @@ $(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
 	echo "    *;"    >> $@
 	echo "};"        >> $@
 
+fft.o: fft.cu bifrost/fft.h
+	# Note: This needs to be compiled with "-dc" to make CUFFT callbacks work
+	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" $(TARGET_ARCH) -dc $(OUTPUT_OPTION) $<
+_cuda_device_link.o: fft.o
+	$(CLEAR_LINE)
+	@echo -n "Linking _cuda_device_link.o\r"
+	$(NVCC) -dlink -o $@ $(NVCCFLAGS) fft.o -lcufft_static
+
 # Note: $(LIB) must go at after OBJS
-$(LIBBIFROST_SO): $(LIBBIFROST_OBJS) $(LIBBIFROST_VERSION_FILE)
+$(LIBBIFROST_SO): $(LIBBIFROST_OBJS) $(LIBBIFROST_VERSION_FILE) _cuda_device_link.o
 	$(CLEAR_LINE)
 	@echo -n "Linking $(LIBBIFROST_SO_NAME)\r"
 	mkdir -p $(LIB_DIR)
-	$(LINKER) $(SHARED_FLAG) -Wl,--version-script=$(LIBBIFROST_VERSION_FILE),$(SONAME_FLAG),$(LIBBIFROST_NAME)$(SO_EXT).$(LIBBIFROST_MAJOR) -o $@ $(LIBBIFROST_OBJS) $(LIB) $(LDFLAGS)
+	$(LINKER) $(SHARED_FLAG) -Wl,--version-script=$(LIBBIFROST_VERSION_FILE),$(SONAME_FLAG),$(LIBBIFROST_NAME)$(SO_EXT).$(LIBBIFROST_MAJOR) -o $@ $(LIBBIFROST_OBJS) _cuda_device_link.o $(LIB) $(LDFLAGS)
 	ln -s -f $(LIBBIFROST_SO_NAME) $(LIBBIFROST_SO_STEM).$(LIBBIFROST_MAJOR)
 	ln -s -f $(LIBBIFROST_SO_NAME) $(LIBBIFROST_SO_STEM)
 	$(CLEAR_LINE)

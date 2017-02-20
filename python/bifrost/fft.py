@@ -1,3 +1,4 @@
+
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
@@ -25,24 +26,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""This file wraps the bifrost FFT functions."""
-from bifrost.libbifrost import _bf, _check
+from libbifrost import _bf, _check, _get, _string2space
+from ndarray import asarray
+import ctypes
 
-def fft(input_data, output_data, direction="forward"):
-    """Computes a fourier transform on input_data
-    and returns it into output_data. Operates based
-    on the dimensionality of the data itself.
-    Assumes that input_data and output_data are both
-    BFarrays"""
-    if direction == "inverse":
-        direction_code = 1
-    else:
-        direction_code = -1
-    _check(_bf.FFT(input_data, output_data, direction_code))
-    return True
-
-def ifft(input_data, output_data):
-    """Gives numpy syntax for bifrost, by simply
-    passing the "inverse" string for the user
-    into the fft function"""
-    return fft(input_data, output_data, direction="inverse")
+class Fft(object):
+	def __init__(self):
+		self.obj = _get(_bf.FftCreate(), retarg=0)
+	def __del__(self):
+		if hasattr(self, 'obj') and bool(self.obj):
+			_bf.FftDestroy(self.obj)
+	def init(self, iarray, oarray, axes=None):
+		if isinstance(axes, int):
+			axes = [axes]
+		ndim = len(axes)
+		if axes is not None:
+			axes_type = ctypes.c_int*ndim
+			axes = axes_type(*axes)
+		self.workspace_size = _get(_bf.FftInit(
+			self.obj,
+			iarray=asarray(iarray).as_BFarray(),
+			oarray=asarray(oarray).as_BFarray(),
+			ndim=ndim, axes=axes))
+	def execute(self, iarray, oarray, inverse=False):
+		return self.execute_workspace(iarray, oarray,
+		                              workspace_ptr=None, workspace_size=0,
+		                              inverse=inverse)
+	def execute_workspace(self, iarray, oarray, workspace_ptr, workspace_size,
+	                      inverse=False):
+		_check( _bf.FftExecute(self.obj,
+		                       asarray(iarray).as_BFarray(),
+		                       asarray(oarray).as_BFarray(),
+		                       inverse,
+		                       workspace_ptr, workspace_size) )
+		return oarray
