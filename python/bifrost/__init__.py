@@ -51,6 +51,7 @@ import pipeline
 import device
 from ndarray import ndarray, asarray, empty_like, empty, zeros_like, zeros
 import views
+from map import map
 #import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
 #from transpose import transpose
 #from unpack import unpack

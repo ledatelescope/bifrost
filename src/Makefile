@@ -18,11 +18,19 @@ ifndef NOCUDA
   transpose.o \
   fft.o \
   fdmt.o \
+  map.o \
   #correlate.o \
   blas.o \
   transform.o
   #apsynth.o
 endif
+
+JIT_SOURCES ?= \
+  Complex.hpp.jit \
+  IndexArray.cuh.jit \
+  ArrayIndexer.cuh.jit \
+  ShapeIndexer.cuh.jit \
+  int_fastdiv.h.jit
 
 .SILENT:
 
@@ -122,6 +130,15 @@ $(LIBBIFROST_SO): $(LIBBIFROST_OBJS) $(LIBBIFROST_VERSION_FILE) _cuda_device_lin
 	@echo "Successfully built $(LIBBIFROST_SO_NAME)"
 
 *.o: $(MAKEFILES)
+
+map.o: $(JIT_SOURCES)
+
+stringify: stringify.cpp
+	g++ -o stringify -Wall -O3 stringify.cpp
+%.jit: % stringify
+	@$(CLEAR_LINE)
+	@echo -n "Building JIT version of $<\r"
+	./stringify $< > $@
 
 clean:
 	rm -f *.o *.so *.dylib *.a test_bifrost

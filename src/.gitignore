@@ -1,5 +1,7 @@
 .deps/
 libbifrost.version
+*.jit
+stringify
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
