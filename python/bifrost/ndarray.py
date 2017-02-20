@@ -48,17 +48,28 @@ import sys
 # TODO: The stuff here makes array.py redundant (and outdated)
 
 def asarray(arr, space=None):
-	if isinstance(arr, ndarray) and space is None:
+	if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
 		return arr
 	else:
 		return ndarray(arr, space=space)
 
 def empty_like(arr, space=None):
+	arr = asarray(arr)
 	if space is None:
 		space = arr.bf.space
-	arr = asarray(arr)
 	return ndarray(shape=arr.shape, dtype=arr.bf.dtype, space=space,
 	               native=arr.bf.native, conjugated=arr.bf.conjugated)
+def empty(shape, dtype, space=None, **kwargs):
+	return ndarray(shape=shape, dtype=dtype, space=space, **kwargs)
+
+def zeros_like(arr, space=None):
+	ret = empty_like(arr, space)
+	memset(ret, 0)
+	return ret
+def zeros(shape, dtype, space=None, **kwargs):
+	ret = empty(shape, dtype, space, **kwargs)
+	memet(ret, 0)
+	return ret
 
 def copy(dst, src):
 	dst_bf = asarray(dst)
@@ -72,11 +83,6 @@ def copy(dst, src):
 			# TODO: Decide where/when these need to be called
 			device.stream_synchronize()
 	return dst
-
-def zeros_like(arr, space=None):
-	ret = empty_like(arr, space)
-	memset(ret, 0)
-	return ret
 
 def memset(dst, value):
 	dst_bf = asarray(dst)
