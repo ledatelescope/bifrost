@@ -199,6 +199,8 @@ class WriteSequence(SequenceBase):
 	def __init__(self, ring, header, buf_nframe):
 		SequenceBase.__init__(self, ring)
 		self._header = header
+		# This allows passing DataType instances instead of string types
+		header['_tensor']['dtype'] = str(header['_tensor']['dtype'])
 		header_str = json.dumps(header)
 		header_size = len(header_str)
 		gulp_nframe = header['gulp_nframe']
@@ -384,6 +386,7 @@ class SpanBase(object):
 		                     strides=self.strides,
 		                     buffer=data_ptr,
 		                     dtype=self.dtype)
+		data_array.flags['WRITEABLE'] = self.writeable
 		
 		return data_array
 
