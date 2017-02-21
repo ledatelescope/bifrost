@@ -200,6 +200,8 @@ BFstatus build_map_kernel(int*                 external_ndim,
 		    space_accessible_from(args[a]->space, BF_SPACE_SYSTEM) ) {
 			// pass
 		} else {
+			// TODO: De-dupe this with the one above
+			const char* ctype_string = dtype2ctype_string(args[a]->dtype);
 			if( basic_indexing_only ) {
 				// Here we define the variable as a plain reference
 				code << "    _ArrayIndexer_" << arg_names[a] << " "
@@ -210,6 +212,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 				code << "    _ArrayIndexer_" << arg_names[a] << " "
 				     << arg_names[a] << "(" << arg_names[a] << "_ptr, _);\n";
 			}
+			code << "    typedef " << ctype_string << " " << arg_names[a] << "_type;\n";
 		}
 	}
 	
