@@ -31,7 +31,9 @@ from __future__ import absolute_import
 from .copy import copy, CopyBlock
 from .transpose import transpose, TransposeBlock
 from .fft import fft, FftBlock
+from .fftshift import fftshift, FftShiftBlock
 from .fdmt import fdmt, FdmtBlock
+from .detect import detect, DetectBlock
 from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
 from .sigproc import read_sigproc, SigprocSourceBlock
 from .audio import read_audio, AudioSourceBlock
