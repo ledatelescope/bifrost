@@ -26,8 +26,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from pipeline import SourceBlock
-from sigproc2 import SigprocFile
+from __future__ import absolute_import
+
+from bifrost.pipeline import SourceBlock
+from bifrost.sigproc2 import SigprocFile
 
 from copy import deepcopy
 

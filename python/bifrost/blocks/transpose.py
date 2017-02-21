@@ -26,7 +26,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from pipeline import TransformBlock
+from __future__ import absolute_import
+
+from bifrost.pipeline import TransformBlock
 import bifrost as bf
 import bifrost.transpose
 

@@ -28,7 +28,9 @@
 
 # TODO: This is a bit hacky and inflexible, and has no CUDA backend yet
 
-from pipeline import TransformBlock
+from __future__ import absolute_import
+
+from bifrost.pipeline import TransformBlock
 
 from copy import deepcopy
 

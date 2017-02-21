@@ -28,9 +28,11 @@
 
 # TODO: Add support for batching once it's supported by the backend
 
-from pipeline import TransformBlock
+from __future__ import absolute_import
+
+from bifrost.pipeline import TransformBlock
 from bifrost.fdmt import Fdmt
-from units import convert_units
+from bifrost.units import convert_units
 
 from copy import deepcopy
 import math

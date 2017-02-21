@@ -64,14 +64,14 @@ def empty(shape, dtype, space=None, **kwargs):
 
 def zeros_like(arr, space=None):
 	ret = empty_like(arr, space)
-	memset(ret, 0)
+	memset_array(ret, 0)
 	return ret
 def zeros(shape, dtype, space=None, **kwargs):
 	ret = empty(shape, dtype, space, **kwargs)
 	memet(ret, 0)
 	return ret
 
-def copy(dst, src):
+def copy_array(dst, src):
 	dst_bf = asarray(dst)
 	src_bf = asarray(src)
 	if (space_accessible(dst_bf.bf.space, ['system']) and
@@ -84,7 +84,7 @@ def copy(dst, src):
 			device.stream_synchronize()
 	return dst
 
-def memset(dst, value):
+def memset_array(dst, value):
 	dst_bf = asarray(dst)
 	_check(_bf.ArrayMemset(dst_bf.as_BFarray(), value))
 	return dst
@@ -159,7 +159,7 @@ class ndarray(np.ndarray):
 				                      dtype=base.bf.dtype,
 				                      native=base.bf.native,
 				                      conjugated=conjugated)
-				copy(obj, base)
+				copy_array(obj, base)
 		else:
 			# Create new array
 			if dtype is None:
@@ -333,10 +333,10 @@ class ndarray(np.ndarray):
 				key = (slice(key[0],key[0]+1),) + key[1:]
 			else:
 				key = slice(key,key+1)
-		copy(self[key], val)
+		copy_array(self[key], val)
 	def as_GPUArray(self, *args, **kwargs):
 		from pycuda.gpuarray import GPUArray as pycuda_GPUArray
 		g  = pycuda_GPUArray(shape=self.shape, dtype=self.dtype, *args, **kwargs)
 		ga = asarray(g)
-		copy(ga, self)
+		copy_array(ga, self)
 		return g

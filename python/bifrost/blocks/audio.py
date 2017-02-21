@@ -26,8 +26,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from pipeline import SourceBlock
-import portaudio as audio
+from __future__ import absolute_import
+
+from bifrost.pipeline import SourceBlock
+import bifrost.portaudio as audio
 
 class AudioSourceBlock(SourceBlock):
 	def create_reader(self, kwargs):

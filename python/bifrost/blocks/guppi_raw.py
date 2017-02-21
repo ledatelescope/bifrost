@@ -26,8 +26,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from pipeline import SourceBlock
-import guppi_raw
+from __future__ import absolute_import
+
+from bifrost.pipeline import SourceBlock
+import bifrost.guppi_raw as guppi_raw
+
 import numpy as np
 
 def get_with_default(obj, key, default=None):

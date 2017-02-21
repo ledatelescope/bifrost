@@ -26,8 +26,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from pipeline import TransformBlock
-import ndarray
+from __future__ import absolute_import
+
+from bifrost.pipeline import TransformBlock
+from bifrost.ndarray import copy_array
 
 from copy import deepcopy
 
@@ -41,7 +43,7 @@ class CopyBlock(TransformBlock):
 		ohdr = deepcopy(iseq.header)
 		return ohdr
 	def on_data(self, ispan, ospan):
-		ndarray.copy(ospan.data, ispan.data)
+		copy_array(ospan.data, ispan.data)
 
 def copy(iring, space=None, *args, **kwargs):
 	return CopyBlock(iring, space, *args, **kwargs)
