@@ -114,8 +114,24 @@ def _check(err):
 	if err != paNoError:
 		raise PortAudioError(_lib.Pa_GetErrorText(err))
 
+import os
+class suppress_fd(object):
+	def __init__(self, fd):
+		if   fd.lower() == 'stdout': fd = 1
+		elif fd.lower() == 'stderr': fd = 2
+		else: assert(isinstance(fd, int))
+		self.fd = fd
+		self.devnull = os.open(os.devnull, os.O_RDWR)
+		self.stderr = os.dup(self.fd) # Save original
+	def __enter__(self):
+		os.dup2(self.devnull, self.fd) # Set stderr to devnull
+	def __exit__(self, type, value, tb):
+		os.dup2(self.stderr, self.fd) # Restore original
+		os.close(self.devnull)
+
 # Module-wide initialization/cleanup
-_check(_lib.Pa_Initialize())
+with suppress_fd('stderr'):
+	_check(_lib.Pa_Initialize())
 atexit.register(_lib.Pa_Terminate)
 
 class Stream(object):
