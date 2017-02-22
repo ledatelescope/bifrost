@@ -82,7 +82,8 @@ class DetectBlock(TransformBlock):
 				raise ValueError("Axis must have length 1 or 2")
 			if self.mode == 'stokes' and self.npol == 2:
 				otensor['shape'][self.axis] = 4
-			otensor['labels'][self.axis] = self.mode
+			if 'labels' in otensor:
+				otensor['labels'][self.axis] = self.mode
 		else:
 			self.npol = 1
 		return ohdr

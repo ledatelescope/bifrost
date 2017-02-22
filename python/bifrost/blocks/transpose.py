@@ -57,10 +57,12 @@ class TransposeBlock(TransformBlock):
 				# Look up axis by label
 				self.axes[d] = itensor['labels'].index(self.axes[d])
 		ohdr = deepcopy(ihdr)
+		otensor = ohdr['_tensor']
 		# Permute metadata of axes
 		for item in ['shape', 'labels', 'scales', 'units']:
-			ohdr['_tensor'][item] = [itensor[item][axis]
-			                         for axis in self.axes]
+			if item in itensor:
+				otensor[item] = [itensor[item][axis]
+				                 for axis in self.axes]
 		return ohdr
 	def on_data(self, ispan, ospan):
 		# TODO: bf.memory.transpose should support system space too

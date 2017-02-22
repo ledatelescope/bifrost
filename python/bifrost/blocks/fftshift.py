@@ -62,13 +62,13 @@ class FftShiftBlock(TransformBlock):
 		ohdr = deepcopy(ihdr)
 		otensor = ohdr['_tensor']
 		oshape = otensor['shape']
-		for ax in self.axes:
-			sgn = +1 if self.inverse else -1
-			print 'oscales', otensor['scales']
-			print 'oshape', oshape
-			scale_delta = otensor['scales'][ax][1]
-			# TODO: Double-check that this does what we want when scale_delta is negative
-			otensor['scales'][ax][0] += sgn * (oshape[ax] // 2) * scale_delta
+		if 'scales' in itensor:
+			for ax in self.axes:
+				sgn = +1 if self.inverse else -1
+				scale_step = otensor['scales'][ax][1]
+				# TODO: Double-check that this does what we want when scale_delta is negative
+				scale_shift = sgn * (oshape[ax] // 2) * scale_step
+				otensor['scales'][ax][0] += scale_shift
 		return ohdr
 	def on_data(self, ispan, ospan):
 		idata = ispan.data

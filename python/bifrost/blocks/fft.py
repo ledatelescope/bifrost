@@ -107,12 +107,14 @@ class FftBlock(TransformBlock):
 			shape[-1] *= 2
 		
 		for ax, length in zip(axes, shape):
-			units = otensor['units'][ax]
-			otensor['units'][ax] = transform_units(units, -1)
-			otensor['scales'][ax][0] = 0 # TODO: Is this OK?
-			scale = otensor['scales'][ax][1]
-			otensor['scales'][ax][1] = 1. / (scale*length)
-			if self.axis_labels is not None:
+			if 'units' in otensor:
+				units = otensor['units'][ax]
+				otensor['units'][ax] = transform_units(units, -1)
+			if 'scales' in otensor:
+				otensor['scales'][ax][0] = 0 # TODO: Is this OK?
+				scale = otensor['scales'][ax][1]
+				otensor['scales'][ax][1] = 1. / (scale*length)
+			if 'labels' in otensor and self.axis_labels is not None:
 				otensor['labels'][ax] = self.axis_labels[ax]
 		self.nframe  = 0
 		self.istride = 0
