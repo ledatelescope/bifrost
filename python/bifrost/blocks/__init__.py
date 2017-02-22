@@ -37,3 +37,5 @@ from .detect import detect, DetectBlock
 from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
 from .sigproc import read_sigproc, SigprocSourceBlock
 from .audio import read_audio, AudioSourceBlock
+from .binary_io import BinaryFileReadBlock, BinaryFileWriteBlock
+from .binary_io import read_binary, write_binary
