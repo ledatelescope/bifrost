@@ -36,4 +36,8 @@ from .fdmt import fdmt, FdmtBlock
 from .detect import detect, DetectBlock
 from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
 from .sigproc import read_sigproc, SigprocSourceBlock
-from .audio import read_audio, AudioSourceBlock
+from .scrunch import scrunch, ScrunchBlock
+try: # Avoid error if portaudio library not installed
+	from .audio import read_audio, AudioSourceBlock
+except:
+	pass
