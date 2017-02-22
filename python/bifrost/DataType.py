@@ -157,6 +157,8 @@ class DataType(object):
 		"""Returns the smallest floating-point type that can represent all
 		values that self can.
 		"""
+		if self.is_floating_point:
+			return self
 		kind = 'cf' if self.is_complex else 'f'
 		nbit = 32 if self._nbit <= 24 else 64
 		return DataType((kind, nbit))

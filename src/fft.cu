@@ -164,6 +164,8 @@ class BFfft_impl {
 	bool             _real_in;
 	bool             _real_out;
 	int              _nbit;
+	BFdtype          _itype;
+	BFdtype          _otype;
 	int              _batch_shape[BF_MAX_DIMS];
 	size_t           _workspace_size;
 	thrust::device_vector<char> _dv_tmp_storage;
@@ -296,6 +298,8 @@ BFstatus BFfft_impl::init(BFarray const* in,
 	bool fp64 = (out->dtype == BF_DTYPE_F64 ||
 	             out->dtype == BF_DTYPE_CF64);
 	_nbit = fp64 ? 64 : 32;
+	_itype =  in->dtype;
+	_otype = out->dtype;
 	cufftType type;
 	if(      !_real_in && !_real_out ) { type = fp64 ? CUFFT_Z2Z : CUFFT_C2C; }
 	else if(  _real_in && !_real_out ) { type = fp64 ? CUFFT_D2Z : CUFFT_R2C; }
@@ -387,9 +391,16 @@ BFstatus BFfft_impl::init(BFarray const* in,
 		                                   CUFFT_CB_LD_REAL, 0) );
 		break;
 	}
-	// TODO: Real input callbacks
-	case BF_DTYPE_CF32: break;
-	case BF_DTYPE_F32: break;
+	case BF_DTYPE_CF32: // Fall-through
+	case BF_DTYPE_F32:  {
+		BF_ASSERT(_nbit == 32, BF_STATUS_INVALID_DTYPE);
+		break;
+	}
+	case BF_DTYPE_CF64: // Fall-through
+	case BF_DTYPE_F64: {
+		BF_ASSERT(_nbit == 64, BF_STATUS_INVALID_DTYPE);
+		break;
+	}
 	default: {
 		BF_FAIL("Supported input data type", BF_STATUS_INVALID_DTYPE);
 	}
@@ -408,6 +419,8 @@ BFstatus BFfft_impl::execute_impl(void*   idata,
                                   BFbool  inverse,
                                   void*   tmp_storage,
                                   size_t  tmp_storage_size) {
+	BF_ASSERT(itype == _itype, BF_STATUS_INVALID_DTYPE);
+	BF_ASSERT(otype == _otype, BF_STATUS_INVALID_DTYPE);
 	if( !tmp_storage ) {
 		BF_TRY(_dv_tmp_storage.resize(_workspace_size));
 		tmp_storage = thrust::raw_pointer_cast(&_dv_tmp_storage[0]);
@@ -420,12 +433,10 @@ BFstatus BFfft_impl::execute_impl(void*   idata,
 	if( !_real_in && !_real_out ) {
 		int direction = inverse ? CUFFT_INVERSE : CUFFT_FORWARD;
 		if( _nbit == 32 ) {
-			BF_ASSERT(otype == BF_DTYPE_CF32, BF_STATUS_INVALID_DTYPE);
 			BF_ASSERT((uintptr_t)idata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_ASSERT((uintptr_t)odata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecC2C(_handle, (cufftComplex*)idata, (cufftComplex*)odata, direction) );
 		} else if( _nbit == 64 ) {
-			BF_ASSERT(otype == BF_DTYPE_CF64, BF_STATUS_INVALID_DTYPE);
 			BF_ASSERT((uintptr_t)idata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_ASSERT((uintptr_t)odata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecZ2Z(_handle, (cufftDoubleComplex*)idata, (cufftDoubleComplex*)odata, direction) );
@@ -434,12 +445,10 @@ BFstatus BFfft_impl::execute_impl(void*   idata,
 		}
 	} else if( _real_in && !_real_out ) {
 		if( _nbit == 32 ) {
-			BF_ASSERT(otype == BF_DTYPE_CF32, BF_STATUS_INVALID_DTYPE);
 			BF_ASSERT((uintptr_t)idata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_ASSERT((uintptr_t)odata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecR2C(_handle, (cufftReal*)idata, (cufftComplex*)odata) );
 		} else if( _nbit == 64 ) {
-			BF_ASSERT(otype == BF_DTYPE_CF64, BF_STATUS_INVALID_DTYPE);
 			BF_ASSERT((uintptr_t)idata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_ASSERT((uintptr_t)odata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecD2Z(_handle, (cufftDoubleReal*)idata, (cufftDoubleComplex*)odata) );
@@ -448,12 +457,10 @@ BFstatus BFfft_impl::execute_impl(void*   idata,
 		}
 	} else if( !_real_in && _real_out ) {
 		if( _nbit == 32 ) {
-			BF_ASSERT(otype == BF_DTYPE_F32, BF_STATUS_INVALID_DTYPE);
 			BF_ASSERT((uintptr_t)idata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_ASSERT((uintptr_t)odata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecC2R(_handle, (cufftComplex*)idata, (cufftReal*)odata) );
 		} else if( _nbit == 64 ) {
-			BF_ASSERT(otype == BF_DTYPE_F64, BF_STATUS_INVALID_DTYPE);
 			BF_ASSERT((uintptr_t)idata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_ASSERT((uintptr_t)odata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecZ2D(_handle, (cufftDoubleComplex*)idata, (cufftDoubleReal*)odata) );
@@ -509,7 +516,7 @@ BFstatus bfFftInit(BFfft          plan,
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
-	BF_TRY_RETURN(plan->init(in, out, rank, axes, tmp_storage_size));
+	return plan->init(in, out, rank, axes, tmp_storage_size);
 }
 // in, out = complex, complex => [i]fft
 // in, out = real, complex    => rfft
