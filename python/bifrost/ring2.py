@@ -324,18 +324,22 @@ class SpanBase(object):
 		return self.sequence.tensor
 	@property
 	def _size_bytes(self):
-		return self._info.size
+		# **TODO: Change back-end to use long instead of uint64_t
+		return int(self._info.size)
 	@property
 	def _stride_bytes(self):
-		return self._info.stride
+		# **TODO: Change back-end to use long instead of uint64_t
+		return int(self._info.stride)
 	@property
 	def frame_offset(self):
-		byte_offset = self._info.offset
+		# **TODO: Change back-end to use long instead of uint64_t
+		byte_offset = int(self._info.offset)
 		assert(byte_offset % self.frame_nbyte == 0)
 		return byte_offset // self.frame_nbyte
 	@property
 	def _nringlet(self):
-		return self._info.nringlet
+		# **TODO: Change back-end to use long instead of uint64_t
+		return int(self._info.nringlet)
 	@property
 	def _data_ptr(self):
 		return self._info.data
