@@ -76,6 +76,11 @@ using std::endl;
 		BF_REPORT_ERROR(err); \
 		return (err); \
 	} while(0)
+#define BF_FAIL_EXCEPTION(msg, err) do { \
+		BF_REPORT_PREDFAIL(msg); \
+		BF_REPORT_ERROR(err); \
+		throw BFexception(err); \
+	} while(0)
 #define BF_ASSERT(pred, err) do { \
 		if( !(pred) ) { \
 			BF_REPORT_PREDFAIL(pred); \
@@ -117,17 +122,18 @@ using std::endl;
 	do { \
 		if( !(pred) ) { \
 			if( err != BF_STATUS_END_OF_DATA ) { \
+				BF_REPORT_PREDFAIL(pred); \
 				BF_REPORT_ERROR(err); \
 			} \
 			throw BFexception(err); \
 		} \
 	} while(0)
-/*
-#define BF_CHECK(call) do {	  \
+
+#define BF_CHECK(call) do { \
 	BFstatus status = call; \
 	if( status != BF_STATUS_SUCCESS ) { \
 		BF_REPORT_ERROR(status); \
 		return status; \
 	} \
 } while(0)
-*/
+

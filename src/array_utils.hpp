@@ -48,7 +48,7 @@ inline const char* dtype2ctype_string(BFdtype dtype) {
 	//case BF_DTYPE_CI32:  return "complex<int>";
 	//case BF_DTYPE_CI64:  return "complex<long long>";
 	case BF_DTYPE_CF32:  return "Complex<float>";//complex<float>";
-	//case BF_DTYPE_CF64:  return "complex<double>";
+	case BF_DTYPE_CF64:  return "Complex<double>";
 	//case BF_DTYPE_CF128: return "complex<long double>";
 	default: return 0;
 	}

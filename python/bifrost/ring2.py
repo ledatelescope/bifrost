@@ -32,6 +32,7 @@
 from libbifrost import _bf, _check, _get, _string2space, _space2string
 from DataType import DataType
 from ndarray import ndarray
+from copy import copy, deepcopy
 
 import ctypes
 import numpy as np
@@ -55,6 +56,18 @@ def split_shape(shape):
 		ringlet_shape.append(dim)
 	raise ValueError("No time dimension (-1) found in shape")
 
+def compose_unary_funcs(f, g):
+	return lambda x: f(g(x))
+
+def ring_view(ring, header_transform):
+	new_ring = ring.view()
+	old_header_transform = ring.header_transform
+	if old_header_transform is not None:
+		header_transform = compose_unary_funcs(header_transform,
+		                                       old_header_transform)
+	new_ring.header_transform = header_transform
+	return new_ring
+
 class Ring(object):
 	instance_count = 0
 	def __init__(self, space='system', name=None, owner=None):
@@ -65,9 +78,16 @@ class Ring(object):
 			Ring.instance_count += 1
 		self.name = name
 		self.owner = owner
+		self.header_transform = None
+		# If this is non-None, then the object is wrapping a base Ring instance
+		self.base = None
 	def __del__(self):
-		if hasattr(self, "obj") and bool(self.obj):
+		if self.base is None and hasattr(self, "obj") and bool(self.obj):
 			_bf.RingDestroy(self.obj)
+	def view(self):
+		new_ring = copy(self)
+		new_ring.base = self
+		return new_ring
 	def resize(self, contiguous_bytes, total_bytes=None, nringlet=1):
 		_check( _bf.RingResize(self.obj,
 		                       contiguous_bytes,
@@ -87,7 +107,8 @@ class Ring(object):
 		return ReadSequence(self, which='earliest', guarantee=guarantee)
 	# TODO: Alternative name?
 	def read(self, whence='earliest', guarantee=True):
-		with ReadSequence(self, which=whence, guarantee=guarantee) as cur_seq:
+		with ReadSequence(self, which=whence, guarantee=guarantee,
+		                  header_transform=self.header_transform) as cur_seq:
 			while True:
 				yield cur_seq
 				cur_seq.increment()
@@ -133,7 +154,7 @@ class SequenceBase(object):
 	def _header_ptr(self):
 		return _get(_bf.RingSequenceGetHeader(self._base_obj))
 	@property
-	def tensor(self):
+	def tensor(self): # TODO: This shouldn't be public
 		if self._tensor is not None:
 			return self._tensor
 		header = self.header
@@ -146,7 +167,7 @@ class SequenceBase(object):
 		assert(nbit % 8 == 0)
 		frame_nbyte = frame_nelement * nbit // 8
 		self._tensor = {}
-		self._tensor['dtype']         = dtype
+		self._tensor['dtype']         = DataType(dtype)
 		self._tensor['ringlet_shape'] = ringlet_shape
 		self._tensor['nringlet']      = nringlet
 		self._tensor['frame_shape']   = frame_shape
@@ -178,6 +199,8 @@ class WriteSequence(SequenceBase):
 	def __init__(self, ring, header, buf_nframe):
 		SequenceBase.__init__(self, ring)
 		self._header = header
+		# This allows passing DataType instances instead of string types
+		header['_tensor']['dtype'] = str(header['_tensor']['dtype'])
 		header_str = json.dumps(header)
 		header_size = len(header_str)
 		gulp_nframe = header['gulp_nframe']
@@ -206,9 +229,13 @@ class WriteSequence(SequenceBase):
 		return WriteSpan(self.ring, self, nframe)
 
 class ReadSequence(SequenceBase):
-	def __init__(self, ring, which='specific', name="", other_obj=None, guarantee=True):
+	def __init__(self, ring, which='specific', name="",
+	             other_obj=None, guarantee=True,
+	             header_transform=None):
 		SequenceBase.__init__(self, ring)
 		self._ring = ring
+		# A function for transforming the header before it's read
+		self.header_transform = header_transform
 		if which == 'specific':
 			self.obj = _get(_bf.RingSequenceOpen(ring=ring.obj,
 			                                     name=name, guarantee=guarantee), retarg=0)
@@ -251,6 +278,12 @@ class ReadSequence(SequenceBase):
 		tensor = self.tensor
 		return self._ring.resize(gulp_nframe*tensor['frame_nbyte'],
 		                         buf_nframe*tensor['frame_nbyte'])
+	@property
+	def header(self):
+		hdr = super(ReadSequence, self).header
+		if self.header_transform is not None:
+			hdr = self.header_transform(hdr)
+		return hdr
 
 def accumulate(vals, op='+', init=None, reverse=False):
 	if   op == '+':   op = lambda a,b:a+b
@@ -291,18 +324,22 @@ class SpanBase(object):
 		return self.sequence.tensor
 	@property
 	def _size_bytes(self):
-		return self._info.size
+		# **TODO: Change back-end to use long instead of uint64_t
+		return int(self._info.size)
 	@property
 	def _stride_bytes(self):
-		return self._info.stride
+		# **TODO: Change back-end to use long instead of uint64_t
+		return int(self._info.stride)
 	@property
 	def frame_offset(self):
-		byte_offset = self._info.offset
+		# **TODO: Change back-end to use long instead of uint64_t
+		byte_offset = int(self._info.offset)
 		assert(byte_offset % self.frame_nbyte == 0)
 		return byte_offset // self.frame_nbyte
 	@property
 	def _nringlet(self):
-		return self._info.nringlet
+		# **TODO: Change back-end to use long instead of uint64_t
+		return int(self._info.nringlet)
 	@property
 	def _data_ptr(self):
 		return self._info.data
@@ -345,11 +382,15 @@ class SpanBase(object):
 		
 		space = self.ring.space
 		
+		# **TODO: Need to integrate support for endianness and conjugatedness
+		#         Also need support in headers for units of the actual values,
+		#           in addition to the axis scales.
 		data_array = ndarray(space=space,
 		                     shape=self.shape,
 		                     strides=self.strides,
 		                     buffer=data_ptr,
 		                     dtype=self.dtype)
+		data_array.flags['WRITEABLE'] = self.writeable
 		
 		return data_array
 

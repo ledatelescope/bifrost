@@ -26,46 +26,24 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from pipeline import TransformBlock
-import bifrost as bf
-import bifrost.transpose
+from __future__ import absolute_import
+
+from bifrost.pipeline import TransformBlock
+from bifrost.ndarray import copy_array
 
 from copy import deepcopy
 
-class TransposeBlock(TransformBlock):
-	def __init__(self, iring, axes, *args, **kwargs):
-		super(TransposeBlock, self).__init__(iring, *args, **kwargs)
-		self.axes = axes
-		self.space = self.orings[0].space
+class CopyBlock(TransformBlock):
+	def __init__(self, iring, space=None, *args, **kwargs):
+		super(CopyBlock, self).__init__(iring, *args, **kwargs)
+		if space is None:
+			space = self.iring.space
+		self.orings = [self.create_ring(space=space)]
 	def on_sequence(self, iseq):
-		ihdr = iseq.header
-		itensor = ihdr['_tensor']
-		# TODO: Is this a good idea?
-		#if self.axes is None:
-		#	# Default to moving the time axis to/from the fastest dim
-		#	naxis     = len(itensor['shape'])
-		#	time_axis = itensor['shape'].index(-1)
-		#	self.axes = range(time_axis) + range(time_axis+1,naxis)
-		#	if time_axis == 0: # Time was slowest dim
-		#		self.axes += [-1] # Make time the fastest dim
-		#	else: # Time was not the slowest dim
-		#		self.axes = [-1] + self.axes # Make time the slowest dim
-		for d in xrange(len(self.axes)):
-			if isinstance(self.axes[d], basestring):
-				# Look up axis by label
-				self.axes[d] = itensor['labels'].index(self.axes[d])
-		ohdr = deepcopy(ihdr)
-		# Permute metadata of axes
-		for item in ['shape', 'labels', 'scales', 'units']:
-			ohdr['_tensor'][item] = [itensor[item][axis]
-			                         for axis in self.axes]
+		ohdr = deepcopy(iseq.header)
 		return ohdr
 	def on_data(self, ispan, ospan):
-		# TODO: bf.memory.transpose should support system space too
-		if bf.memory.space_accessible(self.space, ['cuda']):
-			bf.transpose.transpose(ospan.data, ispan.data, self.axes)
-		else:
-			ospan.data[...] = np.transpose(ispan.data, self.axes)
+		copy_array(ospan.data, ispan.data)
 
-def transpose(iring, axes, *args, **kwargs):
-	return TransposeBlock(iring, axes, *args, **kwargs)
+def copy(iring, space=None, *args, **kwargs):
+	return CopyBlock(iring, space, *args, **kwargs)

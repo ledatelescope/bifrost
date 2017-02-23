@@ -48,19 +48,30 @@ import sys
 # TODO: The stuff here makes array.py redundant (and outdated)
 
 def asarray(arr, space=None):
-	if isinstance(arr, ndarray) and space is None:
+	if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
 		return arr
 	else:
 		return ndarray(arr, space=space)
 
 def empty_like(arr, space=None):
+	arr = asarray(arr)
 	if space is None:
 		space = arr.bf.space
-	arr = asarray(arr)
 	return ndarray(shape=arr.shape, dtype=arr.bf.dtype, space=space,
 	               native=arr.bf.native, conjugated=arr.bf.conjugated)
+def empty(shape, dtype, space=None, **kwargs):
+	return ndarray(shape=shape, dtype=dtype, space=space, **kwargs)
 
-def copy(dst, src):
+def zeros_like(arr, space=None):
+	ret = empty_like(arr, space)
+	memset_array(ret, 0)
+	return ret
+def zeros(shape, dtype, space=None, **kwargs):
+	ret = empty(shape, dtype, space, **kwargs)
+	memet(ret, 0)
+	return ret
+
+def copy_array(dst, src):
 	dst_bf = asarray(dst)
 	src_bf = asarray(src)
 	if (space_accessible(dst_bf.bf.space, ['system']) and
@@ -73,12 +84,7 @@ def copy(dst, src):
 			device.stream_synchronize()
 	return dst
 
-def zeros_like(arr, space=None):
-	ret = empty_like(arr, space)
-	memset(ret, 0)
-	return ret
-
-def memset(dst, value):
+def memset_array(dst, value):
 	dst_bf = asarray(dst)
 	_check(_bf.ArrayMemset(dst_bf.as_BFarray(), value))
 	return dst
@@ -153,7 +159,7 @@ class ndarray(np.ndarray):
 				                      dtype=base.bf.dtype,
 				                      native=base.bf.native,
 				                      conjugated=conjugated)
-				copy(obj, base)
+				copy_array(obj, base)
 		else:
 			# Create new array
 			if dtype is None:
@@ -327,10 +333,10 @@ class ndarray(np.ndarray):
 				key = (slice(key[0],key[0]+1),) + key[1:]
 			else:
 				key = slice(key,key+1)
-		copy(self[key], val)
+		copy_array(self[key], val)
 	def as_GPUArray(self, *args, **kwargs):
 		from pycuda.gpuarray import GPUArray as pycuda_GPUArray
 		g  = pycuda_GPUArray(shape=self.shape, dtype=self.dtype, *args, **kwargs)
 		ga = asarray(g)
-		copy(ga, self)
+		copy_array(ga, self)
 		return g

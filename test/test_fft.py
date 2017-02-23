@@ -1,3 +1,4 @@
+
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
@@ -30,33 +31,161 @@ on the bifrost FFT wrapper, both in device memory and out"""
 import ctypes
 import unittest
 import numpy as np
-from bifrost.ring import Ring
-from bifrost.fft import fft, ifft
-from bifrost.libbifrost import _bf, _string2space
+# Note: Numpy FFTs are always double precision, which is good for this purpose
+from numpy.fft import fftn as gold_fftn, ifftn as gold_ifftn
+from numpy.fft import rfftn as gold_rfftn, irfftn as gold_irfftn
+from bifrost.fft import Fft
 import bifrost as bf
 
-class TestFFTHandles1DComplex(unittest.TestCase):
-    """This test runs one dimensional complex data
-    in device memory through an FFT, forward and then
-    inverse."""
-    def setUp(self):
-        """Create two arrays in device memory, input_data with
-        defined data"""
-        self.input_data  = bf.ndarray([0, 0, 10, 0, -5j], dtype=np.complex64, space='cuda')
-        self.output_data = bf.ndarray(1j*np.arange(5),    dtype=np.complex64, space='cuda')
-    def test_forwardfft(self):
-        """Computes a forward FFT and checks accuracy of result"""
-        input_array = self.input_data.as_BFarray()
-        output_array = self.output_data.as_BFarray()
-        fft(input_array, output_array)
-        self.output_data.buffer = output_array.data
-        local_data = self.output_data.copy('system')
-        self.assertAlmostEqual(local_data[0],10-5j,places=4)
-    def test_inversefft(self):
-        """Computes an inverse FFT and checks accuracy of result"""
-        input_array = self.input_data.as_BFarray()
-        output_array = self.output_data.as_BFarray()
-        ifft(input_array, output_array)
-        self.output_data.buffer = output_array.data
-        local_data = self.output_data.copy('system')
-        self.assertAlmostEqual(local_data[1],-12.8455+4.33277j,places=4)
+# TODO: These tolerances are way too high, but only a tiny fraction of the
+#         result values have such large errors. Need a better way to quantify.
+RTOL = 1e-1
+ATOL = 1e-1
+
+class TestFFT(unittest.TestCase):
+	def setUp(self):
+		np.random.seed(1234)
+		self.shape1D = (16777216,)
+		self.shape2D = (4096, 4096)
+		self.shape3D = (256,256,256)
+		#self.shape1D = (131072,)
+		#self.shape2D = (1024,1024)
+		#self.shape3D = (64,64,64)
+		#self.shape4D = (64,64,64,64)
+		self.shape4D = (32,32,32,32)
+	def run_test_c2c_impl(self, shape, axes, inverse=False):
+		shape = list(shape)
+		shape[-1] *= 2 # For complex
+		known_data = np.random.uniform(size=shape).astype(np.float32).view(np.complex64)
+		idata = bf.ndarray(known_data, space='cuda')
+		odata = bf.empty_like(idata)
+		fft = Fft()
+		fft.init(idata, odata, axes=axes)
+		fft.execute(idata, odata, inverse)
+		if inverse:
+			# Note: Numpy applies normalization while CUFFT does not
+			norm = reduce(lambda a,b: a*b, [known_data.shape[d] for d in axes])
+			known_result = gold_ifftn(known_data, axes=axes) * norm
+		else:
+			known_result = gold_fftn(known_data, axes=axes)
+		np.testing.assert_allclose(odata.copy('system'), known_result, RTOL, ATOL)
+	def run_test_r2c(self, shape, axes):
+		known_data = np.random.uniform(size=shape).astype(np.float32)
+		idata = bf.ndarray(known_data, space='cuda')
+		oshape = list(shape)
+		oshape[axes[-1]] = shape[axes[-1]] // 2 + 1
+		odata = bf.ndarray(shape=oshape, dtype='cf32', space='cuda')
+		fft = Fft()
+		fft.init(idata, odata, axes=axes)
+		fft.execute(idata, odata)
+		known_result = gold_rfftn(known_data, axes=axes)
+		np.testing.assert_allclose(odata.copy('system'), known_result, RTOL, ATOL)
+	def run_test_c2r(self, shape, axes):
+		ishape = list(shape)
+		ishape[axes[-1]] = shape[axes[-1]] // 2 + 1
+		ishape[-1] *= 2 # For complex
+		known_data = np.random.uniform(size=ishape).astype(np.float32).view(np.complex64)
+		idata = bf.ndarray(known_data, space='cuda')
+		odata = bf.ndarray(shape=shape, dtype='f32', space='cuda')
+		fft = Fft()
+		fft.init(idata, odata, axes=axes)
+		fft.execute(idata, odata)
+		# Note: Numpy applies normalization while CUFFT does not
+		norm = reduce(lambda a,b: a*b, [shape[d] for d in axes])
+		known_result = gold_irfftn(known_data, axes=axes) * norm
+		np.testing.assert_allclose(odata.copy('system'), known_result, RTOL, ATOL)
+	def run_test_c2c(self, shape, axes):
+		self.run_test_c2c_impl(shape, axes)
+		self.run_test_c2c_impl(shape, axes, inverse=True)
+	
+	def test_1D(self):
+		self.run_test_c2c(self.shape1D, [0])
+	def test_1D_in_2D_dim0(self):
+		self.run_test_c2c(self.shape2D, [0])
+	def test_1D_in_2D_dim1(self):
+		self.run_test_c2c(self.shape2D, [1])
+	def test_1D_in_3D_dim0(self):
+		self.run_test_c2c(self.shape3D, [0])
+	def test_1D_in_3D_dim1(self):
+		self.run_test_c2c(self.shape3D, [1])
+	def test_1D_in_3D_dim2(self):
+		self.run_test_c2c(self.shape3D, [2])
+	
+	def test_2D(self):
+		self.run_test_c2c(self.shape2D, [0,1])
+	def test_2D_in_3D_dims01(self):
+		self.run_test_c2c(self.shape3D, [0,1])
+	def test_2D_in_3D_dims02(self):
+		self.run_test_c2c(self.shape3D, [0,2])
+	def test_2D_in_3D_dims12(self):
+		self.run_test_c2c(self.shape3D, [1,2])
+	def test_2D_in_4D_dims01(self):
+		self.run_test_c2c(self.shape4D, [0,1])
+	def test_2D_in_4D_dims02(self):
+		self.run_test_c2c(self.shape4D, [0,2])
+	def test_2D_in_4D_dims03(self):
+		self.run_test_c2c(self.shape4D, [0,3])
+	def test_2D_in_4D_dims12(self):
+		self.run_test_c2c(self.shape4D, [1,2])
+	def test_2D_in_4D_dims13(self):
+		self.run_test_c2c(self.shape4D, [1,3])
+	def test_2D_in_4D_dims23(self):
+		self.run_test_c2c(self.shape4D, [2,3])
+	
+	def test_3D(self):
+		self.run_test_c2c(self.shape3D, [0,1,2])
+	def test_3D_in_4D_dims012(self):
+		self.run_test_c2c(self.shape4D, [0,1,2])
+	def test_3D_in_4D_dims013(self):
+		self.run_test_c2c(self.shape4D, [0,1,3])
+	def test_3D_in_4D_dims023(self):
+		self.run_test_c2c(self.shape4D, [0,2,3])
+	def test_3D_in_4D_dims123(self):
+		self.run_test_c2c(self.shape4D, [1,2,3])
+	
+	def test_r2c_1D(self):
+		self.run_test_r2c(self.shape1D, [0])
+	def test_r2c_2D(self):
+		self.run_test_r2c(self.shape2D, [0,1])
+	def test_r2c_3D(self):
+		self.run_test_r2c(self.shape3D, [0,1,2])
+	
+	def test_c2r_1D(self):
+		self.run_test_c2r(self.shape1D, [0])
+	def test_c2r_2D(self):
+		self.run_test_c2r(self.shape2D, [0,1])
+	def test_c2r_3D(self):
+		self.run_test_c2r(self.shape3D, [0,1,2])
+	
+	def test_r2c_2D_in_3D_dims01(self):
+		self.run_test_r2c(self.shape3D, [0,1])
+	def test_r2c_2D_in_3D_dims02(self):
+		self.run_test_r2c(self.shape3D, [0,2])
+	def test_r2c_2D_in_3D_dims12(self):
+		self.run_test_r2c(self.shape3D, [1,2])
+	
+	def test_r2c_2D_in_4D_dims01(self):
+		self.run_test_r2c(self.shape4D, [0,1])
+	def test_r2c_2D_in_4D_dims02(self):
+		self.run_test_r2c(self.shape4D, [0,2])
+	def test_r2c_2D_in_4D_dims03(self):
+		self.run_test_r2c(self.shape4D, [0,3])
+	def test_r2c_2D_in_4D_dims12(self):
+		self.run_test_r2c(self.shape4D, [1,2])
+	def test_r2c_2D_in_4D_dims13(self):
+		self.run_test_r2c(self.shape4D, [1,3])
+	def test_r2c_2D_in_4D_dims23(self):
+		self.run_test_r2c(self.shape4D, [2,3])
+	
+	def test_c2r_2D_in_4D_dims01(self):
+		self.run_test_c2r(self.shape4D, [0,1])
+	def test_c2r_2D_in_4D_dims02(self):
+		self.run_test_c2r(self.shape4D, [0,2])
+	def test_c2r_2D_in_4D_dims03(self):
+		self.run_test_c2r(self.shape4D, [0,3])
+	def test_c2r_2D_in_4D_dims12(self):
+		self.run_test_c2r(self.shape4D, [1,2])
+	def test_c2r_2D_in_4D_dims13(self):
+		self.run_test_c2r(self.shape4D, [1,3])
+	def test_c2r_2D_in_4D_dims23(self):
+		self.run_test_c2r(self.shape4D, [2,3])

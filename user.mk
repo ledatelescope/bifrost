@@ -1,4 +1,3 @@
-
 CXX           ?= g++
 NVCC          ?= nvcc
 LINKER        ?= g++

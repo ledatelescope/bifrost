@@ -86,14 +86,15 @@ BFstatus bfArrayCopy(const BFarray* dst,
 	BF_ASSERT(shapes_equal(dst, src),   BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT(dst->dtype == src->dtype, BF_STATUS_INVALID_DTYPE);
 	
-	// Try squeezing contiguous dims together to reduce memory layout complexity
-	BFarray dst_squeezed, src_squeezed;
-	squeeze_contiguous_dims(dst, &dst_squeezed);
-	squeeze_contiguous_dims(src, &src_squeezed);
-	if( shapes_equal(&dst_squeezed, &src_squeezed) ) {
-		dst = &dst_squeezed;
-		src = &src_squeezed;
-	}
+	// Try merging contiguous dims together to reduce memory layout complexity
+	BFarray dst_flattened, src_flattened;
+	unsigned long keep_dims_mask = 0;
+	keep_dims_mask |= padded_dims_mask(dst);
+	keep_dims_mask |= padded_dims_mask(src);
+	flatten(dst, &dst_flattened, keep_dims_mask);
+	flatten(src, &src_flattened, keep_dims_mask);
+	dst = &dst_flattened;
+	src = &src_flattened;
 	
 	int ndim = dst->ndim;
 	long const* shape = &dst->shape[0];
@@ -119,9 +120,9 @@ BFstatus bfArrayMemset(const BFarray* dst,
 	BF_ASSERT((unsigned char)(value) == value, BF_STATUS_INVALID_ARGUMENT);
 	
 	// Squeeze contiguous dims together to reduce memory layout complexity
-	BFarray dst_squeezed;
-	squeeze_contiguous_dims(dst, &dst_squeezed);
-	dst = &dst_squeezed;
+	BFarray dst_flattened;
+	flatten(dst, &dst_flattened, padded_dims_mask(dst));
+	dst = &dst_flattened;
 	
 	int ndim = dst->ndim;
 	long const* shape = &dst->shape[0];

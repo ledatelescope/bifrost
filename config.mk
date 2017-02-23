@@ -22,7 +22,7 @@ ifndef INSTALL_LIB_DIR
 endif
 
 ifndef INSTALL_INC_DIR
-    INSTALL_INC_DIR = /usr/local/include
+	INSTALL_INC_DIR = /usr/local/include
 endif
 
 BIFROST_NAME          = bifrost

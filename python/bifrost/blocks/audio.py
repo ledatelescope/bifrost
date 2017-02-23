@@ -26,22 +26,43 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from pipeline import TransformBlock
-import ndarray
+from __future__ import absolute_import
 
-from copy import deepcopy
+from bifrost.pipeline import SourceBlock
+import bifrost.portaudio as audio
 
-class CopyBlock(TransformBlock):
-	def __init__(self, iring, space=None, *args, **kwargs):
-		super(CopyBlock, self).__init__(iring, *args, **kwargs)
-		if space is None:
-			space = self.iring.space
-		self.orings = [self.create_ring(space=space)]
-	def on_sequence(self, iseq):
-		ohdr = deepcopy(iseq.header)
-		return ohdr
-	def on_data(self, ispan, ospan):
-		ndarray.copy(ospan.data, ispan.data)
+class AudioSourceBlock(SourceBlock):
+	def create_reader(self, kwargs):
+		self.reader = audio.open(mode='r', **kwargs)
+		return self.reader
+	def on_sequence(self, reader, kwargs):
+		if 'frames_per_buffer' not in kwargs:
+			kwargs['frames_per_buffer'] = self.gulp_nframe
+		ohdr = {
+			'_tensor': {
+				'dtype':  'i' + str(reader.nbits),
+				'shape':  [-1, reader.channels],
+				'labels': ['time', 'channel'], # TODO: 'channel' vs. 'polarisation'?
+				'scales': [1./reader.rate, None],
+				'units':  ['s', None]
+			},
+			'frame_rate':   reader.rate,
+			'input_device': reader.input_device,
+			'name': str(id(reader))
+		}
+		return [ohdr]
+	def on_data(self, reader, ospans):
+		ospan = ospans[0]
+		try:
+			reader.readinto(ospan.data)
+		except audio.PortAudioError:
+			#raise StopIteration
+			return [0]
+		nframe = ospan.shape[0]
+		print nframe
+		return [nframe]
+	def stop(self):
+		self.reader.stop()
 
-def copy(iring, space=None, *args, **kwargs):
-	return CopyBlock(iring, space, *args, **kwargs)
+def read_audio(audio_kwargs, gulp_nframe, *args, **kwargs):
+	return AudioSourceBlock(audio_kwargs, gulp_nframe, *args, **kwargs)#.orings[0]

@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -10,7 +9,7 @@
  * * Redistributions in binary form must reproduce the above copyright
  *   notice, this list of conditions and the following disclaimer in the
  *   documentation and/or other materials provided with the distribution.
- * * Neither the name of The Bifrost Authors nor the names of its
+ * * Neither the name of NVIDIA CORPORATION nor the names of its
  *   contributors may be used to endorse or promote products derived
  *   from this software without specific prior written permission.
  *
@@ -27,40 +26,47 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_FFT_H_INCLUDE_GUARD_
-#define BF_FFT_H_INCLUDE_GUARD_
+#include <fstream>
+#include <string>
+#include <iostream>
+#include <sstream>
 
-#include <bifrost/common.h>
-#include <bifrost/array.h>
+// Replaces non-alphanumeric characters with '_' and
+//   prepends '_' if the string begins with a digit.
+std::string sanitize_varname(std::string const& s) {
+	std::string r = s;
+	if( std::isdigit(r[0]) ) {
+		r = '_' + r;
+	}
+	for( std::string::iterator it=r.begin(); it!=r.end(); ++it ) {
+		if( !std::isalnum(*it) ) {
+			*it = '_';
+		}
+	}
+	return r;
+}
+// Replaces " with \"
+std::string sanitize_string_literal(std::string const& s) {
+	std::stringstream ss;
+	for( std::string::const_iterator it=s.begin(); it!=s.end(); ++it ) {
+		if( *it == '"' || *it == '\\' ) {
+			ss << '\\';
+		}
+		ss << *it;
+	}
+	return ss.str();
+}
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+int main(int argc, char *argv[]) {
+	char* filename = argv[1];
+	std::ifstream istream(filename);
+	std::ostream& ostream = std::cout;
+	std::string line;
+	ostream << "static const char* " << sanitize_varname(filename) << " =";
+	while( std::getline(istream, line) ) {
+		ostream << "\"" << sanitize_string_literal(line) << "\\n\"" << std::endl;
+	}
+	ostream << ";" << std::endl;
+	return 0;
+}
 
-typedef struct BFfft_impl* BFfft;
-
-BFstatus bfFftCreate(BFfft* plan_ptr);
-BFstatus bfFftInit(BFfft          plan,
-                   BFarray const* iarray,
-                   BFarray const* oarray,
-                   int            ndim,
-                   int     const* axes,
-                   size_t*        tmp_storage_size);
-// in, out = complex, complex => [i]fft
-// in, out = real, complex    => rfft
-// in, out = complex, real    => irfft
-// in, out = real, real       => ERROR
-// tmp_storage_size If NULL, library will allocate storage automatically
-BFstatus bfFftExecute(BFfft          plan,
-                      BFarray const* iarray,
-                      BFarray const* oarray,
-                      BFbool         inverse,
-                      void*          tmp_storage,
-                      size_t         tmp_storage_size);
-BFstatus bfFftDestroy(BFfft plan);
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
-#endif // BF_FFT_H_INCLUDE_GUARD_

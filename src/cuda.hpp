@@ -182,4 +182,9 @@ public:
 	
 };
 
+#else // BF_CUDA_ENABLED
+
+#define __host__
+#define __device__
+
 #endif // BF_CUDA_ENABLED

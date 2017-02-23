@@ -26,8 +26,10 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from pipeline import SourceBlock
-from sigproc2 import SigprocFile
+from __future__ import absolute_import
+
+from bifrost.pipeline import SourceBlock
+from bifrost.sigproc2 import SigprocFile
 
 from copy import deepcopy
 
@@ -66,8 +68,8 @@ class SigprocSourceBlock(SourceBlock):
 			'rawdatafile':   get_with_default(ihdr, 'rawdatafile'),
 			'az_start':      get_with_default(ihdr, 'az_start'),
 			'za_start':      get_with_default(ihdr, 'za_start'),
-			'src_raj':       get_with_default(ihdr, 'src_raj'),
-			'src_dej':       get_with_default(ihdr, 'src_dej'),
+			'raj':           get_with_default(ihdr, 'src_raj'),
+			'dej':           get_with_default(ihdr, 'src_dej'),
 			'refdm':         get_with_default(ihdr, 'refdm'),
 			'telescope_id':  get_with_default(ihdr, 'telescope_id'),
 			'machine_id':    get_with_default(ihdr, 'machine_id'),

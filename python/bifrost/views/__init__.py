@@ -26,36 +26,4 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# TODO: This is a bit hacky and inflexible, and has no CUDA backend yet
-
-from pipeline import TransformBlock
-
-from copy import deepcopy
-
-class ScrunchBlock(TransformBlock):
-	def __init__(self, iring, factor, *args, **kwargs):
-		super(ScrunchBlock, self).__init__(iring, *args, **kwargs)
-		assert(type(factor) == int)
-		self.factor = factor
-	def define_valid_input_spaces(self):
-		"""Return set of valid spaces (or 'any') for each input"""
-		return ('system',)
-	def define_output_nframes(self, input_nframe):
-		"""Return output nframe for each output, given input_nframes.
-		"""
-		if input_nframe % self.factor != 0:
-			raise ValueError("Scrunch factor does not divide gulp size")
-		return input_nframe // self.factor
-	def on_sequence(self, iseq):
-		ohdr = deepcopy(iseq.header)
-		ohdr['_tensor']['scales'][0][1] *= self.factor
-		return ohdr
-	def on_data(self, ispan, ospan):
-		in_nframe = ispan.nframe
-		out_nframe = in_nframe // self.factor
-		idata = ispan.data
-		ospan.data[...] = idata.reshape((out_nframe,self.factor)+idata.shape[1:]).mean(axis=1)
-		return out_nframe
-
-def scrunch(iring, factor, *args, **kwargs):
-	return ScrunchBlock(iring, factor, *args, **kwargs).orings[0]
+from .basic_views import split_axis, astype

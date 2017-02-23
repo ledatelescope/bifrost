@@ -76,6 +76,8 @@ class DataType(object):
 		elif isinstance(t, DataType):
 			self._nbit = t._nbit
 			self._kind = t._kind
+		elif isinstance(t, tuple):
+			self._kind, self._nbit = t
 		else:
 			t = np.dtype(t) # Raises TypeError if t is invalid
 			self._nbit = t.itemsize*8
@@ -145,6 +147,31 @@ class DataType(object):
 	@property
 	def is_complex(self):
 		return self._kind[0] == 'c'
+	@property
+	def is_real(self):
+		return not self.is_complex
+	@property
+	def is_floating_point(self):
+		return 'f' in self._kind
+	def as_floating_point(self):
+		"""Returns the smallest floating-point type that can represent all
+		values that self can.
+		"""
+		if self.is_floating_point:
+			return self
+		kind = 'cf' if self.is_complex else 'f'
+		nbit = 32 if self._nbit <= 24 else 64
+		return DataType((kind, nbit))
+	def as_real(self):
+		if self.is_complex:
+			return DataType((self._kind[1:], self._nbit))
+		else:
+			return self
+	def as_complex(self):
+		if self.is_complex:
+			return self
+		else:
+			return DataType(('c'+self._kind, self._nbit))
 	@property
 	def itemsize_bits(self):
 		return self._nbit * (1 + self.is_complex)
