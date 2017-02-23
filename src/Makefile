@@ -1,4 +1,7 @@
 
+include ../config.mk
+include ../user.mk
+
 LIBBIFROST_OBJS = \
   common.o \
   memory.o \
@@ -34,9 +37,6 @@ JIT_SOURCES ?= \
   int_fastdiv.h.jit
 
 .SILENT:
-
-include ../config.mk
-include ../user.mk
 
 MAKEFILES = ../config.mk ../user.mk Makefile
 
