@@ -164,10 +164,6 @@ BFstatus bfQuantize(BFarray const* in,
 	bool byteswap_in  = ( in->big_endian != is_big_endian());
 	bool byteswap_out = (out->big_endian != is_big_endian());
 	
-	if( out->dtype == BF_DTYPE_I4 ){
-		BF_ASSERT(nelement%2 == 0, BF_STATUS_UNSUPPORTED_STRIDE);
-	}
-	
 #define CALL_FOREACH_SIMPLE_CPU_QUANTIZE(itype,stype,otype) \
 	foreach_simple_cpu((itype*)in->data, \
 	                   (otype*)out->data, \
@@ -181,6 +177,7 @@ BFstatus bfQuantize(BFarray const* in,
 		switch( out->dtype ) {
 		case BF_DTYPE_CI4: nelement *= 2;
 		case BF_DTYPE_I4: {
+			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
 			foreach_simple_cpu_4bit((float*)in->data, \
 			                        (int8_t*)out->data, \
 			                        nelement, \
