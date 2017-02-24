@@ -68,7 +68,9 @@ const char* _cufftGetErrorString(cufftResult status) {
 	DEFINE_CUFFT_RESULT_CASE(CUFFT_NO_WORKSPACE);
 	DEFINE_CUFFT_RESULT_CASE(CUFFT_NOT_IMPLEMENTED);
 	DEFINE_CUFFT_RESULT_CASE(CUFFT_LICENSE_ERROR);
+#if CUDA_VERSION >= 7500
 	DEFINE_CUFFT_RESULT_CASE(CUFFT_NOT_SUPPORTED);
+#endif
 	default: return "Unknown CUBLAS error";
 	}
 #undef DEFINE_CUFFT_RESULT_CASE
@@ -80,7 +82,9 @@ BFstatus bifrost_status(cufftResult status) {
 	case CUFFT_ALLOC_FAILED:     return BF_STATUS_MEM_ALLOC_FAILED;
 	case CUFFT_EXEC_FAILED:      return BF_STATUS_DEVICE_ERROR;
 	case CUFFT_NOT_IMPLEMENTED:  return BF_STATUS_UNSUPPORTED;
+#if CUDA_VERSION >= 7500
 	case CUFFT_NOT_SUPPORTED:    return BF_STATUS_UNSUPPORTED;
+#endif
 	default: return BF_STATUS_INTERNAL_ERROR;
     }
 }
@@ -245,9 +249,14 @@ BFstatus BFfft_impl::init(BFarray const* in,
 		_batch_shape[d] = _real_in ? ilength : olength;
 	}
 	// Compute transform shape and strides
-	long long shape[BF_MAX_DIMS];
-	long long inembed[BF_MAX_DIMS];
-	long long onembed[BF_MAX_DIMS];
+#if CUDA_VERSION >= 7500
+	typedef long long int_array_type;
+#else
+	typedef int int_array_type;
+#endif
+	int_array_type   shape[BF_MAX_DIMS];
+	int_array_type inembed[BF_MAX_DIMS];
+	int_array_type onembed[BF_MAX_DIMS];
 	for( int d=0; d<rank; ++d ) {
 		long ilength =  in->shape[axes[d]];
 		long olength = out->shape[axes[d]];
@@ -309,7 +318,11 @@ BFstatus BFfft_impl::init(BFarray const* in,
 		        BF_STATUS_INVALID_DTYPE);
 	}
 	BF_CHECK_CUFFT( cufftSetAutoAllocation(_handle, false) );
+#if CUDA_VERSION >= 7500
 	BF_CHECK_CUFFT( cufftMakePlanMany64(_handle,
+#else
+	BF_CHECK_CUFFT( cufftMakePlanMany  (_handle,
+#endif
 	                                    rank, shape,
 	                                    inembed, istride, idist,
 	                                    onembed, ostride, odist,

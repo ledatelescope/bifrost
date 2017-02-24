@@ -92,7 +92,9 @@ BFstatus bifrost_status(nvrtcResult status) {
 	case NVRTC_ERROR_INVALID_OPTION:            return BF_STATUS_INTERNAL_ERROR;
 	case NVRTC_ERROR_COMPILATION:               return BF_STATUS_INTERNAL_ERROR;
 	case NVRTC_ERROR_BUILTIN_OPERATION_FAILURE: return BF_STATUS_INTERNAL_ERROR;
+#if CUDA_VERSION >= 7500
 	case NVRTC_ERROR_INTERNAL_ERROR:            return BF_STATUS_DEVICE_ERROR;
+#endif
 	default: return BF_STATUS_INTERNAL_ERROR;
     }
 }
