@@ -1,9 +1,6 @@
 
-<<<<<<< HEAD
-=======
 .SILENT:
 
->>>>>>> upstream/master
 include ../config.mk
 include ../user.mk
 
@@ -41,11 +38,6 @@ JIT_SOURCES ?= \
   ShapeIndexer.cuh.jit \
   int_fastdiv.h.jit
 
-<<<<<<< HEAD
-.SILENT:
-
-=======
->>>>>>> upstream/master
 MAKEFILES = ../config.mk ../user.mk Makefile
 
 NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS), \
