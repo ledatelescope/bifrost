@@ -26,24 +26,26 @@ RUN curl -fSsL -O https://bootstrap.pypa.io/get-pip.py && \
     rm get-pip.py
 RUN pip --no-cache-dir install \
         setuptools \
-        matplotlib \
         numpy \
+        matplotlib \
         contextlib2 \
         simplejson \
-        pint
+        pint \
+        graphviz
 
 RUN git clone https://github.com/MatthieuDartiailh/pyclibrary.git && \
     cd pyclibrary && \
     python setup.py install
 
+ENV TERM xterm
+
 # Build the library
 WORKDIR /bifrost
 COPY . .
-RUN make -j NOCUDA=1 && \
+RUN make clean && \
+    make -j NOCUDA=1 && \
     make doc && \
     make install
-RUN cd python/ && \
-    python setup.py install
 
 ENV LD_LIBRARY_PATH /usr/local/lib:${LD_LIBRARY_PATH}
 

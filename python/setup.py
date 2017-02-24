@@ -56,5 +56,6 @@ setup(name='Bifrost',
       install_requires=[
           "numpy>=1.8.1",
           "contextlib2>=0.4.0",
-          "pint>=0.7.0"
+          "pint>=0.7.0",
+          "graphviz>=0.5.0"
       ])
