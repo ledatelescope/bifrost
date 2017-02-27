@@ -134,12 +134,6 @@ class BinaryFileWriteBlock(bfp.SinkBlock):
     def on_data(self, ispan):
         self.current_fileobj.write(ispan.data.tobytes())
 
-def read_binary(*args, **kwargs):
-    return BinaryFileReadBlock(*args, **kwargs)
-
-def write_binary(*args, **kwargs):
-    return BinaryFileWriteBlock(*args, **kwargs)
-
 if __name__ == "__main__":
 
     # Generate test vector and save to file

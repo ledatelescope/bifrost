@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
@@ -27,22 +26,21 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
+from pipeline import TransformBlock
+from copy import deepcopy
+from fft import fft
 
-from .copy import copy, CopyBlock
-from .transpose import transpose, TransposeBlock
-from .fft import fft, FftBlock
-from .fftshift import fftshift, FftShiftBlock
-from .fdmt import fdmt, FdmtBlock
-from .detect import detect, DetectBlock
-from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
-from .sigproc import read_sigproc, SigprocSourceBlock
-from .scrunch import scrunch, ScrunchBlock
-from .accumulate import accumulate, AccumulateBlock
-from .binary_io import BinaryFileReadBlock, BinaryFileWriteBlock
+class FFTBlock(TransformBlock):
+    """ FFT block, takes FFT of intput data """
+    def __init__(self, iring,  *args, **kwargs):
+        super(FFTBlock, self).__init__(iring, *args, **kwargs)
 
-try:
-    from .audio import read_audio, AudioSourceBlock
-except:
-    pass 
+    def on_sequence(self, iseq):
+        ohdr = deepcopy(iseq.header)
+        ohdr['_tensor']['dtype'] = 'cf32'
+        return ohdr
+    
+    def on_data(self, ispan, ospan):
+        fft(ispan.data.as_BFarray(), ospan.data.as_BFarray())
+        return 1
 

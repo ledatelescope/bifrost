@@ -21,6 +21,7 @@ if __name__ == "__main__":
     
     # Setup pipeline
     filenames   = sorted(glob.glob('testdata/noisy_data*.bin'))
+
     b_read      = BinaryFileReadBlock(filenames, window_len, 1, 'cf32', core=0)
     b_copy      = CopyBlock(b_read, space='cuda', core=1, gpu=0)
     b_fft       = FftBlock(b_copy, axes=1, core=2, gpu=0)
@@ -54,8 +55,6 @@ if __name__ == "__main__":
             print indata[0, 0:10]
             print outdata[0, 0:10]
             print np.max(indata - outdata)
-
-            #raise
         finally:
             print "    Cleaning up..."
             #os.remove(filename + '.out')
