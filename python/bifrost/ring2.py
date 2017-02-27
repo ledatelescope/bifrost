@@ -331,6 +331,9 @@ class SpanBase(object):
 		# **TODO: Change back-end to use long instead of uint64_t
 		return int(self._info.stride)
 	@property
+	def frame_nbyte(self):
+		return self.tensor['frame_nbyte']
+	@property
 	def frame_offset(self):
 		# **TODO: Change back-end to use long instead of uint64_t
 		byte_offset = int(self._info.offset)
