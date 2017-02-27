@@ -54,6 +54,8 @@ class FftBlock(TransformBlock):
 		super(FftBlock, self).__init__(iring, *args, **kwargs)
 		if not isinstance(axes, list) or isinstance(axes, tuple):
 			axes = [axes]
+		if not isinstance(axis_labels, list) or isinstance(axis_labels, tuple):
+			axis_labels = [axis_labels]
 		self.specified_axes = axes
 		self.real_output = real_output
 		self.inverse     = inverse
@@ -106,7 +108,7 @@ class FftBlock(TransformBlock):
 			shape[-1] -= 1
 			shape[-1] *= 2
 		
-		for ax, length in zip(axes, shape):
+		for i, (ax, length) in enumerate(zip(axes, shape)):
 			if 'units' in otensor:
 				units = otensor['units'][ax]
 				otensor['units'][ax] = transform_units(units, -1)
@@ -115,7 +117,7 @@ class FftBlock(TransformBlock):
 				scale = otensor['scales'][ax][1]
 				otensor['scales'][ax][1] = 1. / (scale*length)
 			if 'labels' in otensor and self.axis_labels is not None:
-				otensor['labels'][ax] = self.axis_labels[ax]
+				otensor['labels'][ax] = self.axis_labels[i]
 		self.nframe  = 0
 		self.istride = 0
 		self.ostride = 0
