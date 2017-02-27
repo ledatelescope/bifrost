@@ -61,12 +61,13 @@ Install dependencies:
 
  * [PyCLibrary fork](https://github.com/MatthieuDartiailh/pyclibrary)
  * Numpy
+ * matplotlib
  * contextlib2
  * pint
  
 
 ```
-$ sudo pip install numpy contextlib2 pint
+$ sudo pip install numpy matplotlib contextlib2 pint
 ```
 
 ### Bifrost installation
@@ -100,13 +101,14 @@ Build Docker image:
 
     $ make docker
 
-For CPU-only builds:
-
-    $ make docker-cpu
-
 Launch container:
 
     $ nvidia-docker run --rm -it ledatelescope/bifrost
+
+For CPU-only builds:
+
+    $ make docker-cpu
+    $ docker run --rm -it ledatelescope/bifrost
 
 ## Documentation
 
