@@ -20,7 +20,8 @@ $(BIFROST_PYTHON_VERSION_FILE): config.mk
 	@echo "__version__ = \"$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR).$(LIBBIFROST_PATCH)\"" > $@
 
 test:
-	$(MAKE) -C $(SRC_DIR) test
+	#$(MAKE) -C $(SRC_DIR) test
+	cd test && python -m unittest discover
 .PHONY: test
 clean:
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) clean || true
