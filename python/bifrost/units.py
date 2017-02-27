@@ -32,7 +32,11 @@ ureg = pint.UnitRegistry()
 
 def convert_units(value, old_units, new_units):
 	old_quantity = value * ureg.parse_expression(old_units)
-	new_quantity = old_quantity.to(new_units)
+	try:
+		new_quantity = old_quantity.to(new_units)
+	except pint.DimensionalityError:
+		raise ValueError("Cannot convert units %s to %s" %
+		                 (old_units, new_units))
 	return new_quantity.magnitude
 
 # TODO: May need something more flexible, like a Units wrapper class with __str__
