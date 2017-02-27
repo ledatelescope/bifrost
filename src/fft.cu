@@ -109,11 +109,19 @@ BFstatus bifrost_status(cufftResult status) {
 		          bifrost_status(cufft_ret)); \
 	} while(0)
 
+struct CallbackData {
+	int ptr_offset;
+};
+
 __device__
 cufftComplex callback_load_ci4(void*  dataIn,
                                size_t offset,
                                void*  callerInfo,
                                void*  sharedPointer) {
+	// WAR for CUFFT insisting on pointers aligned to sizeof(cufftComplex)
+	CallbackData* callback_data = (CallbackData*)callerInfo;
+	*(char*)&dataIn += callback_data->ptr_offset;
+	
 	int8_t packed = ((int8_t*)dataIn)[offset];
 	int8_t real = packed & 0xF0;
 	int8_t imag = packed << 4;
@@ -125,6 +133,10 @@ cufftComplex callback_load_ci8(void*  dataIn,
                                size_t offset,
                                void*  callerInfo,
                                void*  sharedPointer) {
+	// WAR for CUFFT insisting on pointers aligned to sizeof(cufftComplex)
+	CallbackData* callback_data = (CallbackData*)callerInfo;
+	*(char*)&dataIn += callback_data->ptr_offset;
+	
 	char2 val = ((char2*)dataIn)[offset];
 	return make_float2(val.x * (1.f/128),
 	                   val.y * (1.f/128));
@@ -134,6 +146,10 @@ cufftComplex callback_load_ci16(void*  dataIn,
                                 size_t offset,
                                 void*  callerInfo,
                                 void*  sharedPointer) {
+	// WAR for CUFFT insisting on pointers aligned to sizeof(cufftComplex)
+	CallbackData* callback_data = (CallbackData*)callerInfo;
+	*(char*)&dataIn += callback_data->ptr_offset;
+	
 	short2 val = ((short2*)dataIn)[offset];
 	return make_float2(val.x * (1.f/32768),
 	                   val.y * (1.f/32768));
@@ -155,6 +171,10 @@ cufftReal callback_load_real(void*  dataIn,
                              size_t offset,
                              void*  callerInfo,
                              void*  sharedPointer) {
+	// WAR for CUFFT insisting on pointers aligned to sizeof(cufftComplex)
+	CallbackData* callback_data = (CallbackData*)callerInfo;
+	*(char*)&dataIn += callback_data->ptr_offset;
+	
 	T val = ((T*)dataIn)[offset];
 	return val * (1.f/(maxval<T>()+1));
 }
@@ -173,6 +193,7 @@ class BFfft_impl {
 	int              _batch_shape[BF_MAX_DIMS];
 	size_t           _workspace_size;
 	thrust::device_vector<char> _dv_tmp_storage;
+	thrust::device_vector<CallbackData> _dv_callback_data;
 	
 	BFstatus execute_impl(void*   idata,
 	                      BFdtype itype,
@@ -332,6 +353,8 @@ BFstatus BFfft_impl::init(BFarray const* in,
 	
 	cufftCallbackLoadC callback_load_c_hptr;
 	cufftCallbackLoadR callback_load_r_hptr;
+	_dv_callback_data.resize(1);
+	CallbackData* callback_data = thrust::raw_pointer_cast(&_dv_callback_data[0]);
 	// TODO: Try to reduce repetition here
 	switch( in->dtype ) {
 	case BF_DTYPE_CI4: {
@@ -341,7 +364,8 @@ BFstatus BFfft_impl::init(BFarray const* in,
 		               BF_STATUS_DEVICE_ERROR );
 		BF_CHECK_CUFFT( cufftXtSetCallback(_handle,
 		                                   (void**)&callback_load_c_hptr,
-		                                   CUFFT_CB_LD_COMPLEX, 0) );
+		                                   CUFFT_CB_LD_COMPLEX,
+		                                   (void**)&callback_data) );
 		break;
 	}
 	case BF_DTYPE_CI8: {
@@ -351,7 +375,8 @@ BFstatus BFfft_impl::init(BFarray const* in,
 		               BF_STATUS_DEVICE_ERROR );
 		BF_CHECK_CUFFT( cufftXtSetCallback(_handle,
 		                                   (void**)&callback_load_c_hptr,
-		                                   CUFFT_CB_LD_COMPLEX, 0) );
+		                                   CUFFT_CB_LD_COMPLEX,
+		                                   (void**)&callback_data) );
 		break;
 	}
 	case BF_DTYPE_CI16: {
@@ -361,7 +386,8 @@ BFstatus BFfft_impl::init(BFarray const* in,
 		               BF_STATUS_DEVICE_ERROR );
 		BF_CHECK_CUFFT( cufftXtSetCallback(_handle,
 		                                   (void**)&callback_load_c_hptr,
-		                                   CUFFT_CB_LD_COMPLEX, 0) );
+		                                   CUFFT_CB_LD_COMPLEX,
+		                                   (void**)&callback_data) );
 		break;
 	}
 	case BF_DTYPE_I8: {
@@ -371,7 +397,8 @@ BFstatus BFfft_impl::init(BFarray const* in,
 		               BF_STATUS_DEVICE_ERROR );
 		BF_CHECK_CUFFT( cufftXtSetCallback(_handle,
 		                                   (void**)&callback_load_r_hptr,
-		                                   CUFFT_CB_LD_REAL, 0) );
+		                                   CUFFT_CB_LD_REAL,
+		                                   (void**)&callback_data) );
 		break;
 	}
 	case BF_DTYPE_I16: {
@@ -381,7 +408,8 @@ BFstatus BFfft_impl::init(BFarray const* in,
 		               BF_STATUS_DEVICE_ERROR );
 		BF_CHECK_CUFFT( cufftXtSetCallback(_handle,
 		                                   (void**)&callback_load_r_hptr,
-		                                   CUFFT_CB_LD_REAL, 0) );
+		                                   CUFFT_CB_LD_REAL,
+		                                   (void**)&callback_data) );
 		break;
 	}
 	case BF_DTYPE_U8: {
@@ -391,7 +419,8 @@ BFstatus BFfft_impl::init(BFarray const* in,
 		               BF_STATUS_DEVICE_ERROR );
 		BF_CHECK_CUFFT( cufftXtSetCallback(_handle,
 		                                   (void**)&callback_load_r_hptr,
-		                                   CUFFT_CB_LD_REAL, 0) );
+		                                   CUFFT_CB_LD_REAL,
+		                                   (void**)&callback_data) );
 		break;
 	}
 	case BF_DTYPE_U16: {
@@ -401,7 +430,8 @@ BFstatus BFfft_impl::init(BFarray const* in,
 		               BF_STATUS_DEVICE_ERROR );
 		BF_CHECK_CUFFT( cufftXtSetCallback(_handle,
 		                                   (void**)&callback_load_r_hptr,
-		                                   CUFFT_CB_LD_REAL, 0) );
+		                                   CUFFT_CB_LD_REAL,
+		                                   (void**)&callback_data) );
 		break;
 	}
 	case BF_DTYPE_CF32: // Fall-through
@@ -442,40 +472,42 @@ BFstatus BFfft_impl::execute_impl(void*   idata,
 		          BF_STATUS_INSUFFICIENT_STORAGE);
 	}
 	BF_CHECK_CUFFT( cufftSetWorkArea(_handle, tmp_storage) );
-	// TODO: Try to reduce repetition in here
+	
+	CallbackData h_callback_data;
+	// WAR for CUFFT insisting that pointer be aligned to sizeof(cufftComplex)
+	int alignment = (_nbit == 32 ?
+	                 sizeof(cufftComplex) :
+	                 sizeof(cufftDoubleComplex));
+	h_callback_data.ptr_offset = (uintptr_t)idata % sizeof(cufftComplex);
+	*(char**)&idata -= h_callback_data.ptr_offset;
+	CallbackData* d_callback_data = thrust::raw_pointer_cast(&_dv_callback_data[0]);
+	cudaMemcpyAsync(d_callback_data, &h_callback_data, sizeof(CallbackData),
+	                cudaMemcpyHostToDevice, g_cuda_stream);
+	
+	BF_ASSERT((uintptr_t)idata % alignment == 0, BF_STATUS_UNSUPPORTED_STRIDE);
+	BF_ASSERT((uintptr_t)odata % alignment == 0, BF_STATUS_UNSUPPORTED_STRIDE);
+	
 	if( !_real_in && !_real_out ) {
 		int direction = inverse ? CUFFT_INVERSE : CUFFT_FORWARD;
 		if( _nbit == 32 ) {
-			BF_ASSERT((uintptr_t)idata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
-			BF_ASSERT((uintptr_t)odata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecC2C(_handle, (cufftComplex*)idata, (cufftComplex*)odata, direction) );
 		} else if( _nbit == 64 ) {
-			BF_ASSERT((uintptr_t)idata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
-			BF_ASSERT((uintptr_t)odata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecZ2Z(_handle, (cufftDoubleComplex*)idata, (cufftDoubleComplex*)odata, direction) );
 		} else {
 			BF_FAIL("Supported data types", BF_STATUS_UNSUPPORTED_DTYPE);
 		}
 	} else if( _real_in && !_real_out ) {
 		if( _nbit == 32 ) {
-			BF_ASSERT((uintptr_t)idata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
-			BF_ASSERT((uintptr_t)odata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecR2C(_handle, (cufftReal*)idata, (cufftComplex*)odata) );
 		} else if( _nbit == 64 ) {
-			BF_ASSERT((uintptr_t)idata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
-			BF_ASSERT((uintptr_t)odata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecD2Z(_handle, (cufftDoubleReal*)idata, (cufftDoubleComplex*)odata) );
 		} else {
 			BF_FAIL("Supported data types", BF_STATUS_UNSUPPORTED_DTYPE);
 		}
 	} else if( !_real_in && _real_out ) {
 		if( _nbit == 32 ) {
-			BF_ASSERT((uintptr_t)idata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
-			BF_ASSERT((uintptr_t)odata % sizeof(cufftComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecC2R(_handle, (cufftComplex*)idata, (cufftReal*)odata) );
 		} else if( _nbit == 64 ) {
-			BF_ASSERT((uintptr_t)idata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
-			BF_ASSERT((uintptr_t)odata % sizeof(cufftDoubleComplex) == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_CHECK_CUFFT( cufftExecZ2D(_handle, (cufftDoubleComplex*)idata, (cufftDoubleReal*)odata) );
 		} else {
 			BF_FAIL("Supported data types", BF_STATUS_UNSUPPORTED_DTYPE);
