@@ -38,7 +38,10 @@ from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
 from .sigproc import read_sigproc, SigprocSourceBlock
 from .scrunch import scrunch, ScrunchBlock
 from .accumulate import accumulate, AccumulateBlock
-try: # Avoid error if portaudio library not installed
-	from .audio import read_audio, AudioSourceBlock
+from .binary_io import BinaryFileReadBlock, BinaryFileWriteBlock
+from .binary_io import read_binary, write_binary
+
+try:
+    from .audio import read_audio, AudioSourceBlock
 except:
-	pass
+    pass 
