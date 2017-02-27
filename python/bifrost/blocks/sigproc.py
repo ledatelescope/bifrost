@@ -57,7 +57,7 @@ class SigprocSourceBlock(SourceBlock):
 			'_tensor': {
 				'dtype':  ['u','i'][ihdr['signed']] + str(nbit),
 				'shape':  [-1, ihdr['nifs'], ihdr['nchans']],
-				'labels': ['time', 'polarisation', 'frequency'],
+				'labels': ['time', 'polarization', 'frequency'],
 				'scales': [(tstart_unix,ihdr['tsamp']),
 				           None,
 				           (ihdr['fch1'],ihdr['foff'])],

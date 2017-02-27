@@ -42,7 +42,7 @@ class AudioSourceBlock(SourceBlock):
 			'_tensor': {
 				'dtype':  'i' + str(reader.nbits),
 				'shape':  [-1, reader.channels],
-				'labels': ['time', 'channel'], # TODO: 'channel' vs. 'polarisation'?
+				'labels': ['time', 'channel'], # TODO: 'channel' vs. 'polarization'?
 				'scales': [1./reader.rate, None],
 				'units':  ['s', None]
 			},

@@ -71,7 +71,7 @@ class GuppiRawSourceBlock(SourceBlock):
 				'dtype':  'ci' + str(nbit),
 				'shape':  [-1, nchan, ihdr['NTIME'], ihdr['NPOL']],
 				# Note: 'block' is the frame axis
-				'labels': ['block', 'frequency', 'time', 'polarisation'],
+				'labels': ['block', 'frequency', 'time', 'polarization'],
 				'scales': [(tstart_unix, dt_s*ihdr['NTIME']),
 				           (f0_MHz, df_MHz),
 				           (0, dt_s),
