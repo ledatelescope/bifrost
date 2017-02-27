@@ -49,8 +49,6 @@ class FftShiftBlock(TransformBlock):
 		ihdr = iseq.header
 		itensor = ihdr['_tensor']
 		itype = DataType(itensor['dtype'])
-		if not itype.is_complex:
-			raise TypeError("Input data must be complex")
 		
 		self.axes = [itensor['labels'].index(axis)
 		             if isinstance(axis, basestring)
@@ -78,7 +76,7 @@ class FftShiftBlock(TransformBlock):
 		inds = list(ind_names)
 		for ax in self.axes:
 			if self.inverse:
-				inds[ax] += '-(a.shape()-a.shape(%i)/2)' % ax
+				inds[ax] += '-(a.shape(%i)-a.shape(%i)/2)' % (ax,ax)
 			else:
 				inds[ax] += '-a.shape(%i)/2' % ax
 		inds = ','.join(inds)
