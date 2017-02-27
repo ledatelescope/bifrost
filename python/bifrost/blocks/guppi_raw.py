@@ -40,9 +40,9 @@ def mjd2unix(mjd):
 	return (mjd - 40587) * 86400
 
 class GuppiRawSourceBlock(SourceBlock):
-	def __init__(self, sourcenames, *args, **kwargs):
+	def __init__(self, sourcenames, gulp_nframe=1, *args, **kwargs):
 		super(GuppiRawSourceBlock, self).__init__(sourcenames,
-		                                          gulp_nframe=None,
+		                                          gulp_nframe=gulp_nframe,
 		                                          *args, **kwargs)
 	def create_reader(self, sourcename):
 		return open(sourcename, 'rb')
@@ -69,12 +69,14 @@ class GuppiRawSourceBlock(SourceBlock):
 		ohdr = {
 			'_tensor': {
 				'dtype':  'ci' + str(nbit),
-				'shape':  [nchan, -1, ihdr['NPOL']],
-				'labels': ['frequency', 'time', 'polarisation'],
-				'scales': [(f0_MHz, df_MHz),
-				           (tstart_unix, dt_s),
+				'shape':  [-1, nchan, ihdr['NTIME'], ihdr['NPOL']],
+				# Note: 'block' is the frame axis
+				'labels': ['block', 'frequency', 'time', 'polarisation'],
+				'scales': [(tstart_unix, dt_s*ihdr['NTIME']),
+				           (f0_MHz, df_MHz),
+				           (0, dt_s),
 				           None],
-				'units':  ['MHz', 's', None]
+				'units':  ['s', 'MHz', 's', None]
 			},
 			'az_start':      get_with_default(ihdr, 'AZ'),            # Decimal degrees
 			'za_start':      get_with_default(ihdr, 'ZA'),            # Decimal degrees
@@ -92,10 +94,7 @@ class GuppiRawSourceBlock(SourceBlock):
 		#         gets at least 31 bits, which will overflow in 2038.
 		time_tag  = int(round(tstart_unix * 2**32))
 		ohdr['time_tag'] = time_tag
-		# TODO: This way of specifying gulp_nframe probably needs refactoring
-		self.gulp_nframe = ihdr['NTIME']
 		self.already_read_header = True
-		self.data_buf = None
 		
 		ohdr['name'] = sourcename
 		return [ohdr]
@@ -110,17 +109,12 @@ class GuppiRawSourceBlock(SourceBlock):
 				raise IOError("Block header is truncated")
 		self.already_read_header = False
 		ospan = ospans[0]
-		# Note: ospan.data is discontiguous because time is not the slowest
-		#         dim, so we must read into a contiguous buffer and then
-		#         scatter into the array.
-		if self.data_buf is None:
-			self.data_buf = np.empty_like(ospan.data)
-		nbyte = reader.readinto(self.data_buf)
-		if nbyte < ospan.data.nbytes:
+		odata = ospan.data
+		nbyte = reader.readinto(odata)
+		if nbyte % ospan.frame_nbyte:
 			raise IOError("Block data is truncated")
-		# Scatter block data into discontiguous span memory
-		ospan.data[...] = self.data_buf
-		return [ospan.nframe]
+		nframe = nbyte // ospan.frame_nbyte
+		return [nframe]
 
 def read_guppi_raw(filenames, *args, **kwargs):
 	return GuppiRawSourceBlock(filenames, *args, **kwargs)
