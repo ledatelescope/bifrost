@@ -38,14 +38,22 @@ using std::atan2;
 template<typename Real, class Enable=void>
 struct Complex;
 
-template<>
-struct __attribute__((aligned(2))) Complex<signed char> {
-	signed char x, y;
+template<typename Real, typename PromotedReal=float>
+struct __attribute__((aligned(2*sizeof(Real)))) ComplexBase {
+	typedef Real real_type;
+	union { real_type x, real; };
+	union { real_type y, imag; };
+	operator Complex<PromotedReal>();
 };
 template<>
-struct __attribute__((aligned(4))) Complex<short> {
-	short x, y;
-};
+struct __attribute__((aligned(2))) Complex<signed char>
+	: public ComplexBase<signed char> {};
+template<>
+struct __attribute__((aligned(4))) Complex<short>
+	: public ComplexBase<short> {};
+template<>
+struct __attribute__((aligned(8))) Complex<int>
+	: public ComplexBase<int,double> {};
 
 typedef Complex<float>  Complex32;
 typedef Complex<double> Complex64;
@@ -199,3 +207,10 @@ DEFINE_BINARY_OPERATOR(-)
 DEFINE_BINARY_OPERATOR(*)
 DEFINE_BINARY_OPERATOR(/)
 #undef DEFINE_BINARY_OPERATOR
+
+template<typename Real, typename PromotedReal>
+ComplexBase<Real,PromotedReal>::operator Complex<PromotedReal>() {
+	Complex<PromotedReal> c = {real, imag};
+	return c;
+}
+
