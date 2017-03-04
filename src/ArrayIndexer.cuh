@@ -66,7 +66,7 @@ protected:
 	template<int IND_NDIM>
 	inline T& at(IndexArray<I,IND_NDIM> const& inds) const {
 		I offset = 0;
-#ifdef __CUDACC__
+#ifdef __CUDA_ARCH__
 #pragma unroll
 #endif
 		for( int d=0; d<static_min<NDIM,IND_NDIM>::value; ++d ) {
@@ -253,7 +253,7 @@ public:
 	reference_type
 	at(IndexArray<int,IND_NDIM> inds) const {
 		int offset = 0;
-#ifdef __CUDACC__
+#ifdef __CUDA_ARCH__
 #pragma unroll
 #endif
 		for( int d=0; d<static_min<NDIM,IND_NDIM>::value; ++d ) {
@@ -305,7 +305,7 @@ public:
 	__host__ __device__
 	inline IndexArray<int,NDIM> shape() const {
 		IndexArray<int,NDIM> shp;
-#ifdef __CUDACC__
+#ifdef __CUDA_ARCH__
 #pragma unroll
 #endif
 		for( int d=0; d<NDIM; ++d ) {
