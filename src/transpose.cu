@@ -30,6 +30,7 @@
 #include <bifrost/transpose.h>
 #include "assert.hpp"
 #include "utils.hpp"
+#include "trace.hpp"
 
 #if BF_CUDA_ENABLED
   #include "transpose_gpu_kernel.cuh"
@@ -275,6 +276,7 @@ BFstatus transpose(int            ndim,
                    T            * out,
                    long    const* out_strides, // bytes
                    cudaStream_t   stream) {
+	BF_TRACE_STREAM(stream);
 	unsigned long in_alignment = (unsigned long)in;
 	for( int d=0; d<ndim; ++d ) {
 		in_alignment = gcd(in_alignment, (unsigned long)in_strides[d]);
@@ -297,6 +299,7 @@ BFstatus transpose(int            ndim,
 BFstatus bfTranspose(BFarray const* in,
                      BFarray const* out,
                      int     const* axes) {
+	BF_TRACE();
 	BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(axes, BF_STATUS_INVALID_POINTER);

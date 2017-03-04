@@ -32,6 +32,7 @@
 #include "utils.hpp"
 #include "workspace.hpp"
 #include "cuda.hpp"
+#include "trace.hpp"
 
 //#include <limits>
 
@@ -314,6 +315,7 @@ public:
 	          FType f0,
 	          FType df,
 	          FType exponent) {
+		BF_TRACE();
 		if( df < 0. ) {
 			_reverse_band = true;
 			f0 += (nchan-1)*df;
@@ -502,6 +504,8 @@ public:
 		_step_delays  = step_delays;
 	}
 	bool init_plan_storage(void* storage_ptr, BFsize* storage_size) {
+		BF_TRACE();
+		BF_TRACE_STREAM(_stream);
 		enum {
 			ALIGNMENT_BYTES = 512,
 			ALIGNMENT_ELMTS = ALIGNMENT_BYTES / sizeof(int)
@@ -559,6 +563,7 @@ public:
 		return true;
 	}
 	bool init_exec_storage(void* storage_ptr, BFsize* storage_size, size_t ntime) {
+		BF_TRACE();
 		enum {
 			ALIGNMENT_BYTES = 512,
 			ALIGNMENT_ELMTS = ALIGNMENT_BYTES / sizeof(DType)
@@ -598,6 +603,8 @@ public:
 	             BFarray const* out,
 	             size_t         ntime,
 	             bool           negative_delays) {
+		BF_TRACE();
+		BF_TRACE_STREAM(_stream);
 		//cout << "out dtype = " << out->dtype << endl;
 		BF_ASSERT_EXCEPTION(out->dtype == BF_DTYPE_F32, BF_STATUS_UNSUPPORTED_DTYPE);
 		BF_ASSERT_EXCEPTION(   out->strides[in->ndim-1] == 4, BF_STATUS_UNSUPPORTED_STRIDE);
@@ -672,6 +679,7 @@ public:
 };
 
 BFstatus bfFdmtCreate(BFfdmt* plan_ptr) {
+	BF_TRACE();
 	BF_ASSERT(plan_ptr, BF_STATUS_INVALID_POINTER);
 	BF_TRY_RETURN_ELSE(*plan_ptr = new BFfdmt_impl(),
 	                   *plan_ptr = 0);
@@ -689,6 +697,7 @@ BFstatus bfFdmtInit(BFfdmt  plan,
                     BFspace space,
                     void*   plan_storage,
                     BFsize* plan_storage_size) {
+	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(space_accessible_from(space, BF_SPACE_CUDA),
 	          BF_STATUS_UNSUPPORTED_SPACE);
@@ -697,6 +706,7 @@ BFstatus bfFdmtInit(BFfdmt  plan,
 }
 BFstatus bfFdmtSetStream(BFfdmt      plan,
                          void const* stream) {
+	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
 	BF_TRY_RETURN(plan->set_stream(*(cudaStream_t*)stream));
@@ -707,6 +717,7 @@ BFstatus bfFdmtExecute(BFfdmt         plan,
                        BFbool         negative_delays,
                        void*          exec_storage,
                        BFsize*        exec_storage_size) {
+	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
@@ -727,6 +738,7 @@ BFstatus bfFdmtExecute(BFfdmt         plan,
 }
 
 BFstatus bfFdmtDestroy(BFfdmt plan) {
+	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	delete plan;
 	return BF_STATUS_SUCCESS;

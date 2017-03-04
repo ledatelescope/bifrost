@@ -24,6 +24,7 @@ ifndef NOCUDA
   fft.o \
   fdmt.o \
   map.o \
+  trace.o \
   #correlate.o \
   blas.o \
   transform.o
@@ -56,6 +57,10 @@ endif
 
 LIB += -lgomp
 
+ifdef TRACE
+  CPPFLAGS   += -DBF_TRACE_ENABLED=1
+endif
+
 ifdef HWLOC
   LIB        += -lhwloc
   CPPFLAGS   += -DBF_HWLOC_ENABLED=1
@@ -76,7 +81,7 @@ endif
 
 ifndef NOCUDA
   CPPFLAGS  += -DBF_CUDA_ENABLED=1
-  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -lcufft_static -lculibos
+  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -lcufft_static -lculibos -lnvToolsExt
 endif
 
 ifndef ANY_ARCH

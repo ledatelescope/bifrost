@@ -42,6 +42,7 @@
 #include "assert.hpp"
 #include "utils.hpp"
 #include "cuda.hpp"
+#include "trace.hpp"
 #include "ShapeIndexer.cuh"
 #include "ArrayIndexer.cuh"
 #include <thrust/device_vector.h>
@@ -232,6 +233,7 @@ BFstatus BFfft_impl::init(BFarray const* in,
                           int            rank,
                           int     const* axes,
                           size_t*        tmp_storage_size) {
+	BF_TRACE();
 	BF_ASSERT(rank > 0 && rank <= BF_MAX_DIMS, BF_STATUS_INVALID_ARGUMENT);
 	BF_ASSERT(rank <= in->ndim, BF_STATUS_INVALID_ARGUMENT);
 	//BF_ASSERT(
@@ -523,6 +525,8 @@ BFstatus BFfft_impl::execute(BFarray const* in,
                              BFbool         inverse,
                              void*          tmp_storage,
                              size_t         tmp_storage_size) {
+	BF_TRACE();
+	BF_TRACE_STREAM(g_cuda_stream);
 	BF_ASSERT(space_accessible_from( in->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
 	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
 	// TODO: More assertions
@@ -548,6 +552,7 @@ BFstatus BFfft_impl::execute(BFarray const* in,
 }
 
 BFstatus bfFftCreate(BFfft* plan_ptr) {
+	BF_TRACE();
 	BF_ASSERT(plan_ptr, BF_STATUS_INVALID_POINTER);
 	BF_TRY_RETURN_ELSE(*plan_ptr = new BFfft_impl(),
 	                   *plan_ptr = 0);
@@ -558,6 +563,7 @@ BFstatus bfFftInit(BFfft          plan,
                    int            rank,
                    int     const* axes,
                    size_t*        tmp_storage_size) {
+	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
@@ -574,12 +580,14 @@ BFstatus bfFftExecute(BFfft          plan,
                       BFbool         inverse,
                       void*          tmp_storage,
                       size_t         tmp_storage_size) {
+	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
 	return plan->execute(in, out, inverse, tmp_storage, tmp_storage_size);
 }
 BFstatus bfFftDestroy(BFfft plan) {
+	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	delete plan;
 	return BF_STATUS_SUCCESS;

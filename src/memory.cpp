@@ -30,6 +30,7 @@
 #include <bifrost/memory.h>
 #include "utils.hpp"
 #include "cuda.hpp"
+#include "trace.hpp"
 
 #include <cstdlib> // For posix_memalign
 #include <cstring> // For memcpy
@@ -167,6 +168,7 @@ BFstatus bfMemcpy(void*       dst,
 		}
 		default: BF_FAIL("Valid bfMemcpy src space", BF_STATUS_INVALID_ARGUMENT);
 		}
+		BF_TRACE_STREAM(g_cuda_stream);
 		BF_CHECK_CUDA(cudaMemcpyAsync(dst, src, count, kind, g_cuda_stream),
 		              BF_STATUS_MEM_OP_FAILED);
 #endif
@@ -233,6 +235,7 @@ BFstatus bfMemcpy2D(void*       dst,
 		}
 		default: BF_FAIL("Valid bfMemcpy2D src space", BF_STATUS_INVALID_ARGUMENT);
 		}
+		BF_TRACE_STREAM(g_cuda_stream);
 		BF_CHECK_CUDA(cudaMemcpy2DAsync(dst, dst_stride,
 		                                src, src_stride,
 		                                width, height,
@@ -258,6 +261,7 @@ BFstatus bfMemset(void*   ptr,
 		case BF_SPACE_CUDA_HOST:    ::memset(ptr, value, count); break;
 		case BF_SPACE_CUDA: // Fall-through
 		case BF_SPACE_CUDA_MANAGED: {
+			BF_TRACE_STREAM(g_cuda_stream);
 			BF_CHECK_CUDA(cudaMemsetAsync(ptr, value, count, g_cuda_stream),
 			              BF_STATUS_MEM_OP_FAILED);
 			break;
@@ -294,6 +298,7 @@ BFstatus bfMemset2D(void*   ptr,
 		case BF_SPACE_CUDA_HOST:    memset2D(ptr, stride, value, width, height); break;
 		case BF_SPACE_CUDA: // Fall-through
 		case BF_SPACE_CUDA_MANAGED: {
+			BF_TRACE_STREAM(g_cuda_stream);
 			BF_CHECK_CUDA(cudaMemset2DAsync(ptr, stride, value, width, height, g_cuda_stream),
 			              BF_STATUS_MEM_OP_FAILED);
 			break;
