@@ -162,6 +162,13 @@ class DataType(object):
 		kind = 'cf' if self.is_complex else 'f'
 		nbit = 32 if self._nbit <= 24 else 64
 		return DataType((kind, nbit))
+	def as_integer(self, nbit=None):
+		if nbit is None:
+			nbit = self._nbit
+		kind = self._kind
+		if self.is_floating_point:
+			kind = kind.replace('f', 'i')
+		return DataType((kind, nbit))
 	def as_real(self):
 		if self.is_complex:
 			return DataType((self._kind[1:], self._nbit))
@@ -172,6 +179,8 @@ class DataType(object):
 			return self
 		else:
 			return DataType(('c'+self._kind, self._nbit))
+	def as_nbit(self, nbit):
+		return DataType((self._kind, nbit))
 	@property
 	def itemsize_bits(self):
 		return self._nbit * (1 + self.is_complex)

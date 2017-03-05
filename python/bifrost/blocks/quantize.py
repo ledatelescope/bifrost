@@ -28,19 +28,39 @@
 
 from __future__ import absolute_import
 
-from .copy import copy, CopyBlock
-from .transpose import transpose, TransposeBlock
-from .fft import fft, FftBlock
-from .fftshift import fftshift, FftShiftBlock
-from .fdmt import fdmt, FdmtBlock
-from .detect import detect, DetectBlock
-from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
-from .sigproc import read_sigproc, SigprocSourceBlock
-from .scrunch import scrunch, ScrunchBlock
-from .accumulate import accumulate, AccumulateBlock
-from .unpack import unpack, UnpackBlock
-from .quantize import quantize, QuantizeBlock
-try: # Avoid error if portaudio library not installed
-	from .audio import read_audio, AudioSourceBlock
-except:
-	pass
+import bifrost as bf
+import bifrost.quantize
+from bifrost.pipeline import TransformBlock
+from bifrost.DataType import DataType
+
+from copy import deepcopy
+
+class QuantizeBlock(TransformBlock):
+	def __init__(self, iring, dtype, scale=1.,
+	             *args, **kwargs):
+		super(QuantizeBlock, self).__init__(iring, *args, **kwargs)
+		self.dtype = dtype
+		self.scale = scale
+	def define_valid_input_spaces(self):
+		"""Return set of valid spaces (or 'any') for each input"""
+		return ('system',)
+	def on_sequence(self, iseq):
+		ihdr = iseq.header
+		ohdr = deepcopy(ihdr)
+		itype = DataType(ihdr['_tensor']['dtype'])
+		self.itype = itype
+		# Allow user to pass nbit instead of explicit dtype
+		if isinstance(self.dtype, int):
+			nbit = self.dtype
+			otype = itype.as_integer(nbit)
+		else:
+			otype = self.dtype
+		ohdr['_tensor']['dtype'] = otype
+		return ohdr
+	def on_data(self, ispan, ospan):
+		idata = ispan.data
+		odata = ospan.data
+		bf.quantize.quantize(idata, odata, self.scale)
+
+def quantize(iring, dtype, *args, **kwargs):
+	return QuantizeBlock(iring, dtype, *args, **kwargs)
