@@ -121,8 +121,8 @@ void foreach_simple_cpu_4bit(T const* in,
 			byteswap(tempI, &tempI);
 		}
 		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
-		tempO = (((int8_t(rint(clip_4bit(tempR)))*16)     ) & 0xF0) | \
-			    (((int8_t(rint(clip_4bit(tempI)))*16) >> 4) & 0x0F);
+		tempO = (((int8_t(rint(clip_4bit(tempR*func.scale)))*16)     ) & 0xF0) | \
+			    (((int8_t(rint(clip_4bit(tempI*func.scale)))*16) >> 4) & 0x0F);
 		if(func.byteswap_out) {
 			byteswap(tempO, &tempO);
 		}
