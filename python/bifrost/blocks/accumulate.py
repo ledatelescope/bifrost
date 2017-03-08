@@ -62,7 +62,6 @@ class AccumulateBlock(TransformBlock):
 		self.frame_count = 0
 		return ohdr
 	def on_data(self, ispan, ospan):
-		print "accumulate::on_data", ispan.data.shape, ospan.data.shape
 		idata = ispan.data
 		odata = ospan.data
 		beta = 0. if self.frame_count == 0 else 1.
