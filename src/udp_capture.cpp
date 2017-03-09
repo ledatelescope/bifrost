@@ -504,10 +504,10 @@ class BFudpcapture_impl {
 	UDPCaptureThread   _capture;
 	CHIPSDecoder       _decoder;
 	CHIPSProcessor8bit _processor;
-	std::fstream       _type_log;
-	std::fstream       _size_log;
-	std::fstream       _chan_log;
-	std::fstream       _stat_log;
+	std::ofstream      _type_log;
+	std::ofstream      _size_log;
+	std::ofstream      _chan_log;
+	std::ofstream      _stat_log;
 	pid_t              _pid;
 	
 	int       _nsrc;
@@ -583,6 +583,39 @@ class BFudpcapture_impl {
 	inline void end_sequence() {
 		_sequence.reset(); // Note: This is releasing the shared_ptr
 	}
+	inline void open_logs() {
+		// Get the PID
+		this->_pid = getpid();
+		
+		// Make the directory for this process
+		std::string log_dir = "/dev/shm/bifrost/"+std::to_string(this->_pid)+"/capture";
+		int status = system(("mkdir -p "+log_dir).c_str());
+		if( status != 0 ) {
+			// TODO: What to do here?
+			throw std::runtime_error("Cannot create capture status directory");
+		}
+		
+		// Open the log files
+		//// Capture type
+		_type_log.open((log_dir+"/type").c_str());
+		///// Size information
+		_size_log.open((log_dir+"/sizes").c_str());
+		//// Channel information
+		_chan_log.open((log_dir+"/chans").c_str());
+		//// Capture statistics
+		_stat_log.open((log_dir+"/stats").c_str());
+		
+		// Fill in known parameters which don't change
+		_type_log.seekp(0);
+		_type_log << "TYPE = "
+			     << "chips" << endl;
+		
+		_size_log.seekp(0);
+		_size_log << "NSRC, NSEQ, NTIME = "
+				<< _nsrc << ", " 
+				<< _nseq_per_buf << ", "
+				<< _slot_ntime << endl;
+	}
 public:
 	inline BFudpcapture_impl(int    fd,
 	           BFring ring,
@@ -607,41 +640,6 @@ public:
 		_ring.resize(contig_span, total_span, nringlet_max);
 		this->open_logs();
 	}
-	inline void open_logs() {
-		// Get the PID
-		this->_pid = getpid();
-		
-		// Make the directory for this process
-		std::string log_dir = "/dev/shm/bifrost/"+std::to_string(this->_pid);
-		int status = system(("mkdir -p "+log_dir).c_str());
-		if( status != 0 ) {
-			// TODO: What to do here?
-			throw std::runtime_error("Cannot create capture status directory");
-		}
-		
-		// Open the log files
-		//// Capture type
-		_type_log.open((log_dir+"/type").c_str(), std::fstream::out);
-		///// Size information
-		_size_log.open((log_dir+"/sizes").c_str(), std::fstream::out);
-		//// Channel information
-		_chan_log.open((log_dir+"/chans").c_str(), std::fstream::out);
-		//// Capture statistics
-		_stat_log.open((log_dir+"/stats").c_str(), std::fstream::out);
-		
-		// Fill in known parameters which don't change
-		_type_log.seekp(0);
-		_type_log << "TYPE = "
-			     << "chips" << endl;
-		_type_log.flush();
-		
-		_size_log.seekp(0);
-		_size_log << "NSRC, NSEQ, NTIME = "
-				<< _nsrc << ", " 
-				<< _nseq_per_buf << ", "
-				<< _slot_ntime << endl;
-		_size_log.flush();
-	}
 	inline void close_logs() {
 		// Close the log files
 		_type_log.close();
@@ -649,11 +647,17 @@ public:
 		_chan_log.close();
 		_stat_log.close();
 		
-		// Cleanup the process directory
-		int status = system(("rm -rf /dev/shm/bifrost/"+std::to_string(this->_pid)).c_str());
+		// Cleanup the process directory - capture
+		int status = system(("rm -rf /dev/shm/bifrost/"+std::to_string(this->_pid)+"/capture").c_str());
 		if( status != 0 ) {
-			// TODO: What to do here?
-			throw std::runtime_error("Cannot remove capture status directory");
+			// It doesn't really matter if this works
+			//throw std::runtime_error("Cannot remove capture status directory");
+		}
+		// Cleanup the process directory - global, if possible
+		status = system(("rmdir /dev/shm/bifrost/"+std::to_string(this->_pid)).c_str());
+		if( status != 0 ) {
+			// It doesn't really matter if this works
+			//throw std::runtime_error("Cannot remove global status directory");
 		}
 	}
 	inline void flush() {
@@ -698,7 +702,6 @@ public:
 		           << stats->nvalid << ", "
 		           << stats->ninvalid << ", "
 		           << stats->nlate << endl;
-		_stat_log.flush();
 		BFudpcapture_status ret;
 		bool was_active = _active;
 		_active = state & UDPCaptureThread::CAPTURE_SUCCESS;
@@ -725,7 +728,6 @@ public:
 				           << _chan0 << ", " 
 				           << _nchan << ", "
 						 << _payload_size << endl;
-				_chan_log.flush();
 				this->begin_sequence();
 				ret = BF_CAPTURE_STARTED;
 			} else {
@@ -740,7 +742,6 @@ public:
 					           << _chan0 << ", " 
 					           << _nchan << ", "
 					           << _payload_size << endl;
-					_chan_log.flush();
 					this->end_sequence();
 					this->begin_sequence();
 					ret = BF_CAPTURE_CHANGED;

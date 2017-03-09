@@ -1,3 +1,32 @@
+/*
+ * Copyright (c) 2017, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2017, The University of New Mexico. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ * * Neither the name of The Bifrost Authors nor the names of its
+ *   contributors may be used to endorse or promote products derived
+ *   from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "assert.hpp"
 #include <bifrost/udp_transmit.h>
 #include <bifrost/affinity.h>
@@ -110,8 +139,8 @@ public:
 
 class BFudptransmit_impl {
 	UDPTransmitThread  _transmit;
-	std::fstream       _type_log;
-	std::fstream       _stat_log;
+	std::ofstream      _type_log;
+	std::ofstream      _stat_log;
 	pid_t              _pid;
 	
 	inline struct msghdr _build_msghdr(char* packet, unsigned int len) {
@@ -127,18 +156,12 @@ class BFudptransmit_impl {
 		
 		return msg;
 	}
-public:
-	inline BFudptransmit_impl(int    fd,
-	           int    core)
-		: _transmit(fd, core) {
-		this->open_logs();
-	}
 	inline void open_logs() {
 		// Get the PID
 		this->_pid = getpid();
 		
 		// Make the directory for this process
-		std::string log_dir = "/dev/shm/bifrost_transmit/"+std::to_string(this->_pid);
+		std::string log_dir = "/dev/shm/bifrost/"+std::to_string(this->_pid)+"/transmit";
 		int status = system(("mkdir -p "+log_dir).c_str());
 		if( status != 0 ) {
 			// TODO: What to do here?
@@ -147,26 +170,37 @@ public:
 		
 		// Open the log files
 		//// Transmit type
-		_type_log.open((log_dir+"/type").c_str(), std::fstream::out);
+		_type_log.open((log_dir+"/type").c_str());
 		//// Transmit statistics
-		_stat_log.open((log_dir+"/stats").c_str(), std::fstream::out);
+		_stat_log.open((log_dir+"/stats").c_str());
 		
 		// Fill in known parameters which don't change
 		_type_log.seekp(0);
 		_type_log << "TYPE = "
 			     << "generic" << endl;
-		_type_log.flush();
+	}
+public:
+	inline BFudptransmit_impl(int    fd,
+	           int    core)
+		: _transmit(fd, core) {
+		this->open_logs();
 	}
 	inline void close_logs() {
 		// Close the log files
 		_type_log.close();
 		_stat_log.close();
 		
-		// Cleanup the process directory
-		int status = system(("rm -rf /dev/shm/bifrost_transmit/"+std::to_string(this->_pid)).c_str());
+		// Cleanup the process directory - transmit
+		int status = system(("rm -rf /dev/shm/bifrost"+std::to_string(this->_pid)+"/transmit").c_str());
 		if( status != 0 ) {
-			// TODO: What to do here?
-			throw std::runtime_error("Cannot remove transmit status directory");
+			// It doesn't really matter if this works
+			//throw std::runtime_error("Cannot remove transmit status directory");
+		}
+		// Cleanup the process directory - global, if possible
+		status = system(("rmdir /dev/shm/bifrost/"+std::to_string(this->_pid)).c_str());
+		if( status != 0 ) {
+			// It doesn't really matter if this works
+			//throw std::runtime_error("Cannot remove global status directory");
 		}
 	}
 	BFudptransmit_status send(char *packet, unsigned int len) {
@@ -193,7 +227,6 @@ public:
 		           << stats->nvalid << ", "
 		           << stats->ninvalid << ", "
 		           << stats->nlate << endl;
-		_stat_log.flush();
 		
 		return BF_TRANSMIT_CONTINUED;
 	}
@@ -228,7 +261,6 @@ public:
 		           << stats->nvalid << ", "
 		           << stats->ninvalid << ", "
 		           << stats->nlate << endl;
-		_stat_log.flush();
 		
 		return BF_TRANSMIT_CONTINUED;
 	}
