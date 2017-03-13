@@ -15,6 +15,7 @@ LIBBIFROST_OBJS = \
   address.o \
   udp_socket.o \
   udp_capture.o \
+  udp_transmit.o \
   unpack.o \
   quantize.o
 ifndef NOCUDA
@@ -22,8 +23,10 @@ ifndef NOCUDA
   LIBBIFROST_OBJS += \
   transpose.o \
   fft.o \
+  fft_kernels.o \
   fdmt.o \
   map.o \
+  trace.o \
   #correlate.o \
   blas.o \
   transform.o
@@ -56,6 +59,10 @@ endif
 
 LIB += -lgomp
 
+ifdef TRACE
+  CPPFLAGS   += -DBF_TRACE_ENABLED=1
+endif
+
 ifdef HWLOC
   LIB        += -lhwloc
   CPPFLAGS   += -DBF_HWLOC_ENABLED=1
@@ -76,7 +83,7 @@ endif
 
 ifndef NOCUDA
   CPPFLAGS  += -DBF_CUDA_ENABLED=1
-  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -lcufft_static -lculibos
+  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -lcufft_static -lculibos -lnvToolsExt
 endif
 
 ifndef ANY_ARCH
@@ -112,13 +119,13 @@ $(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
 	echo "};"        >> $@
 
 ifndef NOCUDA
-fft.o: fft.cu bifrost/fft.h
+fft_kernels.o: fft_kernels.cu fft_kernels.h
 	# Note: This needs to be compiled with "-dc" to make CUFFT callbacks work
 	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" $(TARGET_ARCH) -dc $(OUTPUT_OPTION) $<
-_cuda_device_link.o: fft.o
+_cuda_device_link.o: fft_kernels.o
 	$(CLEAR_LINE)
 	@echo -n "Linking _cuda_device_link.o\r"
-	$(NVCC) -dlink -o $@ $(NVCCFLAGS) fft.o -lcufft_static
+	$(NVCC) -dlink -o $@ $(NVCCFLAGS) fft_kernels.o -lcufft_static
 CUDA_DEVICE_LINK_OBJ = _cuda_device_link.o
 else
 CUDA_DEVICE_LINK_OBJ =

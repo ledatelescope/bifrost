@@ -140,7 +140,7 @@ public:
 	__host__ __device__
 	inline static IndexArray<I,NDIM> lift(I index) {
 		IndexArray<I,NDIM> inds;
-#ifdef __CUDACC__
+#ifdef __CUDA_ARCH__
 #pragma unroll
 #endif
 		for( int d=0; d<NDIM; ++d ) {
@@ -179,7 +179,7 @@ public:
 			ndim = _ndim;
 		}
 		IndexArray<int,NDIM> inds;
-#ifdef __CUDACC__
+#ifdef __CUDA_ARCH__
 #pragma unroll
 #endif
 		for( int d=0; d<ndim; ++d ) {
@@ -187,7 +187,7 @@ public:
 			i      -= ind * _cumu_shape[d];
 			inds[d] = ind;
 		}
-#ifdef __CUDACC__
+#ifdef __CUDA_ARCH__
 #pragma unroll
 #endif
 		for( int d=ndim; d<NDIM; ++d ) {

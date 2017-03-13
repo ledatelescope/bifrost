@@ -38,9 +38,10 @@ from .sigproc import read_sigproc, SigprocSourceBlock
 from .scrunch import scrunch, ScrunchBlock
 from .accumulate import accumulate, AccumulateBlock
 from .binary_io import BinaryFileReadBlock, BinaryFileWriteBlock
-
-try:
-    from .audio import read_audio, AudioSourceBlock
+from .unpack import unpack, UnpackBlock
+from .quantize import quantize, QuantizeBlock
+try: # Avoid error if portaudio library not installed
+	from .audio import read_audio, AudioSourceBlock
 except:
     pass 
 

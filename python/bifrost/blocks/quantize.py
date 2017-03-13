@@ -26,53 +26,41 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-A simple block that accepts 1 frame at a time and accumulates them
-nframe times before outputting the accumulated result.
-"""
-
 from __future__ import absolute_import
 
 import bifrost as bf
+import bifrost.quantize
 from bifrost.pipeline import TransformBlock
+from bifrost.DataType import DataType
 
 from copy import deepcopy
 
-class AccumulateBlock(TransformBlock):
-	def __init__(self, iring, nframe, dtype=None, gulp_nframe=1,
+class QuantizeBlock(TransformBlock):
+	def __init__(self, iring, dtype, scale=1.,
 	             *args, **kwargs):
-		assert(gulp_nframe == 1)
-		super(AccumulateBlock, self).__init__(iring, gulp_nframe=1,
-		                                      *args, **kwargs)
-		self.nframe = nframe
-		self.dtype  = dtype
+		super(QuantizeBlock, self).__init__(iring, *args, **kwargs)
+		self.dtype = dtype
+		self.scale = scale
 	def define_valid_input_spaces(self):
 		"""Return set of valid spaces (or 'any') for each input"""
-		return ('cuda',)
+		return ('system',)
 	def on_sequence(self, iseq):
 		ihdr = iseq.header
-		itensor = ihdr['_tensor']
 		ohdr = deepcopy(ihdr)
-		otensor = ohdr['_tensor']
-		if 'scales' in otensor:
-			frame_axis = otensor['shape'].index(-1)
-			otensor['scales'][frame_axis][1] *= self.nframe
-		if self.dtype is not None:
-			otensor['dtype'] = self.dtype
-		self.frame_count = 0
+		itype = DataType(ihdr['_tensor']['dtype'])
+		self.itype = itype
+		# Allow user to pass nbit instead of explicit dtype
+		if isinstance(self.dtype, int):
+			nbit = self.dtype
+			otype = itype.as_integer(nbit)
+		else:
+			otype = self.dtype
+		ohdr['_tensor']['dtype'] = otype
 		return ohdr
 	def on_data(self, ispan, ospan):
 		idata = ispan.data
 		odata = ospan.data
-		beta = 0. if self.frame_count == 0 else 1.
-		bf.map("b = beta * b + (b_type)a", a=idata, b=odata, beta=beta)
-		self.frame_count += 1
-		if self.frame_count == self.nframe:
-			ncommit = 1
-			self.frame_count = 0
-		else:
-			ncommit = 0
-		return ncommit
+		bf.quantize.quantize(idata, odata, self.scale)
 
-def accumulate(iring, nframe, *args, **kwargs):
-	return AccumulateBlock(iring, nframe, *args, **kwargs)
+def quantize(iring, dtype, *args, **kwargs):
+	return QuantizeBlock(iring, dtype, *args, **kwargs)

@@ -46,6 +46,11 @@ using bifrost::ring::WriteSequence;
 #include <cstring>      // For memcpy, memset
 #include <cstdint>
 
+#include <sys/types.h>
+#include <unistd.h>
+#include <fstream>
+
+
 #include <immintrin.h> // SSE
 
 // TODO: The VMA API is returning unaligned buffers, which prevents use of SSE
@@ -282,6 +287,7 @@ struct PacketStats {
 class UDPCaptureThread : public BoundThread {
 	UDPPacketReceiver _udp;
 	PacketStats       _stats;
+	std::vector<PacketStats> _src_stats;
 	bool              _have_pkt;
 	PacketDesc        _pkt;
 public:
@@ -291,8 +297,9 @@ public:
 		CAPTURE_INTERRUPTED = 1 << 2,
 		CAPTURE_ERROR       = 1 << 3
 	};
-	UDPCaptureThread(int fd, int core=0, size_t pkt_size_max=9000)
-		: BoundThread(core), _udp(fd, pkt_size_max), _have_pkt(false) {
+	UDPCaptureThread(int fd, int nsrc, int core=0, size_t pkt_size_max=9000)
+		: BoundThread(core), _udp(fd, pkt_size_max), _src_stats(nsrc),
+		  _have_pkt(false) {
 		this->reset_stats();
 	}
 	// Captures, decodes and unpacks packets into the provided buffers
@@ -306,6 +313,7 @@ public:
 	        int              nbuf,
 	        uint8_t*         obufs[],
 	        size_t*          ngood_bytes[],
+	        size_t*          src_ngood_bytes[],
 	        PacketDecoder*   decode,
 	        PacketProcessor* process) {
 		uint64_t seq_end = seq_beg + nbuf*nseq_per_obuf;
@@ -342,11 +350,19 @@ public:
 			if( less_than(_pkt.seq, seq_beg) ) {
 				++_stats.nlate;
 				_stats.nlate_bytes += _pkt.payload_size;
+				++_src_stats[_pkt.src].nlate;
+				_src_stats[_pkt.src].nlate_bytes += _pkt.payload_size;
 				continue;
 			}
 			++_stats.nvalid;
 			_stats.nvalid_bytes += _pkt.payload_size;
-			(*process)(&_pkt, seq_beg, nseq_per_obuf, nbuf, obufs, local_ngood_bytes);
+			++_src_stats[_pkt.src].nvalid;
+			_src_stats[_pkt.src].nvalid_bytes += _pkt.payload_size;
+			// HACK TODO: src_ngood_bytes should be accumulated locally and
+			//              then atomically updated, like ngood_bytes. The
+			//              current way is not thread-safe.
+			(*process)(&_pkt, seq_beg, nseq_per_obuf, nbuf, obufs,
+			           local_ngood_bytes, /*local_*/src_ngood_bytes);
 		}
 		if( nbuf > 0 ) { atomic_add_and_fetch(ngood_bytes[0], local_ngood_bytes[0]); }
 		if( nbuf > 1 ) { atomic_add_and_fetch(ngood_bytes[1], local_ngood_bytes[1]); }
@@ -356,8 +372,10 @@ public:
 		return _have_pkt ? &_pkt : NULL;
 	}
 	inline const PacketStats* get_stats() const { return &_stats; }
+	inline const PacketStats* get_stats(int src) const { return &_src_stats[src]; }
 	inline void reset_stats() {
 		::memset(&_stats, 0, sizeof(_stats));
+		::memset(&_src_stats[0], 0, _src_stats.size()*sizeof(PacketStats));
 	}
 };
 
@@ -420,7 +438,8 @@ public:
 	                       uint64_t          nseq_per_obuf,
 	                       int               nbuf,
 	                       uint8_t*          obufs[],
-	                       size_t            ngood_bytes[]) {
+	                       size_t            ngood_bytes[],
+	                       size_t*           src_ngood_bytes[]) {
 		enum {
 			PKT_NINPUT = 32,
 			PKT_NBIT   = 4
@@ -428,7 +447,9 @@ public:
 		int    obuf_idx = ((pkt->seq - seq0 >= 1*nseq_per_obuf) +
 		                   (pkt->seq - seq0 >= 2*nseq_per_obuf));
 		size_t obuf_seq0 = seq0 + obuf_idx*nseq_per_obuf;
-		ngood_bytes[obuf_idx] += pkt->payload_size * BF_UNPACK_FACTOR;
+		size_t nbyte = pkt->payload_size * BF_UNPACK_FACTOR;
+		ngood_bytes[obuf_idx]               += nbyte;
+		src_ngood_bytes[obuf_idx][pkt->src] += nbyte;
 		// **CHANGED RECENTLY
 		int payload_size = pkt->payload_size;//pkt->nchan*(PKT_NINPUT*2*PKT_NBIT/8);
 		
@@ -484,6 +505,20 @@ public:
 		}
 		//}
 	}
+	inline void blank_out_source(uint8_t* data,
+	                             int      src,
+	                             int      nsrc,
+	                             int      nchan,
+	                             int      nseq) {
+		typedef aligned256_type otype;
+		otype* __restrict__ aligned_data = (otype*)data;
+		for( int t=0; t<nseq; ++t ) {
+			for( int c=0; c<nchan; ++c ) {
+				::memset(&aligned_data[src + nsrc*(c + nchan*t)],
+				         0, sizeof(otype));
+			}
+		}
+	}
 };
 
 inline uint64_t round_up(uint64_t val, uint64_t mult) {
@@ -499,6 +534,11 @@ class BFudpcapture_impl {
 	UDPCaptureThread   _capture;
 	CHIPSDecoder       _decoder;
 	CHIPSProcessor8bit _processor;
+	std::ofstream      _type_log;
+	std::ofstream      _size_log;
+	std::ofstream      _chan_log;
+	std::ofstream      _stat_log;
+	pid_t              _pid;
 	
 	int       _nsrc;
 	int       _nseq_per_buf;
@@ -514,6 +554,7 @@ class BFudpcapture_impl {
 	RingWriter  _oring;
 	std::queue<std::shared_ptr<WriteSpan> > _bufs;
 	std::queue<size_t>                      _buf_ngood_bytes;
+	std::queue<std::vector<size_t> >        _buf_src_ngood_bytes;
 	std::shared_ptr<WriteSequence>          _sequence;
 	size_t _ngood_bytes;
 	size_t _nmissing_bytes;
@@ -526,16 +567,35 @@ class BFudpcapture_impl {
 	}
 	inline void reserve_buf() {
 		_buf_ngood_bytes.push(0);
+		_buf_src_ngood_bytes.push(std::vector<size_t>(_nsrc, 0));
 		size_t size = this->bufsize();
 		// TODO: Can make this simpler?
 		_bufs.push(std::shared_ptr<WriteSpan>(new bifrost::ring::WriteSpan(_oring, size)));
 	}
 	inline void commit_buf() {
+		size_t expected_bytes = _bufs.front()->size();
+		
+		for( int src=0; src<_nsrc; ++src ) {
+			// TODO: This assumes all sources contribute equally; should really
+			//         allow non-uniform partitioning.
+			size_t src_expected_bytes = expected_bytes / _nsrc;
+			size_t src_ngood_bytes    = _buf_src_ngood_bytes.front()[src];
+			size_t src_nmissing_bytes = src_expected_bytes - src_ngood_bytes;
+			// Detect >50% missing data from this source
+			if( src_nmissing_bytes > src_ngood_bytes ) {
+				// Zero-out this source's contribution to the buffer
+				uint8_t* data = (uint8_t*)_bufs.front()->data();
+				_processor.blank_out_source(data, src, _nsrc,
+				                            _nchan, _nseq_per_buf);
+			}
+		}
+		_buf_src_ngood_bytes.pop();
+		
 		_ngood_bytes    += _buf_ngood_bytes.front();
 		//_nmissing_bytes += _bufs.front()->size() - _buf_ngood_bytes.front();
 		//// HACK TESTING 15/16 correction for missing roach11
 		//_nmissing_bytes += _bufs.front()->size()*15/16 - _buf_ngood_bytes.front();
-		_nmissing_bytes += _bufs.front()->size() - _buf_ngood_bytes.front();
+		_nmissing_bytes += expected_bytes - _buf_ngood_bytes.front();
 		_buf_ngood_bytes.pop();
 		
 		_bufs.front()->commit();
@@ -573,6 +633,39 @@ class BFudpcapture_impl {
 	inline void end_sequence() {
 		_sequence.reset(); // Note: This is releasing the shared_ptr
 	}
+	inline void open_logs() {
+		// Get the PID
+		this->_pid = getpid();
+		
+		// Make the directory for this process
+		std::string log_dir = "/dev/shm/bifrost/"+std::to_string(this->_pid)+"/capture";
+		int status = system(("mkdir -p "+log_dir).c_str());
+		if( status != 0 ) {
+			// TODO: What to do here?
+			throw std::runtime_error("Cannot create capture status directory");
+		}
+		
+		// Open the log files
+		//// Capture type
+		_type_log.open((log_dir+"/type").c_str());
+		///// Size information
+		_size_log.open((log_dir+"/sizes").c_str());
+		//// Channel information
+		_chan_log.open((log_dir+"/chans").c_str());
+		//// Capture statistics
+		_stat_log.open((log_dir+"/stats").c_str());
+		
+		// Fill in known parameters which don't change
+		_type_log.seekp(0);
+		_type_log << "TYPE = "
+			     << "chips" << endl;
+		
+		_size_log.seekp(0);
+		_size_log << "NSRC, NSEQ, NTIME = "
+				<< _nsrc << ", " 
+				<< _nseq_per_buf << ", "
+				<< _slot_ntime << endl;
+	}
 public:
 	inline BFudpcapture_impl(int    fd,
 	           BFring ring,
@@ -583,7 +676,7 @@ public:
 	           int    slot_ntime,
 	           BFudpcapture_sequence_callback sequence_callback,
 	           int    core)
-		: _capture(fd, core), _decoder(nsrc, src0), _processor(),
+		: _capture(fd, nsrc, core), _decoder(nsrc, src0), _processor(),
 		  _nsrc(nsrc), _nseq_per_buf(buffer_ntime), _slot_ntime(slot_ntime),
 		  _seq(), _chan0(), _nchan(), _active(false),
 		  _sequence_callback(sequence_callback),
@@ -595,6 +688,27 @@ public:
 		size_t total_span   = contig_span * 4;
 		size_t nringlet_max = 1;
 		_ring.resize(contig_span, total_span, nringlet_max);
+		this->open_logs();
+	}
+	inline void close_logs() {
+		// Close the log files
+		_type_log.close();
+		_size_log.close();
+		_chan_log.close();
+		_stat_log.close();
+		
+		// Cleanup the process directory - capture
+		int status = system(("rm -rf /dev/shm/bifrost/"+std::to_string(this->_pid)+"/capture").c_str());
+		if( status != 0 ) {
+			// It doesn't really matter if this works
+			//throw std::runtime_error("Cannot remove capture status directory");
+		}
+		// Cleanup the process directory - global, if possible
+		status = system(("rmdir /dev/shm/bifrost/"+std::to_string(this->_pid)).c_str());
+		if( status != 0 ) {
+			// It doesn't really matter if this works
+			//throw std::runtime_error("Cannot remove global status directory");
+		}
 	}
 	inline void flush() {
 		while( _bufs.size() ) {
@@ -618,11 +732,16 @@ public:
 		ngood_bytes_ptrs[0] = _buf_ngood_bytes.size() > 0 ? &_buf_ngood_bytes.front() : NULL;
 		ngood_bytes_ptrs[1] = _buf_ngood_bytes.size() > 1 ? &_buf_ngood_bytes.back()  : NULL;
 		
+		size_t* src_ngood_bytes_ptrs[2];
+		src_ngood_bytes_ptrs[0] = _buf_src_ngood_bytes.size() > 0 ? &_buf_src_ngood_bytes.front()[0] : NULL;
+		src_ngood_bytes_ptrs[1] = _buf_src_ngood_bytes.size() > 1 ? &_buf_src_ngood_bytes.back()[0]  : NULL;
+		
 		int state = _capture.run(_seq,
 		                         _nseq_per_buf,
 		                         _bufs.size(),
 		                         buf_ptrs,
 		                         ngood_bytes_ptrs,
+		                         src_ngood_bytes_ptrs,
 		                         &_decoder,
 		                         &_processor);
 		if( state & UDPCaptureThread::CAPTURE_ERROR ) {
@@ -631,12 +750,13 @@ public:
 			return BF_CAPTURE_INTERRUPTED;
 		}
 		const PacketStats* stats = _capture.get_stats();
-		cout << "ngood_bytes, nmissing_bytes, nvalid, ninvalid, nlate = "
-		     << _ngood_bytes << ", "
-		     << _nmissing_bytes << ", "
-		     << stats->nvalid << ", "
-		     << stats->ninvalid << ", "
-		     << stats->nlate << endl;
+		_stat_log.seekp(0);
+		_stat_log << "ngood_bytes, nmissing_bytes, nvalid, ninvalid, nlate = "
+		           << _ngood_bytes << ", "
+		           << _nmissing_bytes << ", "
+		           << stats->nvalid << ", "
+		           << stats->ninvalid << ", "
+		           << stats->nlate << endl;
 		BFudpcapture_status ret;
 		bool was_active = _active;
 		_active = state & UDPCaptureThread::CAPTURE_SUCCESS;
@@ -658,20 +778,25 @@ public:
 				_chan0        = pkt->chan0;
 				_nchan        = pkt->nchan;
 				_payload_size = pkt->payload_size;
-				cout << "CHAN0 " << _chan0 << endl;
-				cout << "NCHAN " << _nchan << endl;
-				cout << "PAYLOAD_SIZE " << pkt->payload_size << endl;
+				_chan_log.seekp(0);
+				_chan_log << "CHAN0, NCHAN, PAYLOAD_SIZE = " 
+				           << _chan0 << ", " 
+				           << _nchan << ", "
+						 << _payload_size << endl;
 				this->begin_sequence();
 				ret = BF_CAPTURE_STARTED;
 			} else {
 				//cout << "Continuing data, seq = " << seq << endl;
 				if( pkt->chan0 != _chan0 ||
 				    pkt->nchan != _nchan ) {
-					cout << "CHAN0 CHANGED " << _chan0 << " --> " << pkt->chan0 << endl;
-					cout << "NCHAN CHANGED " << _nchan << " --> " << pkt->nchan << endl;
 					_chan0 = pkt->chan0;
 					_nchan = pkt->nchan;
 					_payload_size = pkt->payload_size;
+					_chan_log.seekp(0);
+					_chan_log << "CHAN0, NCHAN, PAYLOAD_SIZE = " 
+					           << _chan0 << ", " 
+					           << _nchan << ", "
+					           << _payload_size << endl;
 					this->end_sequence();
 					this->begin_sequence();
 					ret = BF_CAPTURE_CHANGED;
@@ -718,6 +843,7 @@ BFstatus bfUdpCaptureCreate(BFudpcapture* obj,
 }
 BFstatus bfUdpCaptureDestroy(BFudpcapture obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+	obj->close_logs();
 	delete obj;
 	return BF_STATUS_SUCCESS;
 }
