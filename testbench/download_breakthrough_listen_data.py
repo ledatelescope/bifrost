@@ -19,6 +19,6 @@ if __name__ == "__main__":
     print "Downloading Breakthough Listen raw data"
     for filename in bl_filelist:
         bname = os.path.basename(filename)
-        os.system("wget %s; mv %s testdata/" % (filename, bname))
+        os.system("curl -O %s; mv %s testdata/" % (filename, bname))
    
         
