@@ -64,8 +64,8 @@ class DetectBlock(TransformBlock):
 		self.axis = self.specified_axis
 		if (self.axis is None and
 		    self.mode != 'scalar' and
-		    'polarisation' in itensor['labels']):
-			self.axis = itensor['labels'].index('polarisation')
+		    'pol' in itensor['labels']):
+			self.axis = itensor['labels'].index('pol')
 		elif isinstance(self.axis, basestring):
 			self.axis = itensor['labels'].index(self.axis)
 		# Note: axis may be None here, which indicates single-pol mode
@@ -83,7 +83,7 @@ class DetectBlock(TransformBlock):
 			if self.mode == 'stokes' and self.npol == 2:
 				otensor['shape'][self.axis] = 4
 			if 'labels' in otensor:
-				otensor['labels'][self.axis] = self.mode
+				otensor['labels'][self.axis] = 'pol'#self.mode # TODO: Check this
 		else:
 			self.npol = 1
 		return ohdr

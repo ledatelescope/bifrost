@@ -59,7 +59,7 @@ class PipelineTest(unittest.TestCase):
 			tensor = seq.header['_tensor']
 			self.assertEqual(tensor['shape'],  [-1,1,2])
 			self.assertEqual(tensor['dtype'],  'u8')
-			self.assertEqual(tensor['labels'], ['time', 'polarisation', 'frequency'])
+			self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
 			self.assertEqual(tensor['units'],  ['s', None, 'MHz'])
 		def check_data(ispan, ospan):
 			self.assertLessEqual(ispan.nframe, gulp_nframe)
@@ -91,7 +91,7 @@ class PipelineTest(unittest.TestCase):
 			tensor = seq.header['_tensor']
 			self.assertEqual(tensor['shape'],  [1,5,-1])
 			self.assertEqual(tensor['dtype'],  'f32')
-			self.assertEqual(tensor['labels'], ['polarisation', 'dispersion measure', 'time'])
+			self.assertEqual(tensor['labels'], ['pol', 'dispersion', 'time'])
 			self.assertEqual(tensor['units'],  [None, 'pc cm^-3', 's'])
 		def check_data(ispan, ospan):
 			# Note: nframe = gulp_nframe + max_delay
@@ -102,10 +102,10 @@ class PipelineTest(unittest.TestCase):
 		with bfp.Pipeline() as pipeline:
 			data = read_sigproc([self.fil_file], gulp_nframe)
 			data = copy(data, space='cuda')
-			data = transpose(data, ['polarisation', 'frequency', 'time'])
+			data = transpose(data, ['pol', 'freq', 'time'])
 			data = fdmt(data, max_dm=30.)
 			data = CallbackBlock(data, check_sequence, check_data)
-			data = transpose(data, ['time', 'polarisation', 'dispersion measure'])
+			data = transpose(data, ['time', 'pol', 'dispersion'])
 			data = copy(data, space='cuda_host')
 			pipeline.run()
 	

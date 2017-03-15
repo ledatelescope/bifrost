@@ -29,7 +29,7 @@
 from __future__ import absolute_import
 
 from bifrost.pipeline import SourceBlock
-from bifrost.sigproc2 import SigprocFile
+import bifrost.sigproc2 as sigproc
 
 from copy import deepcopy
 
@@ -40,8 +40,11 @@ def mjd2unix(mjd):
 	return (mjd - 40587) * 86400
 
 class SigprocSourceBlock(SourceBlock):
+	def __init__(self, filenames, gulp_nframe, unpack=True, *args, **kwargs):
+		super(SigprocSourceBlock, self).__init__(filenames, gulp_nframe, *args, **kwargs)
+		self.unpack = unpack
 	def create_reader(self, sourcename):
-		return SigprocFile(sourcename)
+		return sigproc.SigprocFile(sourcename)
 	def on_sequence(self, ireader, sourcename):
 		ihdr = ireader.header
 		assert(ihdr['data_type'] in [1,  # filterbank
@@ -52,31 +55,36 @@ class SigprocSourceBlock(SourceBlock):
 				break
 		tstart_unix = mjd2unix(ihdr['tstart'])
 		nbit = ihdr['nbits']
-		nbit = max(nbit, 8) # TODO: This assumes we unpack, which we should probably always do if nbit < 8
+		if self.unpack:
+			nbit = max(nbit, 8)
 		ohdr = {
 			'_tensor': {
 				'dtype':  ['u','i'][ihdr['signed']] + str(nbit),
 				'shape':  [-1, ihdr['nifs'], ihdr['nchans']],
-				'labels': ['time', 'polarisation', 'frequency'],
+				'labels': ['time', 'pol', 'freq'],
 				'scales': [(tstart_unix,ihdr['tsamp']),
 				           None,
 				           (ihdr['fch1'],ihdr['foff'])],
 				'units':  ['s', None, 'MHz']
 			},
-			'frame_rate': 1./ihdr['tsamp'],
+			'frame_rate': 1./ihdr['tsamp'], # TODO: Used for anything?
 			'source_name':   get_with_default(ihdr, 'source_name'),
 			'rawdatafile':   get_with_default(ihdr, 'rawdatafile'),
 			'az_start':      get_with_default(ihdr, 'az_start'),
 			'za_start':      get_with_default(ihdr, 'za_start'),
 			'raj':           get_with_default(ihdr, 'src_raj'),
 			'dej':           get_with_default(ihdr, 'src_dej'),
-			'refdm':         get_with_default(ihdr, 'refdm'),
-			'telescope_id':  get_with_default(ihdr, 'telescope_id'),
-			'machine_id':    get_with_default(ihdr, 'machine_id'),
+			'refdm':         get_with_default(ihdr, 'refdm', 0.),
+			'refdm_units':   'pc cm^-3',
+			'telescope':     get_with_default(ihdr, 'telescope_id'),
+			'machine':       get_with_default(ihdr, 'machine_id'),
 			'ibeam':         get_with_default(ihdr, 'ibeam'),
 			'nbeams':        get_with_default(ihdr, 'nbeams'),
 			'coord_frame':   coord_frame,
 		}
+		# Convert ids to strings
+		ohdr['telescope'] = sigproc.id2telescope(ohdr['telescope'])
+		ohdr['machine']   = sigproc.id2machine(ohdr['machine'])
 		# Note: This gives 32 bits to the fractional part of a second,
 		#         corresponding to ~0.233ns resolution. The whole part
 		#         gets at least 31 bits, which will overflow in 2038.
@@ -85,28 +93,34 @@ class SigprocSourceBlock(SourceBlock):
 		ohdr['name']     = sourcename
 		return [ohdr]
 	def on_data(self, reader, ospans):
-		ospan  = ospans[0]
-		#*nbyte  = reader.readinto(ospan.data)
-		indata = reader.read(ospan.shape[0])
-		nframe = indata.shape[0]
-		#print indata.shape, indata.dtype, nframe
-		#print indata
-		ospan.data[:nframe] = indata
-		# TODO: This will break when frame size < 1 byte
-		#         Can't use frame_nbyte; must use something like frame_nbit
-		#           Gets tricky though because what array shape+dtype to use?
-		#             Would need to use an array class that supports dtypes
-		#               of any nbit, and deals with consequent indexing issues.
-		#           Admittedly, it is probably a rare case, because a detected
-		#             time series would typically have SNR warranting >= 8
-		#             bits.
-		#           Multiple pols could be included, but only if chan and pol
-		#             dims are merged together.
-		#print "NBYTE", nbyte
-		#assert(nbyte % reader.frame_nbyte == 0)
-		#nframe = nbyte // reader.frame_nbyte
+		ospan = ospans[0]
+		#print "SigprocReadBlock::on_data", ospan.data.dtype
+		if self.unpack:
+			indata = reader.read(ospan.shape[0])
+			nframe = indata.shape[0]
+			#print indata.shape, indata.dtype, nframe
+			#print indata
+			ospan.data[:nframe] = indata
+			# TODO: This will break when frame size < 1 byte
+			#         Can't use frame_nbyte; must use something like frame_nbit
+			#           Gets tricky though because what array shape+dtype to use?
+			#             Would need to use an array class that supports dtypes
+			#               of any nbit, and deals with consequent indexing issues.
+			#           Admittedly, it is probably a rare case, because a detected
+			#             time series would typically have SNR warranting >= 8
+			#             bits.
+			#           Multiple pols could be included, but only if chan and pol
+			#             dims are merged together.
+			#print "NBYTE", nbyte
+			#assert(nbyte % reader.frame_nbyte == 0)
+			#nframe = nbyte // reader.frame_nbyte
+		else:
+			nbyte = reader.readinto(ospan.data)
+			if nbyte % ospan.frame_nbyte:
+				raise IOError("Input file is truncated")
+			nframe = nbyte // ospan.frame_nbyte
 		return [nframe]
 
-def read_sigproc(filenames, gulp_nframe, *args, **kwargs):
-	return SigprocSourceBlock(filenames, gulp_nframe,
+def read_sigproc(filenames, gulp_nframe, unpack=True, *args, **kwargs):
+	return SigprocSourceBlock(filenames, gulp_nframe, unpack,
 	                          *args, **kwargs)
