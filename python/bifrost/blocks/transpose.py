@@ -33,6 +33,7 @@ import bifrost as bf
 import bifrost.transpose
 
 from copy import deepcopy
+import numpy as np
 
 class TransposeBlock(TransformBlock):
 	def __init__(self, iring, axes, *args, **kwargs):
