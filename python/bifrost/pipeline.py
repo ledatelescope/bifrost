@@ -392,8 +392,11 @@ class MultiTransformBlock(Block):
 					# TODO: Do something with *_time variables (e.g., WAMP PUB)
 					#total_time = acquire_time + reserve_time + process_time
 					#print acquire_time / total_time, reserve_time / total_time, process_time / total_time
+			self._on_sequence_end(iseqs)
 	def _on_sequence(self, iseqs):
 		return self.on_sequence(iseqs)
+	def _on_sequence_end(self, iseqs):
+		return self.on_sequence_end(iseqs)
 	def _on_data(self, ispans, ospans):
 		return self.on_data(ispans, ospans)
 	def define_output_nframes(self, input_nframes):
@@ -404,6 +407,9 @@ class MultiTransformBlock(Block):
 		"""Return: oheaders (one per output) and islices (one per input)
 		"""
 		raise NotImplementedError
+	def on_sequence_end(self, iseqs):
+		"""Do any necessary cleanup"""
+		pass
 	def on_data(self, ispans, ospans):
 		"""Process data from from ispans to ospans and return the number of
 		frames to commit for each output (or None to commit complete spans)."""
@@ -437,6 +443,11 @@ class TransformBlock(MultiTransformBlock):
 	def on_sequence(self, iseq):
 		"""Return oheader or (oheader, islice)"""
 		raise NotImplementedError
+	def _on_sequence_end(self, iseqs):
+		return [self.on_sequence_end(iseqs[0])]
+	def on_sequence_end(self, iseq):
+		"""Do any necessary cleanup"""
+		pass
 	def _on_data(self, ispans, ospans):
 		nframe_commit = self.on_data(ispans[0], ospans[0])
 		return [nframe_commit]
@@ -465,6 +476,11 @@ class SinkBlock(MultiTransformBlock):
 	def on_sequence(self, iseq):
 		"""Return islice or None to use simple striding"""
 		raise NotImplementedError
+	def _on_sequence_end(self, iseqs):
+		return [self.on_sequence_end(iseqs[0])]
+	def on_sequence_end(self, iseq):
+		"""Do any necessary cleanup"""
+		pass
 	def _on_data(self, ispans, ospans):
 		self.on_data(ispans[0])
 		return []
