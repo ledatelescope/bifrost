@@ -151,8 +151,14 @@ class DataType(object):
 	def is_real(self):
 		return not self.is_complex
 	@property
+	def is_signed(self):
+		return 'i' in self._kind or 'f' in self._kind
+	@property
 	def is_floating_point(self):
 		return 'f' in self._kind
+	@property
+	def is_integer(self):
+		return 'i' in self._kind or 'u' in self._kind
 	def as_floating_point(self):
 		"""Returns the smallest floating-point type that can represent all
 		values that self can.
