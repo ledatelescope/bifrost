@@ -37,6 +37,7 @@ from .fdmt import fdmt, FdmtBlock
 from .detect import detect, DetectBlock
 from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
 from .sigproc import read_sigproc, SigprocSourceBlock
+from .sigproc import write_sigproc, SigprocSinkBlock
 from .scrunch import scrunch, ScrunchBlock
 from .accumulate import accumulate, AccumulateBlock
 from .unpack import unpack, UnpackBlock

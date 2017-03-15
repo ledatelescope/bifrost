@@ -28,16 +28,22 @@
 
 from __future__ import absolute_import
 
-from bifrost.pipeline import SourceBlock
+from bifrost.pipeline import SourceBlock, SinkBlock
 import bifrost.sigproc2 as sigproc
+from bifrost.DataType import DataType
+from bifrost.units import convert_units
 
 from copy import deepcopy
+import os
 
 def get_with_default(obj, key, default=None):
 	return obj[key] if key in obj else default
 
 def mjd2unix(mjd):
 	return (mjd - 40587) * 86400
+
+def unix2mjd(unix):
+	return unix / 86400. + 40587
 
 class SigprocSourceBlock(SourceBlock):
 	def __init__(self, filenames, gulp_nframe, unpack=True, *args, **kwargs):
@@ -124,3 +130,192 @@ class SigprocSourceBlock(SourceBlock):
 def read_sigproc(filenames, gulp_nframe, unpack=True, *args, **kwargs):
 	return SigprocSourceBlock(filenames, gulp_nframe, unpack,
 	                          *args, **kwargs)
+
+def copy_item_if_exists(dst, src, key, newkey=None):
+	if key in src:
+		if newkey is None:
+			newkey = key
+		dst[newkey] = src[key]
+
+class SigprocSinkBlock(SinkBlock):
+	"""Writes data as Sigproc files.
+	The Sigproc data type is inferred from sequence metadata, and is one of:
+	  Filterbank:    [time, pol, freq] (one file per sequence)
+	                 [beam, time, pol, freq] (one file per beam)
+	  Time series:   [time, pol], (one file per sequence)
+	                 [dispersion, time, pol] (one file per DM)
+	  Pulse profile: [pol, freq, phase] (one file per frame)
+	"""
+	def __init__(self, iring, path=None, *args, **kwargs):
+		super(SigprocSinkBlock, self).__init__(iring, *args, **kwargs)
+		if path is None:
+			path = ''
+		self.path = path
+	def on_sequence(self, iseq):
+		ihdr = iseq.header
+		itensor = ihdr['_tensor']
+		
+		axnames = tuple(itensor['labels'])
+		shape   = itensor['shape']
+		scales  = itensor['scales']
+		units   = itensor['units']
+		ndim    = len(shape)
+		dtype   = DataType(itensor['dtype'])
+		
+		sigproc_hdr = {}
+		copy_item_if_exists(sigproc_hdr, ihdr, 'source_name')
+		copy_item_if_exists(sigproc_hdr, ihdr, 'rawdatafile')
+		copy_item_if_exists(sigproc_hdr, ihdr, 'az_start')
+		copy_item_if_exists(sigproc_hdr, ihdr, 'za_start')
+		copy_item_if_exists(sigproc_hdr, ihdr, 'raj', 'src_raj')
+		copy_item_if_exists(sigproc_hdr, ihdr, 'dej', 'src_dej')
+		if 'telescope' in ihdr:
+			sigproc_hdr['telescope_id'] = sigproc.telescope2id(ihdr['telescope'])
+		if 'machine' in ihdr:
+			sigproc_hdr['machine_id'] = sigproc.machine2id(ihdr['machine'])
+		copy_item_if_exists(sigproc_hdr, ihdr, 'telescope_id')
+		copy_item_if_exists(sigproc_hdr, ihdr, 'machine_id')
+		copy_item_if_exists(sigproc_hdr, ihdr, 'ibeam')
+		copy_item_if_exists(sigproc_hdr, ihdr, 'nbeams')
+		sigproc_hdr['nbits'] = dtype.itemsize_bits
+		copy_item_if_exists(sigproc_hdr, ihdr, 'barycentric')
+		copy_item_if_exists(sigproc_hdr, ihdr, 'pulsarcentric')
+		if dtype.is_integer and dtype.is_signed:
+			sigproc_hdr['signed'] = True
+		if 'coord_frame' in ihdr:
+			coord_frame = ihdr['coord_frame']
+		sigproc_hdr['pulsarcentric'] = (coord_frame == 'pulsarcentric')
+		sigproc_hdr['barycentric']   = (coord_frame == 'barycentric')
+		
+		filename = os.path.join(self.path, ihdr['name'])
+		
+		if ndim >= 3 and axnames[-3:] == ('time', 'pol', 'freq'):
+			self.data_format = 'filterbank'
+			assert(dtype.is_real)
+			sigproc_hdr['data_type'] = 1
+			sigproc_hdr['nifs']   = shape[-2]
+			sigproc_hdr['nchans'] = shape[-1]
+			sigproc_hdr['tstart'] = unix2mjd(scales[-3][0])
+			sigproc_hdr['tsamp']  = convert_units(scales[-3][1], units[-3], 's')
+			sigproc_hdr['fch1']   = convert_units(scales[-1][0], units[-1], 'MHz')
+			sigproc_hdr['foff']   = convert_units(scales[-1][1], units[-1], 'MHz')
+			if 'refdm' in ihdr:
+				sigproc_hdr['refdm'] = convert_units(ihdr['refdm'],
+				                                     ihdr['refdm_units'],
+				                                     'pc cm^-3')
+			if ndim == 3:
+				filename += '.fil'
+				self.ofile = open(filename, 'wb')
+				sigproc.write_header(sigproc_hdr, self.ofile)
+			elif ndim == 4:
+				if axnames[-4] != 'beam':
+					raise ValueError("Expected first axis to be 'beam'")
+				nbeam = shape[-4]
+				sigproc_hdr['nbeams'] = nbeam
+				filenames = [filename + '.%06iof.%06i.fil' % (b+1, nbeam)
+				             for b in xrange(nbeam)]
+				self.ofiles = [open(fname, 'wb') for fname in filenames]
+				for b in xrange(nbeam):
+					sigproc_hdr['ibeam'] = b
+					sigproc.write_header(sigproc_hdr, self.ofiles[b])
+			else:
+				raise ValueError("Too many dimensions")
+			
+		elif ndim >= 2 and axnames[-2:] == ('time', 'pol'):
+			self.data_format = 'timeseries'
+			assert(dtype.is_real)
+			sigproc_hdr['data_type'] = 2
+			sigproc_hdr['nchans'] = 1
+			sigproc_hdr['nifs']   = shape[-2]
+			sigproc_hdr['tstart'] = unix2mjd(scales[-2][0])
+			sigproc_hdr['tsamp']  = convert_units(scales[-2][1], units[-2], 's')
+			if 'cfreq' in ihdr and 'bw' in ihdr:
+				sigproc_hdr['fch1'] = convert_units(ihdr['cfreq'],
+				                                    ihdr['cfreq_units'],
+				                                    'MHz')
+				sigproc_hdr['foff'] = convert_units(ihdr['bw'],
+				                                    ihdr['bw_units'],
+				                                    'MHz')
+			# TODO: Write ndim separate output files, each with its own refdm
+			if ndim == 2:
+				if 'refdm' in ihdr:
+					sigproc_hdr['refdm'] = convert_units(ihdr['refdm'],
+					                                     ihdr['refdm_units'],
+					                                     'pc cm^-3')
+				filename += '.tim'
+				self.ofile = open(filename, 'wb')
+				sigproc.write_header(sigproc_hdr, self.ofile)
+			elif ndim == 3:
+				if axnames[-3] != 'dispersion measure':
+					raise ValueError("Expected first axis to be 'dispersion measure'")
+				ndm = shape[-3]
+				dm0 = scales[-3][0]
+				ddm = scales[-3][1]
+				dms = [dm0+ddm*d for d in xrange(ndm)]
+				dms = [convert_units(dm, units[-3], 'pc cm^-3') for dm in dms]
+				filenames = [filename + '.%09.2f.tim' % dm for dm in dms]
+				self.ofiles = [open(fname, 'wb') for fname in filenames]
+				for d, dm in enumerate(dms):
+					sigproc_hdr['refdm'] = dm
+					sigproc.write_header(sigproc_hdr, self.ofiles[d])
+			else:
+				raise ValueError("Too many dimensions")
+			
+		elif ndim == 4 and axnames[-3:] == ('pol', 'freq', 'phase'):
+			self.data_format = 'pulseprofile'
+			assert(dtype.is_real)
+			sigproc_hdr['data_type'] = 2
+			sigproc_hdr['nifs']   = shape[-3]
+			sigproc_hdr['nchans'] = shape[-2]
+			sigproc_hdr['nbins']  = shape[-1]
+			sigproc_hdr['tstart'] = unix2mjd(scales[-4][0])
+			sigproc_hdr['tsamp']  = convert_units(scales[-4][1], units[-4], 's')
+			sigproc_hdr['fch1']   = convert_units(scales[-2][0], units[-2], 'MHz')
+			sigproc_hdr['foff']   = convert_units(scales[-2][1], units[-2], 'MHz')
+			if 'refdm' in ihdr:
+				sigproc_hdr['refdm'] = convert_units(ihdr['refdm'],
+				                                     ihdr['refdm_units'],
+				                                     'pc cm^-3')
+			copy_item_if_exists(sigproc_hdr, ihdr, 'npuls')
+			self.filename = filename
+			self.sigproc_hdr = sigproc_hdr
+			self.t0 = scales[-4][0]
+			self.dt = scales[-4][1]
+			
+		else:
+			raise ValueError("Axis labels do not correspond to a known data format: "+
+			                 str(axnames))
+		
+	def on_sequence_end(self, iseq):
+		if hasattr(self, 'ofile'):
+			self.ofile.close()
+		elif hasattr(self, 'ofiles'):
+			for ofile in self.ofiles:
+				ofile.close()
+	
+	def on_data(self, ispan):
+		idata = ispan.data
+		if self.data_format == 'filterbank':
+			if len(idata.shape) == 3:
+				idata.tofile(self.ofile)
+			else:
+				for b in xrange(idata.shape[0]):
+					idata[b].tofile(self.ofiles[b])
+		elif self.data_format == 'timeseries':
+			if len(idata.shape) == 2:
+				idata.tofile(self.ofile)
+			else:
+				for d in xrange(idata.shape[0]):
+					idata[d].tofile(self.ofiles[d])
+		elif self.data_format == 'pulseprofile':
+			time_unix = self.t0 + ispan.frame_offset * self.dt
+			filename = self.filename + '.%017.6f.tim' % time_unix
+			with open(filename, 'wb') as ofile:
+				self.sigproc_hdr['tstart'] += self.sigproc_hdr['tsamp']
+				sigproc.write_header(self.sigproc_hdr, ofile)
+				idata.tofile(ofile)
+		else:
+			raise ValueError("Internal error: Unknown data format!")
+
+def write_sigproc(path=None, *args, **kwargs):
+	return SigprocSinkBlock(path, *args, **kwargs)
