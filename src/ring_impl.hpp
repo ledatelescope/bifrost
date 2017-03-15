@@ -203,7 +203,7 @@ public:
 	                  BFoffset*   begin,
 	                  void**      data);
 	void release_span(BFrsequence sequence,
-	                  BFoffset    offset,
+	                  BFoffset    begin,
 	                  BFsize      size);
 };
 
@@ -309,6 +309,7 @@ public:
 	inline const void* header()      const { return _sequence->header(); }
 	inline BFsize      header_size() const { return _sequence->header_size(); }
 	inline BFsize      nringlet()    const { return _sequence->nringlet(); }
+	inline BFoffset    begin()       const { return _sequence->begin(); }
 };
 class BFwsequence_impl : public BFsequence_wrapper {
 	BFoffset _end_offset_from_head;
@@ -476,6 +477,9 @@ public:
 	BFwspan_impl* commit(BFsize size);
 	//inline virtual BFsequence_sptr sequence() const { return _sequence; }
 	inline virtual void*           data()     const { return _data; }
+	// Note: This is the offset relative to the beginning of the ring,
+	//         as wspans aren't firmly associated with a sequence.
+	// TODO: This is likely to be confusing compared to BFrspan_impl::offset
 	inline virtual BFoffset        offset()   const { return _begin; }
 };
 class BFrspan_impl : public BFspan_impl {
@@ -501,5 +505,6 @@ public:
 	//void advance(BFdelta delta, BFsize size, BFbool guarantee);
 	//inline virtual BFsequence_sptr sequence() const { return _sequence; }
 	inline virtual void*           data()     const { return _data; }
-	inline virtual BFoffset        offset()   const { return _begin; }
+	// Note: This is the offset relative to the beginning of the sequence
+	inline virtual BFoffset        offset()   const { return _begin - _sequence->begin(); }
 };
