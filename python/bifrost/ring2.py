@@ -283,7 +283,7 @@ class ReadSequence(SequenceBase):
 	def header(self):
 		hdr = super(ReadSequence, self).header
 		if self.header_transform is not None:
-			hdr = self.header_transform(hdr)
+			hdr = self.header_transform(deepcopy(hdr))
 		return hdr
 
 def accumulate(vals, op='+', init=None, reverse=False):

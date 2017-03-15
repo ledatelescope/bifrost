@@ -32,14 +32,46 @@ from bifrost.pipeline import block_view
 from bifrost.DataType import DataType
 from bifrost.units import convert_units
 
-from copy import deepcopy
 from numpy import isclose
+
+def custom(block, hdr_transform):
+	return block_view(block, header_transform)
+
+def rename_axis(block, old, new):
+	rename_axis.old = old
+	rename_axis.new = new
+	def header_transform(hdr):
+		old = rename_axis.old
+		new = rename_axis.new
+		axis = hdr['_tensor']['labels'].index(old)
+		hdr['_tensor']['labels'][axis] = new
+		return hdr
+	return block_view(block, header_transform)
+
+def expand_dims(block, axis, label, scale=None, units=None):
+	expand_dims.axis  = axis
+	expand_dims.label = label
+	expand_dims.scale = scale
+	expand_dims.units = units
+	def header_transform(hdr):
+		axis  = expand_dims.axis
+		label = expand_dims.label
+		scale = expand_dims.scale
+		units = expand_dims.units
+		tensor = hdr['tensor']
+		if isinstance(axis, basestring):
+			axis = tensor['labels'].index(axis)
+		tensor['shape'].insert(axis, 1)
+		tensor['labels'].insert(axis, label)
+		tensor['scales'].insert(axis, scale)
+		tensor['units'].insert(axis, units)
+		return hdr
+	return block_view(block, header_transform)
 
 def astype(block, dtype):
 	astype.dtype = dtype
 	def header_transform(hdr):
 		new_dtype = astype.dtype
-		hdr = deepcopy(hdr)
 		tensor = hdr['_tensor']
 		old_dtype = tensor['dtype']
 		old_itemsize = DataType(old_dtype).itemsize
@@ -61,7 +93,6 @@ def split_axis(block, axis, n, label=None):
 		axis  = split_axis.axis
 		n     = split_axis.n
 		label = split_axis.label
-		hdr = deepcopy(hdr)
 		tensor = hdr['_tensor']
 		if isinstance(axis, basestring):
 			axis = tensor['labels'].index(axis)
@@ -98,7 +129,6 @@ def merge_axes(block, axis1, axis2, label=None):
 		axis1 = merge_axes.axis1
 		axis2 = merge_axes.axis2
 		label = merge_axes.label
-		hdr = deepcopy(hdr)
 		tensor = hdr['_tensor']
 		if isinstance(axis1, basestring):
 			axis1 = tensor['labels'].index(axis1)
@@ -125,7 +155,8 @@ def merge_axes(block, axis1, axis2, label=None):
 			units2 = tensor['units'][axis2]
 			scale2 = convert_units(scale2, units2, units1)
 			if not isclose(scale1, n*scale2):
-				raise ValueError("Scales of merge axes do not line up")
+				raise ValueError("Scales of merge axes do not line up: "
+				                 "%f != %f" % (scale1, n*scale2))
 			tensor['scales'][axis1][1] = scale2
 			del tensor['scales'][axis2]
 		if 'labels' in tensor:
