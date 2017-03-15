@@ -52,6 +52,8 @@ import device
 from ndarray import ndarray, asarray, empty_like, empty, zeros_like, zeros
 import views
 from map import map
+from pipeline import Pipeline, get_default_pipeline, block_scope
+import blocks
 #import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
 #from transpose import transpose
 #from unpack import unpack
