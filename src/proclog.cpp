@@ -215,7 +215,7 @@ void BFproclog_impl::update(const char* fmt, ...) {
 }
 std::ofstream BFproclog_impl::update() {
 	ProcLogMgr::get().ensure_dir_exists(_filename);
-	return std::move(std::ofstream(_filename));
+	return std::ofstream(_filename);
 }
 
 BFstatus bfProcLogCreate(BFproclog* log_ptr, const char* name) {
