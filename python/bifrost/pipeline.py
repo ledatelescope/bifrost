@@ -29,6 +29,7 @@
 import bifrost as bf
 from bifrost.ring2 import Ring, ring_view
 from temp_storage import TempStorage
+from bifrost.proclog import ProcLog
 
 from collections import defaultdict
 from contextlib2 import ExitStack
@@ -87,6 +88,7 @@ class BlockScope(object):
 		self._parent_scope = get_current_block_scope()
 		if self._parent_scope is not None:
 			self._parent_scope.children.append(self)
+			self.name = self._parent_scope.name + '/' + self.name
 		self._children = []
 	def __enter__(self):
 		thread_local.blockscope_stack.append(self)
@@ -172,8 +174,12 @@ def join_all(threads, timeout):
 		alive_threads[0].join(available_time)
 
 class Pipeline(BlockScope):
-	def __init__(self, **kwargs):
-		super(Pipeline, self).__init__(**kwargs)
+	instance_count = 0
+	def __init__(self, name=None, **kwargs):
+		if name is None:
+			name = 'Pipeline_%i' % Pipeline.instance_count
+			Pipeline.instance_count += 1
+		super(Pipeline, self).__init__(name=name, **kwargs)
 		self.blocks = []
 		self.shutdown_timeout = 5.
 	def as_default(self):
@@ -238,14 +244,13 @@ def block_view(block, header_transform):
 class Block(BlockScope):
 	instance_counts = defaultdict(lambda: 0)
 	def __init__(self, irings,
-	             name=None, # TODO: Move this into BlockScope and join to parent scope name with '/'
+	             name=None,
 	             type_=None,
 	             **kwargs):
-		super(Block, self).__init__(**kwargs)
 		self.type = type_ or self.__class__.__name__
 		self.name = name or '%s_%i' % (self.type, Block.instance_counts[self.type])
 		Block.instance_counts[self.type] += 1
-		
+		super(Block, self).__init__(**kwargs)
 		self.pipeline = get_default_pipeline()
 		self.pipeline.blocks.append(self)
 		
@@ -344,6 +349,10 @@ class SourceBlock(Block):
 						cur_time = time.time()
 						process_time = cur_time - prev_time
 						prev_time = cur_time
+						self.perf_proclog.update({
+							'acquire_time': -1,
+							'reserve_time': reserve_time,
+							'process_time': process_time})
 	def define_output_nframes(self, _):
 		"""Return output nframe for each output, given input_nframes.
 		"""
@@ -379,11 +388,16 @@ class MultiTransformBlock(Block):
 		self.orings = [self.create_ring(space=iring.space)
 		               for iring in self.irings]
 		self._seq_count = 0
+		self.perf_proclog = ProcLog(self.name+"/perf")
+		self.sequence_proclogs = [ProcLog(self.name+"/sequence%i"%i)
+		                          for i in xrange(len(self.irings))]
 	def main(self, orings):
 		for iseqs in izip(*[iring.read(guarantee=self.guarantee)
 		                    for iring in self.irings]):
 			if self.shutdown_event.is_set():
 				break
+			for i, iseq in enumerate(iseqs):
+				self.sequence_proclogs[i].update(iseq.header)
 			oheaders, islices = self._on_sequence(iseqs)
 			for ohdr in oheaders:
 				if 'time_tag' not in ohdr:
@@ -449,9 +463,10 @@ class MultiTransformBlock(Block):
 					cur_time = time.time()
 					process_time = cur_time - prev_time
 					prev_time = cur_time
-					# TODO: Do something with *_time variables (e.g., WAMP PUB)
-					#total_time = acquire_time + reserve_time + process_time
-					#print acquire_time / total_time, reserve_time / total_time, process_time / total_time
+					self.perf_proclog.update({
+						'acquire_time': acquire_time,
+						'reserve_time': reserve_time,
+						'process_time': process_time})
 			self._on_sequence_end(iseqs)
 	def _on_sequence(self, iseqs):
 		return self.on_sequence(iseqs)
