@@ -30,6 +30,7 @@
 #include "assert.hpp"
 #include <bifrost/udp_transmit.h>
 #include <bifrost/affinity.h>
+#include "proclog.hpp"
 
 #include <arpa/inet.h>  // For ntohs
 #include <sys/socket.h> // For recvfrom
@@ -139,8 +140,8 @@ public:
 
 class BFudptransmit_impl {
 	UDPTransmitThread  _transmit;
-	std::ofstream      _type_log;
-	std::ofstream      _stat_log;
+	ProcLog            _type_log;
+	ProcLog            _stat_log;
 	pid_t              _pid;
 	
 	inline struct msghdr _build_msghdr(char* packet, unsigned int len) {
@@ -156,52 +157,24 @@ class BFudptransmit_impl {
 		
 		return msg;
 	}
-	inline void open_logs() {
-		// Get the PID
-		this->_pid = getpid();
-		
-		// Make the directory for this process
-		std::string log_dir = "/dev/shm/bifrost/"+std::to_string(this->_pid)+"/transmit";
-		int status = system(("mkdir -p "+log_dir).c_str());
-		if( status != 0 ) {
-			// TODO: What to do here?
-			throw std::runtime_error("Cannot create transmit status directory");
-		}
-		
-		// Open the log files
-		//// Transmit type
-		_type_log.open((log_dir+"/type").c_str());
-		//// Transmit statistics
-		_stat_log.open((log_dir+"/stats").c_str());
-		
-		// Fill in known parameters which don't change
-		_type_log.seekp(0);
-		_type_log << "TYPE = "
-			     << "generic" << endl;
+	void update_stats_log() {
+		const PacketStats* stats = _transmit.get_stats();
+		_stat_log.update() << "ngood_bytes    : " << stats->nvalid_bytes << "\n"
+		                   << "nmissing_bytes : " << stats->ninvalid_bytes << "\n"
+		                   << "ninvalid       : " << stats->ninvalid << "\n"
+		                   << "ninvalid_bytes : " << stats->ninvalid_bytes << "\n"
+		                   << "nlate          : " << stats->nlate << "\n"
+		                   << "nlate_bytes    : " << stats->nlate_bytes << "\n"
+		                   << "nvalid         : " << stats->nvalid << "\n"
+		                   << "nvalid_bytes   : " << stats->nvalid_bytes << "\n";
 	}
 public:
-	inline BFudptransmit_impl(int    fd,
-	           int    core)
-		: _transmit(fd, core) {
-		this->open_logs();
-	}
-	inline void close_logs() {
-		// Close the log files
-		_type_log.close();
-		_stat_log.close();
-		
-		// Cleanup the process directory - transmit
-		int status = system(("rm -rf /dev/shm/bifrost"+std::to_string(this->_pid)+"/transmit").c_str());
-		if( status != 0 ) {
-			// It doesn't really matter if this works
-			//throw std::runtime_error("Cannot remove transmit status directory");
-		}
-		// Cleanup the process directory - global, if possible
-		status = system(("rmdir /dev/shm/bifrost/"+std::to_string(this->_pid)).c_str());
-		if( status != 0 ) {
-			// It doesn't really matter if this works
-			//throw std::runtime_error("Cannot remove global status directory");
-		}
+	inline BFudptransmit_impl(int fd,
+	                          int core)
+		: _transmit(fd, core),
+		  _type_log("udp_transmit/type"),
+		  _stat_log("udp_transmit/stats") {
+		_type_log.update() << "type : " << "generic";
 	}
 	BFudptransmit_status send(char *packet, unsigned int len) {
 		ssize_t state;
@@ -218,16 +191,7 @@ public:
 		if( state == -1 ) {
 			return BF_TRANSMIT_ERROR;
 		}
-		
-		const PacketStats* stats = _transmit.get_stats();
-		_stat_log.seekp(0);
-		_stat_log << "ngood_bytes, nmissing_bytes, nvalid, ninvalid, nlate = "
-		           << stats->nvalid_bytes << ", "
-		           << 0 << ", "
-		           << stats->nvalid << ", "
-		           << stats->ninvalid << ", "
-		           << stats->nlate << endl;
-		
+		this->update_stats_log();
 		return BF_TRANSMIT_CONTINUED;
 	}
 	BFudptransmit_status sendmany(char *packets, unsigned int len, unsigned int npackets) {
@@ -252,16 +216,7 @@ public:
 		if( state == -1 ) {
 			return BF_TRANSMIT_ERROR;
 		}
-		
-		const PacketStats* stats = _transmit.get_stats();
-		_stat_log.seekp(0);
-		_stat_log << "ngood_bytes, nmissing_bytes, nvalid, ninvalid, nlate = "
-		           << stats->nvalid_bytes << ", "
-		           << 0 << ", "
-		           << stats->nvalid << ", "
-		           << stats->ninvalid << ", "
-		           << stats->nlate << endl;
-		
+		this->update_stats_log();
 		return BF_TRANSMIT_CONTINUED;
 	}
 };
@@ -276,7 +231,6 @@ BFstatus bfUdpTransmitCreate(BFudptransmit* obj,
 }
 BFstatus bfUdpTransmitDestroy(BFudptransmit obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-	obj->close_logs();
 	delete obj;
 	return BF_STATUS_SUCCESS;
 }
