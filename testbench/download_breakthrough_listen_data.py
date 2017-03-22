@@ -40,16 +40,16 @@ if __name__ == "__main__":
     print "Downloading Breakthough Listen raw data"
     for filename in raw_filelist:
         bname = os.path.basename(filename)
-        os.system("wget %s; mv %s testdata/guppi_raw/" % (filename, bname))
+        os.system("curl -O %s; mv %s testdata/guppi_raw/" % (filename, bname))
    
     print "Downloading Breakthough Listen pulsar data"
     for filename in pulsar_filelist:
         bname = os.path.basename(filename)
-        os.system("wget %s; mv %s testdata/pulsars/" % (filename, bname))
+        os.system("curl -O %s; mv %s testdata/pulsars/" % (filename, bname))
    
     print "Downloading Breakthough Listen Voyager data"
     for filename in voyager_filelist:
         bname = os.path.basename(filename)
-        os.system("wget %s; mv %s testdata/voyager/" % (filename, bname))
+        os.system("curl -O %s; mv %s testdata/" % (filename, bname))
    
         
