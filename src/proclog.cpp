@@ -213,9 +213,11 @@ void BFproclog_impl::update(const char* fmt, ...) {
 	this->update_v(fmt, args);
 	va_end(args);
 }
-std::ofstream BFproclog_impl::update() {
+movable_ofstream_WAR BFproclog_impl::update() {
 	ProcLogMgr::get().ensure_dir_exists(_filename);
-	return std::ofstream(_filename);
+	// TODO: gcc < 5 has a bug where std streams are not movable
+	//return std::ofstream(_filename);
+	return movable_ofstream_WAR(_filename);
 }
 
 BFstatus bfProcLogCreate(BFproclog* log_ptr, const char* name) {

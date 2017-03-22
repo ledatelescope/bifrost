@@ -30,6 +30,24 @@
 #pragma once
 
 #include <fstream>
+#include <memory>
+
+// TODO: gcc < 5 has a bug where std streams are not movable
+class movable_ofstream_WAR {
+	std::unique_ptr<std::ofstream> _stream;
+public:
+	inline explicit movable_ofstream_WAR(std::string f)
+		: _stream(new std::ofstream(f)) {}
+	template<typename T>
+	inline movable_ofstream_WAR& operator<<(T const& val) {
+		*_stream << val;
+		return *this;
+	}
+	inline movable_ofstream_WAR& write(const char* s, std::streamsize n) {
+		_stream->write(s, n);
+		return *this;
+	}
+};
 
 class BFproclog_impl {
 	friend class ProcLogStream;
@@ -42,6 +60,8 @@ public:
 	void update_s(const char* str);
 	void update_v(const char* fmt, va_list args);
 	void update(const char* fmt, ...);
-	std::ofstream update();
+	// TODO: gcc < 5 has a bug where std streams are not movable
+	//std::ofstream update();
+	movable_ofstream_WAR update();
 };
 typedef BFproclog_impl ProcLog;
