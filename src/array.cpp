@@ -30,6 +30,7 @@
 #include <bifrost/array.h>
 #include "assert.hpp"
 #include "utils.hpp"
+#include "trace.hpp"
 
 #include <cassert>
 #include <cstring>
@@ -62,6 +63,7 @@ const char* dtype2ctype_string(BFdtype dtype) {
 // Reads array->(space,dtype,ndim,shape), sets array->strides and
 //   allocates array->data.
 BFstatus bfArrayMalloc(BFarray* array) {
+	BF_TRACE();
 	BF_ASSERT(array, BF_STATUS_INVALID_POINTER);
 	int d = array->ndim - 1;
 	array->strides[d] = get_dtype_nbyte(array->dtype);
@@ -73,6 +75,7 @@ BFstatus bfArrayMalloc(BFarray* array) {
 }
 
 BFstatus bfArrayFree(const BFarray* array) {
+	BF_TRACE();
 	BF_ASSERT(array, BF_STATUS_INVALID_POINTER);
 	BFstatus ret = bfFree(array->data, array->space);
 	//array->data = 0;
@@ -81,6 +84,7 @@ BFstatus bfArrayFree(const BFarray* array) {
 
 BFstatus bfArrayCopy(const BFarray* dst,
                      const BFarray* src) {
+	BF_TRACE();
 	BF_ASSERT(dst, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(src, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(shapes_equal(dst, src),   BF_STATUS_INVALID_SHAPE);
@@ -116,6 +120,7 @@ BFstatus bfArrayCopy(const BFarray* dst,
 }
 BFstatus bfArrayMemset(const BFarray* dst,
                        int            value) {
+	BF_TRACE();
 	BF_ASSERT(dst, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT((unsigned char)(value) == value, BF_STATUS_INVALID_ARGUMENT);
 	

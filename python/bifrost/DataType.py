@@ -151,8 +151,14 @@ class DataType(object):
 	def is_real(self):
 		return not self.is_complex
 	@property
+	def is_signed(self):
+		return 'i' in self._kind or 'f' in self._kind
+	@property
 	def is_floating_point(self):
 		return 'f' in self._kind
+	@property
+	def is_integer(self):
+		return 'i' in self._kind or 'u' in self._kind
 	def as_floating_point(self):
 		"""Returns the smallest floating-point type that can represent all
 		values that self can.
@@ -161,6 +167,13 @@ class DataType(object):
 			return self
 		kind = 'cf' if self.is_complex else 'f'
 		nbit = 32 if self._nbit <= 24 else 64
+		return DataType((kind, nbit))
+	def as_integer(self, nbit=None):
+		if nbit is None:
+			nbit = self._nbit
+		kind = self._kind
+		if self.is_floating_point:
+			kind = kind.replace('f', 'i')
 		return DataType((kind, nbit))
 	def as_real(self):
 		if self.is_complex:
@@ -172,6 +185,8 @@ class DataType(object):
 			return self
 		else:
 			return DataType(('c'+self._kind, self._nbit))
+	def as_nbit(self, nbit):
+		return DataType((self._kind, nbit))
 	@property
 	def itemsize_bits(self):
 		return self._nbit * (1 + self.is_complex)

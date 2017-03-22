@@ -75,9 +75,11 @@ def memcpy2D(dst, src):
 	assert(src.shape == dst.shape)
 	dst_space = _string2space(_get_space(dst))
 	src_space = _string2space(_get_space(src))
+	height, width = dst.shape
+	width_bytes = width*dst.dtype.itemsize
 	_check(_bf.Memcpy2D(dst.ctypes.data, dst.strides[0], dst_space,
 	                    src.ctypes.data, src.strides[0], src_space,
-	                    dst.shape[1], dst.shape[0]))
+	                    width_bytes, height))
 def memset(dst, val=0):
 	assert(dst.flags['C_CONTIGUOUS'])
 	space = _string2space(_get_space(dst))
@@ -86,6 +88,8 @@ def memset(dst, val=0):
 def memset2D(dst, val=0):
 	assert(len(dst.shape) == 2)
 	space = _string2space(_get_space(dst))
+	height, width = dst.shape
+	width_bytes = width*dst.dtype.itemsize
 	_check(_bf.Memset2D(dst.ctypes.data, dst.strides[0], space,
-	                    val, dst.shape[1], dst.shape[0]))
+	                    val, width_bytes, height))
 

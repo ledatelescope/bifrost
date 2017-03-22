@@ -55,6 +55,7 @@ class FdmtBlock(TransformBlock):
 	def on_sequence(self, iseq):
 		ihdr = iseq.header
 		itensor = ihdr['_tensor']
+		# TODO: Assert that axis labels match expected (and/or allow more flexibility in which axes are used)
 		nchan    = itensor['shape' ][-2]
 		npol     = itensor['shape' ][-3]
 		f0_, df_ = itensor['scales'][-2]
@@ -70,11 +71,15 @@ class FdmtBlock(TransformBlock):
 			self.dm_step *= -1
 		self.fdmt.init(nchan, self.max_delay, f0, df, self.exponent, self.space)
 		ohdr = deepcopy(ihdr)
+		if 'refdm' in ihdr:
+			refdm = convert_units(ihdr['refdm'], ihdr['refdm_units'], self.dm_units)
+		else:
+			refdm = 0.
 		# Update transformed axis info
 		ohdr['_tensor']['dtype']      = 'f32'
 		ohdr['_tensor']['shape'][-2]  = self.max_delay
-		ohdr['_tensor']['labels'][-2] = 'dispersion measure'
-		ohdr['_tensor']['scales'][-2] = (0.,self.dm_step)
+		ohdr['_tensor']['labels'][-2] = 'dispersion'
+		ohdr['_tensor']['scales'][-2] = (refdm,self.dm_step)
 		ohdr['_tensor']['units'][-2]  = self.dm_units
 		# Add some new metadata
 		ohdr['max_dm']       = self.max_dm

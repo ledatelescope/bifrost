@@ -48,8 +48,6 @@ class FftShiftBlock(TransformBlock):
 	def on_sequence(self, iseq):
 		ihdr = iseq.header
 		itensor = ihdr['_tensor']
-		itype = DataType(itensor['dtype'])
-		
 		self.axes = [itensor['labels'].index(axis)
 		             if isinstance(axis, basestring)
 		             else axis

@@ -33,6 +33,8 @@
 #include <limits>
 #include <cmath>
 
+#include <iostream>
+
 using std::max;
 using std::min;
 
@@ -53,6 +55,10 @@ minval(T x=T()) { return -maxval<T>(); }
 template<typename I, typename F>
 inline F clip(F x) {
 	return min(max(x,F(minval<I>())),F(maxval<I>()));
+}
+
+inline int8_t clip_4bit(int8_t x) {
+	return min(max(x,int8_t(-7)),int8_t(7));
 }
 
 template<typename IType, typename SType, typename OType>
@@ -96,6 +102,31 @@ void foreach_simple_cpu(T const* in,
 	for( Size i=0; i<nelement; ++i ) {
 		func(in[i], out[i]);
 		//std::cout << std::hex << (int)in[i] << " --> " << (int)out[i] << std::endl;
+	}
+}
+
+template<typename T, typename Func, typename Size>
+void foreach_simple_cpu_4bit(T const* in,
+                             int8_t*       out,
+                             Size     nelement,
+                             Func     func) {
+	T tempR;
+	T tempI;
+	int8_t tempO;
+	for( Size i=0; i<nelement; i+=2 ) {
+		tempR = in[i+0];
+		tempI = in[i+1];
+		if(func.byteswap_in) {
+			byteswap(tempR, &tempR);
+			byteswap(tempI, &tempI);
+		}
+		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
+		tempO = (((int8_t(rint(clip_4bit(tempR*func.scale)))*16)     ) & 0xF0) | \
+			    (((int8_t(rint(clip_4bit(tempI*func.scale)))*16) >> 4) & 0x0F);
+		if(func.byteswap_out) {
+			byteswap(tempO, &tempO);
+		}
+		out[i/2] = tempO;
 	}
 }
 
@@ -144,6 +175,15 @@ BFstatus bfQuantize(BFarray const* in,
 	if( in->dtype == BF_DTYPE_F32 || in->dtype == BF_DTYPE_CF32 ) {
 		// TODO: Support T-->T with endian conversion (like quantize but with identity func instead)
 		switch( out->dtype ) {
+		case BF_DTYPE_CI4: nelement *= 2;
+		case BF_DTYPE_I4: {
+			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
+			foreach_simple_cpu_4bit((float*)in->data, \
+			                        (int8_t*)out->data, \
+			                        nelement, \
+			                        QuantizeFunctor<float,float,uint8_t> \
+			                        (scale,byteswap_in,byteswap_out)); break;
+		}
 		case BF_DTYPE_CI8: nelement *= 2;
 		case BF_DTYPE_I8: {
 			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,int8_t); break;

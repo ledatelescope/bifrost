@@ -39,7 +39,7 @@ class Ring(object):
 		#self.obj = None
 		self.obj = _get(_bf.RingCreate(space=space), retarg=0)
 	def __del__(self):
-		if bool(self.obj):
+		if hasattr(self, "obj") and bool(self.obj):
 			_bf.RingDestroy(self.obj)
 	def resize(self, contiguous_span, total_span=None, nringlet=1,
 	           buffer_factor=4):

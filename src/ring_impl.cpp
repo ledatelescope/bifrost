@@ -562,7 +562,7 @@ BFwspan_impl::~BFwspan_impl() {
 }
 
 void BFring_impl::acquire_span(BFrsequence rsequence,
-                               BFoffset    offset,
+                               BFoffset    offset, // Relative to sequence beg
                                BFsize*     size_,
                                BFoffset*   begin_,
                                void**      data_) {
@@ -613,7 +613,7 @@ void BFring_impl::acquire_span(BFrsequence rsequence,
 	*data_ = _buf_pointer(begin);
 }
 void BFring_impl::release_span(BFrsequence sequence,
-                               BFoffset    offset,
+                               BFoffset    begin,
                                BFsize      size) {
 	unique_lock_type lock(_mutex);
 	if( sequence->guaranteed() ) {
@@ -622,7 +622,7 @@ void BFring_impl::release_span(BFrsequence sequence,
 		//auto iter = _guarantees.find(sequence->guarantee_begin());
 		//BF_ASSERT_EXCEPTION(iter != _guarantees.end(), BF_STATUS_INTERNAL_ERROR);
 		//_guarantees.erase(iter);
-		BFoffset new_begin = offset + size;
+		BFoffset new_begin = begin + size;
 		//_guarantees.insert(new_begin);
 		this->_add_guarantee(new_begin);
 		sequence->set_guarantee_begin(new_begin);
@@ -632,7 +632,7 @@ void BFring_impl::release_span(BFrsequence sequence,
 }
 
 BFrspan_impl::BFrspan_impl(BFrsequence sequence,
-                           BFoffset    offset,
+                           BFoffset    offset, // Relative to sequence beg
                            BFsize      requested_size)
 	: //BFspan_impl(sequence->sequence(), requested_size),
 	  BFspan_impl(sequence->ring(), requested_size),

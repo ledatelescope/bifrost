@@ -28,49 +28,51 @@
 
 from __future__ import absolute_import
 
-from bifrost.pipeline import TransformBlock
 import bifrost as bf
-import bifrost.transpose
+from bifrost.pipeline import TransformBlock
+from bifrost.DataType import DataType
 
 from copy import deepcopy
-import numpy as np
 
-class TransposeBlock(TransformBlock):
+class ReverseBlock(TransformBlock):
 	def __init__(self, iring, axes, *args, **kwargs):
-		super(TransposeBlock, self).__init__(iring, *args, **kwargs)
-		self.axes = axes
-		self.space = self.orings[0].space
+		super(ReverseBlock, self).__init__(iring, *args, **kwargs)
+		if not isinstance(axes, list) or isinstance(axes, tuple):
+			axes = [axes]
+		self.specified_axes = axes
+	def define_valid_input_spaces(self):
+		"""Return set of valid spaces (or 'any') for each input"""
+		return ('cuda',)
 	def on_sequence(self, iseq):
 		ihdr = iseq.header
 		itensor = ihdr['_tensor']
-		# TODO: Is this a good idea?
-		#if self.axes is None:
-		#	# Default to moving the time axis to/from the fastest dim
-		#	naxis     = len(itensor['shape'])
-		#	time_axis = itensor['shape'].index(-1)
-		#	self.axes = range(time_axis) + range(time_axis+1,naxis)
-		#	if time_axis == 0: # Time was slowest dim
-		#		self.axes += [-1] # Make time the fastest dim
-		#	else: # Time was not the slowest dim
-		#		self.axes = [-1] + self.axes # Make time the slowest dim
-		for d in xrange(len(self.axes)):
-			if isinstance(self.axes[d], basestring):
-				# Look up axis by label
-				self.axes[d] = itensor['labels'].index(self.axes[d])
+		self.axes = [itensor['labels'].index(axis)
+		             if isinstance(axis, basestring)
+		             else axis
+		             for axis in self.specified_axes]
+		frame_axis = itensor['shape'].index(-1)
+		if frame_axis in self.axes:
+			raise KeyError("Cannot reverse frame axis")
 		ohdr = deepcopy(ihdr)
 		otensor = ohdr['_tensor']
-		# Permute metadata of axes
-		for item in ['shape', 'labels', 'scales', 'units']:
-			if item in itensor:
-				otensor[item] = [itensor[item][axis]
-				                 for axis in self.axes]
+		oshape = otensor['shape']
+		if 'scales' in itensor:
+			for ax in self.axes:
+				scale_step = otensor['scales'][ax][1]
+				scale_shift = oshape[ax] * scale_step
+				otensor['scales'][ax][0] += scale_shift
+				otensor['scales'][ax][1]  = -scale_step
 		return ohdr
 	def on_data(self, ispan, ospan):
-		# TODO: bf.memory.transpose should support system space too
-		if bf.memory.space_accessible(self.space, ['cuda']):
-			bf.transpose.transpose(ospan.data, ispan.data, self.axes)
-		else:
-			ospan.data[...] = np.transpose(ispan.data, self.axes)
+		idata = ispan.data
+		odata = ospan.data
+		shape = idata.shape
+		ind_names = ['i%i'%i for i in xrange(idata.ndim)]
+		inds = list(ind_names)
+		for ax in self.axes:
+			inds[ax] = '-'+inds[ax]
+		inds = ','.join(inds)
+		bf.map("b = a(%s)" % inds, shape, *ind_names, a=idata, b=odata)
 
-def transpose(iring, axes, *args, **kwargs):
-	return TransposeBlock(iring, axes, *args, **kwargs)
+def reverse(iring, axes, *args, **kwargs):
+	return ReverseBlock(iring, axes, *args, **kwargs)

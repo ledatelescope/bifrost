@@ -29,18 +29,22 @@ from __future__ import absolute_import
 
 from .copy import copy, CopyBlock
 from .transpose import transpose, TransposeBlock
+from .reverse import reverse, ReverseBlock
 from .fft import fft, FftBlock
 from .fftshift import fftshift, FftShiftBlock
 from .fdmt import fdmt, FdmtBlock
 from .detect import detect, DetectBlock
 from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
 from .sigproc import read_sigproc, SigprocSourceBlock
+from .sigproc import write_sigproc, SigprocSinkBlock
 from .scrunch import scrunch, ScrunchBlock
 from .accumulate import accumulate, AccumulateBlock
 from .binary_io import BinaryFileReadBlock, BinaryFileWriteBlock
+from .unpack import unpack, UnpackBlock
+from .quantize import quantize, QuantizeBlock
 
-try:
-    from .audio import read_audio, AudioSourceBlock
+try: # Avoid error if portaudio library not installed
+	from .audio import read_audio, AudioSourceBlock
 except:
     pass 
 

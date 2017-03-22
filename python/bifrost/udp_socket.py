@@ -43,6 +43,8 @@ class UDPSocket(object):
 		_check( _bf.UdpSocketConnect(self.obj, remote_addr.obj) )
 	def shutdown(self):
 		_check( _bf.UdpSocketShutdown(self.obj) )
+	def close(self):
+		_check( _bf.UdpSocketClose(self.obj) )
 	@property
 	def mtu(self):
 		return _get(_bf.UdpSocketGetMTU(self.obj))

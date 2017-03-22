@@ -103,11 +103,14 @@ _telescopes = defaultdict(lambda : 'unknown',
                            1:  'Arecibo',
                            2:  'Ooty',
                            3:  'Nancay',
-                           4:  'Parkes',
+                           4:  'Parkes', # TODO: Should be 7?
                            5:  'Jodrell',#'Lovell',
                            6:  'GBT',
                            7:  'GMRT',
                            8:  'Effelsberg',
+                           9:  'ATA',
+                           10: 'UTR-2',
+                           11: 'LOFAR',
                            52: 'LWA-OV',
                            53: 'LWA-SV'})
 _machines   = defaultdict(lambda : 'unknown',
@@ -115,24 +118,40 @@ _machines   = defaultdict(lambda : 'unknown',
                            1:  'PSPM',
                            2:  'WAPP',
                            3:  'AOFTM',
-                           4:  'BPP',
-                           5:  'OOTY',
+                           4:  'BPP', # aka BCPM1
+                           5:  'OOTY', # TODO: Should be 3?
                            6:  'SCAMP',
-                           7:  'GMRTFB',
+                           7:  'GMRTFB', # aka GBT Pulsar Spigot, SPIGOT
                            8:  'PULSAR2000',
+                           11: 'BG/P',
+                           12: "PDEV",
+                           20: 'GUPPI',
                            52: 'LWA-DP',
                            53: 'LWA-ADP'})
+
+def id2telescope(id_):
+	return _telescopes[id_]
+def telescope2id(name):
+	# TODO: Would be better to use a pre-made reverse lookup dict
+	return _telescopes.keys()[_telescopes.values().index(name)]
+def id2machine(id_):
+	return _machines[id_]
+def machine2id(name):
+	# TODO: Would be better to use a pre-made reverse lookup dict
+	return _machines.keys()[_machines.values().index(name)]
 
 def _header_write_string(f, key):
 	f.write(struct.pack('=i', len(key)))
 	f.write(key)
-def _header_write(f, key, value):
-	if isinstance(value, int):
+def _header_write(f, key, value, fmt=None):
+	if fmt is not None:
+		pass
+	elif isinstance(value, int):
 		fmt = '=i'
 	elif isinstance(value, float):
 		fmt = '=d'
-	elif key == 'signed':
-		fmt = '=b'
+	#elif key == 'signed':
+	#	fmt = '=b'
 	else:
 		raise TypeError("Invalid value type")
 	_header_write_string(f, key)
@@ -145,7 +164,7 @@ def _header_read(f):
 	s = f.read(length)
 	return s
 
-def _write_header(hdr, f):
+def write_header(hdr, f):
 	#f.write("HEADER_START")
 	_header_write_string(f, "HEADER_START")
 	for key,val in hdr.items():
@@ -156,8 +175,8 @@ def _write_header(hdr, f):
 			_header_write(f, key, float(val))
 		elif key in _integer_values:
 			_header_write(f, key, int(val))
-		#elif key in _character_values:
-		#	_header_write(f, key, ??
+		elif key in _character_values:
+			_header_write(f, key, int(val), fmt='=b')
 		else:
 			#raise KeyError("Unknown sigproc header key: %s"%key)
 			print "WARNING: Unknown sigproc header key: %s" % key

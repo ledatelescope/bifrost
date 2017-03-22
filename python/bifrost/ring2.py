@@ -82,7 +82,8 @@ class Ring(object):
 		# If this is non-None, then the object is wrapping a base Ring instance
 		self.base = None
 	def __del__(self):
-		if self.base is None and hasattr(self, "obj") and bool(self.obj):
+		if (hasattr(self, "base") and self.base is None and
+		    hasattr(self, "obj") and bool(self.obj)):
 			_bf.RingDestroy(self.obj)
 	def view(self):
 		new_ring = copy(self)
@@ -282,7 +283,7 @@ class ReadSequence(SequenceBase):
 	def header(self):
 		hdr = super(ReadSequence, self).header
 		if self.header_transform is not None:
-			hdr = self.header_transform(hdr)
+			hdr = self.header_transform(deepcopy(hdr))
 		return hdr
 
 def accumulate(vals, op='+', init=None, reverse=False):

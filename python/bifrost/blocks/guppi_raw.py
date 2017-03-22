@@ -58,6 +58,7 @@ class GuppiRawSourceBlock(SourceBlock):
 		cfreq_MHz = ihdr['OBSFREQ']
 		df_MHz = bw_MHz / nchan
 		f0_MHz = cfreq_MHz - 0.5*(nchan-1)*df_MHz
+		# Note: This will be negative if OBSBW is negative, which is correct
 		dt_s   = 1. / df_MHz / 1e6
 		# Derive the timestamp of this block
 		byte_offset   = ihdr['PKTIDX'] * ihdr['PKTSIZE']
@@ -70,9 +71,9 @@ class GuppiRawSourceBlock(SourceBlock):
 			'_tensor': {
 				'dtype':  'ci' + str(nbit),
 				'shape':  [-1, nchan, ihdr['NTIME'], ihdr['NPOL']],
-				# Note: 'block' is the frame axis
-				'labels': ['block', 'frequency', 'time', 'polarization'],
-				'scales': [(tstart_unix, dt_s*ihdr['NTIME']),
+				# Note: 'time' (aka block) is the frame axis
+				'labels': ['time', 'frequenct', 'fine_time', 'polarization'],
+				'scales': [(tstart_unix, abs(dt_s)*ihdr['NTIME']),
 				           (f0_MHz, df_MHz),
 				           (0, dt_s),
 				           None],
@@ -84,8 +85,9 @@ class GuppiRawSourceBlock(SourceBlock):
 			'dej':           get_with_default(ihdr, 'DEC'),           # Decimal degrees
 			'source_name':   get_with_default(ihdr, 'SRC_NAME'),
 			'refdm':         get_with_default(ihdr, 'CHAN_DM'),
-			'telescope_id':  get_with_default(ihdr, 'TELESCOP'),
-			'machine_id':    get_with_default(ihdr, 'BACKEND'),
+			'refdm_units':   'pc cm^-3',
+			'telescope':     get_with_default(ihdr, 'TELESCOP'),
+			'machine':       get_with_default(ihdr, 'BACKEND'),
 			'rawdatafile':   sourcename,
 			'coord_frame':   'topocentric',
 		}

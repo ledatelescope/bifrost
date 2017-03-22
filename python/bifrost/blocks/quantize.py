@@ -28,49 +28,39 @@
 
 from __future__ import absolute_import
 
-from bifrost.pipeline import TransformBlock
 import bifrost as bf
-import bifrost.transpose
+import bifrost.quantize
+from bifrost.pipeline import TransformBlock
+from bifrost.DataType import DataType
 
 from copy import deepcopy
-import numpy as np
 
-class TransposeBlock(TransformBlock):
-	def __init__(self, iring, axes, *args, **kwargs):
-		super(TransposeBlock, self).__init__(iring, *args, **kwargs)
-		self.axes = axes
-		self.space = self.orings[0].space
+class QuantizeBlock(TransformBlock):
+	def __init__(self, iring, dtype, scale=1.,
+	             *args, **kwargs):
+		super(QuantizeBlock, self).__init__(iring, *args, **kwargs)
+		self.dtype = dtype
+		self.scale = scale
+	def define_valid_input_spaces(self):
+		"""Return set of valid spaces (or 'any') for each input"""
+		return ('system',)
 	def on_sequence(self, iseq):
 		ihdr = iseq.header
-		itensor = ihdr['_tensor']
-		# TODO: Is this a good idea?
-		#if self.axes is None:
-		#	# Default to moving the time axis to/from the fastest dim
-		#	naxis     = len(itensor['shape'])
-		#	time_axis = itensor['shape'].index(-1)
-		#	self.axes = range(time_axis) + range(time_axis+1,naxis)
-		#	if time_axis == 0: # Time was slowest dim
-		#		self.axes += [-1] # Make time the fastest dim
-		#	else: # Time was not the slowest dim
-		#		self.axes = [-1] + self.axes # Make time the slowest dim
-		for d in xrange(len(self.axes)):
-			if isinstance(self.axes[d], basestring):
-				# Look up axis by label
-				self.axes[d] = itensor['labels'].index(self.axes[d])
 		ohdr = deepcopy(ihdr)
-		otensor = ohdr['_tensor']
-		# Permute metadata of axes
-		for item in ['shape', 'labels', 'scales', 'units']:
-			if item in itensor:
-				otensor[item] = [itensor[item][axis]
-				                 for axis in self.axes]
+		itype = DataType(ihdr['_tensor']['dtype'])
+		self.itype = itype
+		# Allow user to pass nbit instead of explicit dtype
+		if isinstance(self.dtype, int):
+			nbit = self.dtype
+			otype = itype.as_integer(nbit)
+		else:
+			otype = self.dtype
+		ohdr['_tensor']['dtype'] = otype
 		return ohdr
 	def on_data(self, ispan, ospan):
-		# TODO: bf.memory.transpose should support system space too
-		if bf.memory.space_accessible(self.space, ['cuda']):
-			bf.transpose.transpose(ospan.data, ispan.data, self.axes)
-		else:
-			ospan.data[...] = np.transpose(ispan.data, self.axes)
+		idata = ispan.data
+		odata = ospan.data
+		bf.quantize.quantize(idata, odata, self.scale)
 
-def transpose(iring, axes, *args, **kwargs):
-	return TransposeBlock(iring, axes, *args, **kwargs)
+def quantize(iring, dtype, *args, **kwargs):
+	return QuantizeBlock(iring, dtype, *args, **kwargs)

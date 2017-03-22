@@ -87,7 +87,7 @@ class DetectBlock(TransformBlock):
 			if self.mode == 'stokes' and self.npol == 2:
 				otensor['shape'][self.axis] = 4
 			if 'labels' in otensor:
-				otensor['labels'][self.axis] = self.mode
+				otensor['labels'][self.axis] = 'pol'#self.mode # TODO: Check this
 		else:
 			self.npol = 1
 		return ohdr
