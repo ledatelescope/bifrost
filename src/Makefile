@@ -17,7 +17,8 @@ LIBBIFROST_OBJS = \
   udp_capture.o \
   udp_transmit.o \
   unpack.o \
-  quantize.o
+  quantize.o \
+  proclog.o
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \

@@ -35,6 +35,7 @@ using bifrost::ring::RingWrapper;
 using bifrost::ring::RingWriter;
 using bifrost::ring::WriteSpan;
 using bifrost::ring::WriteSequence;
+#include "proclog.hpp"
 
 #include <arpa/inet.h>  // For ntohs
 #include <sys/socket.h> // For recvfrom
@@ -534,10 +535,10 @@ class BFudpcapture_impl {
 	UDPCaptureThread   _capture;
 	CHIPSDecoder       _decoder;
 	CHIPSProcessor8bit _processor;
-	std::ofstream      _type_log;
-	std::ofstream      _size_log;
-	std::ofstream      _chan_log;
-	std::ofstream      _stat_log;
+	ProcLog            _type_log;
+	ProcLog            _size_log;
+	ProcLog            _chan_log;
+	ProcLog            _stat_log;
 	pid_t              _pid;
 	
 	int       _nsrc;
@@ -633,39 +634,6 @@ class BFudpcapture_impl {
 	inline void end_sequence() {
 		_sequence.reset(); // Note: This is releasing the shared_ptr
 	}
-	inline void open_logs() {
-		// Get the PID
-		this->_pid = getpid();
-		
-		// Make the directory for this process
-		std::string log_dir = "/dev/shm/bifrost/"+std::to_string(this->_pid)+"/capture";
-		int status = system(("mkdir -p "+log_dir).c_str());
-		if( status != 0 ) {
-			// TODO: What to do here?
-			throw std::runtime_error("Cannot create capture status directory");
-		}
-		
-		// Open the log files
-		//// Capture type
-		_type_log.open((log_dir+"/type").c_str());
-		///// Size information
-		_size_log.open((log_dir+"/sizes").c_str());
-		//// Channel information
-		_chan_log.open((log_dir+"/chans").c_str());
-		//// Capture statistics
-		_stat_log.open((log_dir+"/stats").c_str());
-		
-		// Fill in known parameters which don't change
-		_type_log.seekp(0);
-		_type_log << "TYPE = "
-			     << "chips" << endl;
-		
-		_size_log.seekp(0);
-		_size_log << "NSRC, NSEQ, NTIME = "
-				<< _nsrc << ", " 
-				<< _nseq_per_buf << ", "
-				<< _slot_ntime << endl;
-	}
 public:
 	inline BFudpcapture_impl(int    fd,
 	           BFring ring,
@@ -677,6 +645,10 @@ public:
 	           BFudpcapture_sequence_callback sequence_callback,
 	           int    core)
 		: _capture(fd, nsrc, core), _decoder(nsrc, src0), _processor(),
+		  _type_log("udp_capture/type"),
+		  _size_log("udp_capture/sizes"),
+		  _chan_log("udp_capture/chans"),
+		  _stat_log("udp_capture/stats"),
 		  _nsrc(nsrc), _nseq_per_buf(buffer_ntime), _slot_ntime(slot_ntime),
 		  _seq(), _chan0(), _nchan(), _active(false),
 		  _sequence_callback(sequence_callback),
@@ -688,27 +660,11 @@ public:
 		size_t total_span   = contig_span * 4;
 		size_t nringlet_max = 1;
 		_ring.resize(contig_span, total_span, nringlet_max);
-		this->open_logs();
-	}
-	inline void close_logs() {
-		// Close the log files
-		_type_log.close();
-		_size_log.close();
-		_chan_log.close();
-		_stat_log.close();
-		
-		// Cleanup the process directory - capture
-		int status = system(("rm -rf /dev/shm/bifrost/"+std::to_string(this->_pid)+"/capture").c_str());
-		if( status != 0 ) {
-			// It doesn't really matter if this works
-			//throw std::runtime_error("Cannot remove capture status directory");
-		}
-		// Cleanup the process directory - global, if possible
-		status = system(("rmdir /dev/shm/bifrost/"+std::to_string(this->_pid)).c_str());
-		if( status != 0 ) {
-			// It doesn't really matter if this works
-			//throw std::runtime_error("Cannot remove global status directory");
-		}
+		_type_log.update("type : %s", "chips");
+		_size_log.update("nsrc         : %i\n"
+		                 "nseq_per_buf : %i\n"
+		                 "slot_ntime   : %i\n",
+		                 _nsrc, _nseq_per_buf, _slot_ntime);
 	}
 	inline void flush() {
 		while( _bufs.size() ) {
@@ -750,13 +706,15 @@ public:
 			return BF_CAPTURE_INTERRUPTED;
 		}
 		const PacketStats* stats = _capture.get_stats();
-		_stat_log.seekp(0);
-		_stat_log << "ngood_bytes, nmissing_bytes, nvalid, ninvalid, nlate = "
-		           << _ngood_bytes << ", "
-		           << _nmissing_bytes << ", "
-		           << stats->nvalid << ", "
-		           << stats->ninvalid << ", "
-		           << stats->nlate << endl;
+		_stat_log.update() << "ngood_bytes    : " << _ngood_bytes << "\n"
+		                   << "nmissing_bytes : " << _nmissing_bytes << "\n"
+		                   << "ninvalid       : " << stats->ninvalid << "\n"
+		                   << "ninvalid_bytes : " << stats->ninvalid_bytes << "\n"
+		                   << "nlate          : " << stats->nlate << "\n"
+		                   << "nlate_bytes    : " << stats->nlate_bytes << "\n"
+		                   << "nvalid         : " << stats->nvalid << "\n"
+		                   << "nvalid_bytes   : " << stats->nvalid_bytes << "\n";
+		
 		BFudpcapture_status ret;
 		bool was_active = _active;
 		_active = state & UDPCaptureThread::CAPTURE_SUCCESS;
@@ -778,11 +736,9 @@ public:
 				_chan0        = pkt->chan0;
 				_nchan        = pkt->nchan;
 				_payload_size = pkt->payload_size;
-				_chan_log.seekp(0);
-				_chan_log << "CHAN0, NCHAN, PAYLOAD_SIZE = " 
-				           << _chan0 << ", " 
-				           << _nchan << ", "
-						 << _payload_size << endl;
+				_chan_log.update() << "chan0        : " << _chan0 << "\n"
+				                   << "nchan        : " << _nchan << "\n"
+				                   << "payload_size : " << _payload_size << "\n";
 				this->begin_sequence();
 				ret = BF_CAPTURE_STARTED;
 			} else {
@@ -792,11 +748,9 @@ public:
 					_chan0 = pkt->chan0;
 					_nchan = pkt->nchan;
 					_payload_size = pkt->payload_size;
-					_chan_log.seekp(0);
-					_chan_log << "CHAN0, NCHAN, PAYLOAD_SIZE = " 
-					           << _chan0 << ", " 
-					           << _nchan << ", "
-					           << _payload_size << endl;
+					_chan_log.update() << "chan0        : " << _chan0 << "\n"
+					                   << "nchan        : " << _nchan << "\n"
+					                   << "payload_size : " << _payload_size << "\n";
 					this->end_sequence();
 					this->begin_sequence();
 					ret = BF_CAPTURE_CHANGED;
@@ -843,7 +797,6 @@ BFstatus bfUdpCaptureCreate(BFudpcapture* obj,
 }
 BFstatus bfUdpCaptureDestroy(BFudpcapture obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-	obj->close_logs();
 	delete obj;
 	return BF_STATUS_SUCCESS;
 }

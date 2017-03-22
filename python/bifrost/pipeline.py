@@ -29,12 +29,14 @@
 import bifrost as bf
 from bifrost.ring2 import Ring, ring_view
 from temp_storage import TempStorage
+from bifrost.proclog import ProcLog
 
 from collections import defaultdict
 from contextlib2 import ExitStack
 import threading
 import time
 from copy import copy
+import signal
 
 def izip(*iterables):
 	while True:
@@ -86,6 +88,7 @@ class BlockScope(object):
 		self._parent_scope = get_current_block_scope()
 		if self._parent_scope is not None:
 			self._parent_scope.children.append(self)
+			self.name = self._parent_scope.name + '/' + self.name
 		self._children = []
 	def __enter__(self):
 		thread_local.blockscope_stack.append(self)
@@ -155,21 +158,67 @@ class BlockScope(object):
 				g.subgraph(child.dot_graph())
 		return g
 
+def try_join(thread, timeout=0.):
+	thread.join(timeout)
+	return not thread.is_alive()
+# Utility function for joining a collection of threads with a timeout
+def join_all(threads, timeout):
+	deadline = time.time() + timeout
+	alive_threads = list(threads)
+	while True:
+		alive_threads = [t for t in alive_threads if not try_join(t)]
+		available_time = max(deadline - time.time(), 0)
+		if (len(alive_threads) == 0 or
+		    available_time == 0):
+			return alive_threads
+		alive_threads[0].join(available_time)
+
 class Pipeline(BlockScope):
-	def __init__(self, **kwargs):
-		super(Pipeline, self).__init__(**kwargs)
+	instance_count = 0
+	def __init__(self, name=None, **kwargs):
+		if name is None:
+			name = 'Pipeline_%i' % Pipeline.instance_count
+			Pipeline.instance_count += 1
+		super(Pipeline, self).__init__(name=name, **kwargs)
 		self.blocks = []
+		self.shutdown_timeout = 5.
 	def as_default(self):
 		return PipelineContext(self)
 	def run(self):
-		#print "Launching %i blocks" % len(self.blocks)
-		threads = [threading.Thread(target=block.run, name=block.name)
-		           for block in self.blocks]
-		for thread in threads:
+		# Launch blocks as threads
+		self.threads = [threading.Thread(target=block.run, name=block.name)
+		                for block in self.blocks]
+		for thread in self.threads:
+			thread.daemon = True
 			thread.start()
-		#print "Waiting for blocks to finish"
-		for thread in threads:
-			thread.join()
+		# Wait for blocks to finish
+		for thread in self.threads:
+			# Note: Doing it this way allows signals to be caught here
+			while thread.is_alive():
+				thread.join(timeout=2**30)
+	def shutdown(self):
+		for block in self.blocks:
+			block.shutdown()
+		join_all(self.threads, timeout=self.shutdown_timeout)
+		for thread in self.threads:
+			if thread.is_alive():
+				print "WARNING: Thread %s did not shut down on time and will be killed" % thread.name
+	def shutdown_on_signals(self, signals=None):
+		if signals is None:
+			signals = [signal.SIGHUP,
+			           signal.SIGINT,
+			           signal.SIGQUIT,
+			           signal.SIGTERM,
+			           signal.SIGTSTP]
+		for sig in signals:
+			signal.signal(sig, self._handle_signal_shutdown)
+	def _handle_signal_shutdown(self, signum, frame):
+		SIGNAL_NAMES = dict((k, v) for v, k in \
+		                    reversed(sorted(signal.__dict__.items()))
+		                    if v.startswith('SIG') and \
+		                    not v.startswith('SIG_'))
+		print "WARNING: Received signal %i %s, shutting down pipeline" % (signum, SIGNAL_NAMES[signum])
+		self.shutdown()
 	def __enter__(self):
 		thread_local.pipeline_stack.append(self)
 		return self
@@ -195,14 +244,13 @@ def block_view(block, header_transform):
 class Block(BlockScope):
 	instance_counts = defaultdict(lambda: 0)
 	def __init__(self, irings,
-	             name=None, # TODO: Move this into BlockScope and join to parent scope name with '/'
+	             name=None,
 	             type_=None,
 	             **kwargs):
-		super(Block, self).__init__(**kwargs)
 		self.type = type_ or self.__class__.__name__
 		self.name = name or '%s_%i' % (self.type, Block.instance_counts[self.type])
 		Block.instance_counts[self.type] += 1
-		
+		super(Block, self).__init__(**kwargs)
 		self.pipeline = get_default_pipeline()
 		self.pipeline.blocks.append(self)
 		
@@ -215,6 +263,9 @@ class Block(BlockScope):
 				raise ValueError("Block %s input %i's space must be accessible from one of: %s" %
 				                 (self.name, i, str(valid_spaces)))
 		self.orings = [] # Update this in subclass constructors
+		self.shutdown_event = threading.Event()
+	def shutdown(self):
+		self.shutdown_event.set()
 	def create_ring(self, *args, **kwargs):
 		return Ring(*args, owner=self, **kwargs)
 	def run(self):
@@ -268,8 +319,11 @@ class SourceBlock(Block):
 		default_space = 'cuda_host' if bf.core.cuda_enabled() else 'system'
 		self.orings = [self.create_ring(space=default_space)]
 		self._seq_count = 0
+		self.perf_proclog = ProcLog(self.name+"/perf")
 	def main(self, orings):
 		for sourcename in self.sourcenames:
+			if self.shutdown_event.is_set():
+				break
 			with self.create_reader(sourcename) as ireader:
 				oheaders = self.on_sequence(ireader, sourcename)
 				for ohdr in oheaders:
@@ -278,9 +332,13 @@ class SourceBlock(Block):
 				self._seq_count += 1
 				with ExitStack() as oseq_stack:
 					oseqs = self.begin_sequences(oseq_stack, orings, oheaders, igulp_nframes=[])
-					while True:
+					while not self.shutdown_event.is_set():
+						prev_time = time.time()
 						with ExitStack() as ospan_stack:
 							ospans = self.reserve_spans(ospan_stack, oseqs, ispans=[])
+							cur_time = time.time()
+							reserve_time = cur_time - prev_time
+							prev_time = cur_time
 							ostrides = self.on_data(ireader, ospans)
 							bf.device.stream_synchronize()
 							for ospan, ostride in zip(ospans, ostrides):
@@ -288,6 +346,13 @@ class SourceBlock(Block):
 							# TODO: Is this an OK way to detect end-of-data?
 							if any([ostride==0 for ostride in ostrides]):
 								break
+						cur_time = time.time()
+						process_time = cur_time - prev_time
+						prev_time = cur_time
+						self.perf_proclog.update({
+							'acquire_time': -1,
+							'reserve_time': reserve_time,
+							'process_time': process_time})
 	def define_output_nframes(self, _):
 		"""Return output nframe for each output, given input_nframes.
 		"""
@@ -323,9 +388,16 @@ class MultiTransformBlock(Block):
 		self.orings = [self.create_ring(space=iring.space)
 		               for iring in self.irings]
 		self._seq_count = 0
+		self.perf_proclog = ProcLog(self.name+"/perf")
+		self.sequence_proclogs = [ProcLog(self.name+"/sequence%i"%i)
+		                          for i in xrange(len(self.irings))]
 	def main(self, orings):
 		for iseqs in izip(*[iring.read(guarantee=self.guarantee)
 		                    for iring in self.irings]):
+			if self.shutdown_event.is_set():
+				break
+			for i, iseq in enumerate(iseqs):
+				self.sequence_proclogs[i].update(iseq.header)
 			oheaders, islices = self._on_sequence(iseqs)
 			for ohdr in oheaders:
 				if 'time_tag' not in ohdr:
@@ -365,6 +437,8 @@ class MultiTransformBlock(Block):
 				                              islice.start)
 				                    for (iseq,islice)
 				                    in zip(iseqs,islices)]):
+					if self.shutdown_event.is_set():
+						break
 					cur_time = time.time()
 					acquire_time = cur_time - prev_time
 					prev_time = cur_time
@@ -389,9 +463,10 @@ class MultiTransformBlock(Block):
 					cur_time = time.time()
 					process_time = cur_time - prev_time
 					prev_time = cur_time
-					# TODO: Do something with *_time variables (e.g., WAMP PUB)
-					#total_time = acquire_time + reserve_time + process_time
-					#print acquire_time / total_time, reserve_time / total_time, process_time / total_time
+					self.perf_proclog.update({
+						'acquire_time': acquire_time,
+						'reserve_time': reserve_time,
+						'process_time': process_time})
 			self._on_sequence_end(iseqs)
 	def _on_sequence(self, iseqs):
 		return self.on_sequence(iseqs)
