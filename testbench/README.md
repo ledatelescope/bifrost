@@ -7,17 +7,13 @@ python API.
 
 To get started, you'll first need to download/generate some data, so run:
 
-    ```
     python generate_test_data.py
-    ```
 
 Make sure you have at least 2GB of space free. This generates binary files that are
 compatible with numpy fromfile() method, which can be run through two testbenches:
 
-    ```
     python test_file_read_write.py
     python test_fft.py
-    ```
 
 You can guess what these files do by their filenames. The first instantiates a bifrost
 pipeline that reads data and writes it to file. The output is compared against a numpy
@@ -33,9 +29,7 @@ API. Make sure once you've run them to open them up and read the code -- it's si
 Next up is doing something useful with radio astronomy data. For this, we need to 
 actually have some data, so let's download (~5GB) of Breakthrough Listen data using:
 
-    ```
     python download_breakthrough_listen_data.py
-    ```
 
 This downloads two different types of files: guppi raw data, which is voltage data from
 a spectrometer (it hasn't been squared to form Stokes products yet), and then there is
