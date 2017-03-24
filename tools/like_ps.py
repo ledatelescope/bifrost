@@ -136,11 +136,13 @@ def main(args):
 						else:
 							if value not in rins:
 								routs.append( value )
-			print "    %s -> %s" % (block, " ".join(contents[block].keys()))
+			print "    %s" % block
 			if len(rins) > 0:
-				print "       -> read rings: %s" % (" ".join(["%i" % rings.index(v) for v in rins]),)
+				print "      -> read ring(s): %s" % (" ".join(["%i" % rings.index(v) for v in rins]),)
 			if len(routs) > 0:
-				print "       -> write rings: %s" % (" ".join(["%i" % rings.index(v) for v in routs]),)
+				print "      -> write ring(s): %s" % (" ".join(["%i" % rings.index(v) for v in routs]),)
+			if len(contents[block].keys()) > 0:
+				print "      -> log(s): %s" % (" ".join(contents[block].keys()),)
 
 
 if __name__ == "__main__":

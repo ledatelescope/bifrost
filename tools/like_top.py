@@ -251,7 +251,7 @@ def main(args):
 			k = _addLine(scr, k, 0, output, std)
 			### Header
 			k = _addLine(scr, k, 0, ' ', std)
-			output = '%6s  %16s  %4s  %5s  %7s  %7s  %7s  %7s  Cmd' % ('PID', 'Block', 'Core', '%CPU', 'Total', 'Acquire', 'Process', 'Reserve')
+			output = '%6s  %15s  %4s  %5s  %7s  %7s  %7s  %7s  Cmd' % ('PID', 'Block', 'Core', '%CPU', 'Total', 'Acquire', 'Process', 'Reserve')
 			csize = size[1]-len(output)
 			output += ' '*csize
 			output += '\n'
@@ -264,7 +264,7 @@ def main(args):
 					c = '%5.1f' % c
 				except KeyError:
 					c = '%5s' % ' '
-				output = '%6i  %16s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'], d['core'], c, d['acquire']+d['process']+d['reserve'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
+				output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'], d['core'], c, d['acquire']+d['process']+d['reserve'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
 				k = _addLine(scr, k, 0, output, std)
 				if k > size[0]:
 					break
