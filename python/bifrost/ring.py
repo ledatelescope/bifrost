@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
@@ -32,12 +33,15 @@ from ndarray import ndarray
 
 import ctypes
 import numpy as np
+from uuid import uuid4
 
 class Ring(object):
-	def __init__(self, space='system'):
+	def __init__(self, name='', space='system'):
+		if name == '':
+			name = str(uuid4())
 		space = _string2space(space)
 		#self.obj = None
-		self.obj = _get(_bf.RingCreate(space=space), retarg=0)
+		self.obj = _get(_bf.RingCreate(name=name, space=space), retarg=0)
 	def __del__(self):
 		if hasattr(self, "obj") and bool(self.obj):
 			_bf.RingDestroy(self.obj)
@@ -49,6 +53,9 @@ class Ring(object):
 		                       contiguous_span,
 		                       total_span,
 		                       nringlet) )
+	@property
+	def name(self):
+		return _get(_bf.RingGetName(self.obj))
 	@property
 	def space(self):
 		return _space2string(_get(_bf.RingGetSpace(self.obj)))
