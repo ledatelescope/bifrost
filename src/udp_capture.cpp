@@ -50,6 +50,7 @@ using bifrost::ring::WriteSequence;
 #include <sys/types.h>
 #include <unistd.h>
 #include <fstream>
+#include <chrono>
 
 
 #include <immintrin.h> // SSE
@@ -536,14 +537,23 @@ class BFudpcapture_impl {
 	CHIPSDecoder       _decoder;
 	CHIPSProcessor8bit _processor;
 	ProcLog            _type_log;
+	ProcLog            _bind_log;
+	ProcLog            _out_log;
 	ProcLog            _size_log;
 	ProcLog            _chan_log;
 	ProcLog            _stat_log;
+	ProcLog            _perf_log;
 	pid_t              _pid;
 	
-	int       _nsrc;
-	int       _nseq_per_buf;
-	int       _slot_ntime;
+	std::chrono::high_resolution_clock::time_point _t0;
+	std::chrono::high_resolution_clock::time_point _t1;
+	std::chrono::high_resolution_clock::time_point _t2;
+	std::chrono::duration<double> _process_time;
+	std::chrono::duration<double> _reserve_time;
+	
+	int      _nsrc;
+	int      _nseq_per_buf;
+	int      _slot_ntime;
 	BFoffset _seq;
 	int      _chan0;
 	int      _nchan;
@@ -646,9 +656,12 @@ public:
 	           int    core)
 		: _capture(fd, nsrc, core), _decoder(nsrc, src0), _processor(),
 		  _type_log("udp_capture/type"),
+		  _bind_log("udp_capture/bind"),
+		  _out_log("udp_capture/out"),
 		  _size_log("udp_capture/sizes"),
 		  _chan_log("udp_capture/chans"),
 		  _stat_log("udp_capture/stats"),
+		  _perf_log("udp_capture/perf"), 
 		  _nsrc(nsrc), _nseq_per_buf(buffer_ntime), _slot_ntime(slot_ntime),
 		  _seq(), _chan0(), _nchan(), _active(false),
 		  _sequence_callback(sequence_callback),
@@ -661,6 +674,12 @@ public:
 		size_t nringlet_max = 1;
 		_ring.resize(contig_span, total_span, nringlet_max);
 		_type_log.update("type : %s", "chips");
+		_bind_log.update("ncore : %i\n"
+		                 "core0 : %i\n", 
+		                 1, core);
+		_out_log.update("nring : %i\n"
+		                "ring0 : %s\n", 
+		                1, _ring.name());
 		_size_log.update("nsrc         : %i\n"
 		                 "nseq_per_buf : %i\n"
 		                 "slot_ntime   : %i\n",
@@ -679,6 +698,8 @@ public:
 		_oring.close();
 	}
 	BFudpcapture_status recv() {
+		_t0 = std::chrono::high_resolution_clock::now();
+		
 		uint8_t* buf_ptrs[2];
 		// Minor HACK to access the buffers in a 2-element queue
 		buf_ptrs[0] = _bufs.size() > 0 ? (uint8_t*)_bufs.front()->data() : NULL;
@@ -714,6 +735,8 @@ public:
 		                   << "nlate_bytes    : " << stats->nlate_bytes << "\n"
 		                   << "nvalid         : " << stats->nvalid << "\n"
 		                   << "nvalid_bytes   : " << stats->nvalid_bytes << "\n";
+		
+		_t1 = std::chrono::high_resolution_clock::now();
 		
 		BFudpcapture_status ret;
 		bool was_active = _active;
@@ -763,6 +786,7 @@ public:
 			}
 			this->reserve_buf();
 		} else {
+			
 			if( was_active ) {
 				this->flush();
 				ret = BF_CAPTURE_ENDED;
@@ -770,6 +794,14 @@ public:
 				ret = BF_CAPTURE_NO_DATA;
 			}
 		}
+		
+		_t2 = std::chrono::high_resolution_clock::now();
+		_process_time = std::chrono::duration_cast<std::chrono::duration<double>>(_t1-_t0);
+		_reserve_time = std::chrono::duration_cast<std::chrono::duration<double>>(_t2-_t1);
+		_perf_log.update() << "acquire_time : " << -1.0 << "\n"
+		                   << "process_time : " << _process_time.count() << "\n"
+		                   << "reserve_time : " << _reserve_time.count() << "\n";
+		
 		return ret;
 	}
 };

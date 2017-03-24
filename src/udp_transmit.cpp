@@ -141,6 +141,7 @@ public:
 class BFudptransmit_impl {
 	UDPTransmitThread  _transmit;
 	ProcLog            _type_log;
+	ProcLog            _bind_log;
 	ProcLog            _stat_log;
 	pid_t              _pid;
 	
@@ -173,8 +174,11 @@ public:
 	                          int core)
 		: _transmit(fd, core),
 		  _type_log("udp_transmit/type"),
+		  _bind_log("udp_transmit/bind"),
 		  _stat_log("udp_transmit/stats") {
 		_type_log.update() << "type : " << "generic";
+		_bind_log.update() << "ncore : " << 1 << "\n"
+		                   << "core0 : " << core << "\n";
 	}
 	BFudptransmit_status send(char *packet, unsigned int len) {
 		ssize_t state;
