@@ -7,6 +7,7 @@ The heart of bifrost is a flexible *ring* buffer implementation that allows diff
 #### Quick links
 
 * [[Getting started guide]]
+* [[How Python and C++ fits together]]
 * [[C++ Development|Cpp Development]]
 * [[Python API]]
 * [[Ring() API]]
