@@ -72,8 +72,8 @@ class Ring : public RingWrapper {
 	Ring(Ring const& );
 	Ring& operator=(Ring const& );
 public:
-	inline Ring(BFspace space=BF_SPACE_SYSTEM) : RingWrapper(0) {
-		check( bfRingCreate(&_obj, space) );
+	inline Ring(const char *name="", BFspace space=BF_SPACE_SYSTEM) : RingWrapper(0) {
+		check( bfRingCreate(&_obj, name, space) );
 	}
 	inline ~Ring() {
 		if( _obj ) {
