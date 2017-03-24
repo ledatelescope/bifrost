@@ -34,9 +34,10 @@
 #include "assert.hpp"
 #include <cstring> // For ::memset
 
-BFstatus bfRingCreate(BFring* ring, BFspace space) {
+BFstatus bfRingCreate(BFring* ring, char const* name, BFspace space) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_POINTER);
-	BF_TRY_RETURN_ELSE(*ring = new BFring_impl(space),
+	BF_ASSERT(name, BF_STATUS_INVALID_POINTER);
+	BF_TRY_RETURN_ELSE(*ring = new BFring_impl(name, space),
 	                   *ring = 0);
 }
 BFstatus bfRingDestroy(BFring ring) {
@@ -52,6 +53,12 @@ BFstatus bfRingResize(BFring ring,
 	BF_TRY_RETURN(ring->resize(max_contiguous_span,
 	                    max_total_size,
 	                    max_ringlets));
+}
+BFstatus bfRingGetName(BFring ring, char const** name) {
+	BF_ASSERT(ring,     BF_STATUS_INVALID_HANDLE);
+	BF_ASSERT(name,     BF_STATUS_INVALID_POINTER);
+	BF_TRY_RETURN_ELSE(*name = ring->name(),
+	                   *name = 0);
 }
 BFstatus bfRingGetSpace(BFring ring, BFspace* space) {
 	BF_ASSERT(ring,  BF_STATUS_INVALID_HANDLE);
