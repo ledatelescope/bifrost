@@ -14,10 +14,9 @@ from bifrost.proclog import load_by_pid
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
 
 def usage(exitCode=None):
-	print """%s - Monitor the packets capture/transmit status of a 
-bifrost pipeline.
+	print """%s - Display details of running bifrost processes
 
-Usage: %s [OPTIONS] pid
+Usage: %s [OPTIONS]
 
 Options:
 -h, --help                  Display this help information
