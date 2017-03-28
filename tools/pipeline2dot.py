@@ -14,12 +14,15 @@ from bifrost.proclog import load_by_pid
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
 
 def usage(exitCode=None):
-	print """%s - Display details of running bifrost processes
+	print """%s - Create a DOT file that encapsulates the data flow inside the pipeline running
+under the specified PID.
 
 Usage: %s [OPTIONS] pid
 
 Options:
 -h, --help                  Display this help information
+-s, --source-name           Name for network sources (Default = sources)
+-n, --no-associations       Exclude associated blocked (Default = include)
 """ % (os.path.basename(__file__), os.path.basename(__file__))
 	
 	if exitCode is not None:
@@ -31,11 +34,13 @@ Options:
 def parseOptions(args):
 	config = {}
 	# Command line flags - default values
+	config['sourceName'] = 'sources'
+	config['includeAssociations'] = True
 	config['args'] = []
 	
 	# Read in and process the command line flags
 	try:
-		opts, args = getopt.getopt(args, "h", ["help",])
+		opts, args = getopt.getopt(args, "hs:n", ["help", "source-name=", "no-associations"])
 	except getopt.GetoptError, err:
 		# Print help information and exit:
 		print str(err) # will print something like "option -a not recognized"
@@ -45,6 +50,10 @@ def parseOptions(args):
 	for opt, value in opts:
 		if opt in ('-h', '--help'):
 			usage(exitCode=0)
+		elif opt in ('-s', '--source-name'):
+			config['sourceName'] = value
+		elif opt in ('-n', '--no-associations'):
+			config['includeAssociations'] = False
 		else:
 			assert False
 			
@@ -180,7 +189,7 @@ def _getDataFlows(blocks):
 								bits = blocks[block][log]['nbit']
 								if blocks[block][log]['complex']:
 									bits *= 2
-								name = 'comp' if  blocks[block][log]['complex'] else 'real'
+								name = 'cplx' if  blocks[block][log]['complex'] else 'real'
 								dtype = '%s%i' % (name, bits)
 							except KeyError:
 								pass
@@ -278,7 +287,7 @@ def main(args):
 					pass
 					
 				if nsrc is not None:
-					name = 'sources\\nx%i' % nsrc
+					name = '%s\\nx%i' % (config['sourceName'], nsrc)
 					lut[name] = chr(i+97)
 					i += 1
 					
@@ -306,7 +315,7 @@ def main(args):
 						break
 				if found:
 					break
-			if not found:
+			if not found and config['includeAssociations']:
 				for assoc0,assoc1 in associations:
 					if assoc0 == block:
 						found = True
@@ -318,7 +327,7 @@ def main(args):
 			if found:
 				### Yes, add it to the graph with the correct label
 				## CPU info - if avaliable
-				if not block.startswith('sources\\nx'):
+				if not block.startswith('%s\\nx' % config['sourceName']):
 					try:
 						cpu = contents[block]['bind']['core0']
 						cpu = '\\nCPU%i' % cpu
@@ -347,9 +356,10 @@ def main(args):
 			print '  %s -> %s [label="%s"]' % (lut[chain['link'][0]], lut[chain['link'][1]], dtype)
 			
 		## Associations
-		for assoc0,assoc1 in associations:
-			print '  %s -> %s [style="dotted" dir="both"]' % (lut[assoc0], lut[assoc1])
-			
+		if config['includeAssociations']:
+			for assoc0,assoc1 in associations:
+				print '  %s -> %s [style="dotted" dir="both"]' % (lut[assoc0], lut[assoc1])
+				
 		print "}"
 
 
