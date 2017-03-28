@@ -201,7 +201,42 @@ def _getDataFlows(blocks):
 						if ring in refROuts:
 							#print refRing, rins, block
 							chains.append( {'link':(refBlock,block), 'dtype':dtype} )
-	return sources, sinks, chains
+							
+	# Find out the associations (based on core binding)
+	associations = []
+	for block in blocks:
+		refBlock = block
+		refCores = []
+		for i in xrange(32):
+			try:
+				refCores.append( blocks[block]['bind']['core%i' % i] )
+			except KeyError:
+				break
+				
+		if len(refCores) == 0:
+			continue
+			
+		for block in blocks:
+			if block == refBlock:
+				continue
+				
+			cores = []
+			for i in xrange(32):
+				try:
+					cores.append( blocks[block]['bind']['core%i' % i] )
+				except KeyError:
+					break
+					
+			if len(cores) == 0:
+				continue
+				
+			for core in cores:
+				if core in refCores:
+					if (refBlock,block) not in associations:
+						if (block,refBlock) not in associations:
+							associations.append( (refBlock, block) )
+	
+	return sources, sinks, chains, associations
 
 
 def main(args):
@@ -230,7 +265,7 @@ def main(args):
 			lut[block] = chr(i+97)
 			
 		# Find chains of linked blocks
-		sources, sinks, chains = _getDataFlows(contents)
+		sources, sinks, chains, associations = _getDataFlows(contents)
 		
 		# Trim the command line
 		if cmd.startswith('python'):
@@ -254,7 +289,15 @@ def main(args):
 						break
 				if found:
 					break
-					
+			if not found:
+				for assoc0,assoc1 in associations:
+					if assoc0 == block:
+						found = True
+						break
+					elif assoc1 == block:
+						found = True
+						break
+						
 			if found:
 				### Yes, add it to the graph with the correct label
 				## CPU info - if avaliable
@@ -282,6 +325,11 @@ def main(args):
 				dtype = ' %s' % dtype
 			### Add it to the list
 			print '  %s -> %s [label="%s"]' % (lut[chain['link'][0]], lut[chain['link'][1]], dtype)
+			
+		## Associations
+		for assoc0,assoc1 in associations:
+			print '  %s -> %s [style="dotted" dir="both"]' % (lut[assoc0], lut[assoc1])
+			
 		print "}"
 
 
