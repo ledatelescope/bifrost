@@ -267,6 +267,23 @@ def main(args):
 		# Find chains of linked blocks
 		sources, sinks, chains, associations = _getDataFlows(contents)
 		
+		# Add in network sources, if needed
+		i = len(contents.keys())
+		for block in sources:
+			if block.startswith('udp'):
+				nsrc = None
+				try:
+					nsrc = contents[block]['sizes']['nsrc']
+				except KeyError:
+					pass
+					
+				if nsrc is not None:
+					name = 'sources\\nx%i' % nsrc
+					lut[name] = chr(i+97)
+					i += 1
+					
+					chains.append( {'link':(name,block), 'dtype':'UDP'} )
+					
 		# Trim the command line
 		if cmd.startswith('python'):
 			cmd = cmd.split(None, 1)[1]
@@ -301,11 +318,14 @@ def main(args):
 			if found:
 				### Yes, add it to the graph with the correct label
 				## CPU info - if avaliable
-				try:
-					cpu = contents[block]['bind']['core0']
-					cpu = 'CPU%i' % cpu
-				except KeyError:
-					cpu = "Unbound"
+				if not block.startswith('sources\\nx'):
+					try:
+						cpu = contents[block]['bind']['core0']
+						cpu = '\\nCPU%i' % cpu
+					except KeyError:
+						cpu = "\\nUnbound"
+				else:
+					cpu = ''
 				## Shape - based on function (source vs. sink vs. connection)
 				shape = 'box'
 				if block in sources:
@@ -313,7 +333,7 @@ def main(args):
 				if block in sinks:
 					shape = 'diamond'
 				## Add it to the list
-				print '  %s [label="%s\\n%s" shape="%s"]' % (lut[block], block, cpu, shape)
+				print '  %s [label="%s%s" shape="%s"]' % (lut[block], block, cpu, shape)
 				
 		## Chains
 		for chain in chains:
