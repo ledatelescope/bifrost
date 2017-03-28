@@ -58,6 +58,11 @@ def parseOptions(args):
 
 
 def _getTransmitReceive():
+	"""
+	Read in the /dev/bifrost ProcLog data and return block-level information 
+	about udp* blocks.
+	"""
+	
 	## Find all running processes
 	pidDirs = glob.glob(os.path.join(BIFROST_STATS_BASE_DIR, '*'))
 	pidDirs.sort()
@@ -92,6 +97,12 @@ def _getTransmitReceive():
 
 
 def _getCommandLine(pid):
+	"""
+	Given a PID, use the /proc interface to get the full command line for 
+	the process.  Return an empty string if the PID doesn't have an entry in
+	/proc.
+	"""
+	
 	cmd = ''
 	
 	try:
@@ -105,6 +116,10 @@ def _getCommandLine(pid):
 
 
 def _setUnits(value):
+	"""
+	Convert a value in bytes so a human-readable format with units.
+	"""
+	
 	if value > 1024.0**3:
 		value = value / 1024.0**3
 		unit = 'GB'
@@ -120,9 +135,17 @@ def _setUnits(value):
 
 
 def _addLine(screen, y, x, string, *args):
+	"""
+	Helper function for curses to add a line, clear the line to the end of 
+	the screen, and update the line number counter.
+	"""
+	
 	screen.addstr(y, x, string, *args)
 	screen.clrtoeol()
 	return y + 1
+
+
+_REDRAW_INTERVAL_SEC = 0.2
 
 
 def main(args):
@@ -130,8 +153,8 @@ def main(args):
 	
 	hostname = socket.gethostname()
 	
-	prevList = _getTransmitReceive()
-	order = sorted([prevList[key]['pid'] for key in prevList])
+	blockList = _getTransmitReceive()
+	order = sorted([blockList[key]['pid'] for key in blockList])
 	order = set(order)
 	nPID = len(order)
 	
@@ -144,6 +167,9 @@ def main(args):
 	
 	std = curses.A_NORMAL
 	rev = curses.A_REVERSE
+	
+	poll_interval = 3.0
+	tLastPoll = 0.0
 	
 	try:
 		sel = 0
@@ -160,20 +186,33 @@ def main(args):
 				sel -= 1
 			elif c == curses.KEY_DOWN:
 				sel += 1
-			sel = min([nPID-1, max([0, sel])])
-			
-			## Find all running processes
-			pidDirs = glob.glob(os.path.join(BIFROST_STATS_BASE_DIR, '*'))
-			pidDirs.sort()
-			
-			## Load the data
-			blockList = _getTransmitReceive()
-			
-			## Sort
-			order = sorted([blockList[key]['pid'] for key in blockList])
-			order = list(set(order))
-			nPID = len(order)
-			
+				
+			## Find the current selected process and see if it has changed
+			newSel = min([nPID-1, max([0, sel])])
+			if newSel != sel:
+				tLastPoll = 0.0
+				sel = newSel
+				
+			## Do we need to poll the system again?
+			if t-tLastPoll > poll_interval:
+				## Save what we had before
+				prevList = blockList
+				
+				## Find all running processes
+				pidDirs = glob.glob(os.path.join(BIFROST_STATS_BASE_DIR, '*'))
+				pidDirs.sort()
+				
+				## Load the data
+				blockList = _getTransmitReceive()
+				
+				## Sort
+				order = sorted([blockList[key]['pid'] for key in blockList])
+				order = list(set(order))
+				nPID = len(order)
+				
+				## Mark
+				tLastPoll = time.time()
+				
 			## Display
 			k = 0
 			### General - selected
@@ -202,7 +241,10 @@ def main(args):
 					if o == order[sel]:
 						st = dt
 						pst = pdt
-					tr = (dt['good'] - pdt['good']) / (dt['time'] - pdt['time'])
+					try:
+						tr = (dt['good'] - pdt['good']) / (dt['time'] - pdt['time'])
+					except ZeroDivisionError:
+						tr = 0.0
 					tp = dt['nvalid'] - pdt['nvalid']
 				except KeyError:
 					tr = 0.0
@@ -222,7 +264,10 @@ def main(args):
 					if o == order[sel]:
 						sr = dr
 						psr = pdr
-					rr = (dr['good'] - pdr['good']) / (dr['time'] - pdr['time'])
+					try:
+						rr = (dr['good'] - pdr['good']) / (dr['time'] - pdr['time'])
+					except ZeroDivisionError:
+						rr = 0.0
 					rp = dr['nvalid'] - pdr['nvalid']
 				except KeyError:
 					rr = 0.0
@@ -246,7 +291,10 @@ def main(args):
 				it = st['invalid']
 				mt = st['missing']
 				lt = st['late']
-				ft = 100.0*mt/(mt+gt)
+				try:
+					ft = 100.0*mt/(mt+gt)
+				except ZeroDivisionError:
+					ft = 0.0
 				try:
 					ct = 100.0*(st['missing']-pst['missing'])/(st['missing']-pst['missing']+st['good']-pst['good'])
 				except ZeroDivisionError:
@@ -263,7 +311,10 @@ def main(args):
 				mr = sr['missing']
 				ir = sr['invalid']
 				lr = sr['late']
-				fr = 100.0*mr/(mr+gr)
+				try:
+					fr = 100.0*mr/(mr+gr)
+				except ZeroDivisionError:
+					ft = 0.0
 				try:
 					cr = 100.0*(sr['missing']-psr['missing'])/(sr['missing']-psr['missing']+sr['good']-psr['good'])
 				except ZeroDivisionError:
@@ -300,8 +351,7 @@ def main(args):
 			scr.refresh()
 			
 			## Sleep
-			prevList = blockList
-			time.sleep(3.0)
+			time.sleep(_REDRAW_INTERVAL_SEC)
 			
 	except KeyboardInterrupt:
 		pass

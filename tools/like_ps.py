@@ -56,6 +56,23 @@ def parseOptions(args):
 
 
 def _getProcessDetails(pid):
+	"""
+	Use a call to 'ps' to get details about the specified PID.  These details
+	include:
+	  * the user running the process, 
+	  * the CPU usage of the process, 
+	  * the memory usage of the process, 
+	  * the process elapsed time, and
+	  * the number of threads.
+	These are returned as a dictionary.
+	
+	NOTE::  Using 'ps' to get this is slightly easier than directly querying 
+		  /proc, altough that method might be preferred.
+		  
+	NOTE::  Many of these details could be avoided by using something like the
+		  Python 'psutil' module.
+	"""
+	
 	data = {'user':'', 'cpu':0.0, 'mem':0.0, 'etime':'00:00', 'threads':0}
 	try:
 		output = subprocess.check_output('ps o user,pcpu,pmem,etime,nlwp %i' % pid, shell=True)
@@ -72,6 +89,12 @@ def _getProcessDetails(pid):
 
 
 def _getCommandLine(pid):
+	"""
+	Given a PID, use the /proc interface to get the full command line for 
+	the process.  Return an empty string if the PID doesn't have an entry in
+	/proc.
+	"""
+	
 	cmd = ''
 	
 	try:
@@ -133,7 +156,7 @@ def main(args):
 							if value not in rins:
 								rins.append( value )
 						else:
-							if value not in rins:
+							if value not in routs:
 								routs.append( value )
 			print "    %s" % block
 			if len(rins) > 0:

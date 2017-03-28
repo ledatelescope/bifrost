@@ -56,6 +56,11 @@ def parseOptions(args):
 
 
 def _getLoadAverage():
+	"""
+	Query the /proc/loadavg interface to get the 1, 5, and 10 minutes load 
+	averages.  The contents of this file is returned as a dictionary.
+	"""
+	
 	data = {'1min':0.0, '5min':0.0, '10min':0.0, 'procTotal':0, 'procRunning':0, 'lastPID':0}
 	
 	with open('/proc/loadavg', 'r') as fh:
@@ -77,6 +82,18 @@ def _getLoadAverage():
 global _CPU_STATE
 _CPU_STATE = {}
 def _getProcessorUsage():
+	"""
+	Read in the /proc/stat file to return a dictionary of the load on each \
+	CPU.  This dictionary also includes an 'avg' entry that gives the average
+	across all CPUs.
+	
+	NOTE::  In order for this to work a global variable of _CPU_STATE is
+		   needed to get the CPU usage change between calls.
+		   
+	NOTE::  Many of these details could be avoided by using something like the
+		  Python 'psutil' module.
+	"""
+	
 	data = {'avg': {'user':0.0, 'nice':0.0, 'sys':0.0, 'idle':0.0, 'wait':0.0, 'irq':0.0, 'sirq':0.0, 'steal':0.0, 'total':0.0}}
 	
 	with open('/proc/stat', 'r') as fh:
@@ -121,6 +138,14 @@ def _getProcessorUsage():
 
 
 def _getMemoryAndSwapUsage():
+	"""
+	Read in the /proc/meminfo and return a dictionary of the memory and swap 
+	usage for all processes.
+	
+	NOTE::  Many of these details could be avoided by using something like the
+		  Python 'psutil' module.
+	"""
+	
 	data = {'memTotal':0, 'memUsed':0, 'memFree':0, 
 		   'swapTotal':0, 'swapUsed':0, 'swapFree':0, 
 		   'buffers':0, 'cached':0}
@@ -150,6 +175,12 @@ def _getMemoryAndSwapUsage():
 
 
 def _getCommandLine(pid):
+	"""
+	Given a PID, use the /proc interface to get the full command line for 
+	the process.  Return an empty string if the PID doesn't have an entry in
+	/proc.
+	"""
+	
 	cmd = ''
 	
 	try:
@@ -163,9 +194,17 @@ def _getCommandLine(pid):
 
 
 def _addLine(screen, y, x, string, *args):
+	"""
+	Helper function for curses to add a line, clear the line to the end of 
+	the screen, and update the line number counter.
+	"""
+	
 	screen.addstr(y, x, string, *args)
 	screen.clrtoeol()
 	return y + 1
+
+
+_REDRAW_INTERVAL_SEC = 0.2
 
 
 def main(args):
@@ -181,6 +220,9 @@ def main(args):
 	std = curses.A_NORMAL
 	rev = curses.A_REVERSE
 	
+	poll_interval = 3.0
+	tLastPoll = 0.0
+	
 	try:
 		while True:
 			t = time.time()
@@ -191,45 +233,50 @@ def main(args):
 			if c == ord('q'):
 				break
 				
-			## Load in the various bits form /proc that we need
-			load = _getLoadAverage()
-			cpu  = _getProcessorUsage()
-			mem  = _getMemoryAndSwapUsage()
-			
-			## Find all running processes
-			pidDirs = glob.glob(os.path.join(BIFROST_STATS_BASE_DIR, '*'))
-			pidDirs.sort()
-			
-			## Load the data
-			blockList = {}
-			for pidDir in pidDirs:
-				pid = int(os.path.basename(pidDir), 10)
-				contents = load_by_pid(pid)
+			## Do we need to poll the system again?
+			if t-tLastPoll > poll_interval:
+				## Load in the various bits form /proc that we need
+				load = _getLoadAverage()
+				cpu  = _getProcessorUsage()
+				mem  = _getMemoryAndSwapUsage()
 				
-				cmd = _getCommandLine(pid)
-				if cmd == '':
-					continue
+				## Find all running processes
+				pidDirs = glob.glob(os.path.join(BIFROST_STATS_BASE_DIR, '*'))
+				pidDirs.sort()
+				
+				## Load the data
+				blockList = {}
+				for pidDir in pidDirs:
+					pid = int(os.path.basename(pidDir), 10)
+					contents = load_by_pid(pid)
 					
-				for block in contents.keys():
-					try:
-						log = contents[block]['bind']
-						cr = log['core0']
-					except KeyError:
+					cmd = _getCommandLine(pid)
+					if cmd == '':
 						continue
 						
-					try:
-						log = contents[block]['perf']
-						ac = max([0.0, log['acquire_time']])
-						pr = max([0.0, log['process_time']])
-						re = max([0.0, log['reserve_time']])
-					except KeyError:
-						ac, pr, re = 0.0, 0.0, 0.0
+					for block in contents.keys():
+						try:
+							log = contents[block]['bind']
+							cr = log['core0']
+						except KeyError:
+							continue
+							
+						try:
+							log = contents[block]['perf']
+							ac = max([0.0, log['acquire_time']])
+							pr = max([0.0, log['process_time']])
+							re = max([0.0, log['reserve_time']])
+						except KeyError:
+							ac, pr, re = 0.0, 0.0, 0.0
+							
+						blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re}
 						
-					blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re}
-					
-			## Sort
-			order = sorted(blockList, key=lambda x: blockList[x]['process'], reverse=True)
-			
+				## Sort
+				order = sorted(blockList, key=lambda x: blockList[x]['process'], reverse=True)
+				
+				## Mark
+				tLastPoll = time.time()
+				
 			## Display
 			k = 0
 			### General - load average
@@ -263,7 +310,7 @@ def main(args):
 					c = '%5.1f' % c
 				except KeyError:
 					c = '%5s' % ' '
-				output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'], d['core'], c, d['acquire']+d['process']+d['reserve'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
+				output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'][:15], d['core'], c, d['acquire']+d['process']+d['reserve'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
 				k = _addLine(scr, k, 0, output, std)
 				if k > size[0]:
 					break
@@ -273,7 +320,7 @@ def main(args):
 			scr.refresh()
 			
 			## Sleep
-			time.sleep(3.0)
+			time.sleep(_REDRAW_INTERVAL_SEC)
 			
 	except KeyboardInterrupt:
 		pass
