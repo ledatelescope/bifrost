@@ -145,19 +145,6 @@ class BFudptransmit_impl {
 	ProcLog            _stat_log;
 	pid_t              _pid;
 	
-	inline struct msghdr _build_msghdr(char* packet, unsigned int len) {
-		struct msghdr msg;
-		struct iovec iov[1];
-		
-		iov[0].iov_base = packet;
-		iov[0].iov_len = len;
-		
-		memset(&msg, 0, sizeof(msg));
-		msg.msg_iov = iov;
-		msg.msg_iovlen = 1;
-		
-		return msg;
-	}
 	void update_stats_log() {
 		const PacketStats* stats = _transmit.get_stats();
 		_stat_log.update() << "ngood_bytes    : " << stats->nvalid_bytes << "\n"
