@@ -115,6 +115,86 @@ def _getCommandLine(pid):
 	return cmd
 
 
+def _getStatistics(blockList, prevList):
+	"""
+	Given a list of running blocks and a previous version of that, compute 
+	basic statistics for the UDP blocks.
+	"""
+	
+	# Loop over the blocks to find udp_capture and udp_transmit blocks
+	output = {}
+	for block in blockList:
+		if block.find('udp_capture') != -1:
+			## udp_capture is RX
+			good = True
+			type = 'rx'
+			curr = blockList[block]
+			try:
+				prev = prevList[block]
+			except KeyError:
+				prev = curr
+				
+		elif block.find('udp_transmit') != -1:
+			## udp_transmit is TX
+			good = True
+			type = 'tx'
+			curr = blockList[block]
+			try:
+				prev = prevList[block]
+			except KeyError:
+				prev = curr
+				
+		else:
+			## Other is not relevant
+			good = False
+			
+		## Skip over irrelevant blocks
+		if not good:
+			continue
+			
+		## PID
+		pid = curr['pid']
+		## Computed statistics - rates
+		try:
+			drate = (curr['good'  ] - prev['good'  ]) / (curr['time'] - prev['time'])
+			prate = (curr['nvalid'] - prev['nvalid']) / (curr['time'] - prev['time'])
+		except ZeroDivisionError:
+			drate = 0.0
+			prate = 0.0
+		## Computed statistics - packet loss - global
+		try:
+			gloss = 100.0*curr['missing']/(curr['good'] + curr['missing'])
+		except ZeroDivisionError:
+			gloss = 0.0
+		## Computed statistics - packet loss - current
+		try:
+			closs = 100.0*(curr['missing']-prev['missing'])/(curr['missing']-prev['missing']+curr['good']-prev['good'])
+		except ZeroDivisionError:
+			closs = 0.0
+			
+		## Save
+		### Setup
+		try:
+			output[pid][type]
+		except KeyError:
+			output[pid] = {}
+			output[pid]['rx' ] = {'good':0, 'missing':0, 'invalid':0, 'late':0, 'drate':0.0, 'prate':0.0, 'gloss':0.0, 'closs':0.0}
+			output[pid]['tx' ] = {'good':0, 'missing':0, 'invalid':0, 'late':0, 'drate':0.0, 'prate':0.0, 'gloss':0.0, 'closs':0.0}
+			output[pid]['cmd'] = _getCommandLine(pid)
+		### Actual data
+		output[pid][type]['good'   ] = curr['good'   ]
+		output[pid][type]['missing'] = curr['missing']
+		output[pid][type]['invalid'] = curr['invalid']
+		output[pid][type]['late'   ] = curr['late'   ]
+		output[pid][type]['drate'  ] = drate
+		output[pid][type]['prate'  ] = prate
+		output[pid][type]['gloss'  ] = gloss
+		output[pid][type]['closs'  ] = closs
+		
+	# Done
+	return output
+
+
 def _setUnits(value):
 	"""
 	Convert a value in bytes so a human-readable format with units.
@@ -210,6 +290,9 @@ def main(args):
 				order = list(set(order))
 				nPID = len(order)
 				
+				## Stats
+				stats = _getStatistics(blockList, prevList)
+				
 				## Mark
 				tLastPoll = time.time()
 				
@@ -229,53 +312,18 @@ def main(args):
 			k = _addLine(scr, k, 0, output, rev)
 			### Data
 			for o in order:
-				try:
-					dt = blockList['%i-udp_transmit' % o]
-				except KeyError:
-					dt = {}
-				try:
-					pdt = prevList['%i-udp_transmit' % o]
-				except KeyError:
-					pdt = {}
-				try:
-					if o == order[sel]:
-						st = dt
-						pst = pdt
-					try:
-						tr = (dt['good'] - pdt['good']) / (dt['time'] - pdt['time'])
-					except ZeroDivisionError:
-						tr = 0.0
-					tp = dt['nvalid'] - pdt['nvalid']
-				except KeyError:
-					tr = 0.0
-					tp = 0
-				tr, tu = _setUnits(tr)
+				curr = stats[o]
+				if o == order[sel]:
+					act = curr
+				
+				drateR, prateR = curr['rx']['drate'], curr['rx']['prate']
+				drateR, drateuR = _setUnits(drateR)
+				
+				drateT, prateT = curr['tx']['drate'], curr['tx']['prate']
+				drateT, drateuT = _setUnits(drateT)
 				
 				
-				try:
-					dr = blockList['%i-udp_capture' % o]
-				except KeyError:
-					dr = {}
-				try:
-					pdr = prevList['%i-udp_capture' % o]
-				except KeyError:
-					pdr = {}
-				try:
-					if o == order[sel]:
-						sr = dr
-						psr = pdr
-					try:
-						rr = (dr['good'] - pdr['good']) / (dr['time'] - pdr['time'])
-					except ZeroDivisionError:
-						rr = 0.0
-					rp = dr['nvalid'] - pdr['nvalid']
-				except KeyError:
-					rr = 0.0
-					rp = 0
-				rr, ru = _setUnits(rr)
-				
-				
-				output = '%6i        %7.2f%2s        %6i        %7.2f%2s        %6i\n' % (o, rr, ru, rp, tr, tu, tp)
+				output = '%6i        %7.2f%2s        %6i        %7.2f%2s        %6i\n' % (o, drateR, drateuR, prateR, drateT, drateuT, prateT)
 				if o == order[sel]:
 					k = _addLine(scr, k, 0, output, std|curses.A_BOLD)
 				else:
@@ -285,64 +333,25 @@ def main(args):
 			while k < size[0]-9:
 				output = ' '
 				k = _addLine(scr, k, 0, output, std)
+				
 			### Details of selected
-			try:
-				gt = st['good']
-				it = st['invalid']
-				mt = st['missing']
-				lt = st['late']
-				try:
-					ft = 100.0*mt/(mt+gt)
-				except ZeroDivisionError:
-					ft = 0.0
-				try:
-					ct = 100.0*(st['missing']-pst['missing'])/(st['missing']-pst['missing']+st['good']-pst['good'])
-				except ZeroDivisionError:
-					ct = 0.0
-			except KeyError:
-				gt = 0
-				mt = 0
-				it = 0
-				lt = 0
-				ft = 0.0
-				ct = 0.0
-			try:
-				gr = sr['good']
-				mr = sr['missing']
-				ir = sr['invalid']
-				lr = sr['late']
-				try:
-					fr = 100.0*mr/(mr+gr)
-				except ZeroDivisionError:
-					ft = 0.0
-				try:
-					cr = 100.0*(sr['missing']-psr['missing'])/(sr['missing']-psr['missing']+sr['good']-psr['good'])
-				except ZeroDivisionError:
-					cr = 0.0
-			except KeyError:
-				gr = 0
-				mr = 0
-				ir = 0
-				lr = 0
-				fr = 0.0
-				cr = 0.0
 			output = 'Details            %19s           %19s' % ('RX', 'TX')
 			output += ' '*(size[1]-len(output))
 			output += '\n'
 			k = _addLine(scr, k, 0, output, rev)
-			output = 'Good:              %18iB          %18iB\n' % (gr, gt)
+			output = 'Good:              %18iB           %18iB\n' % (act['rx']['good'   ], act['tx']['good'   ])
 			k = _addLine(scr, k, 0, output, std)
-			output = 'Missing:           %18iB          %18iB\n' % (mr, mt)
+			output = 'Missing:           %18iB           %18iB\n' % (act['rx']['missing'], act['tx']['missing'])
 			k = _addLine(scr, k, 0, output, std)
-			output = 'Invalid:           %18iB          %18iB\n' % (ir, it)
+			output = 'Invalid:           %18iB           %18iB\n' % (act['rx']['invalid'], act['tx']['invalid'])
 			k = _addLine(scr, k, 0, output, std)
-			output = 'Late:              %18iB          %18iB\n' % (lr, lt)
+			output = 'Late:              %18iB           %18iB\n' % (act['rx']['late'   ], act['tx']['late'   ])
 			k = _addLine(scr, k, 0, output, std)
-			output = 'Global Missing:    %18.2f%%          %18.2f%%\n' % (fr, ft)
+			output = 'Global Missing:    %18.2f%%           %18.2f%%\n' % (act['rx']['gloss'  ], act['tx']['gloss'  ])
 			k = _addLine(scr, k, 0, output, std)
-			output = 'Current Missing:   %18.2f%%          %18.2f%%\n' % (cr, ct)
+			output = 'Current Missing:   %18.2f%%           %18.2f%%\n' % (act['rx']['closs'  ], act['tx']['closs'  ])
 			k = _addLine(scr, k, 0, output, std)
-			output = 'Command:           %s' % _getCommandLine(order[sel])
+			output = 'Command:           %s' % act['cmd']
 			k = _addLine(scr, k, 0, output[:size[1]], std)
 			
 			### Clear to the bottom
