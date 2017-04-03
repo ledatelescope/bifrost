@@ -125,10 +125,10 @@ public:
 		ssize_t nsent = sendmmsg(_fd, packets, npackets, 0);
 		if( nsent == -1 ) {
 			_stats.ninvalid += npackets;
-			_stats.ninvalid_bytes += packets->msg_len;
+			_stats.ninvalid_bytes += npackets * packets->msg_len;
 		} else {
 			_stats.nvalid += npackets;
-			_stats.nvalid_bytes += packets->msg_len;
+			_stats.nvalid_bytes += npackets * packets->msg_len;
 		}
 		return nsent;
 	}
