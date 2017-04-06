@@ -186,10 +186,10 @@ def _getStatistics(blockList, prevList):
 		output[pid][type]['missing'] = curr['missing']
 		output[pid][type]['invalid'] = curr['invalid']
 		output[pid][type]['late'   ] = curr['late'   ]
-		output[pid][type]['drate'  ] = drate
-		output[pid][type]['prate'  ] = prate
-		output[pid][type]['gloss'  ] = gloss
-		output[pid][type]['closs'  ] = closs
+		output[pid][type]['drate'  ] = max([0.0, drate])
+		output[pid][type]['prate'  ] = max([0.0, prate])
+		output[pid][type]['gloss'  ] = max([0.0, min([gloss, 100.0])])
+		output[pid][type]['closs'  ] = max([0.0, min([closs, 100.0])])
 		
 	# Done
 	return output
@@ -210,7 +210,7 @@ def _setUnits(value):
 		value = value / 1024.0*1
 		unit = 'kB'
 	else:
-		unit = 'B '
+		unit = ' B'
 	return value, unit
 
 
@@ -306,7 +306,7 @@ def main(args):
 			k = _addLine(scr, k, 0, output, std)
 			### General - header
 			k = _addLine(scr, k, 0, ' ', std)
-			output = '%6s        %9s        %6s        %9s        %6s' % ('PID', 'RX Rate', 'RX #', 'TX Rate', 'TX #')
+			output = '%6s        %9s        %6s        %9s        %6s' % ('PID', 'RX Rate', 'RX #/s', 'TX Rate', 'TX #/s')
 			output += ' '*(size[1]-len(output))
 			output += '\n'
 			k = _addLine(scr, k, 0, output, rev)
