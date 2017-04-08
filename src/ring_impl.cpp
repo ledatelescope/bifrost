@@ -598,7 +598,7 @@ void BFring_impl::acquire_span(BFrsequence rsequence,
 	BFoffset begin = std::max(requested_begin, _tail);
 	// Note: This results in size being 0 if the requested span has been
 	//         completely overwritten.
-	BFsize   size  = std::max(requested_end - begin, BFoffset(0));
+	BFsize   size  = std::max(BFdelta(requested_end - begin), BFdelta(0));
 	
 	if( sequence->is_finished() ) {
 		BF_ASSERT_EXCEPTION(begin < sequence->end(),
