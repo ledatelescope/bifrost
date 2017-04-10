@@ -8,6 +8,7 @@ import time
 import curses
 import getopt
 import socket
+from datetime import datetime
 
 from bifrost.proclog import load_by_pid
 
@@ -122,7 +123,7 @@ def _getStatistics(blockList, prevList):
 	"""
 	
 	# Loop over the blocks to find udp_capture and udp_transmit blocks
-	output = {}
+	output = {'updated': datetime.now()}
 	for block in blockList:
 		if block.find('udp_capture') != -1:
 			## udp_capture is RX
@@ -248,7 +249,7 @@ def main(args):
 	std = curses.A_NORMAL
 	rev = curses.A_REVERSE
 	
-	poll_interval = 3.0
+	poll_interval = 1.0
 	tLastPoll = 0.0
 	
 	try:
@@ -296,10 +297,16 @@ def main(args):
 				## Mark
 				tLastPoll = time.time()
 				
+				## Clear
+				act = None
+				
 			## Display
 			k = 0
 			### General - selected
-			output = ' PID: %i on %s' % (order[sel], hostname)
+			try:
+				output = ' PID: %i on %s' % (order[sel], hostname)
+			except IndexError:
+				output = ' PID: n/a on %s' % (hostname,)
 			output += ' '*(size[1]-len(output)-len(os.path.basename(__file__))-1)
 			output += os.path.basename(__file__)+' '
 			output += '\n'
@@ -335,25 +342,26 @@ def main(args):
 				k = _addLine(scr, k, 0, output, std)
 				
 			### Details of selected
-			output = 'Details            %19s           %19s' % ('RX', 'TX')
+			output = 'Details - %8s     %19s           %19s' % (stats['updated'].strftime("%H:%M:%S"), 'RX', 'TX')
 			output += ' '*(size[1]-len(output))
 			output += '\n'
 			k = _addLine(scr, k, 0, output, rev)
-			output = 'Good:              %18iB           %18iB\n' % (act['rx']['good'   ], act['tx']['good'   ])
-			k = _addLine(scr, k, 0, output, std)
-			output = 'Missing:           %18iB           %18iB\n' % (act['rx']['missing'], act['tx']['missing'])
-			k = _addLine(scr, k, 0, output, std)
-			output = 'Invalid:           %18iB           %18iB\n' % (act['rx']['invalid'], act['tx']['invalid'])
-			k = _addLine(scr, k, 0, output, std)
-			output = 'Late:              %18iB           %18iB\n' % (act['rx']['late'   ], act['tx']['late'   ])
-			k = _addLine(scr, k, 0, output, std)
-			output = 'Global Missing:    %18.2f%%           %18.2f%%\n' % (act['rx']['gloss'  ], act['tx']['gloss'  ])
-			k = _addLine(scr, k, 0, output, std)
-			output = 'Current Missing:   %18.2f%%           %18.2f%%\n' % (act['rx']['closs'  ], act['tx']['closs'  ])
-			k = _addLine(scr, k, 0, output, std)
-			output = 'Command:           %s' % act['cmd']
-			k = _addLine(scr, k, 0, output[:size[1]], std)
-			
+			if act is not None:
+				output = 'Good:                  %18iB           %18iB\n' % (act['rx']['good'   ], act['tx']['good'   ])
+				k = _addLine(scr, k, 0, output, std)
+				output = 'Missing:               %18iB           %18iB\n' % (act['rx']['missing'], act['tx']['missing'])
+				k = _addLine(scr, k, 0, output, std)
+				output = 'Invalid:               %18iB           %18iB\n' % (act['rx']['invalid'], act['tx']['invalid'])
+				k = _addLine(scr, k, 0, output, std)
+				output = 'Late:                  %18iB           %18iB\n' % (act['rx']['late'   ], act['tx']['late'   ])
+				k = _addLine(scr, k, 0, output, std)
+				output = 'Global Missing:        %18.2f%%           %18.2f%%\n' % (act['rx']['gloss'  ], act['tx']['gloss'  ])
+				k = _addLine(scr, k, 0, output, std)
+				output = 'Current Missing:       %18.2f%%           %18.2f%%\n' % (act['rx']['closs'  ], act['tx']['closs'  ])
+				k = _addLine(scr, k, 0, output, std)
+				output = 'Command:               %s' % act['cmd']
+				k = _addLine(scr, k, 0, output[:size[1]], std)
+				
 			### Clear to the bottom
 			scr.clrtobot()
 			### Refresh

@@ -7,6 +7,7 @@ import glob
 import time
 import curses
 import getopt
+import socket
 
 from bifrost.proclog import load_by_pid
 
@@ -210,6 +211,8 @@ _REDRAW_INTERVAL_SEC = 0.2
 def main(args):
 	config = parseOptions(args)
 	
+	hostname = socket.gethostname()
+	
 	scr = curses.initscr()
 	curses.noecho()
 	curses.cbreak()
@@ -220,7 +223,7 @@ def main(args):
 	std = curses.A_NORMAL
 	rev = curses.A_REVERSE
 	
-	poll_interval = 3.0
+	poll_interval = 1.0
 	tLastPoll = 0.0
 	
 	try:
@@ -280,7 +283,7 @@ def main(args):
 			## Display
 			k = 0
 			### General - load average
-			output = '%s - load average: %s, %s, %s\n' % (os.path.basename(__file__), load['1min'], load['5min'], load['10min'])
+			output = '%s - %s - load average: %s, %s, %s\n' % (os.path.basename(__file__), hostname, load['1min'], load['5min'], load['10min'])
 			k = _addLine(scr, k, 0, output, std)
 			### General - process counts
 			output = 'Processes: %s total, %s running\n' % (load['procTotal'], load['procRunning'])
@@ -312,7 +315,7 @@ def main(args):
 					c = '%5s' % ' '
 				output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'][:15], d['core'], c, d['acquire']+d['process']+d['reserve'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
 				k = _addLine(scr, k, 0, output, std)
-				if k > size[0]:
+				if k >= size[0] - 1:
 					break
 			### Clear to the bottom
 			scr.clrtobot()
