@@ -1,16 +1,20 @@
-.. bifrost documentation master file, created by
-   sphinx-quickstart on Thu Apr 27 09:41:02 2017.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. bifrost documentation master file
 
-Welcome to bifrost's documentation!
+Welcome to Bifrost's documentation!
 ===================================
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-
+   Common-installation-and-execution-problems
+   Cpp-Development
+   Getting-started-guide
+   Home
+   How-Python-and-C---fits-together
+   Python-API
+   Ring()-API
+   Some-helpful-tips-and-warnings
 
 Indices and tables
 ==================
