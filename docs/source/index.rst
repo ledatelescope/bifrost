@@ -8,14 +8,15 @@ Welcome to Bifrost's documentation!
    :numbered:
    :caption: Table of Contents
 
+   Home
+   Getting-started-guide
+   How-Python-and-C---fits-together
    Common-installation-and-execution-problems
    Cpp-Development
-   Getting-started-guide
-   Home
-   How-Python-and-C---fits-together
    Python-API
    Ring()-API
    Some-helpful-tips-and-warnings
+   cpp_reference
 
 Indices and tables
 ==================
