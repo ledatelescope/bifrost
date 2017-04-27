@@ -33,8 +33,10 @@ import numpy as np
 
 class UDPCapture(object):
 	def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
-	             buffer_ntime, slot_ntime, sequence_callback, core=-1):
+	             buffer_ntime, slot_ntime, sequence_callback, core=None):
 		self.obj = None
+		if core is None:
+			core = -1
 		self.obj = _get(_bf.UdpCaptureCreate(format=fmt,
 		                                     fd=sock.fileno(),
 		                                     ring=ring.obj,
