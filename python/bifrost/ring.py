@@ -37,7 +37,7 @@ from uuid import uuid4
 
 class Ring(object):
 	def __init__(self, space='system', name=None):
-		if name is None
+		if name is None:
 			name = str(uuid4())
 		space = _string2space(space)
 		#self.obj = None
