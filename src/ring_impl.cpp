@@ -579,6 +579,19 @@ void BFring_impl::acquire_span(BFrsequence rsequence,
 	BFoffset requested_begin = sequence->begin() + offset;
 	BFoffset requested_end   = requested_begin + *size_;
 	
+	if( rsequence->guaranteed() ) {
+		BFoffset guarantee_begin = rsequence->guarantee_begin();
+		if( BFdelta(requested_begin - guarantee_begin) > BFdelta(0) ) {
+			// Move the guarantee forward to the beginning of this span
+			// Note: This is (only) important when reading starts in the middle
+			//         of a sequence (e.g., a triggered dump); otherwise the
+			//         guarantee is probably already here.
+			this->_remove_guarantee(guarantee_begin);
+			this->_add_guarantee(requested_begin);
+			rsequence->set_guarantee_begin(requested_begin);
+		}
+	}
+	
 	// This function returns whatever part of the requested span is available
 	//   (meaning not overwritten and not past the end of the sequence).
 	//   It will return a 0-length span if the requested span has been
@@ -598,7 +611,7 @@ void BFring_impl::acquire_span(BFrsequence rsequence,
 	BFoffset begin = std::max(requested_begin, _tail);
 	// Note: This results in size being 0 if the requested span has been
 	//         completely overwritten.
-	BFsize   size  = std::max(requested_end - begin, BFoffset(0));
+	BFsize   size  = std::max(BFdelta(requested_end - begin), BFdelta(0));
 	
 	if( sequence->is_finished() ) {
 		BF_ASSERT_EXCEPTION(begin < sequence->end(),
@@ -616,17 +629,15 @@ void BFring_impl::release_span(BFrsequence sequence,
                                BFoffset    begin,
                                BFsize      size) {
 	unique_lock_type lock(_mutex);
+	
 	if( sequence->guaranteed() ) {
 		// Move the guarantee to the end of this span
 		this->_remove_guarantee(sequence->guarantee_begin());
-		//auto iter = _guarantees.find(sequence->guarantee_begin());
-		//BF_ASSERT_EXCEPTION(iter != _guarantees.end(), BF_STATUS_INTERNAL_ERROR);
-		//_guarantees.erase(iter);
 		BFoffset new_begin = begin + size;
-		//_guarantees.insert(new_begin);
 		this->_add_guarantee(new_begin);
 		sequence->set_guarantee_begin(new_begin);
 	}
+	
 	--_nread_open;
 	_realloc_condition.notify_all();
 }
@@ -634,8 +645,7 @@ void BFring_impl::release_span(BFrsequence sequence,
 BFrspan_impl::BFrspan_impl(BFrsequence sequence,
                            BFoffset    offset, // Relative to sequence beg
                            BFsize      requested_size)
-	: //BFspan_impl(sequence->sequence(), requested_size),
-	  BFspan_impl(sequence->ring(), requested_size),
+	: BFspan_impl(sequence->ring(), requested_size),
 	  _sequence(sequence), _begin(0),
 	  _data(nullptr) {
 	BFsize returned_size = requested_size;

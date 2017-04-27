@@ -317,5 +317,5 @@ class SigprocSinkBlock(SinkBlock):
 		else:
 			raise ValueError("Internal error: Unknown data format!")
 
-def write_sigproc(path=None, *args, **kwargs):
-	return SigprocSinkBlock(path, *args, **kwargs)
+def write_sigproc(iring, path=None, *args, **kwargs):
+	return SigprocSinkBlock(iring, path, *args, **kwargs)
