@@ -65,4 +65,5 @@ class AudioSourceBlock(SourceBlock):
 		self.reader.stop()
 
 def read_audio(audio_kwargs, gulp_nframe, *args, **kwargs):
+	# Note: audio_kwargs used in place of sourcenames
 	return AudioSourceBlock(audio_kwargs, gulp_nframe, *args, **kwargs)#.orings[0]
