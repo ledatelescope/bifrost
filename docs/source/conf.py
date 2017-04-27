@@ -36,7 +36,8 @@ extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
     'sphinx.ext.ifconfig',
-    'sphinx.ext.viewcode']
+    'sphinx.ext.viewcode',
+    'breathe']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -44,9 +45,7 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
-
+# source_suffix = ['.rst', '.md'] source_suffix = '.rst' 
 # The master toctree document.
 master_doc = 'index'
 
@@ -154,9 +153,12 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'bifrost', u'bifrost Documentation',
-     author, 'bifrost', 'One line description of project.',
+     author, 'bifrost', 'A stream processing framework for high-throughput applications.',
      'Miscellaneous'),
 ]
 
 
+# -- Set up breathe -------------------------------------------------------
 
+breathe_projects = {"bifrost": "/home/miles/Documents/bifrost5/docs/doxygen/xml"}
+breathe_default_project = "bifrost"
