@@ -42,6 +42,8 @@ from .scrunch import scrunch, ScrunchBlock
 from .accumulate import accumulate, AccumulateBlock
 from .unpack import unpack, UnpackBlock
 from .quantize import quantize, QuantizeBlock
+from .wav import read_wav, WavSourceBlock
+from .wav import write_wav, WavSinkBlock
 try: # Avoid error if portaudio library not installed
 	from .audio import read_audio, AudioSourceBlock
 except:
