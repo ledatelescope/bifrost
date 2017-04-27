@@ -68,7 +68,7 @@ def zeros_like(arr, space=None):
 	return ret
 def zeros(shape, dtype, space=None, **kwargs):
 	ret = empty(shape, dtype, space, **kwargs)
-	memet(ret, 0)
+	memset_array(ret, 0)
 	return ret
 
 def copy_array(dst, src):
@@ -89,6 +89,7 @@ def memset_array(dst, value):
 	_check(_bf.ArrayMemset(dst_bf.as_BFarray(), value))
 	return dst
 
+# Stores Bifrost-specific metadata that augments Numpy's metadata
 class BFArrayInfo(object):
 	def __init__(self, space, dtype, native, conjugated, ownbuffer=None):
 		self.space      = space
@@ -105,6 +106,8 @@ class ndarray(np.ndarray):
 	            buffer=None, offset=0, strides=None,
 				native=None, conjugated=None):
 		#print "__new__ base, space, shape, dtype =", type(base), space, shape, dtype
+		if isinstance(shape, int):
+			shape = [shape]
 		ownbuffer = None
 		if base is not None:
 			if (shape is not None or
