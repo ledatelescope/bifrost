@@ -5,7 +5,8 @@ Welcome to Bifrost's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :numbered:
+   :caption: Table of Contents
 
    Common-installation-and-execution-problems
    Cpp-Development
