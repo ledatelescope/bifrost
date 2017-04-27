@@ -8,7 +8,7 @@ Welcome to Bifrost's documentation!
    :numbered:
    :caption: Table of Contents
 
-   Home
+   intro
    Getting-started-guide
    How-Python-and-C---fits-together
    Common-installation-and-execution-problems

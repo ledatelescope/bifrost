@@ -1,3 +1,6 @@
+Introduction to Bifrost
+=======================
+
 Bifrost is ...
 --------------
 
@@ -13,15 +16,6 @@ allows different signal processing *blocks* to be connected to form a
 buffers are used to transport data to and from blocks. Processing blocks
 may be run on either the CPU or GPU, and the ring buffer will take care
 of memory copies between the CPU and GPU spaces.
-
-Quick links
-^^^^^^^^^^^
-
--  [[Getting started guide]]
--  [[How Python and C++ fits together]]
--  [[C++ Development\|Cpp Development]]
--  [[Python API]]
--  [[Ring() API]]
 
 Core concepts
 -------------
