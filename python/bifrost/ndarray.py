@@ -86,7 +86,6 @@ def copy_array(dst, src):
 
 def memset_array(dst, value):
 	dst_bf = asarray(dst)
-	#_check(_bf.ArrayMemset(dst_bf.as_BFarray(), value))
 	_fast_call(_bf.ArrayMemset, dst_bf.as_BFarray(), value)
 	return dst
 

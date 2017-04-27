@@ -26,7 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _string2space, _space2string
+from libbifrost import _bf, _check, _get, _fast_get, _string2space, _space2string
 
 import ctypes
 import numpy as np
@@ -55,7 +55,7 @@ class UDPCapture(object):
 	def __exit__(self, type, value, tb):
 		self.end()
 	def recv(self):
-		return _get( _bf.UdpCaptureRecv(self.obj) )
+		return _fast_get(_bf.UdpCaptureRecv, self.obj)
 	def flush(self):
 		_check( _bf.UdpCaptureFlush(self.obj) )
 	def end(self):
