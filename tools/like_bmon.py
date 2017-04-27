@@ -331,10 +331,15 @@ def main(args):
 				
 				
 				output = '%6i        %7.2f%2s        %6i        %7.2f%2s        %6i\n' % (o, drateR, drateuR, prateR, drateT, drateuT, prateT)
-				if o == order[sel]:
-					k = _addLine(scr, k, 0, output, std|curses.A_BOLD)
-				else:
-					k = _addLine(scr, k, 0, output, std)
+				try:
+					if o == order[sel]:
+						sty = std|curses.A_BOLD
+					else:
+						sty = std
+				except IndexError:
+					sty = std
+				k = _addLine(scr, k, 0, output, sty)
+				
 				if k > size[0]-9:
 					break
 			while k < size[0]-9:
