@@ -80,6 +80,12 @@ int main() {
 
 namespace cuda {
 
+void check_error(cudaError_t ret) {
+	if( ret != cudaSuccess ) {
+		throw std::runtime_error(cudaGetErrorString(ret));
+	}
+}
+
 class stream {
 	cudaStream_t _obj;
 	// Not copy-assignable
@@ -90,11 +96,6 @@ class stream {
 	stream(const cuda::stream& other);
 	stream& operator=(const cuda::stream& other);
 #endif
-	void check_error(cudaError_t ret) const {
-		if( ret != cudaSuccess ) {
-			throw std::runtime_error(cudaGetErrorString(ret));
-		}
-	}
 	void destroy() { if( _obj ) { cudaStreamDestroy(_obj); _obj = 0; } }
 public:
 #if __cplusplus >= 201103L
@@ -167,6 +168,24 @@ public:
 	                              unsigned flags=cudaStreamNonBlocking)
 		: super_type(priority, flags) {}
 	inline ~scoped_stream() { this->synchronize(); }
+};
+// This version automatically makes a parent stream wait for it on destruction
+class child_stream : public cuda::stream {
+	typedef cuda::stream super_type;
+	cudaStream_t _parent;
+public:
+	inline explicit child_stream(cudaStream_t parent,
+	                             int          priority=0,
+	                             unsigned     flags=cudaStreamNonBlocking)
+		: super_type(priority, flags), _parent(parent) {}
+	inline ~child_stream() {
+		// Record event in this stream and make parent wait for it
+		cudaEvent_t event;
+		check_error(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+		check_error(cudaEventRecord(event, *this));
+		check_error(cudaStreamWaitEvent(_parent, event, 0));
+		check_error(cudaEventDestroy(event));
+	}
 };
 
 } // namespace cuda
