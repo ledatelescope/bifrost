@@ -1,5 +1,10 @@
 C++ Reference
 =============
 
-.. doxygenindex::
-   :project: bifrost
+.. toctree::
+    :caption: Table of Contents
+
+    classlist
+    filelist
+    namespacelist
+    structlist
