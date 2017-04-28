@@ -74,6 +74,10 @@ coverage.xml
 docs/_build/
 docs/build/
 docs/doxygen/
+#(These are generated files)
+docs/source/bifrost.blocks.rst
+docs/source/bifrost.rst
+docs/source/bifrost.views.rst
 
 # PyBuilder
 target/
