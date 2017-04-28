@@ -14,8 +14,6 @@ Welcome to Bifrost's documentation!
    Common-installation-and-execution-problems
    Cpp-Development
    Python-API
-   Ring()-API
-   Some-helpful-tips-and-warnings
    bifrost
    cpp_reference
 

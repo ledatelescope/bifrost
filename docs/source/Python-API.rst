@@ -1,9 +1,5 @@
-Contents
---------
-
-0. `Basic Syntax <#syntax>`__
-1. `Blocks <#blocks>`__
-2. `Pipelines <#pipelines>`__
+Python API
+==========
 
 Basic Syntax
 ------------
