@@ -16,8 +16,9 @@ Welcome to Bifrost's documentation!
    Python-API
    Ring()-API
    Some-helpful-tips-and-warnings
-   python_reference
+   bifrost
    cpp_reference
+
 
 Indices and tables
 ==================
