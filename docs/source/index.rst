@@ -14,6 +14,7 @@ Welcome to Bifrost's documentation!
    Common-installation-and-execution-problems
    Cpp-Development
    Python-API
+   bifrost.blocks
    bifrost
    cpp_reference
 
