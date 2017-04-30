@@ -37,12 +37,11 @@ as follows:
 3. Check pip is working with ``pip list``, which will give the versions
    of pip and setuptools.
 
-`NumPy <http://docs.scipy.org/doc/numpy/index.html>`__
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+numpy, matplotlib, contextlib2, simplejson, pint, graphviz
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you have already installed pip, this step should be as simple as
-``pip install numpy``. NumPy is used in the Python front end of Bifrost,
-and is very helpful for quick testing of pipeline ideas.
+``pip install --user numpy matplotlib contextlib2 simplejson pint graphviz``.
 
 `PyCLibrary (modified) <https://github.com/MatthieuDartiailh/pyclibrary>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -78,8 +77,14 @@ If you are ready to work with a GPU, you will want to get the newest
 `CUDA toolkit <https://developer.nvidia.com/cuda-downloads>`__. Follow
 the operating system-specific instructions to install.
 
-`OpenMP <http://openmp.org/wp/openmp-compilers/>`__
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Other Dependencies
+^^^^^^^^^^^^^^^^^^
+
+- exuberant-ctags
+- Basic build tools (make, gcc, etc.)
+
+On Ubuntu, the following command should grab everything you need: 
+    ``sudo apt-get install build-essential software-properties-common exuberant-ctags``
 
 Bifrost install
 ~~~~~~~~~~~~~~~
@@ -94,11 +99,8 @@ you are not working with GPUs, uncomment the line:
 
 ``#NOCUDA   = 1 # Disable CUDA support``.
 
-Now you can call ``make``, and ``make install`` to install the C backend
-of Bifrost to your computer.
-
-After this, navigate to ``bifrost/python``, and run
-``python setup.py install --user``, to install the Python interface.
+Now you can call ``make``, and ``make install`` to install
+Bifrost.
 
 Trying to call ``import bifrost`` inside of a Python program will tell
 you if your install was successful or not.
