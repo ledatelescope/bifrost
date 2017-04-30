@@ -1,20 +1,9 @@
 .. raw:: html
 
-   <!---
-   Currently using this book of tips : https://jacobian.org/writing/great-documentation/
-   -->
-
-   <!---
-   Should get a new user up and running in about 30 minutes.
-   -->
-
 Getting started guide
 =====================
 
 .. raw:: html
-
-   <!--- For a quick demo of Bifrost to whet your appetite, please check out our online demo at [GitHub Pages](bifrost.github.io). -->
-    
 
 If you have already installed Bifrost, look below to `Creating your
 first pipeline <#tutorial>`__
