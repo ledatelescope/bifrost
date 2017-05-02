@@ -20,9 +20,9 @@ together:
 .. code:: C
 
         for(int i=0; i < nelements; i+=1)
-                {
-                   x[i] = x[i] + y[i];
-                }
+        {
+            x[i] = x[i] + y[i];
+        }
 
 To get this into bifrost and use it in Python, you need to 'bifrostify'
 this code to accept bifrost's special ``ndarray`` class.
@@ -65,19 +65,19 @@ from before, after it's been bifrostified:
 .. code:: C
 
     BFstatus AddStuff(BFarray *xdata, BFarray *ydata)
-            {
-            long nelements = num_contiguous_elements(xdata);
+    {
+        long nelements = num_contiguous_elements(xdata);
 
-            float* x = (float *)xdata->data;
-            float* y = (float *)ydata->data;
+        float* x = (float *)xdata->data;
+        float* y = (float *)ydata->data;
 
-            for(int i=0; i < nelements; i +=1)
-                    {
-                       x[i] = x[i] + y[i];
-                    }
+        for(int i=0; i < nelements; i +=1)
+        {
+           x[i] = x[i] + y[i];
+        }
 
-            return BF_STATUS_SUCCESS;
-            }
+        return BF_STATUS_SUCCESS;
+    }
 
 A full code example (with headers etc) can be found at the end.
 
@@ -136,21 +136,21 @@ add\_stuff.cpp
 
     extern "C" {
     BFstatus AddStuff(BFarray *xdata, BFarray *ydata)
-            {
-            long nelements = num_contiguous_elements(xdata);
+    {
+        long nelements = num_contiguous_elements(xdata);
 
-            float* x = (float *)xdata->data;
-            float* y = (float *)ydata->data;
+        float* x = (float *)xdata->data;
+        float* y = (float *)ydata->data;
 
-            for(int i=0; i < nelements; i +=1)
-                    {
-                       x[i] = x[i] + y[i];
-                    }
+        for(int i=0; i < nelements; i +=1)
+        {
+           x[i] = x[i] + y[i];
+        }
 
-            return BF_STATUS_SUCCESS;
-            }
+        return BF_STATUS_SUCCESS;
+    }
 
-     }
+    }
 
 bifrost/add\_stuff.h
 ~~~~~~~~~~~~~~~~~~~~

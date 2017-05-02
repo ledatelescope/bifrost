@@ -104,7 +104,3 @@ Bifrost.
 
 Trying to call ``import bifrost`` inside of a Python program will tell
 you if your install was successful or not.
-
-Create your first pipeline
---------------------------
-
