@@ -12,10 +12,9 @@ Welcome to Bifrost's documentation!
    Getting-started-guide
    How-Python-and-C---fits-together
    Common-installation-and-execution-problems
-   Cpp-Development
-   Python-API
    bifrost.blocks
    bifrost
+   Cpp-Development
    cpp_reference
 
 
