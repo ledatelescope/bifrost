@@ -39,6 +39,8 @@ from bifrost.fdmt_block      import fdmt
 from copy import deepcopy
 
 class CallbackBlock(CopyBlock):
+        """Testing-only block which calls user-defined
+            functions on sequence and on data"""
 	def __init__(self, iring, seq_callback, data_callback, *args, **kwargs):
 		super(CallbackBlock, self).__init__(iring, *args, **kwargs)
 		self.seq_callback  = seq_callback
