@@ -10,6 +10,7 @@ Welcome to Bifrost's documentation!
 
    intro
    Getting-started-guide
+   Create-a-pipeline
    How-Python-and-C---fits-together
    Common-installation-and-execution-problems
    bifrost.blocks
