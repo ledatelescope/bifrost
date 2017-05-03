@@ -26,26 +26,29 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
+import unittest
+import io
 
-from .copy import copy, CopyBlock
-from .transpose import transpose, TransposeBlock
-from .reverse import reverse, ReverseBlock
-from .fft import fft, FftBlock
-from .fftshift import fftshift, FftShiftBlock
-from .fdmt import fdmt, FdmtBlock
-from .detect import detect, DetectBlock
-from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
-from .print_header import print_header, PrintHeaderBlock
-from .sigproc import read_sigproc, SigprocSourceBlock
-from .sigproc import write_sigproc, SigprocSinkBlock
-from .scrunch import scrunch, ScrunchBlock
-from .accumulate import accumulate, AccumulateBlock
-from .unpack import unpack, UnpackBlock
-from .quantize import quantize, QuantizeBlock
-from .wav import read_wav, WavSourceBlock
-from .wav import write_wav, WavSinkBlock
-try: # Avoid error if portaudio library not installed
-	from .audio import read_audio, AudioSourceBlock
-except:
-	pass
+import bifrost.pipeline as bfp
+import bifrost.blocks as blocks
+
+from contextlib2 import redirect_stdout, ExitStack
+
+class TestPrintHeader(unittest.TestCase):
+    """Test all aspects of the print header block"""
+    def setUp(self):
+        self.fil_file = "./data/2chan4bitNoDM.fil"
+    def test_read_sigproc(self):
+        """Capture print output, assert it is a long string"""
+        gulp_nframe = 101
+
+        stdout = io.BytesIO()
+        with ExitStack() as stack:
+            pipeline = stack.enter_context(bfp.Pipeline())
+            stack.enter_context(redirect_stdout(stdout))
+
+            rawdata = blocks.sigproc.read_sigproc([self.fil_file], gulp_nframe)
+            print_header_block = blocks.print_header(rawdata)
+            pipeline.run()
+        print_header_dump = stdout.getvalue()
+        self.assertGreater(len(print_header_dump), 10)

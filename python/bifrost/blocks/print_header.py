@@ -1,4 +1,3 @@
-
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
@@ -28,24 +27,35 @@
 
 from __future__ import absolute_import
 
-from .copy import copy, CopyBlock
-from .transpose import transpose, TransposeBlock
-from .reverse import reverse, ReverseBlock
-from .fft import fft, FftBlock
-from .fftshift import fftshift, FftShiftBlock
-from .fdmt import fdmt, FdmtBlock
-from .detect import detect, DetectBlock
-from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
-from .print_header import print_header, PrintHeaderBlock
-from .sigproc import read_sigproc, SigprocSourceBlock
-from .sigproc import write_sigproc, SigprocSinkBlock
-from .scrunch import scrunch, ScrunchBlock
-from .accumulate import accumulate, AccumulateBlock
-from .unpack import unpack, UnpackBlock
-from .quantize import quantize, QuantizeBlock
-from .wav import read_wav, WavSourceBlock
-from .wav import write_wav, WavSinkBlock
-try: # Avoid error if portaudio library not installed
-	from .audio import read_audio, AudioSourceBlock
-except:
-	pass
+from bifrost.pipeline import SinkBlock
+
+class PrintHeaderBlock(SinkBlock):
+    def __init__(self, iring, *args, **kwargs):
+        """Prints out the header of each new sequence of a ring
+        """
+        super(PrintHeaderBlock, self).__init__(iring, *args, **kwargs)
+    def on_sequence(self, iseq):
+        ihdr = iseq.header
+        print ihdr
+    def on_sequence_end(self, iseq):
+        pass
+    def on_data(self, ispan):
+        pass
+
+def print_header(iring, *args, **kwargs):
+    """Prints out the header of each new sequence of a ring
+
+    Use this for testing purposes to have a quick look
+    at the contents of a ring.
+
+    Parameters
+    ----------
+    iring : Ring
+        Contains the ring for which you wish to
+        print out the sequence headers for. 
+    
+    Returns
+    ------
+    PrintHeaderBlock
+    """
+    return PrintHeaderBlock(iring, *args, **kwargs)
