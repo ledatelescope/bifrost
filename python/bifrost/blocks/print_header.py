@@ -32,6 +32,8 @@ from bifrost.pipeline import SinkBlock
 class PrintHeaderBlock(SinkBlock):
     def __init__(self, iring, *args, **kwargs):
         """Prints out the header of each new sequence of a ring
+
+        Called by :meth:`bifrost.blocks.print_header`
         """
         super(PrintHeaderBlock, self).__init__(iring, *args, **kwargs)
     def on_sequence(self, iseq):
