@@ -95,3 +95,15 @@ class TestScrunchBlock(unittest.TestCase):
             call_data = CallbackBlock(
                     scrunched, self.check_sequence_after, self.check_data_after)
             pipeline.run()
+    def test_simple_scrunch(self):
+        """Check that scrunching 2 spans changes header correctly"""
+        self.shape_settings = [-1, 1, 2*2]
+        self.gulp_nframe = 101
+        with bfp.Pipeline() as pipeline:
+            data = blocks.sigproc.read_sigproc([self.fil_file], self.gulp_nframe)
+            call_data = CallbackBlock(
+                    data, self.check_sequence_before, self.check_data_before)
+            scrunched = blocks.scrunch(data, 2)
+            call_data = CallbackBlock(
+                    scrunched, self.check_sequence_after, self.check_data_after)
+            pipeline.run()
