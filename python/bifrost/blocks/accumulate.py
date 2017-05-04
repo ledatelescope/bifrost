@@ -39,7 +39,7 @@ from bifrost.pipeline import TransformBlock
 from copy import deepcopy
 
 class AccumulateBlock(TransformBlock):
-    """Accumulate frames of a ring.
+    """Accumulate and sum frames of a ring on the GPU.
 
     Use this block to reshape a data stream into larger chunks.
 
@@ -99,7 +99,6 @@ def accumulate(iring, nframe, dtype=None, gulp_nframe=1,
         *args, **kwargs):
     """Accumulate frames of a ring.
 
-    Use this block to reshape a data stream into larger chunks.
     This is the handler for `AccumulateBlock`
 
     Attributes
