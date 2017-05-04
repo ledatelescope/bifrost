@@ -50,32 +50,43 @@ class CallbackBlock(blocks.CopyBlock):
 
 class TestAccumulateBlock(unittest.TestCase):
     def setUp(self):
+        """Create settings shared between tests"""
         self.fil_file = "./data/2chan4bitNoDM.fil"
         self.gulp_nframe = 101
+        self.shape_settings = [-1, 1, 2]
     def check_sequence_before(self, seq):
+        """Function passed to `CallbackBlock`, which
+            checks sequence before accumulate"""
         tensor = seq.header['_tensor']
         self.assertEqual(tensor['shape'], [-1,1,2])
         self.assertEqual(tensor['dtype'], 'u8')
         self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
         self.assertEqual(tensor['units'], ['s', None, 'MHz'])
     def check_data_before(self, ispan, ospan):
+        """Function passed to `CallbackBlock`, which
+            checks data before accumulate"""
         self.assertLessEqual(ispan.nframe, self.gulp_nframe)
         self.assertEqual(ospan.nframe, ispan.nframe)
         self.assertEqual(ispan.data.shape, (ispan.nframe,1,2))
         self.assertEqual(ospan.data.shape, (ospan.nframe,1,2))
     def check_sequence_after(self, seq):
+        """Function passed to `CallbackBlock`, which
+            checks sequence after accumulate"""
         tensor = seq.header['_tensor']
-        self.assertEqual(tensor['shape'], [-1,1,2])
+        self.assertEqual(tensor['shape'], self.shape_settings)
         self.assertEqual(tensor['dtype'], 'u8')
         self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
         self.assertEqual(tensor['units'], ['s', None, 'MHz'])
     def check_data_after(self, ispan, ospan):
+        """Function passed to `CallbackBlock`, which
+            checks data after accumulate"""
         self.assertLessEqual(ispan.nframe, self.gulp_nframe)
         self.assertEqual(ospan.nframe, ispan.nframe)
         self.assertEqual(ispan.data.shape, (ispan.nframe,1,2))
         self.assertEqual(ospan.data.shape, (ospan.nframe,1,2))
     def test_null_accumulate(self):
         """Check that accumulating no spans leaves header intact"""
+        self.shape_settings = [-1, 1, 2]
         with bfp.Pipeline() as pipeline:
             c_data = blocks.sigproc.read_sigproc([self.fil_file], self.gulp_nframe)
             g_data = blocks.copy(c_data, space='cuda')
