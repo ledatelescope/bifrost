@@ -95,5 +95,28 @@ class AccumulateBlock(TransformBlock):
                     ncommit = 0
             return ncommit
 
-def accumulate(iring, nframe, *args, **kwargs):
-	return AccumulateBlock(iring, nframe, *args, **kwargs)
+def accumulate(iring, nframe, dtype=None, gulp_nframe=1,
+        *args, **kwargs):
+    """Accumulate frames of a ring.
+
+    Use this block to reshape a data stream into larger chunks.
+    This is the handler for `AccumulateBlock`
+
+    Attributes
+    ----------
+    iring : :obj:`bifrost.ring.Ring`
+        Input ring.
+    nframe : int
+        Number of frames to accumulate.
+    dtype : :obj:`str`, optional
+        Output datatype. If None (default),
+        input datatype of `iring` is used.
+    gulp_nframe : int, optional
+        How many incoming frames to read at
+        once.
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+    """
+    return AccumulateBlock(iring, nframe, *args, **kwargs)
