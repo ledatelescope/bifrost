@@ -253,8 +253,10 @@ class ndarray(np.ndarray):
 		self._BFarray = None
 		self._BFarray = self.as_BFarray()
 	def as_BFarray(self):
-		if self._BFarray is not None:
-			return self._BFarray
+		# ***TODO: The caching here is broken because of shape, strides and ctypes.data
+		#            How to fix?
+		#*if self._BFarray is not None:
+		#*	return self._BFarray
 		a = _bf.BFarray()
 		a.data      = self.ctypes.data
 		a.space     = Space(self.bf.space).as_BFspace()
