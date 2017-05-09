@@ -97,6 +97,9 @@ class WavSourceBlock(SourceBlock):
 		nbyte = reader.readinto(ospan.data)
 		if nbyte % ospan.frame_nbyte:
 			raise IOError("Input file is truncated")
+		# HACK TESTING avoid incomplete final gulp that messes up split_axis
+		if nbyte < ospan.data.nbytes:
+			return [0]
 		nframe = nbyte // ospan.frame_nbyte
 		return [nframe]
 
