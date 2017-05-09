@@ -82,7 +82,7 @@ class WavSourceBlock(SourceBlock):
 			'_tensor': {
 				'dtype':  'u8' if hdr['nbit'] == 8 else 'i'+str(hdr['nbit']),
 				'shape':  [-1, hdr['nchan']],
-				'labels': ['time', 'channel'], # TODO: 'channel' vs. 'polarisation'?
+				'labels': ['time', 'pol'], # TODO: 'channel' vs. 'pol'?
 				'scales': [(0, 1./hdr['sample_rate']),
 				           None],
 				'units':  ['s', None]
