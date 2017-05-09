@@ -71,11 +71,6 @@ class DetectBlock(TransformBlock):
 		# Note: axis may be None here, which indicates single-pol mode
 		ohdr = deepcopy(ihdr)
 		otensor = ohdr['_tensor']
-		if self.mode != 'jones':
-			otype = itype.as_real()
-		else:
-			otype = itype
-		otensor['dtype'] = otype.as_floating_point()
 		if self.axis is not None:
 			self.npol = otensor['shape'][self.axis]
 			if self.npol not in [1,2]:
@@ -86,6 +81,11 @@ class DetectBlock(TransformBlock):
 				otensor['labels'][self.axis] = 'pol'#self.mode # TODO: Check this
 		else:
 			self.npol = 1
+		if self.mode == 'jones' and self.npol == 2:
+			otype = itype
+		else:
+			otype = itype.as_real()
+		otensor['dtype'] = otype.as_floating_point()
 		return ohdr
 	def on_data(self, ispan, ospan):
 		idata = ispan.data
