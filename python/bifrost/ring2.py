@@ -72,11 +72,10 @@ class Ring(object):
 	instance_count = 0
 	def __init__(self, space='system', name=None, owner=None):
 		self.space = space
-		self.obj = _get(_bf.RingCreate(space=_string2space(self.space)), retarg=0)
 		if name is None:
 			name = 'ring_%i' % Ring.instance_count
 			Ring.instance_count += 1
-		self.name = name
+		self.obj = _get(_bf.RingCreate(name=name, space=_string2space(self.space)), retarg=0)
 		self.owner = owner
 		self.header_transform = None
 		# If this is non-None, then the object is wrapping a base Ring instance
@@ -94,6 +93,9 @@ class Ring(object):
 		                       contiguous_bytes,
 		                       total_bytes,
 		                       nringlet) )
+	@property
+	def name(self):
+		return _get(_bf.RingGetName(self.obj))
 	def begin_writing(self):
 		return RingWriter(self)
 	def _begin_writing(self):

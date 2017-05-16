@@ -55,7 +55,8 @@ public:
 		DEFAULT_BUFFERING = 4
 	};
 	RingWrapper(BFring obj) : _obj(obj) {}
-	BIFROST_DEFINE_GETTER(BFspace, space, bfRingGetSpace, _obj)
+	BIFROST_DEFINE_GETTER(const char*, name,  bfRingGetName,  _obj)
+	BIFROST_DEFINE_GETTER(BFspace,     space, bfRingGetSpace, _obj)
 	inline void resize(BFsize contiguous_span,
 	                   BFsize total_span=BFsize(-1),
 	                   BFsize nringlet=1) {
@@ -71,8 +72,8 @@ class Ring : public RingWrapper {
 	Ring(Ring const& );
 	Ring& operator=(Ring const& );
 public:
-	inline Ring(BFspace space=BF_SPACE_SYSTEM) : RingWrapper(0) {
-		check( bfRingCreate(&_obj, space) );
+	inline Ring(const char *name="", BFspace space=BF_SPACE_SYSTEM) : RingWrapper(0) {
+		check( bfRingCreate(&_obj, name, space) );
 	}
 	inline ~Ring() {
 		if( _obj ) {

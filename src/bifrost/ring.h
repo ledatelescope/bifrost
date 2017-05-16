@@ -71,7 +71,7 @@ typedef struct BFwspan_impl*       BFwspan;
 // TODO: bfCudaEnabled
 
 // Ring
-BFstatus bfRingCreate(BFring* ring, BFspace space);
+BFstatus bfRingCreate(BFring* ring, const char* name, BFspace space);
 BFstatus bfRingDestroy(BFring ring);
 /*! \p bfRingResize requests allocation of memory for the ring
  * 
@@ -88,6 +88,7 @@ BFstatus bfRingResize(BFring ring,
                       BFsize contiguous_bytes,
                       BFsize capacity_bytes,
                       BFsize nringlet);
+BFstatus bfRingGetName(BFring ring, const char** name);
 BFstatus bfRingGetSpace(BFring ring, BFspace* space);
 
 //BFsize   bfRingGetNRinglet(BFring ring);
