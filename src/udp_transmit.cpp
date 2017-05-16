@@ -125,10 +125,10 @@ public:
 		ssize_t nsent = sendmmsg(_fd, packets, npackets, 0);
 		if( nsent == -1 ) {
 			_stats.ninvalid += npackets;
-			_stats.ninvalid_bytes += packets->msg_len;
+			_stats.ninvalid_bytes += npackets * packets->msg_len;
 		} else {
 			_stats.nvalid += npackets;
-			_stats.nvalid_bytes += packets->msg_len;
+			_stats.nvalid_bytes += npackets * packets->msg_len;
 		}
 		return nsent;
 	}
@@ -141,22 +141,10 @@ public:
 class BFudptransmit_impl {
 	UDPTransmitThread  _transmit;
 	ProcLog            _type_log;
+	ProcLog            _bind_log;
 	ProcLog            _stat_log;
 	pid_t              _pid;
 	
-	inline struct msghdr _build_msghdr(char* packet, unsigned int len) {
-		struct msghdr msg;
-		struct iovec iov[1];
-		
-		iov[0].iov_base = packet;
-		iov[0].iov_len = len;
-		
-		memset(&msg, 0, sizeof(msg));
-		msg.msg_iov = iov;
-		msg.msg_iovlen = 1;
-		
-		return msg;
-	}
 	void update_stats_log() {
 		const PacketStats* stats = _transmit.get_stats();
 		_stat_log.update() << "ngood_bytes    : " << stats->nvalid_bytes << "\n"
@@ -173,8 +161,11 @@ public:
 	                          int core)
 		: _transmit(fd, core),
 		  _type_log("udp_transmit/type"),
+		  _bind_log("udp_transmit/bind"),
 		  _stat_log("udp_transmit/stats") {
 		_type_log.update() << "type : " << "generic";
+		_bind_log.update() << "ncore : " << 1 << "\n"
+		                   << "core0 : " << core << "\n";
 	}
 	BFudptransmit_status send(char *packet, unsigned int len) {
 		ssize_t state;

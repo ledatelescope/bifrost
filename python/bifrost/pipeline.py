@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
@@ -264,6 +265,14 @@ class Block(BlockScope):
 				                 (self.name, i, str(valid_spaces)))
 		self.orings = [] # Update this in subclass constructors
 		self.shutdown_event = threading.Event()
+		self.bind_proclog = ProcLog(self.name+"/bind")
+		self.in_proclog = ProgLog(self.name+"/in")
+		
+		rnames = {'nring': len(self.irings)}
+		for i,r in enumerate(self.irings):
+			rnames['ring%i' % i] = r.name
+		self.in_proclog.update(rnames) 
+		
 	def shutdown(self):
 		self.shutdown_event.set()
 	def create_ring(self, *args, **kwargs):
@@ -273,6 +282,8 @@ class Block(BlockScope):
 		core = self.core
 		if core is not None:
 			bf.affinity.set_core(core if isinstance(core, int) else core[0])
+		self.bind_proclog.update({'ncore': 1, 
+							 'core0': bf.affinity.get_core()})
 		if self.gpu is not None:
 			bf.device.set_device(self.gpu)
 		self.cache_scope_hierarchy()
@@ -320,6 +331,13 @@ class SourceBlock(Block):
 		self.orings = [self.create_ring(space=default_space)]
 		self._seq_count = 0
 		self.perf_proclog = ProcLog(self.name+"/perf")
+		self.out_proclog = ProcLog(self.name+"/out")
+		
+		rnames = {'nring': len(self.orings)}
+		for i,r in enumerate(self.orings):
+			rnames['ring%i' % i] = r.name
+		self.out_proclog.update(rnames) 
+		
 	def main(self, orings):
 		for sourcename in self.sourcenames:
 			if self.shutdown_event.is_set():
@@ -391,6 +409,13 @@ class MultiTransformBlock(Block):
 		self.perf_proclog = ProcLog(self.name+"/perf")
 		self.sequence_proclogs = [ProcLog(self.name+"/sequence%i"%i)
 		                          for i in xrange(len(self.irings))]
+		self.out_proclog = ProcLog(self.name+"/out")
+		
+		rnames = {'nring': len(self.orings)}
+		for i,r in enumerate(self.orings):
+			rnames['ring%i' % i] = r.name
+		self.out_proclog.update(rnames)                       
+		
 	def main(self, orings):
 		for iseqs in izip(*[iring.read(guarantee=self.guarantee)
 		                    for iring in self.irings]):
