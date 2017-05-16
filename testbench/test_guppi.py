@@ -15,6 +15,7 @@ if __name__ == "__main__":
     
     # Setup pipeline
     filenames   = sorted(glob.glob('testdata/guppi_raw/*.raw'))
+    filenames   = sorted(glob.glob('/bldata/gbt_raw/*.raw'))
     b_read      = GuppiRawSourceBlock(filenames, core=0)
 
     # Run pipeline

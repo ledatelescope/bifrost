@@ -16,7 +16,6 @@ that reads data from a binary file, copies it to the GPU, runs an FFT, then writ
 output back to disk:
 
 ```python
-<<<<<<< HEAD
 
 # Get a list of binary data files
 filenames   = glob.glob('testdata/*.bin')
@@ -31,7 +30,12 @@ b_write     = BinaryFileWriteBlock(b_out, core=4)
 # Run pipeline
 pipeline = bfp.get_default_pipeline()
 print pipeline.dot_graph()
-=======
+pipeline.run()
+```
+
+And here's an example that reads a WAV audio file, generates a spectrum, and writes the output to a filterbank file:
+
+```python
 import bifrost as bf
 
 data = bf.blocks.read_wav(['file1.wav', 'file2.wav'], gulp_nframe=4096)
@@ -47,7 +51,6 @@ bf.blocks.write_sigproc(data)
 
 pipeline = bf.get_default_pipeline()
 pipeline.shutdown_on_signals()
->>>>>>> 41da514bdd5fed551df0728b8ee28e89f4cc6c46
 pipeline.run()
 ```
 
