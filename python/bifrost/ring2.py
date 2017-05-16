@@ -29,7 +29,7 @@
 # TODO: Some of this code has gotten a bit hacky
 #         Also consider merging some of the logic into the backend
 
-from libbifrost import _bf, _check, _get, _string2space, _space2string
+from libbifrost import _bf, _check, _get, _string2space, _space2string, _fast_call, _fast_get
 from DataType import DataType
 from ndarray import ndarray
 from copy import copy, deepcopy
@@ -313,7 +313,8 @@ class SpanBase(object):
 		self._base_obj = ctypes.cast(obj, _bf.BFspan)
 		self._cache_info()
 	def _cache_info(self):
-		self._info = _get(_bf.RingSpanGetInfo(self._base_obj))
+		self._info = _bf.BFspan_info()
+		_fast_call(_bf.bfRingSpanGetInfo, self._base_obj, self._info)
 	@property
 	def ring(self):
 		return self._ring
@@ -405,7 +406,8 @@ class WriteSpan(SpanBase):
 	             nframe):
 		SpanBase.__init__(self, ring, sequence, writeable=True)
 		nbyte = nframe * self.tensor['frame_nbyte']
-		self.obj = _get(_bf.RingSpanReserve(ring=ring.obj, size=nbyte), retarg=0)
+		self.obj = _bf.BFwspan()
+		_fast_call(_bf.RingSpanReserve, self.obj, ring.obj, nbyte)
 		self._set_base_obj(self.obj)
 		self.commit_nframe = nframe
 		# TODO: Why do exceptions here not show up properly?
@@ -418,20 +420,21 @@ class WriteSpan(SpanBase):
 		self.close()
 	def close(self):
 		commit_nbyte = self.commit_nframe * self.tensor['frame_nbyte']
-		_check(_bf.RingSpanCommit(self.obj, commit_nbyte))
+		_fast_call(_bf.RingSpanCommit, self.obj, commit_nbyte)
 
 class ReadSpan(SpanBase):
 	def __init__(self, sequence, frame_offset, nframe):
 		SpanBase.__init__(self, sequence.ring, sequence, writeable=False)
 		tensor = sequence.tensor
-		self.obj = _get(_bf.RingSpanAcquire(sequence=sequence.obj,
-		                                    offset=frame_offset*tensor['frame_nbyte'],
-		                                    size=nframe*tensor['frame_nbyte']),
-		                retarg=0)
+		self.obj = _bf.BFrspan()
+		_fast_call(_bf.RingSpanAcquire, self.obj,
+		           sequence.obj,
+		           frame_offset*tensor['frame_nbyte'],
+		           nframe*tensor['frame_nbyte'])
 		self._set_base_obj(self.obj)
 	def __enter__(self):
 		return self
 	def __exit__(self, type, value, tb):
 		self.release()
 	def release(self):
-		_check(_bf.RingSpanRelease(self.obj))
+		_fast_call(_bf.RingSpanRelease, self.obj)

@@ -488,7 +488,7 @@ class FFTBlock(TransformBlock):
         self.out_gulp_size = data_accumulate.nbytes
         outspan_generator = self.iterate_ring_write(output_rings[0])
         ospan = outspan_generator.next()
-        result = np.fft.fft(data_accumulate)
+        result = np.fft.fft(data_accumulate).astype(np.complex64)
         ospan.data_view(np.complex64)[0] = result.ravel()
 class IFFTBlock(TransformBlock):
     """Performs complex to complex 1D IFFT on input ring data"""
@@ -678,7 +678,9 @@ class KurtosisBlock(TransformBlock):
             flag_power = power.copy()
             for chan in range(self.nchan):
                 if chan in bad_channels:
-                    flag_power[:, chan] = 0    # set bad channel to zero
+                    # TODO: bf.ndarray.__setitem__ doesn't support scalar assignment (or broadcasting and/or type conversion in general)
+                    #flag_power[:, chan] = 0    # set bad channel to zero
+                    flag_power[:, chan] = np.zeros(nsample, dtype=self.dtype)    # set bad channel to zero
             ospan.data[0][:] = flag_power.view(dtype=np.uint8).ravel()
 
 class DedisperseBlock(object):

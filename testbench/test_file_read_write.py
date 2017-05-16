@@ -16,7 +16,7 @@ if __name__ == "__main__":
     # Setup pipeline
     filenames   = sorted(glob.glob('testdata/sin_data*.bin'))
     b_read      = BinaryFileReadBlock(filenames, 32768, 1, 'f32')
-    b_write     = BinaryFileWriteBlock(b_read.orings[0])
+    b_write     = BinaryFileWriteBlock(b_read)
 
     # Run pipeline
     pipeline = bfp.get_default_pipeline()

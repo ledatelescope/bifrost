@@ -26,7 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get
+from libbifrost import _bf, _check, _get, _fast_call
 
 def set_device(device):
 	if isinstance(device, int):
@@ -39,4 +39,4 @@ def get_device():
 # TODO: set/get_stream
 
 def stream_synchronize():
-	_check(_bf.StreamSynchronize())
+	_fast_call(_bf.StreamSynchronize)

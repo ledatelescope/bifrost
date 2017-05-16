@@ -28,6 +28,7 @@ ifndef NOCUDA
   fdmt.o \
   map.o \
   trace.o \
+  linalg.o \
   #correlate.o \
   blas.o \
   transform.o

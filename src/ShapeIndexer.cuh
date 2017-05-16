@@ -166,6 +166,13 @@ class ShapeIndexer {
 	int_fastdiv _cumu_shape[NDIM];
 public:
 	explicit inline ShapeIndexer(int const shape[NDIM], int ndim=NDIM) {
+		if( ndim == 0 ) {
+			// Small HACK to deal with special case of ndim==0
+			_ndim = 1;
+			_cumu_shape[0] = 1;
+			_nelement = 1;
+			return;
+		}
 		_ndim = ndim;
 		_cumu_shape[ndim-1] = 1;
 		for( int d=ndim-1; d-->0; ) {

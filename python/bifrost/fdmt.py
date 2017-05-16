@@ -26,7 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _string2space
+from libbifrost import _bf, _check, _get, _fast_call, _string2space
 from ndarray import asarray
 
 import ctypes
@@ -59,9 +59,9 @@ class Fdmt(object):
 	def execute_workspace(self, idata, odata, workspace_ptr, workspace_size,
 	                      negative_delays=False):
 		size = _bf.BFsize(workspace_size)
-		_check( _bf.FdmtExecute(self.obj,
+		_fast_call(_bf.FdmtExecute, self.obj,
 		                        asarray(idata).as_BFarray(),
 		                        asarray(odata).as_BFarray(),
 		                        negative_delays,
-		                        workspace_ptr, ctypes.pointer(size)) )
+		                        workspace_ptr, ctypes.pointer(size))
 		return odata

@@ -184,6 +184,8 @@ class SigprocSinkBlock(SinkBlock):
 			sigproc_hdr['signed'] = True
 		if 'coord_frame' in ihdr:
 			coord_frame = ihdr['coord_frame']
+		else:
+			coord_frame = None
 		sigproc_hdr['pulsarcentric'] = (coord_frame == 'pulsarcentric')
 		sigproc_hdr['barycentric']   = (coord_frame == 'barycentric')
 		
@@ -317,5 +319,5 @@ class SigprocSinkBlock(SinkBlock):
 		else:
 			raise ValueError("Internal error: Unknown data format!")
 
-def write_sigproc(path=None, *args, **kwargs):
-	return SigprocSinkBlock(path, *args, **kwargs)
+def write_sigproc(iring, path=None, *args, **kwargs):
+	return SigprocSinkBlock(iring, path, *args, **kwargs)

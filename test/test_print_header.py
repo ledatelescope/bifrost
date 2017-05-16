@@ -26,13 +26,29 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _fast_call, _get
-from ndarray import asarray
+import unittest
+import io
 
-def unpack(src, dst, align_msb=False):
-	src_bf = asarray(src).as_BFarray()
-	dst_bf = asarray(dst).as_BFarray()
-	_fast_call(_bf.Unpack, src_bf,
-	                  dst_bf,
-	                  align_msb)
-	return dst
+import bifrost.pipeline as bfp
+import bifrost.blocks as blocks
+
+from contextlib2 import redirect_stdout, ExitStack
+
+class TestPrintHeader(unittest.TestCase):
+    """Test all aspects of the print header block"""
+    def setUp(self):
+        self.fil_file = "./data/2chan4bitNoDM.fil"
+    def test_read_sigproc(self):
+        """Capture print output, assert it is a long string"""
+        gulp_nframe = 101
+
+        stdout = io.BytesIO()
+        with ExitStack() as stack:
+            pipeline = stack.enter_context(bfp.Pipeline())
+            stack.enter_context(redirect_stdout(stdout))
+
+            rawdata = blocks.sigproc.read_sigproc([self.fil_file], gulp_nframe)
+            print_header_block = blocks.print_header(rawdata)
+            pipeline.run()
+        print_header_dump = stdout.getvalue()
+        self.assertGreater(len(print_header_dump), 10)

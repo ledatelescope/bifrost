@@ -32,6 +32,8 @@
 #  ArgumentError: argument 1: <type 'exceptions.TypeError'>: expected LP_s instance instead of LP_s
 #  E.g., _bf.RingSequenceGetName(<BFspan>) [should be <BFsequence>]
 
+import ctypes
+
 def _load_bifrost_lib():
 	import os
 	import glob
@@ -159,6 +161,48 @@ def _get(f, retarg=-1):
 def _retval(f):
 	ret, args = f
 	return ret
+
+# Note: These are much faster than _check and _get above, but less convenient
+def _fast_call(f, *args):
+	# Note: f.func is much faster than f(*args, **kwargs)
+	return _check( (f.func(*args), None) )
+def _fast_get(f, *args):
+	"""Calls the getter function f and returns the value from the last arg"""
+	# TODO: Is there a proper way to do this that supports general types?
+	DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
+	                                        ctypes.c_char,
+	                                        ctypes.c_char_p,
+	                                        ctypes.c_float,
+	                                        ctypes.c_double,
+	                                        ctypes.c_longdouble,
+	                                        ctypes.c_int,
+	                                        ctypes.c_int8,
+	                                        ctypes.c_int16,
+	                                        ctypes.c_int32,
+	                                        ctypes.c_int64,
+	                                        ctypes.c_long,
+	                                        ctypes.c_longlong,
+	                                        ctypes.c_short,
+	                                        ctypes.c_size_t,
+	                                        ctypes.c_ssize_t,
+	                                        ctypes.c_uint,
+	                                        ctypes.c_uint8,
+	                                        ctypes.c_uint16,
+	                                        ctypes.c_uint32,
+	                                        ctypes.c_uint64,
+	                                        ctypes.c_ulong,
+	                                        ctypes.c_ulonglong,
+	                                        ctypes.c_ushort,
+	                                        ctypes.c_void_p,
+	                                        ctypes.c_wchar,
+	                                        ctypes.c_wchar_p]}
+	ff = f.func
+	retarg = -1
+	dtype = DEREF[ff.argtypes[retarg]]
+	ret_val = dtype()
+	args = args + (ctypes.byref(ret_val),)
+	_check( (ff(*args), None) )
+	return ret_val.value
 
 def _string2space(s):
 	lut = {'auto':         _bf.BF_SPACE_AUTO,

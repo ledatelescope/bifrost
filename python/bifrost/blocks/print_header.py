@@ -1,4 +1,3 @@
-
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
@@ -26,13 +25,39 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _fast_call, _get
-from ndarray import asarray
+from __future__ import absolute_import
 
-def unpack(src, dst, align_msb=False):
-	src_bf = asarray(src).as_BFarray()
-	dst_bf = asarray(dst).as_BFarray()
-	_fast_call(_bf.Unpack, src_bf,
-	                  dst_bf,
-	                  align_msb)
-	return dst
+from bifrost.pipeline import SinkBlock
+
+class PrintHeaderBlock(SinkBlock):
+    def __init__(self, iring, *args, **kwargs):
+        """Prints out the header of each new sequence of a ring
+
+        Called by :meth:`bifrost.blocks.print_header`
+        """
+        super(PrintHeaderBlock, self).__init__(iring, *args, **kwargs)
+    def on_sequence(self, iseq):
+        ihdr = iseq.header
+        print ihdr
+    def on_sequence_end(self, iseq):
+        pass
+    def on_data(self, ispan):
+        pass
+
+def print_header(iring, *args, **kwargs):
+    """Prints out the header of each new sequence of a ring
+
+    Use this for testing purposes to have a quick look
+    at the contents of a ring.
+
+    Parameters
+    ----------
+    iring : Ring
+        Contains the ring for which you wish to
+        print out the sequence headers for. 
+    
+    Returns
+    ------
+    PrintHeaderBlock
+    """
+    return PrintHeaderBlock(iring, *args, **kwargs)

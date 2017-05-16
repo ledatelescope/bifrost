@@ -52,6 +52,13 @@ docker:
 	docker build --pull -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile.gpu -t $(IMAGE_NAME) .
 .PHONY: docker
 
+#GPU Docker prereq build
+# (To be used for testing new builds rapidly)
+IMAGE_NAME ?= ledatelescope/bifrost
+docker_prereq:
+	docker build --pull -t $(IMAGE_NAME)_prereq:$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile_prereq.gpu -t $(IMAGE_NAME)_prereq .
+.PHONY: docker_prereq
+
 #CPU-only Docker build
 IMAGE_NAME ?= ledatelescope/bifrost
 docker-cpu:

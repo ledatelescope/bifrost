@@ -26,13 +26,36 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _fast_call, _get
+from libbifrost import _bf, _check, _get
 from ndarray import asarray
 
-def unpack(src, dst, align_msb=False):
-	src_bf = asarray(src).as_BFarray()
-	dst_bf = asarray(dst).as_BFarray()
-	_fast_call(_bf.Unpack, src_bf,
-	                  dst_bf,
-	                  align_msb)
-	return dst
+class LinAlg(object):
+	def __init__(self):
+		self.obj = _get(_bf.LinAlgCreate(), retarg=0)
+	def __del__(self):
+		if hasattr(self, 'obj') and bool(self.obj):
+			_bf.LinAlgDestroy(self.obj)
+	def matmul(self, alpha, a, b, beta, c):
+		"""Computes:
+		  c = alpha*a.b + beta*c
+		if b is not None, else:
+		  c = alpha*a.a^ + beta*c
+		where '.' is matrix product and '^' is Hermitian transpose.
+		Multi-dimensional semantics are the same as numpy.matmul:
+		  The last two dims represent the matrix, and all other dims are
+		  used as batch dims to be matched or broadcast between a and b.
+		"""
+		if alpha is None:
+			alpha = 1.
+		if beta is None:
+			beta = 0.
+		beta  = float(beta)
+		alpha = float(alpha)
+		a_array = asarray(a).as_BFarray()
+		b_array = asarray(b).as_BFarray() if b is not None else None
+		c_array = asarray(c).as_BFarray()
+		_check(_bf.LinAlgMatMul(self.obj,
+		                        alpha, a_array, b_array,
+		                        beta, c_array))
+		return c
+

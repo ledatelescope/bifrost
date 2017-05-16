@@ -42,7 +42,11 @@ class AudioSourceBlock(SourceBlock):
 			'_tensor': {
 				'dtype':  'i' + str(reader.nbits),
 				'shape':  [-1, reader.channels],
+<<<<<<< HEAD
 				'labels': ['time', 'channel'], # TODO: 'channel' vs. 'polarization'?
+=======
+				'labels': ['time', 'pol'], # TODO: 'channel' vs. 'pol'?
+>>>>>>> 41da514bdd5fed551df0728b8ee28e89f4cc6c46
 				'scales': [1./reader.rate, None],
 				'units':  ['s', None]
 			},
@@ -65,4 +69,5 @@ class AudioSourceBlock(SourceBlock):
 		self.reader.stop()
 
 def read_audio(audio_kwargs, gulp_nframe, *args, **kwargs):
+	# Note: audio_kwargs used in place of sourcenames
 	return AudioSourceBlock(audio_kwargs, gulp_nframe, *args, **kwargs)#.orings[0]
