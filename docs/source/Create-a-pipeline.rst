@@ -103,3 +103,26 @@ for our audio file. Then, by setting ``space='cuda'``, we tell Bifrost
 to create a ring in GPU memory, and copy all of the contents of ``raw_data``
 into this new ring. With this GPU ring, we can connect more blocks and
 do GPU processing.
+
+Now, since we only want to do a Fourier transform at different parts of the
+song, not the entirety of the song, we want to chunk up this audio file
+into segments over which we can Fourier transform. This lets us get a
+frequency view at various points of the song. Since our data comes
+as one long time stream, we want to break it up into parts. Bifrost lets
+you do this without extra processing. You simply manipulate the `header`
+of the ring, which stores all of the descriptions for the ring. These
+manipulations are accomplished with ``views``:
+
+.. code:: python
+
+    chunked_data = views.split_axis(gpu_raw_data, 'time', 256, label='fine_time')
+
+What have we done here? We took ``gpu_raw_data``, which is a block on the GPU,
+and which implicitly points to its output ring buffer which sits on the GPU,
+and put it into the ``split_axis`` view. We said take the ``'time'`` axis
+of this ring, and break it up into ``256``-size chunks. Create a new
+axis for this data, and call that axis ``'fine_time'``.
+
+Note that `views` are special in that they do not actually modify the data.
+They just modify the metadata, which lets blocks interpret the data
+differently.
