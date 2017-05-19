@@ -29,7 +29,7 @@
 """
 Detect block
 data = detect(data, mode='jones/stokes', axis=None)
-If axis is None, default to 'polarization', and if this is not found, default to single-pol data (i.e., simple square)
+If axis is None, default to 'pol', and if this is not found, default to single-pol data (i.e., simple square)
 Stokes: complex x,y -> scalar I,Q,U,V
 Jones:  complex x,y -> complex (XX*,YY*),XY*
 Scalar: complex x -> XX*   
@@ -65,11 +65,11 @@ class DetectBlock(TransformBlock):
 			raise TypeError("Input data must be complex")
 		self.axis = self.specified_axis
 		if 'labels' not in itensor.keys() and self.axis is None:
-			raise TypeError("Polarization index must be labelled, or axis must be set manually")
+			raise TypeError("Polarization (pol) index must be labelled, or axis must be set manually")
 		elif (self.axis is None and
 		    self.mode != 'scalar' and
-		    'polarization' in itensor['labels']):
-			self.axis = itensor['labels'].index('polarization')
+		    'pol' in itensor['labels']):
+			self.axis = itensor['labels'].index('pol')
 		elif isinstance(self.axis, basestring):
 			self.axis = itensor['labels'].index(self.axis)
 		# Note: axis may be None here, which indicates single-pol mode
@@ -94,7 +94,7 @@ class DetectBlock(TransformBlock):
 	def on_data(self, ispan, ospan):
 		idata = ispan.data
 		odata = ospan.data
-		print idata.shape
+		
 		if self.npol == 1:
 			bf.map("b = Complex<b_type>(a).mag2()", a=idata, b=odata)
 		else:
