@@ -43,11 +43,10 @@ from .accumulate import accumulate, AccumulateBlock
 from .binary_io import BinaryFileReadBlock, BinaryFileWriteBlock
 from .unpack import unpack, UnpackBlock
 from .quantize import quantize, QuantizeBlock
+from .wav import read_wav, WavSourceBlock
+from .wav import write_wav, WavSinkBlock
 
 try: # Avoid error if portaudio library not installed
     from .audio import read_audio, AudioSourceBlock
-    from .wav import read_wav, WavSourceBlock
-    from .wav import write_wav, WavSinkBlock
 except:
-    pass 
-
+    pass
