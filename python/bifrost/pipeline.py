@@ -266,7 +266,7 @@ class Block(BlockScope):
 		self.orings = [] # Update this in subclass constructors
 		self.shutdown_event = threading.Event()
 		self.bind_proclog = ProcLog(self.name+"/bind")
-		self.in_proclog = ProgLog(self.name+"/in")
+		self.in_proclog = ProcLog(self.name+"/in")
 		
 		rnames = {'nring': len(self.irings)}
 		for i,r in enumerate(self.irings):
