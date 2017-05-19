@@ -3,16 +3,16 @@ Create a Pipeline
 
 In this tutorial, we will create a simple
 pipeline and execute it. Later on, we'll create
-our own version of a block and use it 
+our own version of a block and use it
 in the pipeline.
 
 With Bifrost, there is one main module you will
 be calling as a user: ``bifrost.pipeline``. This
 handles all the behind-the-scenes pipeline construction,
 giving you a high-level view at arranging a series of
-blocks. 
+blocks.
 
-We would like to construct the following pipeline, 
+We would like to construct the following pipeline,
 which will serve to calculate the beats per minute
 of a song. As we will soon see, some intermediate
 operations will be required to get the bpm, and
@@ -51,7 +51,7 @@ library as ``bf``:
     import bifrost as bf
 
 Next, let's load in some function libraries. We want ``blocks``,
-which is the block module in Bifrost, which is a collection of 
+which is the block module in Bifrost, which is a collection of
 previously-written blocks for various functionality,and
 ``views``, which is a library for manipulations of ring headers.
 
@@ -59,4 +59,34 @@ previously-written blocks for various functionality,and
 
     import bifrost.blocks as blocks
     import bifrost.views as views
+
+Now, let's create our data "source," our source block. This is the
+block that feeds our pipeline with data. In this example,
+we work with a ``.wav`` file. I assume that you have own some
+sort of audio file and can convert it, using, e.g.,
+`online-convert <http://audio.online-convert.com/convert-to-wav>`_.
+
+Now, I want to load this into Bifrost. The syntax for
+this instance is:
+
+.. code:: python
+
+    data = blocks.read_wav(['heyjude.wav'], gulp_nframe=4096)
+
+Where ``['heyjude.wav']`` is a list of ``.wav`` files, which is in this
+case, a sample of `Hey Jude`. ``gulp_nframe`` is an argument passed
+to this block which tells it how many `frames` of data to `gulp` at once.
+
+Some terminology:
+
+- `frame`: One chunk of data. In this case, it is a single sample of the
+  audio file. By setting ``gulp_nframe=4096``, we tell the block to read
+  in 4096 samples at a time, and put these into the ring buffer at once.
+- `gulp`: One read or write of the ring buffer. Imagine the block
+  taking a gulp of data. Then ``gulp_nframe`` is how many frames are
+  in that gulp.
+
+
+Now, ``data`` is now a reference to a ``block`` object, which implicitly
+points at the `ring buffer` which will hold the raw ``.wav`` data.
 
