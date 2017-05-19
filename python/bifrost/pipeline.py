@@ -27,17 +27,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import threading
+import time
+import signal
+from copy import copy
+from collections import defaultdict
+from contextlib2 import ExitStack
+
 import bifrost as bf
 from bifrost.ring2 import Ring, ring_view
 from temp_storage import TempStorage
 from bifrost.proclog import ProcLog
 
-from collections import defaultdict
-from contextlib2 import ExitStack
-import threading
-import time
-from copy import copy
-import signal
 
 def izip(*iterables):
 	while True:
@@ -266,7 +267,7 @@ class Block(BlockScope):
 		self.orings = [] # Update this in subclass constructors
 		self.shutdown_event = threading.Event()
 		self.bind_proclog = ProcLog(self.name+"/bind")
-		self.in_proclog = ProgLog(self.name+"/in")
+		self.in_proclog = ProcLog(self.name+"/in")
 		
 		rnames = {'nring': len(self.irings)}
 		for i,r in enumerate(self.irings):
