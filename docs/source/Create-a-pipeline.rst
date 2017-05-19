@@ -126,3 +126,16 @@ axis for this data, and call that axis ``'fine_time'``.
 Note that `views` are special in that they do not actually modify the data.
 They just modify the metadata, which lets blocks interpret the data
 differently.
+
+Now, let's actually do the processing. We want to do an FFT along this
+256-size axis, and we want to do it on the GPU. Bifrost knows which
+ring is on the GPU and CPU, so this is implicitly passed to the FFT block:
+
+.. code:: python
+
+    fft_output = blocks.fft(chunked_data, axes='fine_time', axis_labels='freq')
+
+So, in this line, we create a new block, an `FFT` block, and send in
+the chunked data. We tell the FFT block to perform the Fourier transform
+along the ``'fine_time'`` axis, which is the one of 256-size chunks,
+and then after Fourier transforming, to name the output axis ``'freq'``.
