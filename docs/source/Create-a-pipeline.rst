@@ -71,7 +71,7 @@ this instance is:
 
 .. code:: python
 
-    data = blocks.read_wav(['heyjude.wav'], gulp_nframe=4096)
+    raw_data = blocks.read_wav(['heyjude.wav'], gulp_nframe=4096)
 
 Where ``['heyjude.wav']`` is a list of ``.wav`` files, which is in this
 case, a sample of `Hey Jude`. ``gulp_nframe`` is an argument passed
@@ -87,6 +87,19 @@ Some terminology:
   in that gulp.
 
 
-Now, ``data`` is now a reference to a ``block`` object, which implicitly
+Now, ``raw_data`` is now a reference to a ``block`` object, which implicitly
 points at the `ring buffer` which will hold the raw ``.wav`` data.
 
+Next, we want to put this data onto the GPU. Bifrost makes this simple.
+Insert a copy block as follows:
+
+.. code:: python
+
+    gpu_raw_data = blocks.copy(raw_data, space='cuda')
+
+In this line we are telling Bifrost to create a new block, a ``copy`` block,
+and set its input to be the ``raw_data`` variable which is the source block
+for our audio file. Then, by setting ``space='cuda'``, we tell Bifrost
+to create a ring in GPU memory, and copy all of the contents of ``raw_data``
+into this new ring. With this GPU ring, we can connect more blocks and
+do GPU processing.
