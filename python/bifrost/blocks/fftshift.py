@@ -81,4 +81,30 @@ class FftShiftBlock(TransformBlock):
 		bf.map("b = a(%s)" % inds, shape, *ind_names, a=idata, b=odata)
 
 def fftshift(iring, axes, *args, **kwargs):
+    """Apply a FFT shift to the data, using the GPU.
+
+    The FFT shift pushes the data of an array around
+    so the central element is moved to the start of the array.
+    This is necessary to work on the output of some FFT algorithms,
+    such as cuFFT.
+
+    Attributes
+    ----------
+    iring : Block
+        A derivative of a Block object.
+    axes : str
+        Which axes of the input ring
+        to shift.
+    inverse : bool, optional
+        Default is False. This inverts the direction
+        of the shift.
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Returns
+    -------
+    `DetectBlock`
+    """
 	return FftShiftBlock(iring, axes, *args, **kwargs)
