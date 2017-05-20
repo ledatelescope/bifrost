@@ -126,5 +126,33 @@ class DetectBlock(TransformBlock):
 				       inds_[0], inds_[1], inds_[2], inds_[3])
 			bf.map(func, shape, *inds, a=ispan.data, b=ospan.data)
 
-def detect(iring, mode, *args, **kwargs):
-	return DetectBlock(iring, mode, *args, **kwargs)
+def detect(iring, mode, axis=None, *args, **kwargs):
+    """Apply square-law detection to create polarization products.
+
+    Used in radio astronomy spectrometers.
+    |   Stokes: complex x,y -> scalar I,Q,U,V
+    |   Jones:  complex x,y -> complex (XX*,YY*),XY*
+    |   Scalar: complex x -> XX*
+
+    If axis is None, default to 'pol', and if this is not found,
+    default to single-pol data (i.e., simple square)
+
+    Attributes
+    ----------
+    iring : Block
+        A derivative of a Block object.
+    mode : str
+        Either 'stokes', 'jones', or 'scalar'
+    axis : str, optional
+        Axis to run the detect block over. Default
+        is 'pol', and if not, default to squaring data.
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Returns
+    -------
+    `DetectBlock`
+    """
+	return DetectBlock(iring, mode, axis, *args, **kwargs)
