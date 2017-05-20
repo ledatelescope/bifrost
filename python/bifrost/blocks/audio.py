@@ -32,37 +32,37 @@ from bifrost.pipeline import SourceBlock
 import bifrost.portaudio as audio
 
 class AudioSourceBlock(SourceBlock):
-	def create_reader(self, kwargs):
-		self.reader = audio.open(mode='r', **kwargs)
-		return self.reader
-	def on_sequence(self, reader, kwargs):
-		if 'frames_per_buffer' not in kwargs:
-			kwargs['frames_per_buffer'] = self.gulp_nframe
-		ohdr = {
-			'_tensor': {
-				'dtype':  'i' + str(reader.nbits),
-				'shape':  [-1, reader.channels],
-				'labels': ['time', 'channel'], # TODO: 'channel' vs. 'polarization'?
-				'scales': [1./reader.rate, None],
-				'units':  ['s', None]
-			},
-			'frame_rate':   reader.rate,
-			'input_device': reader.input_device,
-			'name': str(id(reader))
-		}
-		return [ohdr]
-	def on_data(self, reader, ospans):
-		ospan = ospans[0]
-		try:
-			reader.readinto(ospan.data)
-		except audio.PortAudioError:
-			#raise StopIteration
-			return [0]
-		nframe = ospan.shape[0]
-		print nframe
-		return [nframe]
-	def stop(self):
-		self.reader.stop()
+    def create_reader(self, kwargs):
+        self.reader = audio.open(mode='r', **kwargs)
+        return self.reader
+    def on_sequence(self, reader, kwargs):
+        if 'frames_per_buffer' not in kwargs:
+            kwargs['frames_per_buffer'] = self.gulp_nframe
+        ohdr = {
+            '_tensor': {
+                'dtype':  'i' + str(reader.nbits),
+                'shape':  [-1, reader.channels],
+                'labels': ['time', 'channel'], # TODO: 'channel' vs. 'polarization'?
+                'scales': [1./reader.rate, None],
+                'units':  ['s', None]
+            },
+            'frame_rate':   reader.rate,
+            'input_device': reader.input_device,
+            'name': str(id(reader))
+        }
+        return [ohdr]
+    def on_data(self, reader, ospans):
+        ospan = ospans[0]
+        try:
+            reader.readinto(ospan.data)
+        except audio.PortAudioError:
+            #raise StopIteration
+            return [0]
+        nframe = ospan.shape[0]
+        print nframe
+        return [nframe]
+    def stop(self):
+        self.reader.stop()
 
 def read_audio(audio_kwargs, gulp_nframe, *args, **kwargs):
     """Read an audio file from disk into a ring buffer.
@@ -73,17 +73,17 @@ def read_audio(audio_kwargs, gulp_nframe, *args, **kwargs):
 
     .. code::python
 
-		ohdr = {
-			'_tensor': {
-				'dtype':  'i' + str(reader.nbits),
-				'shape':  [-1, reader.channels],
-				'labels': ['time', 'channel'],
-				'scales': [1./reader.rate, None],
-				'units':  ['s', None]
-			},
-			'frame_rate':   reader.rate,
-			'input_device': reader.input_device,
-			'name': str(id(reader))
+        ohdr = {
+            '_tensor': {
+                'dtype':  'i' + str(reader.nbits),
+                'shape':  [-1, reader.channels],
+                'labels': ['time', 'channel'],
+                'scales': [1./reader.rate, None],
+                'units':  ['s', None]
+            },
+            'frame_rate':   reader.rate,
+            'input_device': reader.input_device,
+            'name': str(id(reader))
 
     Where, in the above example, `reader` is the result
         portaudio.open
@@ -103,5 +103,5 @@ def read_audio(audio_kwargs, gulp_nframe, *args, **kwargs):
     -------
     AudioSourceBlock
     """
-	# Note: audio_kwargs used in place of sourcenames
-	return AudioSourceBlock(audio_kwargs, gulp_nframe, *args, **kwargs)#.orings[0]
+    # Note: audio_kwargs used in place of sourcenames
+    return AudioSourceBlock(audio_kwargs, gulp_nframe, *args, **kwargs)#.orings[0]
