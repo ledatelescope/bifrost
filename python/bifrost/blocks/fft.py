@@ -139,4 +139,28 @@ class FftBlock(TransformBlock):
 			                           inverse=self.inverse)
 
 def fft(iring, axes, *args, **kwargs):
+    """Apply a GPU FFT to the input ring data.
+
+    This block produces an N-dimensional FFT of the input data stream. The
+	transform can be over any set of dimensions that does NOT include the frame
+	(time) dimension. Transforms over the frame dimension can be achieved by
+	first reshaping the input data stream.
+	Axis scales are automatically updated to reflect the Fourier-transformed
+	axes.
+
+    Attributes
+    ----------
+    iring : Block
+        A derivative of a Block object.
+    axes : list
+        List of strings, indicating axes included in FFT.
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Returns
+    -------
+    `FftBlock`
+    """
 	return FftBlock(iring, axes, *args, **kwargs)
