@@ -73,4 +73,26 @@ class TransposeBlock(TransformBlock):
 			ospan.data[...] = np.transpose(ispan.data, self.axes)
 
 def transpose(iring, axes, *args, **kwargs):
+    """Transpose (switch) axes of the data around.
+
+    For example, say you have axes ``['time', 'freq']``,
+    and you would like it to be ``['freq', 'time']``. Simply
+    enter the second list to `axes`, and it will be transposed
+    that way.
+
+    Attributes
+    ----------
+    iring : Block
+        A derivative of a Block object.
+    axes : list
+        List of string labels for desired output axes arrangement.
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Returns
+    -------
+    `TransformBlock`
+    """
 	return TransposeBlock(iring, axes, *args, **kwargs)
