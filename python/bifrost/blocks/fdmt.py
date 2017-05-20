@@ -130,7 +130,7 @@ def fdmt(iring, max_dm, *args, **kwargs):
 
     Returns
     -------
-    `DetectBlock`
+    `FdmtBlock`
     """
 	return FdmtBlock(iring, max_dm, *args, **kwargs)
     #TODO: No information about required axes!

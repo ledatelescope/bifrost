@@ -105,6 +105,6 @@ def fftshift(iring, axes, *args, **kwargs):
 
     Returns
     -------
-    `DetectBlock`
+    `FftShiftBlock`
     """
 	return FftShiftBlock(iring, axes, *args, **kwargs)
