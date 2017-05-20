@@ -11,6 +11,30 @@ A stream processing framework for high-throughput applications.
 
 ## Your first pipeline
 
+Example pipelines can be found in the `testbench/` directory. For example, here's a snippet  
+that reads data from a binary file, copies it to the GPU, runs an FFT, then writes the
+output back to disk:
+
+```python
+
+# Get a list of binary data files
+filenames   = glob.glob('testdata/*.bin')
+
+# Setup pipeline
+b_read      = BinaryFileReadBlock(filenames, window_len, 1, 'cf32', core=0)
+b_copy      = CopyBlock(b_read, space='cuda', core=1, gpu=0)
+b_fft       = FftBlock(b_copy, axes=1, core=2, gpu=0)
+b_out       = CopyBlock(b_fft, space='system', core=3)
+b_write     = BinaryFileWriteBlock(b_out, core=4)
+
+# Run pipeline
+pipeline = bfp.get_default_pipeline()
+print pipeline.dot_graph()
+pipeline.run()
+```
+
+And here's an example that reads a WAV audio file, generates a spectrum, and writes the output to a filterbank file:
+
 ```python
 import bifrost as bf
 
