@@ -34,16 +34,16 @@ from bifrost.ndarray import copy_array
 from copy import deepcopy
 
 class CopyBlock(TransformBlock):
-	def __init__(self, iring, space=None, *args, **kwargs):
-		super(CopyBlock, self).__init__(iring, *args, **kwargs)
-		if space is None:
-			space = self.iring.space
-		self.orings = [self.create_ring(space=space)]
-	def on_sequence(self, iseq):
-		ohdr = deepcopy(iseq.header)
-		return ohdr
-	def on_data(self, ispan, ospan):
-		copy_array(ospan.data, ispan.data)
+    def __init__(self, iring, space=None, *args, **kwargs):
+        super(CopyBlock, self).__init__(iring, *args, **kwargs)
+        if space is None:
+            space = self.iring.space
+        self.orings = [self.create_ring(space=space)]
+    def on_sequence(self, iseq):
+        ohdr = deepcopy(iseq.header)
+        return ohdr
+    def on_data(self, ispan, ospan):
+        copy_array(ospan.data, ispan.data)
 
 def copy(iring, space=None, *args, **kwargs):
     """Copy the contents of a ring to another space.
@@ -70,4 +70,4 @@ def copy(iring, space=None, *args, **kwargs):
     -------
     `CopyBlock`
     """
-	return CopyBlock(iring, space, *args, **kwargs)
+    return CopyBlock(iring, space, *args, **kwargs)
