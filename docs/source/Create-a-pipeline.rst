@@ -139,3 +139,51 @@ So, in this line, we create a new block, an `FFT` block, and send in
 the chunked data. We tell the FFT block to perform the Fourier transform
 along the ``'fine_time'`` axis, which is the one of 256-size chunks,
 and then after Fourier transforming, to name the output axis ``'freq'``.
+
+The Bifrost FFT block wraps ``cuFFT``, the CUDA FFT package, which is
+heavily optimized. Inside the block, ``bifrost.ndarray``'s are being
+created from the output ring of ``chunked_data``, and this is being
+passed with ``ctypes`` into a C++ function.
+
+Next, we want to take the square of these FFTs. In Bifrost,
+this can be done with the ``detect`` block:
+
+.. code:: python
+
+    squared = blocks.detect(fft_output, mode='scalar')
+
+This block takes in the output of the FFT (we are still on the GPU!),
+squares each element (the ``'scalar'`` mode), and then puts this in a
+new ring, implicitly stored in the ``squared`` block object.
+
+
+
+
+Here is the full example:
+
+#. Take the modulus squared of these FFTs.
+#. Transpose this data into a format compatible with the sigproc writer.
+#. Copy the data back to the CPU.
+#. Convert the data into integer data types.
+#. Write this data to a filterbank file.
+
+.. code:: python
+
+    import bifrost as bf
+    import bifrost.blocks as blocks
+    import bifrost.views as views
+
+    data = blocks.read_wav(['heyjude_short.wav'], gulp_nframe=4096)
+    data = blocks.copy(data, space='cuda')
+    data = views.split_axis(data, 'time', 256, label='fine_time')
+    data = blocks.fft(data, axes='fine_time', axis_labels='freq')
+    data = blocks.detect(data, mode='scalar')
+    data = blocks.accumulate(data, 2)
+    data = blocks.transpose(data, ['time', 'pol', 'freq'])
+    data = blocks.copy(data, space='cuda_host')
+    data = bf.blocks.quantize(data, 'i8')
+    blocks.write_sigproc(data)
+
+    pipeline = bf.get_default_pipeline()
+    pipeline.shutdown_on_signals()
+    pipeline.run()
