@@ -63,4 +63,29 @@ class QuantizeBlock(TransformBlock):
 		bf.quantize.quantize(idata, odata, self.scale)
 
 def quantize(iring, dtype, *args, **kwargs):
+    """Apply a requantization of bit depth for the data.
+
+    For example, if the data is 64 bit floating point,
+    and you want it to be 32 bit floating point,
+    you would write:
+
+    .. code:: python
+        
+        new_data = quantize(old_data, 'f32')
+
+    Attributes
+    ----------
+    iring : Block
+        A derivative of a Block object.
+    dtype : :obj: `bifrost.DataType`
+        Output data type
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Returns
+    -------
+    `QuantizeBlock`
+    """
 	return QuantizeBlock(iring, dtype, *args, **kwargs)
