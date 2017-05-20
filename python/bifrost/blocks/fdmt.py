@@ -117,11 +117,6 @@ def fdmt(iring, max_dm, *args, **kwargs):
     ----------
     iring : Block
         A derivative of a Block object.
-    mode : str
-        Either 'stokes', 'jones', or 'scalar'
-    axis : str, optional
-        Axis to run the detect block over. Default
-        is 'pol', and if not, default to squaring data.
     max_dm :
         Max dispersion to search up to.
     exponent : float, optional
