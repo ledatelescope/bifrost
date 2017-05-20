@@ -75,4 +75,25 @@ class ReverseBlock(TransformBlock):
 		bf.map("b = a(%s)" % inds, shape, *ind_names, a=idata, b=odata)
 
 def reverse(iring, axes, *args, **kwargs):
+    """Reverse data along an axis.
+
+    For example, if you have three axes in each frame of
+    your data, and on one axis, you want to flip it around,
+    you would simply enter that axis to axes.
+
+    Attributes
+    ----------
+    iring : Block
+        A derivative of a Block object.
+    axes : list
+        List of string labels for axes to shift.
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Returns
+    -------
+    `ReverseBlock`
+    """
 	return ReverseBlock(iring, axes, *args, **kwargs)
