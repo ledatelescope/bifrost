@@ -108,4 +108,34 @@ class FdmtBlock(TransformBlock):
 		#              deadlocking. Not sure if there's any way around this.
 
 def fdmt(iring, max_dm, *args, **kwargs):
+    """Apply the Fast Dispersion Measure Transform (FDMT).
+
+    This uses the GPU. It is used in pulsar and fast radio burst (FRB)
+    search pipelines for dedispersing frequency data.
+
+    Attributes
+    ----------
+    iring : Block
+        A derivative of a Block object.
+    mode : str
+        Either 'stokes', 'jones', or 'scalar'
+    axis : str, optional
+        Axis to run the detect block over. Default
+        is 'pol', and if not, default to squaring data.
+    max_dm :
+        Max dispersion to search up to.
+    exponent : float, optional
+        Power law to search. Default is -2.0.
+    negative_delays : bool, optional
+        Default is False
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Returns
+    -------
+    `DetectBlock`
+    """
 	return FdmtBlock(iring, max_dm, *args, **kwargs)
+    #TODO: No information about required axes!
