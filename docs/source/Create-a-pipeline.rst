@@ -4,7 +4,8 @@ Create a Pipeline
 In this tutorial, we will create a simple
 pipeline and execute it. Later on, we'll create
 our own version of a block and use it
-in the pipeline.
+in the pipeline. All of the code can be found
+in one block at the bottom of this page.
 
 With Bifrost, there is one main module you will
 be calling as a user: ``bifrost.pipeline``. This
@@ -22,7 +23,10 @@ we can then write our own block.
 #. Channelize it with a GPU FFT.
 #. Write it back to disk as a filterbank file.
 
-This will require bifrost blocks which:
+Blocks in this Example
+----------------------
+
+This setup will require bifrost blocks which:
 
 1. Read in the ``.wav`` file.
 #. Copy the raw data to the GPU.
@@ -40,6 +44,9 @@ could be used to just view the frequency components of the song with time.
 
 First, ensure you have a working Bifrost installation. You should
 also have some CUDA-compatible GPUs to run this example.
+
+Code Walkthrough
+----------------
 
 Now, let's create the pipeline.
 
@@ -156,16 +163,58 @@ This block takes in the output of the FFT (we are still on the GPU!),
 squares each element (the ``'scalar'`` mode), and then puts this in a
 new ring, implicitly stored in the ``squared`` block object.
 
+Now, after carefully reading the documentation for the ``transpose`` block,
+we decide that we want to arrange the axes such that it goes in as
+``['time', 'pol', 'freq']``. To do this, we need to transpose it.
+Bifrost has the ``transpose`` block to do this. We simply type the
+desired output axis layout as the only argument, and it is all performed
+on the GPU for us:
+
+.. code:: python
+
+    transposed = blocks.transpose(squared, ['time', 'pol', 'freq'])
+
+This transposes the axes for us. Now we can ship it into sigproc writer.
+But first, we have to offload from the GPU:
+
+.. code:: python
+
+     host_transposed = blocks.copy(transposed, space='cuda_host')
+
+Then, convert to an 8-bit integer data type for storage, with the
+quantize block (``'i8'`` means an ``8``-bit ``i`` nteger).
 
 
 
-Here is the full example:
+Finally, we pass the data stream into a `sink` block, which ends
+the pipeline and stores the data in a filterbank file:
 
-#. Take the modulus squared of these FFTs.
-#. Transpose this data into a format compatible with the sigproc writer.
-#. Copy the data back to the CPU.
-#. Convert the data into integer data types.
-#. Write this data to a filterbank file.
+.. code:: python
+
+    blocks.write_sigproc(host_transposed)
+
+In this case, the filename will be determined from
+the header information, which contains the name of the original
+``.wav`` file. The output file is of type ``.fil``, and
+is the `channelized` version of the original music file. It
+is the frequency decomposition of the audio.
+
+So, what have we done? We:
+
+1. Read in the ``.wav`` file.
+#. Copied the raw data to the GPU.
+#. Split the time axis into chunks which we could FFT over.
+#. FFT'd along this new axis.
+#. Took the modulus squared of these FFTs.
+#. Transposed this data into a format compatible with the sigproc writer.
+#. Copied the data back to the CPU.
+#. Converted the data into integer data types.
+#. Wrote this data to a filterbank file.
+
+All the Code
+------------
+
+For ease of reference, here is all the code at once:
 
 .. code:: python
 
@@ -178,7 +227,6 @@ Here is the full example:
     data = views.split_axis(data, 'time', 256, label='fine_time')
     data = blocks.fft(data, axes='fine_time', axis_labels='freq')
     data = blocks.detect(data, mode='scalar')
-    data = blocks.accumulate(data, 2)
     data = blocks.transpose(data, ['time', 'pol', 'freq'])
     data = blocks.copy(data, space='cuda_host')
     data = bf.blocks.quantize(data, 'i8')
@@ -187,3 +235,4 @@ Here is the full example:
     pipeline = bf.get_default_pipeline()
     pipeline.shutdown_on_signals()
     pipeline.run()
+
