@@ -119,4 +119,23 @@ class GuppiRawSourceBlock(SourceBlock):
 		return [nframe]
 
 def read_guppi_raw(filenames, *args, **kwargs):
+    """Read in a guppi file (.raw).
+
+    This block reads in a guppi file, which is used
+    in radio astronomy, into a ring buffer. It is a
+    SourceBlock, so does not take any input blocks.
+
+    Attributes
+    ----------
+    filenames : list
+        list of strings containing filenames.
+    *args
+        Arguments to `bifrost.pipeline.SourceBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.SourceBlock`.
+
+    Returns
+    -------
+    `GuppiRawSourceBlock`
+    """
 	return GuppiRawSourceBlock(filenames, *args, **kwargs)
