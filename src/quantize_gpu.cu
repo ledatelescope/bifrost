@@ -306,6 +306,10 @@ BFstatus bfQuantize(BFarray const* in,
 	bool byteswap_in  = ( in->big_endian != is_big_endian());
 	bool byteswap_out = (out->big_endian != is_big_endian());
 	
+	if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+		BF_ASSERT(nelement<=512*65535*65535, BF_STATUS_UNSUPPORTED)
+	}
+	
 #define CALL_FOREACH_SIMPLE_CPU_QUANTIZE(itype,stype,otype) \
 	foreach_simple_cpu((itype*)in->data, \
 	                   (otype*)out->data, \

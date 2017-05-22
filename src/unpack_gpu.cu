@@ -332,6 +332,10 @@ BFstatus bfUnpack(BFarray const* in,
 	bool byteswap    = ( in->big_endian != is_big_endian());
 	bool conjugate   = (in->conjugated != out->conjugated);
 	
+	if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+		BF_ASSERT(nelement<=512*65535*65535, BF_STATUS_UNSUPPORTED)
+	}
+	
 #define CALL_FOREACH_SIMPLE_CPU_UNPACK(itype,otype) \
 	foreach_simple_cpu((itype*)in->data, \
 	                   (otype*)out->data, \
