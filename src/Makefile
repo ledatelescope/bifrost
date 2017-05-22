@@ -88,9 +88,11 @@ endif
 ifndef NOCUDA
   CPPFLAGS  += -DBF_CUDA_ENABLED=1
   LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -lcufft_static -lculibos -lnvToolsExt
+  # Make sure the unpack.cu and quantize.cu files are ready for nvcc
   $(shell mv -f unpack.cpp unpack.cu 2>/dev/null)
   $(shell mv -f quantize.cpp quantize.cu 2>/dev/null)
 else
+  # Rename the unpack.cu and quantize.cu files to .cpp for g++
   $(shell mv -f unpack.cu unpack.cpp 2>/dev/null)
   $(shell mv -f quantize.cu quantize.cpp 2>/dev/null)
 endif

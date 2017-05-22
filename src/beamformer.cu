@@ -99,19 +99,18 @@ void launch_delay_to_phase_kernel(int          nchan,
 	                 &args[0], 0, stream);
 }
 
-template<typename DType>
+template<typename InType, typename OutType>
 __global__
-void beamformer_kernel(int                     ntime, 
-                       int                     nchan, 
-                       int                     nstand,
-                       Complex64*              prots,
-                       double*                 gains,
-                       DType*                  d_in,
-                       Complex32* __restrict__ d_out) {
+void beamformer_kernel(int                   ntime, 
+                       int                   nchan, 
+                       int                   nstand,
+                       Complex64*            prots,
+                       double*               gains,
+                       InType*               d_in,
+                       OutType* __restrict__ d_out) {
 	int t0 = threadIdx.x + blockIdx.x*blockDim.x;
 	int c0 = threadIdx.y + blockIdx.y*blockDim.y;
 	
-	Complex64 CI(0.,1.);
 	Complex64 tempP(0.,0.);
 	Complex64 beamX(0.,0.);
 	Complex64 beamY(0.,0.);
@@ -131,20 +130,20 @@ void beamformer_kernel(int                     ntime,
 			}
 		}
 		
-		d_out[t0*nchan*2 + c0*2 + 0] = Complex32(beamX.real, beamX.imag);
-		d_out[t0*nchan*2 + c0*2 + 1] = Complex32(beamY.real, beamY.imag);
+		d_out[t0*nchan*2 + c0*2 + 0] = beamX;
+		d_out[t0*nchan*2 + c0*2 + 1] = beamY;
 	}
 }
 
-template<typename DType>
+template<typename InType, typename OutType>
 inline
 void launch_beamformer_kernel(int          ntime,
                               int          nchan,
                               int          nstand, 
                               Complex64*   prots,
                               double*      gains,
-                              DType*       d_in,
-                              Complex32*   d_out,
+                              InType*      d_in,
+                              OutType*     d_out,
                               cudaStream_t stream=0) {
 	// cout << "LAUNCH for " << ntime << " by " << nchan << " by " << nstand << endl;
 	dim3 block(32, 16); // TODO: Tune this
@@ -162,49 +161,52 @@ void launch_beamformer_kernel(int          ntime,
 	                &gains,
 	                &d_in,
 	                &d_out};
-	cudaLaunchKernel((void*)beamformer_kernel<DType>,
+	cudaLaunchKernel((void*)beamformer_kernel<InType,OutType>,
 	                 grid, block,
 	                 &args[0], 0, stream);
 }
 
+#define UNPACK_CI4_DOUBLE(X)  ((double) (X&0xF) - (double) (2*(X&8)))
 #define BIFROST_TO_CFLOAT(X)  ((float)  ((X>>4)&0xF-2*((X>>4)&8)) + CI*((float)  ((X&0xF)-2*(X&8))))
 #define BIFROST_TO_CDOUBLE(X) ((double) ((X>>4)&0xF-2*((X>>4)&8)) + CI*((double) ((X&0xF)-2*(X&8))))
 
+template<typename OutType>
 __global__
-void beamformer_kernel_CI4(int                     ntime, 
-                           int                     nchan, 
-                           int                     nstand,
-                           Complex64*              prots,
-                           double*                 gains,
-                           uint8_t*                d_in,
-                           Complex32* __restrict__ d_out) {
+void beamformer_kernel_CI4(int                   ntime, 
+                           int                   nchan, 
+                           int                   nstand,
+                           Complex64*            prots,
+                           double*               gains,
+                           uint8_t*              d_in,
+                           OutType* __restrict__ d_out) {
 	int t0 = threadIdx.x + blockIdx.x*blockDim.x;
 	int c0 = threadIdx.y + blockIdx.y*blockDim.y;
 	
-	Complex64 CI(0.,1.);
 	Complex64 tempP(0.,0.);
 	Complex64 beamX(0.,0.);
 	Complex64 beamY(0.,0.);
 	
 	if( t0 < ntime && c0 < nchan) {
-		beamX = 0.0 + CI*0.0;
-		beamY = 0.0 + CI*0.0;
+		beamX *= 0.0;
+		beamY *= 0.0;
 		
 		for(int s=0; s<nstand; s++) {
 #pragma unroll
 			for(int p=0; p<2; p++) { 
-				tempP  = (Complex64) BIFROST_TO_CDOUBLE(d_in[t0*nchan*nstand*2 + c0*nstand*2 + s*2 + p]);
+				tempP  = Complex64(UNPACK_CI4_DOUBLE(((d_in[t0*nchan*nstand*2 + c0*nstand*2 + s*2 + p]>>4)&0xF)), \
+							    UNPACK_CI4_DOUBLE( (d_in[t0*nchan*nstand*2 + c0*nstand*2 + s*2 + p]    &0xF)));
 				tempP *= prots[ c0*nstand*2 + s*2 + p];
 				beamX += tempP * gains[s*2*2 + p*2 + 0];
 				beamY += tempP * gains[s*2*2 + p*2 + 1];
 			}
 		}
 		
-		d_out[t0*nchan*2 + c0*2 + 0] = Complex32(beamX.real, beamX.imag);
-		d_out[t0*nchan*2 + c0*2 + 1] = Complex32(beamY.real, beamY.imag);
+		d_out[t0*nchan*2 + c0*2 + 0] = beamX;
+		d_out[t0*nchan*2 + c0*2 + 1] = beamY;
 	}
 }
 
+template<typename OutType>
 inline
 void launch_beamformer_kernel_CI4(int          ntime,
                                   int          nchan,
@@ -212,7 +214,7 @@ void launch_beamformer_kernel_CI4(int          ntime,
                                   Complex64*   prots,
                                   double*      gains,
                                   uint8_t*     d_in,
-                                  Complex32*   d_out,
+                                  OutType*     d_out,
                                   cudaStream_t stream=0) {
 	// cout << "LAUNCH for " << ntime << " by " << nchan << " by " << nstand << endl;
 	dim3 block(32, 16); // TODO: Tune this
@@ -230,7 +232,7 @@ void launch_beamformer_kernel_CI4(int          ntime,
 	                &gains,
 	                &d_in,
 	                &d_out};
-	cudaLaunchKernel((void*)beamformer_kernel_CI4,
+	cudaLaunchKernel((void*)beamformer_kernel_CI4<OutType>,
 	                 grid, block,
 	                 &args[0], 0, stream);
 }
@@ -249,7 +251,7 @@ private:
 	cudaStream_t _stream;
 public:
 	BFbeamformer_impl() : _ntime(0), _nchan(0), _nstand(0),
-	                _stream(g_cuda_stream) {}
+	                      _stream(g_cuda_stream) {}
 	inline IType ntime()     const { return _ntime; }
 	inline IType nchan()     const { return _nchan; }
 	inline IType nstand()    const {return _nstand; }
@@ -307,6 +309,7 @@ public:
 		BF_ASSERT_EXCEPTION(out->dtype == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
 		
 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+		
 #define LAUNCH_BEAMFORMER_KERNEL(IterType) \
 		launch_beamformer_kernel(_ntime, _nchan, _nstand, \
 		                        _prots, _gains, \
