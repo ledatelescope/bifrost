@@ -466,7 +466,7 @@ BFstatus bfQuantize(BFarray const* in,
 	
 #ifndef NOCUDA
 	if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
-		BF_ASSERT(nelement<=512*65535*65535, BF_STATUS_UNSUPPORTED)
+		BF_ASSERT(nelement<=(size_t)512*65535*65535, BF_STATUS_UNSUPPORTED_SHAPE);
 	}
 #endif
 	

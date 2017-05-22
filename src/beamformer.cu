@@ -79,12 +79,14 @@ void launch_delay_to_phase_kernel(int          nchan,
                                   DType*       delays,
                                   Complex64*   prots,
                                   cudaStream_t stream=0) {
-// 	cout << "LAUNCH " << delays << ", " << prots << " for " << nchan << " by " << nstand << endl;
+	//cout << "LAUNCH for " << nchan << " by " << nstand << endl;
 	dim3 block(32, 16); // TODO: Tune this
 	dim3 grid(std::min((nchan-1)/block.x+1, 65535u),
 	          std::min((nstand-1)/block.y+1, 65535u));
-// 	cout << "  Block size is " << block.x << " by " << block.y << endl;
-// 	cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
+	/*
+	cout << "  Block size is " << block.x << " by " << block.y << endl;
+	cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
+	*/
 	
 	void* args[] = {&nchan,
 	                &nstand, 
@@ -144,12 +146,14 @@ void launch_beamformer_kernel(int          ntime,
                               DType*       d_in,
                               Complex32*   d_out,
                               cudaStream_t stream=0) {
-// 	cout << "LAUNCH " << d_in << ", " << d_out << " for " << ntime << " by " << nchan << " by " << nstand << endl;
+	// cout << "LAUNCH for " << ntime << " by " << nchan << " by " << nstand << endl;
 	dim3 block(32, 16); // TODO: Tune this
 	dim3 grid(std::min((ntime-1)/block.x+1, 65535u),
 	          std::min((nchan-1)/block.y+1, 65535u));
-// 	cout << "  Block size is " << block.x << " by " << block.y << endl;
-// 	cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
+	/*
+	cout << "  Block size is " << block.x << " by " << block.y << endl;
+	cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
+	*/
 	
 	void* args[] = {&ntime,
 	                &nchan,
@@ -210,9 +214,14 @@ void launch_beamformer_kernel_CI4(int          ntime,
                                   uint8_t*     d_in,
                                   Complex32*   d_out,
                                   cudaStream_t stream=0) {
+	// cout << "LAUNCH for " << ntime << " by " << nchan << " by " << nstand << endl;
 	dim3 block(32, 16); // TODO: Tune this
 	dim3 grid(std::min((ntime-1)/block.x+1, 65535u),
 	          std::min((nchan-1)/block.y+1, 65535u));
+	/*
+	cout << "  Block size is " << block.x << " by " << block.y << endl;
+	cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
+	*/
 	
 	void* args[] = {&ntime,
 	                &nchan,
