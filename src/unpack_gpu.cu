@@ -42,14 +42,22 @@ using std::endl;
 // sign_extend == false => output is scaled by 2**(8-nbit) (faster)
 
 template<int NBIT, typename K, typename T>
+#ifndef NOCUDA
 inline __host__ __device__
+#else
+inline
+#endif
 void rshift_subwords(T& val) {
 	for( int k=0; k<(int)(sizeof(T)/sizeof(K)); ++k ) {
 		((K*)&val)[k] >>= NBIT;
 	}
 }
 // 2x 4-bit --> 2x 8-bit (unsigned)
+#ifndef NOCUDA
 inline __host__ __device__
+#else
+inline
+#endif
 void unpack(uint8_t   ival,
             uint16_t& oval,
             bool      byte_reverse,
@@ -74,7 +82,11 @@ void unpack(uint8_t   ival,
 }
 
 // 4x 2-bit --> 4x 8-bit (unsigned)
+#ifndef NOCUDA
 inline __host__ __device__
+#else
+inline
+#endif
 void unpack(uint8_t   ival,
             uint32_t& oval,
             bool      byte_reverse,
@@ -101,7 +113,11 @@ void unpack(uint8_t   ival,
 }
 
 // 8x 1-bit --> 8x 8-bit (unsigned)
+#ifndef NOCUDA
 inline __host__ __device__
+#else
+inline
+#endif
 void unpack(uint8_t   ival,
             uint64_t& oval,
             bool      byte_reverse,
@@ -130,7 +146,11 @@ void unpack(uint8_t   ival,
 }
 
 template<typename K, typename T>
+#ifndef NOCUDA
 inline __host__ __device__
+#else
+inline
+#endif
 void conjugate_subwords(T& val) {
 	for( int k=1; k<(int)(sizeof(T)/sizeof(K)); k+=2 ) {
 		K& val_imag = ((K*)&val)[k];
@@ -139,7 +159,11 @@ void conjugate_subwords(T& val) {
 }
 
 // 2x 4-bit --> 2x 8-bit (signed)
+#ifndef NOCUDA
 inline __host__ __device__
+#else
+inline
+#endif
 void unpack(uint8_t  ival,
             int16_t& oval,
             bool     byte_reverse,
@@ -165,7 +189,11 @@ void unpack(uint8_t  ival,
 	}
 }
 // 4x 2-bit --> 4x 8-bit (signed)
+#ifndef NOCUDA
 inline __host__ __device__
+#else
+inline
+#endif
 void unpack(uint8_t  ival,
             int32_t& oval,
             bool     byte_reverse,
@@ -193,7 +221,11 @@ void unpack(uint8_t  ival,
 	}
 }
 // 8x 1-bit --> 8x 8-bit (signed)
+#ifndef NOCUDA
 inline __host__ __device__
+#else
+inline
+#endif
 void unpack(uint8_t  ival,
             int64_t& oval,
             bool     byte_reverse,
@@ -241,7 +273,9 @@ struct UnpackFunctor {
 };
 
 template<typename T, typename U, typename Func, typename Size>
+#ifndef NOCUDA
 __host__
+#endif
 void foreach_simple_cpu(T const* in,
                         U*       out,
                         Size     nelement,
@@ -252,6 +286,7 @@ void foreach_simple_cpu(T const* in,
 	}
 }
 
+#ifndef NOCUDA
 template<typename T, typename U, typename Func, typename Size>
 __global__ void foreach_simple_gpu(T const* in,
                                    U*       out,
@@ -297,6 +332,7 @@ inline void launch_foreach_simple_gpu(T const*     in,
 	                 grid, block,
 	                 &args[0], 0, stream);
 }
+#endif
 
 BFstatus bfUnpack(BFarray const* in,
                   BFarray const* out,
@@ -323,18 +359,27 @@ BFstatus bfUnpack(BFarray const* in,
 	BF_ASSERT(is_contiguous(in),  BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT(is_contiguous(out), BF_STATUS_UNSUPPORTED_STRIDE);
 	
+#ifndef NOCUDA
 	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
 	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
 	          BF_STATUS_UNSUPPORTED_SPACE);
+#else
+	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM),
+	          BF_STATUS_UNSUPPORTED_SPACE);
+	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM),
+	          BF_STATUS_UNSUPPORTED_SPACE);
+#endif
 	
 	size_t nelement = num_contiguous_elements(in);
 	bool byteswap    = ( in->big_endian != is_big_endian());
 	bool conjugate   = (in->conjugated != out->conjugated);
 	
+#ifndef NOCUDA
 	if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 		BF_ASSERT(nelement<=512*65535*65535, BF_STATUS_UNSUPPORTED)
 	}
+#endif
 	
 #define CALL_FOREACH_SIMPLE_CPU_UNPACK(itype,otype) \
 	foreach_simple_cpu((itype*)in->data, \

@@ -56,7 +56,11 @@ inline typename std::enable_if< std::is_signed<T>::value,T>::type
 minval(T x=T()) { return -maxval<T>(); }
 
 template<typename I, typename F>
+#ifndef NOCUDA
 inline __host__ __device__
+#else
+inline
+#endif
 F clip(F x) {
 #ifdef __CUDA_ARCH__
 	return min_gpu(max_gpu(x,F(minval_gpu<I>())),F(maxval_gpu<I>()));
@@ -66,7 +70,11 @@ F clip(F x) {
 }
 
 template<typename F>
+#ifndef NOCUDA
 inline __host__ __device__
+#else
+inline
+#endif
 F clip_4bit(F x) {
 #ifdef __CUDA_ARCH__
 	return min_gpu(max_gpu(x,F(-7)),F(7));
@@ -76,7 +84,9 @@ F clip_4bit(F x) {
 }
 
 template<typename IType, typename SType, typename OType>
+#ifndef NOCUDA
 __host__ __device__
+#endif
 void quantize(IType ival, SType scale, OType& oval) {
 	//std::cout << (int)minval<OType>() << ", " << (int)maxval<OType>() << std::endl;
 	//std::cout << scale << std::endl;
@@ -118,7 +128,9 @@ struct QuantizeFunctor {
 };
 
 template<typename T, typename U, typename Func, typename Size>
+#ifndef NOCUDA
 __host__
+#endif
 void foreach_simple_cpu(T const* in,
                         U*       out,
                         Size     nelement,
@@ -129,6 +141,7 @@ void foreach_simple_cpu(T const* in,
 	}
 }
 
+#ifndef NOCUDA
 template<typename T, typename U, typename Func, typename Size>
 __global__
 void foreach_simple_gpu(T const* in,
@@ -175,9 +188,12 @@ inline void launch_foreach_simple_gpu(T const*     in,
 	                 grid, block,
 	                 &args[0], 0, stream);
 }
+#endif
 
 template<typename T, typename Func, typename Size>
+#ifndef NOCUDA
 __host__
+#endif
 void foreach_simple_cpu_4bit(T const* in,
                              int8_t*  out,
                              Size     nelement,
@@ -202,6 +218,7 @@ void foreach_simple_cpu_4bit(T const* in,
 	}
 }
 
+#ifndef NOCUDA
 template<typename T, typename Func, typename Size>
 __global__
 void foreach_simple_gpu_4bit(T const* in,
@@ -272,6 +289,7 @@ inline void launch_foreach_simple_gpu_4bit(T const*     in,
 	                 grid, block,
 	                 &args[0], 0, stream);
 }
+#endif
 
 BFstatus bfQuantize(BFarray const* in,
                     BFarray const* out,
@@ -297,18 +315,27 @@ BFstatus bfQuantize(BFarray const* in,
 	BF_ASSERT(is_contiguous(in),  BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT(is_contiguous(out), BF_STATUS_UNSUPPORTED_STRIDE);
 	
+#ifndef NOCUDA
 	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
 	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
 	          BF_STATUS_UNSUPPORTED_SPACE);
+#else
+	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM),
+	          BF_STATUS_UNSUPPORTED_SPACE);
+	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM),
+	          BF_STATUS_UNSUPPORTED_SPACE);
+#endif
 	
 	size_t nelement = num_contiguous_elements(in);
 	bool byteswap_in  = ( in->big_endian != is_big_endian());
 	bool byteswap_out = (out->big_endian != is_big_endian());
 	
+#ifndef NOCUDA
 	if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 		BF_ASSERT(nelement<=512*65535*65535, BF_STATUS_UNSUPPORTED)
 	}
+#endif
 	
 #define CALL_FOREACH_SIMPLE_CPU_QUANTIZE(itype,stype,otype) \
 	foreach_simple_cpu((itype*)in->data, \
