@@ -175,16 +175,17 @@ inline void unpack(uint8_t  ival,
 	// .....................ABCD............................EFGH.......
 	// .......AB..............CD..............EF..............GH.......
 	// A.......B.......C.......D.......E.......F.......G.......H.......
-	oval = ival << 7;
+	oval = (~ival) << 7;
 	oval = (oval | (oval << 28)) & 0x0000078000000780;
 	oval = (oval | (oval << 14)) & 0x0180018001800180;
 	oval = (oval | (oval <<  7)) & 0x8080808080808080;
+	oval |= 0x4040404040404040;
 	if( byte_reverse) {
 		byteswap(oval, &oval);
 	}
 	if( !align_msb ) {
 		// >>>>>>>A>>>>>>>B>>>>>>>C>>>>>>>D
-		rshift_subwords<7,int8_t>(oval);
+		rshift_subwords<6,int8_t>(oval);
 	}
 	if( conjugate ) {
 		conjugate_subwords<int8_t>(oval);
@@ -264,13 +265,12 @@ BFstatus bfUnpack(BFarray const* in,
 	           out->dtype == BF_DTYPE_CI8 ) {
 	//case BF_DTYPE_I8: {
 		switch( in->dtype ) {
-		// TODO: Work out how to properly deal with 1-bit
-		//case BF_DTYPE_CI1: nelement *= 2;
-		//case BF_DTYPE_I1: {
-		//	BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
-		//	nelement /= 8;
-		//	CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int64_t); break;
-		//}
+		case BF_DTYPE_CI1: nelement *= 2;
+		case BF_DTYPE_I1: {
+			BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 8;
+			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int64_t); break;
+		}
 		case BF_DTYPE_CI2: nelement *= 2;
 		case BF_DTYPE_I2: {
 			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
