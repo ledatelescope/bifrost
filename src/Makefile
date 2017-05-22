@@ -16,7 +16,9 @@ LIBBIFROST_OBJS = \
   udp_socket.o \
   udp_capture.o \
   udp_transmit.o \
-  proclog.o
+  proclog.o \
+  unpack.o \
+  quantize.o
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
@@ -28,17 +30,10 @@ ifndef NOCUDA
   trace.o \
   linalg.o \
   beamformer.o \
-  unpack_gpu.o \
-  quantize_gpu.o \
   #correlate.o \
   blas.o \
   transform.o
   #apsynth.o
-else
-  # CPU-only version of unpack and quantize
-  LIBBIFROST_OBJS += \
-  unpack.o \
-  quantize.o
 endif
 
 
