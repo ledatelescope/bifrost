@@ -35,6 +35,7 @@ Measure Transform (FDMT), writing the output to a PGM file.
 
 import bifrost.pipeline as bfp
 from bifrost.blocks import read_sigproc, copy, transpose, fdmt, scrunch
+from bifrost import blocks
 
 import os
 import numpy as np
@@ -92,13 +93,15 @@ def main():
         sys.exit(-1)
     filenames = sys.argv[1:]
     
-    h_filterbank = read_sigproc(filenames, gulp_nframe=16000, core=0)
-    h_filterbank = scrunch(h_filterbank, 16, core=0)
-    d_filterbank = copy(h_filterbank, space='cuda', gpu=0, core=2)
+    h_filterbank = blocks.read_sigproc(filenames, gulp_nframe=16000, core=0)
+    h_filterbank = blocks.scrunch(h_filterbank, 16, core=0)
+    d_filterbank = blocks.copy(h_filterbank, space='cuda', gpu=0, core=2)
+    blocks.print_header(d_filterbank)
     with bfp.block_scope(core=2, gpu=0):
         d_filterbankT     = transpose(d_filterbank, ['pol','freq','time'])#[1,2,0])
         d_dispersionbankT = fdmt(d_filterbankT, max_dm=282.52)
-        d_dispersionbank  = transpose(d_dispersionbankT, ['time','pol','dispersion measure'])#[2,0,1])
+        blocks.print_header(d_dispersionbankT)
+        d_dispersionbank  = transpose(d_dispersionbankT, ['time','pol','dispersion'])#[2,0,1])
     h_dispersionbank = copy(d_dispersionbank, space='system', core=3)
     write_pgm(h_dispersionbank, core=3)
     
