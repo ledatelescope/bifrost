@@ -56,7 +56,7 @@ inline typename std::enable_if< std::is_signed<T>::value,T>::type
 minval(T x=T()) { return -maxval<T>(); }
 
 template<typename I, typename F>
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 inline __host__ __device__
 #else
 inline
@@ -70,7 +70,7 @@ F clip(F x) {
 }
 
 template<typename F>
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 inline __host__ __device__
 #else
 inline
@@ -84,7 +84,7 @@ F clip_4bit(F x) {
 }
 
 template<typename F>
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 inline __host__ __device__
 #else
 inline
@@ -98,7 +98,7 @@ F clip_2bit(F x) {
 }
 
 template<typename IType, typename SType, typename OType>
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 __host__ __device__
 #endif
 void quantize(IType ival, SType scale, OType& oval) {
@@ -142,7 +142,7 @@ struct QuantizeFunctor {
 };
 
 template<typename T, typename U, typename Func, typename Size>
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 __host__
 #endif
 void foreach_simple_cpu(T const* in,
@@ -155,7 +155,7 @@ void foreach_simple_cpu(T const* in,
 	}
 }
 
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 template<typename T, typename U, typename Func, typename Size>
 __global__
 void foreach_simple_gpu(T const* in,
@@ -205,7 +205,7 @@ inline void launch_foreach_simple_gpu(T const*     in,
 #endif
 
 template<typename T, typename Func, typename Size>
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 __host__
 #endif
 void foreach_simple_cpu_4bit(T const* in,
@@ -232,7 +232,7 @@ void foreach_simple_cpu_4bit(T const* in,
 	}
 }
 
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 template<typename T, typename Func, typename Size>
 __global__
 void foreach_simple_gpu_4bit(T const* in,
@@ -306,7 +306,7 @@ inline void launch_foreach_simple_gpu_4bit(T const*     in,
 #endif
 
 template<typename T, typename Func, typename Size>
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 __host__
 #endif
 void foreach_simple_cpu_2bit(T const* in,
@@ -341,7 +341,7 @@ void foreach_simple_cpu_2bit(T const* in,
 	}
 }
 
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 template<typename T, typename Func, typename Size>
 __global__
 void foreach_simple_gpu_2bit(T const* in,
@@ -448,7 +448,7 @@ BFstatus bfQuantize(BFarray const* in,
 	BF_ASSERT(is_contiguous(in),  BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT(is_contiguous(out), BF_STATUS_UNSUPPORTED_STRIDE);
 	
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
 	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
@@ -464,7 +464,7 @@ BFstatus bfQuantize(BFarray const* in,
 	bool byteswap_in  = ( in->big_endian != is_big_endian());
 	bool byteswap_out = (out->big_endian != is_big_endian());
 	
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 	if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 		BF_ASSERT(nelement<=(size_t)512*65535*65535, BF_STATUS_UNSUPPORTED_SHAPE);
 	}
@@ -477,6 +477,7 @@ BFstatus bfQuantize(BFarray const* in,
 	                   QuantizeFunctor<itype,stype,otype> \
 	                   (scale,byteswap_in,byteswap_out))
 	
+#ifdef BF_CUDA_ENABLED
 #define CALL_FOREACH_SIMPLE_GPU_QUANTIZE(itype,stype,otype) \
 	launch_foreach_simple_gpu((itype*)in->data, \
 	                          (otype*)out->data, \
@@ -484,6 +485,7 @@ BFstatus bfQuantize(BFarray const* in,
 	                          QuantizeFunctor<itype,stype,otype> \
 	                          (scale,byteswap_in,byteswap_out), \
 	                          (cudaStream_t)0)
+#endif
 	
 	// **TODO: Need CF32 --> CI* separately to support conjugation
 	if( in->dtype == BF_DTYPE_F32 || in->dtype == BF_DTYPE_CF32 ) {
@@ -492,7 +494,7 @@ BFstatus bfQuantize(BFarray const* in,
 		case BF_DTYPE_CI2: nelement *= 2;
 		case BF_DTYPE_I2: {
 			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
-			
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				launch_foreach_simple_gpu_2bit((float*)in->data, \
 				                               (int8_t*)out->data, \
@@ -507,12 +509,19 @@ BFstatus bfQuantize(BFarray const* in,
 				                        QuantizeFunctor<float,float,uint8_t> \
 				                        (scale,byteswap_in,byteswap_out));
 			}
+#else
+			foreach_simple_cpu_2bit((float*)in->data, \
+				                   (int8_t*)out->data, \
+				                   nelement, \
+				                   QuantizeFunctor<float,float,uint8_t> \
+				                   (scale,byteswap_in,byteswap_out));
+#endif
 			break;
 		}
 		case BF_DTYPE_CI4: nelement *= 2;
 		case BF_DTYPE_I4: {
 			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
-			
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				launch_foreach_simple_gpu_4bit((float*)in->data, \
 				                               (int8_t*)out->data, \
@@ -527,57 +536,88 @@ BFstatus bfQuantize(BFarray const* in,
 				                        QuantizeFunctor<float,float,uint8_t> \
 				                        (scale,byteswap_in,byteswap_out));
 			}
+#else
+			foreach_simple_cpu_4bit((float*)in->data, \
+				                   (int8_t*)out->data, \
+				                   nelement, \
+				                   QuantizeFunctor<float,float,uint8_t> \
+				                   (scale,byteswap_in,byteswap_out));
+#endif
 			break;
 		}
 		case BF_DTYPE_CI8: nelement *= 2;
 		case BF_DTYPE_I8: {
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,float,int8_t);
 			} else {
 				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,int8_t);
 			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,int8_t);
+#endif
 			break;
 		}
 		case BF_DTYPE_CI16: nelement *= 2;
 		case BF_DTYPE_I16: {
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,float,int16_t);
 			} else {
 				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,int16_t);
 			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,int16_t);
+#endif
 			break;
 		}
 		case BF_DTYPE_CI32: nelement *= 2;
 		case BF_DTYPE_I32: {
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,double,int32_t);
 			} else {
 				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,double,int32_t);
 			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,double,int32_t);
+#endif
 			break;
 		}
 		case BF_DTYPE_U8: {
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				
 			} else {
 				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,uint8_t);
 			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,uint8_t);
+#endif
 			break;
 		}
 		case BF_DTYPE_U16: {
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,float,uint16_t);
 			} else {
 				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,uint16_t);
 			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,uint16_t);
+#endif
 			break;
 		}
 		case BF_DTYPE_U32: {
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,double,uint32_t);
 			} else {
 				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,double,uint32_t);
 			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,double,uint32_t);
+#endif
 			break;
 		}
 		default: BF_FAIL("Supported bfQuantize output dtype", BF_STATUS_UNSUPPORTED_DTYPE);

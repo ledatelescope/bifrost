@@ -42,7 +42,7 @@ using std::endl;
 // sign_extend == false => output is scaled by 2**(8-nbit) (faster)
 
 template<int NBIT, typename K, typename T>
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 inline __host__ __device__
 #else
 inline
@@ -53,7 +53,7 @@ void rshift_subwords(T& val) {
 	}
 }
 // 2x 4-bit --> 2x 8-bit (unsigned)
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 inline __host__ __device__
 #else
 inline
@@ -82,7 +82,7 @@ void unpack(uint8_t   ival,
 }
 
 // 4x 2-bit --> 4x 8-bit (unsigned)
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 inline __host__ __device__
 #else
 inline
@@ -113,7 +113,7 @@ void unpack(uint8_t   ival,
 }
 
 // 8x 1-bit --> 8x 8-bit (unsigned)
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 inline __host__ __device__
 #else
 inline
@@ -146,7 +146,7 @@ void unpack(uint8_t   ival,
 }
 
 template<typename K, typename T>
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 inline __host__ __device__
 #else
 inline
@@ -159,7 +159,7 @@ void conjugate_subwords(T& val) {
 }
 
 // 2x 4-bit --> 2x 8-bit (signed)
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 inline __host__ __device__
 #else
 inline
@@ -189,7 +189,7 @@ void unpack(uint8_t  ival,
 	}
 }
 // 4x 2-bit --> 4x 8-bit (signed)
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 inline __host__ __device__
 #else
 inline
@@ -221,7 +221,7 @@ void unpack(uint8_t  ival,
 	}
 }
 // 8x 1-bit --> 8x 8-bit (signed)
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 inline __host__ __device__
 #else
 inline
@@ -273,7 +273,7 @@ struct UnpackFunctor {
 };
 
 template<typename T, typename U, typename Func, typename Size>
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 __host__
 #endif
 void foreach_simple_cpu(T const* in,
@@ -286,7 +286,7 @@ void foreach_simple_cpu(T const* in,
 	}
 }
 
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 template<typename T, typename U, typename Func, typename Size>
 __global__ void foreach_simple_gpu(T const* in,
                                    U*       out,
@@ -359,7 +359,7 @@ BFstatus bfUnpack(BFarray const* in,
 	BF_ASSERT(is_contiguous(in),  BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT(is_contiguous(out), BF_STATUS_UNSUPPORTED_STRIDE);
 	
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
 	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
@@ -375,7 +375,7 @@ BFstatus bfUnpack(BFarray const* in,
 	bool byteswap    = ( in->big_endian != is_big_endian());
 	bool conjugate   = (in->conjugated != out->conjugated);
 	
-#ifndef NOCUDA
+#ifdef BF_CUDA_ENABLED
 	if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 		BF_ASSERT(nelement<=(size_t)512*65535*65535, BF_STATUS_UNSUPPORTED_SHAPE);
 	}
@@ -388,6 +388,8 @@ BFstatus bfUnpack(BFarray const* in,
 	                   UnpackFunctor<itype,otype>(byteswap, \
 	                                              align_msb, \
 	                                              conjugate))
+	                                              
+#ifdef BF_CUDA_ENABLED
 #define CALL_FOREACH_SIMPLE_GPU_UNPACK(itype,otype) \
 	launch_foreach_simple_gpu((itype*)in->data, \
 	                          (otype*)out->data, \
@@ -396,6 +398,7 @@ BFstatus bfUnpack(BFarray const* in,
 	                                                     align_msb, \
 	                                                     conjugate), \
 	                          (cudaStream_t)0)
+#endif
 	
 	if( out->dtype == BF_DTYPE_I8 ||
 	           out->dtype == BF_DTYPE_CI8 ) {
@@ -411,22 +414,30 @@ BFstatus bfUnpack(BFarray const* in,
 		case BF_DTYPE_I2: {
 			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 4;
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,int32_t);
 			} else {
 				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int32_t);
 			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int32_t);
+#endif
 			break;
 		}
 		case BF_DTYPE_CI4: nelement *= 2;
 		case BF_DTYPE_I4: {
 			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 2;
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,int16_t);
 			} else {
 				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int16_t);
 			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int16_t);
+#endif
 			break;
 		}
 		//case BF_DTYPE_U1: {
@@ -435,21 +446,29 @@ BFstatus bfUnpack(BFarray const* in,
 		case BF_DTYPE_U2: {
 			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 4;
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,uint32_t);
 			} else {
 				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint32_t);
 			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint32_t);
+#endif
 			break;
 		}
 		case BF_DTYPE_U4: {
 			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 2;
+#ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,uint16_t);
 			} else {
 				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint16_t);
 			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint16_t);
+#endif
 			break;
 		}
 		default: BF_FAIL("Supported bfUnpack input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
@@ -458,6 +477,8 @@ BFstatus bfUnpack(BFarray const* in,
 		BF_FAIL("Supported bfUnpack output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 #undef CALL_FOREACH_SIMPLE_CPU_UNPACK
+#ifdef BF_CUDA_ENABLED
 #undef CALL_FOREACH_SIMPLE_GPU_UNPACK
+#endif
 	return BF_STATUS_SUCCESS;
 }
