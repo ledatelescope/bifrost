@@ -45,19 +45,24 @@ class PrintHeaderBlock(SinkBlock):
         pass
 
 def print_header(iring, *args, **kwargs):
-    """Prints out the header of each new sequence of a ring
+    """Prints out the header of each new sequence of a ring.
 
     Use this for testing purposes to have a quick look
-    at the contents of a ring.
+    at the contents of a ring when you are unsure. This
+    is done using the simple python `print` statement,
+    without any modification to the dictionary.
 
-    Parameters
+    Attributes
     ----------
-    iring : Ring
-        Contains the ring for which you wish to
-        print out the sequence headers for. 
-    
+    iring : Block
+        A derivative of a Block object.
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
     Returns
-    ------
-    PrintHeaderBlock
+    -------
+    `PrintHeaderBlock`
     """
     return PrintHeaderBlock(iring, *args, **kwargs)

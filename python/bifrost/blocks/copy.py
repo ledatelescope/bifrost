@@ -34,16 +34,40 @@ from bifrost.ndarray import copy_array
 from copy import deepcopy
 
 class CopyBlock(TransformBlock):
-	def __init__(self, iring, space=None, *args, **kwargs):
-		super(CopyBlock, self).__init__(iring, *args, **kwargs)
-		if space is None:
-			space = self.iring.space
-		self.orings = [self.create_ring(space=space)]
-	def on_sequence(self, iseq):
-		ohdr = deepcopy(iseq.header)
-		return ohdr
-	def on_data(self, ispan, ospan):
-		copy_array(ospan.data, ispan.data)
+    def __init__(self, iring, space=None, *args, **kwargs):
+        super(CopyBlock, self).__init__(iring, *args, **kwargs)
+        if space is None:
+            space = self.iring.space
+        self.orings = [self.create_ring(space=space)]
+    def on_sequence(self, iseq):
+        ohdr = deepcopy(iseq.header)
+        return ohdr
+    def on_data(self, ispan, ospan):
+        copy_array(ospan.data, ispan.data)
 
 def copy(iring, space=None, *args, **kwargs):
-	return CopyBlock(iring, space, *args, **kwargs)
+    """Copy the contents of a ring to another space.
+
+    Use this block to copy data between different
+        spaces, such as from system memory to GPU memory.
+        The output header for this block is identical
+        to the input header.
+
+    Attributes
+    ----------
+    iring : Block
+        A derivative of a Block object.
+    space : str, optional
+        String describing the output data space,
+        such as 'cuda' or 'system'. Default
+        space is same as input.
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Returns
+    -------
+    `CopyBlock`
+    """
+    return CopyBlock(iring, space, *args, **kwargs)

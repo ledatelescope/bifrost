@@ -36,31 +36,56 @@ from bifrost.DataType import DataType
 from copy import deepcopy
 
 class QuantizeBlock(TransformBlock):
-	def __init__(self, iring, dtype, scale=1.,
-	             *args, **kwargs):
-		super(QuantizeBlock, self).__init__(iring, *args, **kwargs)
-		self.dtype = dtype
-		self.scale = scale
-	def define_valid_input_spaces(self):
-		"""Return set of valid spaces (or 'any') for each input"""
-		return ('system',)
-	def on_sequence(self, iseq):
-		ihdr = iseq.header
-		ohdr = deepcopy(ihdr)
-		itype = DataType(ihdr['_tensor']['dtype'])
-		self.itype = itype
-		# Allow user to pass nbit instead of explicit dtype
-		if isinstance(self.dtype, int):
-			nbit = self.dtype
-			otype = itype.as_integer(nbit)
-		else:
-			otype = self.dtype
-		ohdr['_tensor']['dtype'] = otype
-		return ohdr
-	def on_data(self, ispan, ospan):
-		idata = ispan.data
-		odata = ospan.data
-		bf.quantize.quantize(idata, odata, self.scale)
+    def __init__(self, iring, dtype, scale=1.,
+                 *args, **kwargs):
+        super(QuantizeBlock, self).__init__(iring, *args, **kwargs)
+        self.dtype = dtype
+        self.scale = scale
+    def define_valid_input_spaces(self):
+        """Return set of valid spaces (or 'any') for each input"""
+        return ('system',)
+    def on_sequence(self, iseq):
+        ihdr = iseq.header
+        ohdr = deepcopy(ihdr)
+        itype = DataType(ihdr['_tensor']['dtype'])
+        self.itype = itype
+        # Allow user to pass nbit instead of explicit dtype
+        if isinstance(self.dtype, int):
+            nbit = self.dtype
+            otype = itype.as_integer(nbit)
+        else:
+            otype = self.dtype
+        ohdr['_tensor']['dtype'] = otype
+        return ohdr
+    def on_data(self, ispan, ospan):
+        idata = ispan.data
+        odata = ospan.data
+        bf.quantize.quantize(idata, odata, self.scale)
 
 def quantize(iring, dtype, *args, **kwargs):
-	return QuantizeBlock(iring, dtype, *args, **kwargs)
+    """Apply a requantization of bit depth for the data.
+
+    For example, if the data is 64 bit floating point,
+    and you want it to be 32 bit floating point,
+    you would write:
+
+    .. code:: python
+        
+        new_data = quantize(old_data, 'f32')
+
+    Attributes
+    ----------
+    iring : Block
+        A derivative of a Block object.
+    dtype : :obj: `bifrost.DataType`
+        Output data type
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Returns
+    -------
+    `QuantizeBlock`
+    """
+    return QuantizeBlock(iring, dtype, *args, **kwargs)
