@@ -240,12 +240,11 @@ void foreach_simple_gpu_4bit(T const* in,
                              Size     nelement,
                              Func     func) {
 	Size v0 = threadIdx.x + (blockIdx.x + blockIdx.y*gridDim.x)*blockDim.x;
-	v0 /= 2;
 	
 	T tempR;
 	T tempI;
 	int8_t tempO;
-	if( v0 < nelement/2 ) {
+	if( v0 < nelement ) {
 		tempR = in[2*v0+0];
 		tempI = in[2*v0+1];
 		if(func.byteswap_in) {
@@ -259,7 +258,7 @@ void foreach_simple_gpu_4bit(T const* in,
 		}
 		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
 		tempO = (((int8_t(rint(clip_4bit(tempR*func.scale)))*16)     ) & 0xF0) | \
-			    (((int8_t(rint(clip_4bit(tempI*func.scale)))*16) >> 4) & 0x0F);
+			   (((int8_t(rint(clip_4bit(tempI*func.scale)))*16) >> 4) & 0x0F);
 		if(func.byteswap_out) {
 #ifdef __CUDA_ARCH__
 			byteswap_gpu(tempO, &tempO);
@@ -277,6 +276,7 @@ inline void launch_foreach_simple_gpu_4bit(T const*     in,
                                            Size         nelement,
                                            Func         func,
                                            cudaStream_t stream=0) {
+	nelement /= 2;
 	//cout << "LAUNCH for " << nelement << endl;
 	dim3 block(512, 1); // TODO: Tune this
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
@@ -349,14 +349,13 @@ void foreach_simple_gpu_2bit(T const* in,
                              Size     nelement,
                              Func     func) {
 	Size v0 = threadIdx.x + (blockIdx.x + blockIdx.y*gridDim.x)*blockDim.x;
-	v0 /= 4;
 	
 	T tempA;
 	T tempB;
 	T tempC;
 	T tempD;
 	int8_t tempO;
-	if( v0 < nelement/4 ) {
+	if( v0 < nelement ) {
 		tempA = in[4*v0+0];
 		tempB = in[4*v0+1];
 		tempC = in[4*v0+2];
@@ -396,6 +395,7 @@ inline void launch_foreach_simple_gpu_2bit(T const*     in,
                                            Size         nelement,
                                            Func         func,
                                            cudaStream_t stream=0) {
+	nelement /= 4;
 	//cout << "LAUNCH for " << nelement << endl;
 	dim3 block(512, 1); // TODO: Tune this
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
