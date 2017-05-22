@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2017, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2017, The University of New Mexico. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,21 +31,30 @@
 #include <bifrost/unpack.h>
 #include "utils.hpp"
 
+#include "utils.hu"
+
+// HACK TESTING
+#include <iostream>
+using std::cout;
+using std::endl;
+
 // sign_extend == true  => output has same value as input  (slower)
 // sign_extend == false => output is scaled by 2**(8-nbit) (faster)
 
 template<int NBIT, typename K, typename T>
-inline void rshift_subwords(T& val) {
+inline __host__ __device__
+void rshift_subwords(T& val) {
 	for( int k=0; k<(int)(sizeof(T)/sizeof(K)); ++k ) {
 		((K*)&val)[k] >>= NBIT;
 	}
 }
 // 2x 4-bit --> 2x 8-bit (unsigned)
-inline void unpack(uint8_t   ival,
-                   uint16_t& oval,
-                   bool      byte_reverse,
-                   bool      align_msb,
-                   bool      conjugate) {
+inline __host__ __device__
+void unpack(uint8_t   ival,
+            uint16_t& oval,
+            bool      byte_reverse,
+            bool      align_msb,
+            bool      conjugate) {
 	// Note: Ignores conjugate
 	if( byte_reverse ) {
 		// ........ABCDEFGH
@@ -64,11 +74,12 @@ inline void unpack(uint8_t   ival,
 }
 
 // 4x 2-bit --> 4x 8-bit (unsigned)
-inline void unpack(uint8_t   ival,
-                   uint32_t& oval,
-                   bool      byte_reverse,
-                   bool      align_msb,
-                   bool      conjugate) {
+inline __host__ __device__
+void unpack(uint8_t   ival,
+            uint32_t& oval,
+            bool      byte_reverse,
+            bool      align_msb,
+            bool      conjugate) {
 	// Note: Ignores conjugate
 	// ..................ABCDEFGH......
 	// ......ABCD............EFGH......
@@ -77,7 +88,11 @@ inline void unpack(uint8_t   ival,
 	oval = (oval | (oval << 12)) & 0x03C003C0;
 	oval = (oval | (oval <<  6)) & 0xC0C0C0C0;
 	if( byte_reverse) {
+#ifdef __CUDA_ARCH__
+		byteswap_gpu(oval, &oval);
+#else
 		byteswap(oval, &oval);
+#endif
 	}
 	if( !align_msb ) {
 		// >>>>>>AB>>>>>>CD>>>>>>EF>>>>>>GH
@@ -86,11 +101,12 @@ inline void unpack(uint8_t   ival,
 }
 
 // 8x 1-bit --> 8x 8-bit (unsigned)
-inline void unpack(uint8_t   ival,
-                   uint64_t& oval,
-                   bool      byte_reverse,
-                   bool      align_msb,
-                   bool      conjugate) {
+inline __host__ __device__
+void unpack(uint8_t   ival,
+            uint64_t& oval,
+            bool      byte_reverse,
+            bool      align_msb,
+            bool      conjugate) {
 	// Note: Ignores conjugate
 	// .................................................ABCDEFGH.......
 	// .....................ABCD............................EFGH.......
@@ -101,7 +117,11 @@ inline void unpack(uint8_t   ival,
 	oval = (oval | (oval << 14)) & 0x0180018001800180;
 	oval = (oval | (oval <<  7)) & 0x8080808080808080;
 	if( byte_reverse) {
+#ifdef __CUDA_ARCH__
+		byteswap_gpu(oval, &oval);
+#else
 		byteswap(oval, &oval);
+#endif
 	}
 	if( !align_msb ) {
 		// >>>>>>>A>>>>>>>B>>>>>>>C>>>>>>>D
@@ -110,7 +130,8 @@ inline void unpack(uint8_t   ival,
 }
 
 template<typename K, typename T>
-inline void conjugate_subwords(T& val) {
+inline __host__ __device__
+void conjugate_subwords(T& val) {
 	for( int k=1; k<(int)(sizeof(T)/sizeof(K)); k+=2 ) {
 		K& val_imag = ((K*)&val)[k];
 		val_imag = -val_imag;
@@ -118,11 +139,12 @@ inline void conjugate_subwords(T& val) {
 }
 
 // 2x 4-bit --> 2x 8-bit (signed)
-inline void unpack(uint8_t  ival,
-                   int16_t& oval,
-                   bool     byte_reverse,
-                   bool     align_msb,
-                   bool     conjugate) {
+inline __host__ __device__
+void unpack(uint8_t  ival,
+            int16_t& oval,
+            bool     byte_reverse,
+            bool     align_msb,
+            bool     conjugate) {
 	if( byte_reverse ) {
 		// ........ABCDEFGH
 		// EFGH....ABCD....
@@ -143,11 +165,12 @@ inline void unpack(uint8_t  ival,
 	}
 }
 // 4x 2-bit --> 4x 8-bit (signed)
-inline void unpack(uint8_t  ival,
-                   int32_t& oval,
-                   bool     byte_reverse,
-                   bool     align_msb,
-                   bool     conjugate) {
+inline __host__ __device__
+void unpack(uint8_t  ival,
+            int32_t& oval,
+            bool     byte_reverse,
+            bool     align_msb,
+            bool     conjugate) {
 	// ..................ABCDEFGH......
 	// ......ABCD............EFGH......
 	// AB......CD......EF......GH......
@@ -155,7 +178,11 @@ inline void unpack(uint8_t  ival,
 	oval = (oval | (oval << 12)) & 0x03C003C0;
 	oval = (oval | (oval <<  6)) & 0xC0C0C0C0;
 	if( byte_reverse) {
+#ifdef __CUDA_ARCH__
+		byteswap_gpu(oval, &oval);
+#else
 		byteswap(oval, &oval);
+#endif
 	}
 	if( !align_msb ) {
 		// >>>>>>AB>>>>>>CD>>>>>>EF>>>>>>GH
@@ -166,11 +193,12 @@ inline void unpack(uint8_t  ival,
 	}
 }
 // 8x 1-bit --> 8x 8-bit (signed)
-inline void unpack(uint8_t  ival,
-                   int64_t& oval,
-                   bool     byte_reverse,
-                   bool     align_msb,
-                   bool     conjugate) {
+inline __host__ __device__
+void unpack(uint8_t  ival,
+            int64_t& oval,
+            bool     byte_reverse,
+            bool     align_msb,
+            bool     conjugate) {
 	// .................................................ABCDEFGH.......
 	// .....................ABCD............................EFGH.......
 	// .......AB..............CD..............EF..............GH.......
@@ -180,7 +208,11 @@ inline void unpack(uint8_t  ival,
 	oval = (oval | (oval << 14)) & 0x0180018001800180;
 	oval = (oval | (oval <<  7)) & 0x8080808080808080;
 	if( byte_reverse) {
+#ifdef __CUDA_ARCH__
+		byteswap_gpu(oval, &oval);
+#else
 		byteswap(oval, &oval);
+#endif
 	}
 	if( !align_msb ) {
 		// >>>>>>>A>>>>>>>B>>>>>>>C>>>>>>>D
@@ -202,12 +234,13 @@ struct UnpackFunctor {
 		: byte_reverse(byte_reverse_),
 		  align_msb(align_msb_),
 		  conjugate(conjugate_) {}
-	void operator()(IType ival, OType& oval) const {
+	__host__ __device__ void operator()(IType ival, OType& oval) const {
 		unpack(ival, oval, byte_reverse, align_msb, conjugate);
 	}
 };
 
 template<typename T, typename U, typename Func, typename Size>
+__host__
 void foreach_simple_cpu(T const* in,
                         U*       out,
                         Size     nelement,
@@ -216,6 +249,52 @@ void foreach_simple_cpu(T const* in,
 		func(in[i], out[i]);
 		//std::cout << std::hex << (int)in[i] << " --> " << (int)out[i] << std::endl;
 	}
+}
+
+template<typename T, typename U, typename Func, typename Size>
+__global__ void foreach_simple_gpu(T const* in,
+                                   U*       out,
+                                   Size     nelement,
+                                   Func     func) {
+	Size v0 = threadIdx.x + (blockIdx.x + blockIdx.y*gridDim.x)*blockDim.x;
+	
+	if( v0 < nelement ) {
+		func(in[v0], out[v0]);
+		//std::cout << std::hex << (int)in[i] << " --> " << (int)out[i] << std::endl;
+	}
+}
+
+template<typename T, typename U, typename Func, typename Size>
+inline void launch_foreach_simple_gpu(T const*     in,
+                                      U*           out,
+                                      Size         nelement,
+                                      Func         func,
+                                      cudaStream_t stream=0) {
+	cout << "LAUNCH for " << nelement << endl;
+	dim3 block(512, 1); // TODO: Tune this
+	Size first = std::min((nelement-1)/block.x+1, 65535ul);
+	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
+	if( block.x*first > nelement ) {
+		secnd = 1;
+	}
+	
+	dim3 grid(first, secnd);
+	cout << "  Block size is " << block.x << " by " << block.y << endl;
+	cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
+	cout << "  Maximum size is " << block.x*grid.x*grid.y << endl;
+	if( block.x*grid.x*grid.y >= nelement ) {
+		cout << "  -> Valid" << endl;
+	}
+	
+// 	BF_ASSERT(block.x*grid.x*grid.y >= nelement, BF_STATUS_UNSUPPORTED);
+	
+	void* args[] = {&in,
+	                &out, 
+	                &nelement, 
+	                &func};
+	cudaLaunchKernel((void*)foreach_simple_gpu<T,U,Func,Size>,
+	                 grid, block,
+	                 &args[0], 0, stream);
 }
 
 BFstatus bfUnpack(BFarray const* in,
@@ -243,10 +322,9 @@ BFstatus bfUnpack(BFarray const* in,
 	BF_ASSERT(is_contiguous(in),  BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT(is_contiguous(out), BF_STATUS_UNSUPPORTED_STRIDE);
 	
-	// TODO: Support CUDA space
-	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM),
+	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
 	          BF_STATUS_UNSUPPORTED_SPACE);
-	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM),
+	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
 	          BF_STATUS_UNSUPPORTED_SPACE);
 	
 	size_t nelement = num_contiguous_elements(in);
@@ -260,6 +338,15 @@ BFstatus bfUnpack(BFarray const* in,
 	                   UnpackFunctor<itype,otype>(byteswap, \
 	                                              align_msb, \
 	                                              conjugate))
+#define CALL_FOREACH_SIMPLE_GPU_UNPACK(itype,otype) \
+	launch_foreach_simple_gpu((itype*)in->data, \
+	                          (otype*)out->data, \
+	                          nelement, \
+	                          UnpackFunctor<itype,otype>(byteswap, \
+	                                                     align_msb, \
+	                                                     conjugate), \
+	                          (cudaStream_t)0)
+	
 	if( out->dtype == BF_DTYPE_I8 ||
 	           out->dtype == BF_DTYPE_CI8 ) {
 	//case BF_DTYPE_I8: {
@@ -275,14 +362,22 @@ BFstatus bfUnpack(BFarray const* in,
 		case BF_DTYPE_I2: {
 			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 4;
-			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int32_t);
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,int32_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int32_t);
+			}
 			break;
 		}
 		case BF_DTYPE_CI4: nelement *= 2;
 		case BF_DTYPE_I4: {
 			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 2;
-			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int16_t);
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,int16_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int16_t);
+			}
 			break;
 		}
 		//case BF_DTYPE_U1: {
@@ -291,20 +386,29 @@ BFstatus bfUnpack(BFarray const* in,
 		case BF_DTYPE_U2: {
 			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 4;
-			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint32_t);
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,uint32_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint32_t);
+			}
 			break;
 		}
 		case BF_DTYPE_U4: {
 			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 2;
-			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint16_t);
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,uint16_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint16_t);
+			}
 			break;
 		}
-		default: BF_FAIL("Supported bfQuantize input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
+		default: BF_FAIL("Supported bfUnpack input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 		}
 	} else {
-		BF_FAIL("Supported bfQuantize output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
+		BF_FAIL("Supported bfUnpack output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 #undef CALL_FOREACH_SIMPLE_CPU_UNPACK
+#undef CALL_FOREACH_SIMPLE_GPU_UNPACK
 	return BF_STATUS_SUCCESS;
 }

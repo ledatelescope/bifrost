@@ -57,8 +57,9 @@ inline F clip(F x) {
 	return min(max(x,F(minval<I>())),F(maxval<I>()));
 }
 
-inline int8_t clip_4bit(int8_t x) {
-	return min(max(x,int8_t(-7)),int8_t(7));
+template<typename F>
+inline F clip_4bit(F x) {
+	return min(max(x,F(-7)),F(7));
 }
 
 template<typename IType, typename SType, typename OType>
