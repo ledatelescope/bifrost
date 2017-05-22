@@ -83,6 +83,20 @@ F clip_4bit(F x) {
 #endif
 }
 
+template<typename F>
+#ifndef NOCUDA
+inline __host__ __device__
+#else
+inline
+#endif
+F clip_2bit(F x) {
+#ifdef __CUDA_ARCH__
+	return min_gpu(max_gpu(x,F(-1)),F(1));
+#else
+	return min(max(x,F(-1)),F(1));
+#endif
+}
+
 template<typename IType, typename SType, typename OType>
 #ifndef NOCUDA
 __host__ __device__
@@ -291,6 +305,125 @@ inline void launch_foreach_simple_gpu_4bit(T const*     in,
 }
 #endif
 
+template<typename T, typename Func, typename Size>
+#ifndef NOCUDA
+__host__
+#endif
+void foreach_simple_cpu_2bit(T const* in,
+                             int8_t*  out,
+                             Size     nelement,
+                             Func     func) {
+	T tempA;
+	T tempB;
+	T tempC;
+	T tempD;
+	int8_t tempO;
+	for( Size i=0; i<nelement; i+=4 ) {
+		tempA = in[i+0];
+		tempB = in[i+1];
+		tempC = in[i+2];
+		tempD = in[i+3];
+		if(func.byteswap_in) {
+			byteswap(tempA, &tempA);
+			byteswap(tempB, &tempB);
+			byteswap(tempC, &tempC);
+			byteswap(tempD, &tempD);
+		}
+		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
+		tempO = (((int8_t(rint(clip_2bit(tempA*func.scale)))*64)     ) & 0xC0) | \
+			   (((int8_t(rint(clip_2bit(tempB*func.scale)))*64) >> 2) & 0x30) | \
+			   (((int8_t(rint(clip_2bit(tempC*func.scale)))*64) >> 4) & 0x0C) | \
+			   (((int8_t(rint(clip_2bit(tempD*func.scale)))*64) >> 6) & 0x03);
+		if(func.byteswap_out) {
+			byteswap(tempO, &tempO);
+		}
+		out[i/4] = tempO;
+	}
+}
+
+#ifndef NOCUDA
+template<typename T, typename Func, typename Size>
+__global__
+void foreach_simple_gpu_2bit(T const* in,
+                             int8_t*  out,
+                             Size     nelement,
+                             Func     func) {
+	Size v0 = threadIdx.x + (blockIdx.x + blockIdx.y*gridDim.x)*blockDim.x;
+	v0 /= 4;
+	
+	T tempA;
+	T tempB;
+	T tempC;
+	T tempD;
+	int8_t tempO;
+	if( v0 < nelement/4 ) {
+		tempA = in[4*v0+0];
+		tempB = in[4*v0+1];
+		tempC = in[4*v0+2];
+		tempD = in[4*v0+3];
+		if(func.byteswap_in) {
+#ifdef __CUDA_ARCH__
+			byteswap_gpu(tempA, &tempA);
+			byteswap_gpu(tempB, &tempB);
+			byteswap_gpu(tempC, &tempC);
+			byteswap_gpu(tempD, &tempD);
+#else
+			byteswap(tempA, &tempA);
+			byteswap(tempB, &tempB);
+			byteswap(tempD, &tempC);
+			byteswap(tempD, &tempD);
+#endif
+		}
+		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
+		tempO = (((int8_t(rint(clip_2bit(tempA*func.scale)))*64)     ) & 0xC0) | \
+			   (((int8_t(rint(clip_2bit(tempB*func.scale)))*64) >> 2) & 0x30) | \
+			   (((int8_t(rint(clip_2bit(tempC*func.scale)))*64) >> 4) & 0x0C) | \
+			   (((int8_t(rint(clip_2bit(tempD*func.scale)))*64) >> 6) & 0x03);
+		if(func.byteswap_out) {
+#ifdef __CUDA_ARCH__
+			byteswap_gpu(tempO, &tempO);
+#else
+			byteswap(tempO, &tempO);
+#endif
+		}
+		out[v0] = tempO;
+	}
+}
+
+template<typename T, typename Func, typename Size>
+inline void launch_foreach_simple_gpu_2bit(T const*     in,
+                                           int8_t*      out,
+                                           Size         nelement,
+                                           Func         func,
+                                           cudaStream_t stream=0) {
+	cout << "LAUNCH for " << nelement << endl;
+	dim3 block(512, 1); // TODO: Tune this
+	Size first = std::min((nelement-1)/block.x+1, 65535ul);
+	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
+	if( block.x*first > nelement ) {
+		secnd = 1;
+	}
+	
+	dim3 grid(first, secnd);
+	cout << "  Block size is " << block.x << " by " << block.y << endl;
+	cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
+	cout << "  Maximum size is " << block.x*grid.x*grid.y << endl;
+	if( block.x*grid.x*grid.y >= nelement ) {
+		cout << "  -> Valid" << endl;
+	}
+	
+// 	BF_ASSERT(block.x*grid.x*grid.y >= nelement, BF_STATUS_UNSUPPORTED);
+	
+	void* args[] = {&in,
+	                &out, 
+	                &nelement, 
+	                &func};
+	cudaLaunchKernel((void*)foreach_simple_gpu_2bit<T,Func,Size>,
+	                 grid, block,
+	                 &args[0], 0, stream);
+}
+#endif
+
 BFstatus bfQuantize(BFarray const* in,
                     BFarray const* out,
                     double         scale) {
@@ -356,6 +489,27 @@ BFstatus bfQuantize(BFarray const* in,
 	if( in->dtype == BF_DTYPE_F32 || in->dtype == BF_DTYPE_CF32 ) {
 		// TODO: Support T-->T with endian conversion (like quantize but with identity func instead)
 		switch( out->dtype ) {
+		case BF_DTYPE_CI2: nelement *= 2;
+		case BF_DTYPE_I2: {
+			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
+			
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				cout << "  GPU" << endl;
+				launch_foreach_simple_gpu_2bit((float*)in->data, \
+				                               (int8_t*)out->data, \
+				                               nelement, \
+				                               QuantizeFunctor<float,float,uint8_t> \
+				                               (scale,byteswap_in,byteswap_out), \
+				                               (cudaStream_t)0);
+			} else {
+				foreach_simple_cpu_2bit((float*)in->data, \
+				                        (int8_t*)out->data, \
+				                        nelement, \
+				                        QuantizeFunctor<float,float,uint8_t> \
+				                        (scale,byteswap_in,byteswap_out));
+			}
+			break;
+		}
 		case BF_DTYPE_CI4: nelement *= 2;
 		case BF_DTYPE_I4: {
 			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
