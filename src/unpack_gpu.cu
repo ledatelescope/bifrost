@@ -306,7 +306,7 @@ inline void launch_foreach_simple_gpu(T const*     in,
                                       Size         nelement,
                                       Func         func,
                                       cudaStream_t stream=0) {
-	cout << "LAUNCH for " << nelement << endl;
+	//cout << "LAUNCH for " << nelement << endl;
 	dim3 block(512, 1); // TODO: Tune this
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
 	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
@@ -315,14 +315,14 @@ inline void launch_foreach_simple_gpu(T const*     in,
 	}
 	
 	dim3 grid(first, secnd);
+	/*
 	cout << "  Block size is " << block.x << " by " << block.y << endl;
 	cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
 	cout << "  Maximum size is " << block.x*grid.x*grid.y << endl;
 	if( block.x*grid.x*grid.y >= nelement ) {
 		cout << "  -> Valid" << endl;
 	}
-	
-// 	BF_ASSERT(block.x*grid.x*grid.y >= nelement, BF_STATUS_UNSUPPORTED);
+	*/
 	
 	void* args[] = {&in,
 	                &out, 
