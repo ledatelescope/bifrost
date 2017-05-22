@@ -34,6 +34,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef NOCUDA
+
 // Simple minimum
 template<typename T, typename U>
 inline __host__ __device__
@@ -221,5 +223,7 @@ inline __host__ __device__
 void byteswap_gpu(int16_t value, int16_t* result) {
 	return byteswap_impl_gpu(type_pun_gpu<uint64_t>(value), (uint16_t*)result);
 }
+
+#endif // NOCUDA
 
 #endif // BF_UNPACK_GPU_HU_INCLUDE_GUARD_
