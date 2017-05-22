@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import absolute_import
+import pprint
 
 from bifrost.pipeline import SinkBlock
 
@@ -38,7 +39,7 @@ class PrintHeaderBlock(SinkBlock):
         super(PrintHeaderBlock, self).__init__(iring, *args, **kwargs)
     def on_sequence(self, iseq):
         ihdr = iseq.header
-        print ihdr
+        pprint.pprint(ihdr)
     def on_sequence_end(self, iseq):
         pass
     def on_data(self, ispan):
