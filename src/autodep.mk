@@ -54,15 +54,9 @@ CLEAR_LINE = tput el && echo -n "\033[2K" || true # Clears the current line
 %.o : %.cu
 %.o : %.cu $(DEPDIR)/%.d
 	@$(CLEAR_LINE)
-ifndef NOCUDA
-		@echo -n "Building CUDA source file $<\r"
-		@$(DEPBUILD.cc) $< > /dev/null
-		$(COMPILE.nvcc) $(OUTPUT_OPTION) $<
-else
-		@echo -n "Building CUDA source file as CPU-only $<\r"
-		@$(DEPBUILD.cc) $< > /dev/null
-		$(COMPILE.cc) $(OUTPUT_OPTION) $<
-endif
+	@echo -n "Building CUDA source file $<\r"
+	@$(DEPBUILD.cc) $< > /dev/null
+	$(COMPILE.nvcc) $(OUTPUT_OPTION) $<
 	@$(POSTCOMPILE)
 
 $(DEPDIR)/%.d: ;
