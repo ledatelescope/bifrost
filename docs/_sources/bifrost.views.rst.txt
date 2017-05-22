@@ -1,0 +1,22 @@
+bifrost\.views package
+======================
+
+Submodules
+----------
+
+bifrost\.views\.basic\_views module
+-----------------------------------
+
+.. automodule:: bifrost.views.basic_views
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: bifrost.views
+    :members:
+    :undoc-members:
+    :show-inheritance:

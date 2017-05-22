@@ -1,0 +1,294 @@
+Python Reference
+================
+
+Subpackages
+-----------
+
+.. toctree::
+
+    bifrost.blocks
+    bifrost.views
+
+Submodules
+----------
+
+bifrost\.DataType module
+------------------------
+
+.. automodule:: bifrost.DataType
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.GPUArray module
+------------------------
+
+.. automodule:: bifrost.GPUArray
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.Space module
+---------------------
+
+.. automodule:: bifrost.Space
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.address module
+-----------------------
+
+.. automodule:: bifrost.address
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.affinity module
+------------------------
+
+.. automodule:: bifrost.affinity
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.block module
+---------------------
+
+.. automodule:: bifrost.block
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.core module
+--------------------
+
+.. automodule:: bifrost.core
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.device module
+----------------------
+
+.. automodule:: bifrost.device
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.dtype module
+---------------------
+
+.. automodule:: bifrost.dtype
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.fdmt module
+--------------------
+
+.. automodule:: bifrost.fdmt
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.fft module
+-------------------
+
+.. automodule:: bifrost.fft
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.guppi\_raw module
+--------------------------
+
+.. automodule:: bifrost.guppi_raw
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.header\_standard module
+--------------------------------
+
+.. automodule:: bifrost.header_standard
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.libbifrost module
+--------------------------
+
+.. automodule:: bifrost.libbifrost
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.linalg module
+----------------------
+
+.. automodule:: bifrost.linalg
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.map module
+-------------------
+
+.. automodule:: bifrost.map
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.memory module
+----------------------
+
+.. automodule:: bifrost.memory
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.ndarray module
+-----------------------
+
+.. automodule:: bifrost.ndarray
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.pipeline module
+------------------------
+
+.. automodule:: bifrost.pipeline
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.portaudio module
+-------------------------
+
+.. automodule:: bifrost.portaudio
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.proclog module
+-----------------------
+
+.. automodule:: bifrost.proclog
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.quantize module
+------------------------
+
+.. automodule:: bifrost.quantize
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.ring module
+--------------------
+
+.. automodule:: bifrost.ring
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.ring2 module
+---------------------
+
+.. automodule:: bifrost.ring2
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.sigproc module
+-----------------------
+
+.. automodule:: bifrost.sigproc
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.sigproc2 module
+------------------------
+
+.. automodule:: bifrost.sigproc2
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.temp\_storage module
+-----------------------------
+
+.. automodule:: bifrost.temp_storage
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.transpose module
+-------------------------
+
+.. automodule:: bifrost.transpose
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.udp\_capture module
+----------------------------
+
+.. automodule:: bifrost.udp_capture
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.udp\_socket module
+---------------------------
+
+.. automodule:: bifrost.udp_socket
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.udp\_transmit module
+-----------------------------
+
+.. automodule:: bifrost.udp_transmit
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.units module
+---------------------
+
+.. automodule:: bifrost.units
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.unpack module
+----------------------
+
+.. automodule:: bifrost.unpack
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+bifrost\.version module
+-----------------------
+
+.. automodule:: bifrost.version
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: bifrost
+    :members:
+    :undoc-members:
+    :show-inheritance:
