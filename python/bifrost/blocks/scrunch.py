@@ -61,7 +61,7 @@ class ScrunchBlock(TransformBlock):
         return out_nframe
 
 def scrunch(iring, factor, *args, **kwargs):
-    """Accumulate and output the mean of `factor` incoming frames.
+    """Average `factor` incoming frames into one output frame.
 
     This works on system memory. 
 
@@ -70,7 +70,7 @@ def scrunch(iring, factor, *args, **kwargs):
     iring : Block
         A derivative of a Block object.
     factor : int
-        The number of input frames to accumulate
+        The number of input frames to accumulate.
     *args
         Arguments to `bifrost.pipeline.TransformBlock`.
     **kwargs
