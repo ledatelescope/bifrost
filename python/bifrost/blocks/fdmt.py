@@ -131,6 +131,22 @@ def fdmt(iring, max_dm, *args, **kwargs):
     Returns
     -------
     `FdmtBlock`
+
+    References
+    ----------
+    This is based on Barak Zackay's FDMT algorithm, see [1]_.
+
+    .. [1] Zackay, Barak, and Eran O. Ofek. "An accurate
+       and efficient algorithm for detection of radio bursts
+       with an unknown dispersion measure, for single dish
+       telescopes and interferometers." arXiv preprint arXiv:1411.5373 (2014).
+
+    Notes
+    -----
+
+    Use `bifrost.blocks.print_header` to check the output dimensions
+    of this block, if necessary, as they are determined by the `max_dm`
+    parameter as well as other observational parameters.
     """
     return FdmtBlock(iring, max_dm, *args, **kwargs)
     #TODO: No information about required axes!
