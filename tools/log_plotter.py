@@ -43,6 +43,8 @@ Usage: %s [OPTIONS] filename
 
 Options:
 -h, --help                  Display this help information
+-c, --columns               Comma-separated list of column numbers to plot
+                            (default = prompt for columns to plot)
 """ % (os.path.basename(__file__), os.path.basename(__file__))
 	
 	if exitCode is not None:
@@ -55,10 +57,11 @@ def parseOptions(args):
 	config = {}
 	# Command line flags - default values
 	config['args'] = []
+	config['cols'] = ''
 	
 	# Read in and process the command line flags
 	try:
-		opts, args = getopt.getopt(args, "h", ["help",])
+		opts, args = getopt.getopt(args, "hc:", ["help", "columns="])
 	except getopt.GetoptError, err:
 		# Print help information and exit:
 		print str(err) # will print something like "option -a not recognized"
@@ -68,6 +71,8 @@ def parseOptions(args):
 	for opt, value in opts:
 		if opt in ('-h', '--help'):
 			usage(exitCode=0)
+		elif opt in ('-c', '--columns'):
+			config['cols'] = value
 		else:
 			assert False
 			
@@ -129,7 +134,11 @@ def main(args):
 		print "  %i - %s" % (n, fields[n])
 	## Ask
 	print "Enter a comma-separated list of fields to plot or 'q' to quit:"
-	raw = raw_input("")
+	if config['cols'] == '':
+		raw = raw_input("$ ")
+	else:
+		print "$ %s" % config['cols']
+		raw = config['cols']
 	## Parse
 	### Exit?
 	if len(raw) == 0:
