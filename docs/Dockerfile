@@ -3,8 +3,8 @@
 #   documentation
 FROM ledatelescope/bifrost
 
-RUN pip --no-cache-dir install \
-    sphinx \
-    breathe
+RUN pip install --no-cache-dir \
+    git+https://github.com/sphinx-doc/sphinx@stable \
+    git+https://github.com/michaeljones/breathe
 
 RUN ["/bin/bash"]
