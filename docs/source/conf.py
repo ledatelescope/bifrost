@@ -160,5 +160,5 @@ texinfo_documents = [
 
 # -- Set up breathe -------------------------------------------------------
 
-breathe_projects = {"bifrost": "doxygen/xml"}
+breathe_projects = {"bifrost": "../doxygen/xml"}
 breathe_default_project = "bifrost"
