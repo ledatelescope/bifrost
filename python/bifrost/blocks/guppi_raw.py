@@ -77,7 +77,8 @@ class GuppiRawSourceBlock(SourceBlock):
                            (f0_MHz, df_MHz),
                            (0, dt_s),
                            None],
-                'units':  ['s', 'MHz', 's', None]
+                'units':  ['s', 'MHz', 's', None],
+                'gulp_nframe': 1,
             },
             'az_start':      _get_with_default(ihdr, 'AZ'),            # Decimal degrees
             'za_start':      _get_with_default(ihdr, 'ZA'),            # Decimal degrees
