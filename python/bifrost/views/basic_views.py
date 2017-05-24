@@ -35,7 +35,9 @@ from bifrost.units import convert_units
 from numpy import isclose
 
 def custom(block, hdr_transform):
-	return block_view(block, header_transform)
+	"""An alias to `bifrost.pipeline.block_view`
+	"""
+	return block_view(block, hdr_transform)
 
 def rename_axis(block, old, new):
 	rename_axis.old = old
