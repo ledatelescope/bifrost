@@ -31,7 +31,7 @@ import bifrost as bf
 import numpy as np
 import ctypes
 
-def map(func_string, shape=None,# axis_names=None,
+def map(func_string, #shape=None,# axis_names=None,
         *args,
         **kwargs):
 	"""Apply a function to a set of ndarrays.
@@ -62,10 +62,10 @@ def map(func_string, shape=None,# axis_names=None,
 	  # Slice an array with a scalar index
 	  bf.map("c(i) = a(i,k)", 'i', c=c, a=a, k=7, shape=c.shape)
 	"""
-	#if 'shape' in kwargs:
-	#	shape = kwargs.pop('shape')
-	#else:
-	#	shape = None
+	if 'shape' in kwargs:
+		shape = kwargs.pop('shape')
+	else:
+		shape = None
 	if isinstance(shape, basestring):
 		raise TypeError("Invalid type for shape argument")
 	if any([not isinstance(arg, basestring) for arg in args]):
