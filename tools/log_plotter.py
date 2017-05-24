@@ -232,6 +232,11 @@ def main(args):
 		ax.set_title(' '.join(label.rsplit(None)[:-1]))
 		
 		## Plot the figure, labeling the lines as needed
+		index = []
+		counts = {}
+		colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+		linestyles = ['-', '--', '-.', '-']
+		markers = ['+', '+', '+', 'x']
 		for n in groups[group]:
 			### Come up with a label
 			label = fields[n]
@@ -244,8 +249,30 @@ def main(args):
 				label = label.split('-', 1)[0]
 			label = label.strip().rstrip()
 			
+			### Figure out the sub-grouping
+			try:
+				subgroup, junk = label.split('-', 1)
+				try:
+					counts[subgroup] += 1
+				except KeyError:
+					index.append( subgroup )
+					counts[subgroup] = 0
+				color = colors[index.index(subgroup)]
+				linestyle = linestyles[counts[subgroup]%len(linestyles)]
+				marker = markers[counts[subgroup]%len(markers)]
+			except ValueError:
+				try:
+					del color
+				except NameError:
+					pass
+				linestyle='-'
+				marker = '+'
+				
 			### Add the line
-			ax.plot(tElapsed, data[:,n]/norm, marker='+', label=label)
+			try:
+				ax.plot(tElapsed, data[:,n]/norm, linestyle=linestyle, marker=marker, color=color, label=label)
+			except NameError:
+				ax.plot(tElapsed, data[:,n]/norm, linestyle=linestyle, marker=marker, label=label)
 			
 		## Done with this figure
 		ax.legend(loc=0)
