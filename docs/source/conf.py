@@ -37,6 +37,7 @@ extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
     'breathe']
 
 # Add any paths that contain templates here, relative to this directory.
@@ -160,5 +161,5 @@ texinfo_documents = [
 
 # -- Set up breathe -------------------------------------------------------
 
-breathe_projects = {"bifrost": "/home/miles/Documents/bifrost5/docs/doxygen/xml"}
+breathe_projects = {"bifrost": "../doxygen/xml"}
 breathe_default_project = "bifrost"

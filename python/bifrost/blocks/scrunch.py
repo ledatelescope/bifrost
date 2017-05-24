@@ -26,12 +26,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Define a block that reshapes incoming data
-
-Works by accumulating data and then reshaping it
-into fewer frames, and then outputting the new frame.
-"""
-
 # TODO: This is a bit hacky and inflexible, and has no CUDA backend yet
 
 from __future__ import absolute_import
@@ -67,4 +61,23 @@ class ScrunchBlock(TransformBlock):
         return out_nframe
 
 def scrunch(iring, factor, *args, **kwargs):
+    """Average `factor` incoming frames into one output frame.
+
+    This works on system memory. 
+
+    Attributes
+    ----------
+    iring : Block
+        A derivative of a Block object.
+    factor : int
+        The number of input frames to accumulate.
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Returns
+    -------
+    `ScrunchBlock`
+    """
     return ScrunchBlock(iring, factor, *args, **kwargs)
