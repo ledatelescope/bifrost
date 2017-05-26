@@ -20,13 +20,13 @@ your data for later processing. The views provided are:
 As an example, this reads two "time steps" from a GUPPI RAW file, and
 squishes it into one longer time step:
 
-\`\`\`python # Read from guppi raw file b\_guppi =
-blocks.read\_guppi\_raw(filelist, core=1, buffer\_nframe=4) b\_gup2 =
-views.rename\_axis(b\_guppi, 'freq', 'channel')
+.. code:: python
 
-# Buffer up two time steps & reshape to allow longer FFT b\_gup2 =
-views.split\_axis(b\_gup2, axis='time', n=n\_chunks,
-label='time\_chunk') b\_gup2 = blocks.transpose(b\_gup2, axes=['time',
-'channel', 'time\_chunk', 'fine\_time', 'pol'], buffer\_nframe=1)
-b\_gup2 = views.merge\_axes(b\_gup2, 'time\_chunk', 'fine\_time',
-label='fine\_time') \`\`\`
+    # Read from guppi raw file
+    b_guppi   = blocks.read_guppi_raw(filelist, core=1, buffer_nframe=4)
+    b_gup2    = views.rename_axis(b_guppi, 'freq', 'channel')
+    
+    # Buffer up two time steps & reshape to allow longer FFT
+    b_gup2    = views.split_axis(b_gup2, axis='time', n=n_chunks, label='time_chunk')
+    b_gup2    = blocks.transpose(b_gup2, axes=['time', 'channel', 'time_chunk', 'fine_time', 'pol'], buffer_nframe=1)
+    b_gup2    = views.merge_axes(b_gup2, 'time_chunk', 'fine_time', label='fine_time')
