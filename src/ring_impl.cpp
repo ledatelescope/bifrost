@@ -53,6 +53,10 @@
 #include <bifrost/cuda.h>
 #include "cuda.hpp"
 
+#if BF_NUMA_ENABLED
+#include <numa.h>
+#endif
+
 // This implements a lock with the condition that no reads or writes
 //   can be open while it is held.
 class RingReallocLock {
@@ -87,7 +91,8 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	  _tail(0), _head(0), _reserve_head(0),
 	  _ghost_dirty(false),
 	  _writing_begun(false), _writing_ended(false), _eod(0),
-	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0) {
+	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0),
+	  _core(-1) {
 
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM       ||
@@ -150,7 +155,14 @@ void BFring_impl::resize(BFsize contiguous_span,
 	//std::cout << "Allocating " << new_nbyte << std::endl;
 	BF_ASSERT_EXCEPTION(bfMalloc((void**)&new_buf, new_nbyte, _space) == BF_STATUS_SUCCESS,
 	                    BF_STATUS_MEM_ALLOC_FAILED);
-	
+#if BF_NUMA_ENABLED
+	if( _core != -1 ) {
+		BF_ASSERT_EXCEPTION(numa_available() != -1, BF_STATUS_UNSUPPORTED);
+		int node = numa_node_of_cpu(_core);
+		BF_ASSERT_EXCEPTION(node != -1, BF_STATUS_INVALID_ARGUMENT);
+		numa_tonode_memory(new_buf, new_nbyte, node);
+	}
+#endif
 	if( _buf ) {
 		// Must move existing data and delete old buf
 		if( _buf_offset(_tail) < _buf_offset(_head) ) {

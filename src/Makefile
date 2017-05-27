@@ -65,12 +65,20 @@ ifdef TRACE
   CPPFLAGS   += -DBF_TRACE_ENABLED=1
 endif
 
+ifdef NUMA
+  # Requires libnuma-dev to be installed
+  LIB        += -lnuma
+  CPPFLAGS   += -DBF_NUMA_ENABLED=1
+endif
+
 ifdef HWLOC
+  # Requires libhwloc-dev to be installed
   LIB        += -lhwloc
   CPPFLAGS   += -DBF_HWLOC_ENABLED=1
 endif
 
 ifdef VMA
+  # Requires Mellanox libvma to be installed
   LIB        += -lvma
   CPPFLAGS   += -DBF_VMA_ENABLED=1
 endif

@@ -47,6 +47,10 @@
 #include <set>
 #include <memory>
 
+#ifndef BF_NUMA_ENABLED
+#define BF_NUMA_ENABLED 0
+#endif
+
 class BFsequence_impl;
 class BFspan_impl;
 class BFrspan_impl;
@@ -110,6 +114,8 @@ class BFring_impl {
 	BFsize         _nwrite_open;
 	BFsize         _nrealloc_pending;
 	
+	int _core;
+	
 	std::queue<BFsequence_sptr>           _sequence_queue;
 	std::map<std::string,BFsequence_sptr> _sequence_map;
 	std::map<BFoffset,BFsequence_sptr>    _sequence_time_tag_map;
@@ -170,6 +176,8 @@ public:
 	            BFsize max_ringlets);
 	inline const char* name() const { return _name.c_str(); }
 	inline BFspace space()    const { return _space; }
+	inline void set_core(int core)  { _core = core; }
+	inline int      core()    const { return _core; }
 	//inline BFsize nringlet() const { return _nringlet; }
 	inline void   lock()   { _mutex.lock(); }
 	inline void   unlock() { _mutex.unlock(); }
