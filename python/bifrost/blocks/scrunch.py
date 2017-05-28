@@ -46,7 +46,7 @@ class ScrunchBlock(TransformBlock):
         """Return output nframe for each output, given input_nframes.
         """
         if input_nframe % self.factor != 0:
-                raise ValueError("Scrunch factor does not divide gulp size")
+            raise ValueError("Scrunch factor does not divide gulp size")
         return input_nframe // self.factor
     def on_sequence(self, iseq):
         ohdr = deepcopy(iseq.header)
