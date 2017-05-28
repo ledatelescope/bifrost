@@ -27,16 +27,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import unittest
-import numpy as np
 import bifrost as bf
 
-import bifrost.pipeline as bfp
-from bifrost.sigproc_block   import read_sigproc
-from bifrost.copy_block      import copy, CopyBlock
-from bifrost.transpose_block import transpose
-from bifrost.fdmt_block      import fdmt
-
-from copy import deepcopy
+from bifrost.blocks.sigproc   import read_sigproc
+from bifrost.blocks.copy      import copy, CopyBlock
+from bifrost.blocks.transpose import transpose
+from bifrost.blocks.fdmt      import fdmt
 
 class CallbackBlock(CopyBlock):
         """Testing-only block which calls user-defined
@@ -68,19 +64,19 @@ class PipelineTest(unittest.TestCase):
 			self.assertEqual(    ospan.nframe, ispan.nframe)
 			self.assertEqual(ispan.data.shape, (ispan.nframe,1,2))
 			self.assertEqual(ospan.data.shape, (ospan.nframe,1,2))
-		with bfp.Pipeline() as pipeline:
+		with bf.Pipeline() as pipeline:
 			data = read_sigproc([self.fil_file], gulp_nframe)
 			data = CallbackBlock(data, check_sequence, check_data)
 			pipeline.run()
 	def test_simple_copy(self):
 		gulp_nframe = 101
-		with bfp.Pipeline() as pipeline:
+		with bf.Pipeline() as pipeline:
 			data = read_sigproc([self.fil_file], gulp_nframe)
 			data = copy(data)
 			pipeline.run()
 	def test_cuda_copy(self):
 		gulp_nframe = 101
-		with bfp.Pipeline() as pipeline:
+		with bf.Pipeline() as pipeline:
 			data = read_sigproc([self.fil_file], gulp_nframe)
 			for _ in xrange(100):
 				data = copy(data, space='cuda')
@@ -101,7 +97,7 @@ class PipelineTest(unittest.TestCase):
 			self.assertEqual(    ospan.nframe, ispan.nframe)
 			self.assertEqual(ispan.data.shape, (1,5,ispan.nframe))
 			self.assertEqual(ospan.data.shape, (1,5,ospan.nframe))
-		with bfp.Pipeline() as pipeline:
+		with bf.Pipeline() as pipeline:
 			data = read_sigproc([self.fil_file], gulp_nframe)
 			data = copy(data, space='cuda')
 			data = transpose(data, ['pol', 'freq', 'time'])
