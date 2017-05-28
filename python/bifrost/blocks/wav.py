@@ -82,7 +82,7 @@ class WavSourceBlock(SourceBlock):
             '_tensor': {
                 'dtype':  'u8' if hdr['nbit'] == 8 else 'i'+str(hdr['nbit']),
                 'shape':  [-1, hdr['nchan']],
-                'labels': ['time', 'pol'], # TODO: 'channel' vs. 'pol'?
+                'labels': ['time', 'pol'],
                 'scales': [(0, 1./hdr['sample_rate']),
                            None],
                 'units':  ['s', None]
@@ -91,7 +91,7 @@ class WavSourceBlock(SourceBlock):
             'name': sourcename
         }
         return [ohdr]
-    
+
     def on_data(self, reader, ospans):
         ospan = ospans[0]
         nbyte = reader.readinto(ospan.data)
@@ -104,18 +104,26 @@ class WavSourceBlock(SourceBlock):
         return [nframe]
 
 def read_wav(sourcefiles, gulp_nframe, *args, **kwargs):
+    """Read Wave files (.wav).
+
+    Args:
+        sourcefiles (list): List of input filenames.
+        gulp_nframe (int): No. frames to read at a time.
+        *args: Arguments to ``bifrost.pipeline.SourceBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.SourceBlock``.
+
+    **Tensor semantics**::
+
+        Output: ['time', 'pol'], dtype = u8 or i*, space = SYSTEM
+
+    Returns:
+        WavSourceBlock: A new block instance.
+
+    """
     return WavSourceBlock(sourcefiles, gulp_nframe, *args, **kwargs)
 
 class WavSinkBlock(SinkBlock):
     def __init__(self, iring, path=None, *args, **kwargs):
-        """Writes data as .wav files.
-               [time, chan] => one file per sequence
-        [batch, time, chan] => one file per batch element
-        Note: The chunk_size and data_size entries in the output header are
-          written as zero values because they are not known a-priori in a
-          streaming setting. VLC still plays the files just fine, but any
-          subchunks that appear after the data will be misinterpreted as data.
-        """
         super(WavSinkBlock, self).__init__(iring, *args, **kwargs)
         if path is None:
             path = ''
@@ -123,14 +131,14 @@ class WavSinkBlock(SinkBlock):
     def on_sequence(self, iseq):
         ihdr = iseq.header
         itensor = ihdr['_tensor']
-        
+
         axnames = tuple(itensor['labels'])
         shape   = itensor['shape']
         scales  = itensor['scales']
         units   = itensor['units']
         ndim    = len(shape)
         dtype   = DataType(itensor['dtype'])
-        
+
         nchan = shape[-1]
         sample_time = convert_units(scales[-2][1], units[-2], 's')
         sample_rate = int(round(1./sample_time))
@@ -144,7 +152,7 @@ class WavSinkBlock(SinkBlock):
             'nbit':        dtype.itemsize_bits
         }
         filename = os.path.join(self.path, ihdr['name'])
-        
+
         if ndim == 2 and axnames[-2] == 'time':
             self.ofile = open(filename+'.wav', 'wb')
             wav_write_header(self.ofile, ohdr)
@@ -156,14 +164,14 @@ class WavSinkBlock(SinkBlock):
                 wav_write_header(ofile, ohdr)
         else:
             raise ValueError("Incompatible axes: " + str(axnames))
-    
+
     def on_sequence_end(self, iseq):
         if hasattr(self, 'ofile'):
             self.ofile.close()
         elif hasattr(self, 'ofiles'):
             for ofile in self.ofiles:
                 ofile.close()
-    
+
     def on_data(self, ispan):
         idata = ispan.data
         if idata.ndim == 2:
@@ -175,5 +183,30 @@ class WavSinkBlock(SinkBlock):
             raise ValueError("Internal error: Unknown data format!")
 
 def write_wav(iring, path=None, *args, **kwargs):
+    """Write data as Wave files (.wav).
+
+    Args:
+        iring (Ring or Block): Input data source.
+        path (str): Path specifying where to write output files.
+        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
+
+    **Tensor semantics**::
+
+        Input: [time, pol], dtype = u8 or i*, space = SYSTEM
+        Output: Wave file, one file per sequence
+
+        Input: [batch, time, pol], dtype = u8 or i*, space = SYSTEM
+        Output: Wave file, one file per batch element
+
+    Returns:
+        WavSinkBlock: A new block instance.
+
+    Note:
+        The chunk_size and data_size entries in the output wav header are
+        written as zero values because they are not known a-priori in a
+        streaming setting. VLC still plays the files just fine, but any
+        subchunks that appear after the data will be misinterpreted as data.
+    """
     return WavSinkBlock(iring, path, *args, **kwargs)
 

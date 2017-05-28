@@ -43,7 +43,6 @@ class FftShiftBlock(TransformBlock):
         self.specified_axes = axes
         self.inverse = inverse
     def define_valid_input_spaces(self):
-        """Return set of valid spaces (or 'any') for each input"""
         return ('cuda',)
     def on_sequence(self, iseq):
         ihdr = iseq.header
@@ -80,31 +79,25 @@ class FftShiftBlock(TransformBlock):
         inds = ','.join(inds)
         bf.map("b = a(%s)" % inds, shape, *ind_names, a=idata, b=odata)
 
-def fftshift(iring, axes, *args, **kwargs):
-    """Apply a FFT shift to the data, using the GPU.
+def fftshift(iring, axes, inverse=False, *args, **kwargs):
+    """Apply an FFT shift to data along specified axes.
 
-    The FFT shift pushes the data of an array around
-    so the central element is moved to the start of the array.
-    This is necessary to work on the output of some FFT algorithms,
-    such as cuFFT.
+    This operation shifts the data of an array so the central element
+    is moved to the start of the array.
 
-    Attributes
-    ----------
-    iring : Block
-        A derivative of a Block object.
-    axes : str
-        Which axes of the input ring
-        to shift.
-    inverse : bool, optional
-        Default is False. This inverts the direction
-        of the shift.
-    *args
-        Arguments to `bifrost.pipeline.TransformBlock`.
-    **kwargs
-        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+    Args:
+        iring (Ring or Block): Input data source.
+        axes: (List of) strings or integers specifying axes to shift.
+        inverse (bool): If True, axes are shifted in the reverse direction.
+        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
 
-    Returns
-    -------
-    `FftShiftBlock`
+    **Tensor semantics**::
+
+        Input:  [...], dtype = any, space = CUDA
+        Output: [...], dtype = any, space = CUDA
+
+    Returns:
+        FftShiftBlock: A new block instance.
     """
-    return FftShiftBlock(iring, axes, *args, **kwargs)
+    return FftShiftBlock(iring, axes, inverse, *args, **kwargs)

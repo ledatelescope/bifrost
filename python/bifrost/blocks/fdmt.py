@@ -50,7 +50,6 @@ class FdmtBlock(TransformBlock):
         self.negative_delays = negative_delays
         self.fdmt     = Fdmt()
     def define_valid_input_spaces(self):
-        """Return set of valid spaces (or 'any') for each input"""
         return ('cuda',)
     def on_sequence(self, iseq):
         ihdr = iseq.header
@@ -107,46 +106,49 @@ class FdmtBlock(TransformBlock):
         #            HOWEVER, still can't fuse on the input side without
         #              deadlocking. Not sure if there's any way around this.
 
-def fdmt(iring, max_dm, *args, **kwargs):
+def fdmt(iring, max_dm, exponent=-2.0, negative_delays=False,
+         *args, **kwargs):
     """Apply the Fast Dispersion Measure Transform (FDMT).
 
     This uses the GPU. It is used in pulsar and fast radio burst (FRB)
     search pipelines for dedispersing frequency data.
 
-    Attributes
-    ----------
-    iring : Block
-        A derivative of a Block object.
-    max_dm :
-        Max dispersion to search up to.
-    exponent : float, optional
-        Power law to search. Default is -2.0.
-    negative_delays : bool, optional
-        Default is False
-    *args
-        Arguments to `bifrost.pipeline.TransformBlock`.
-    **kwargs
-        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+    Args:
+        iring (Ring or Block): Input data source.
+        max_dm (float): Max dispersion measure to search up to
+            (in units of pc/cm^3).
+        exponent (float): Frequency power law to search
+            (-2.0 for interstellar dispersion).
+        negative_delays (bool): If True, the transform applies dispersions
+            in the range (-max_dm, 0] instead of [0, max_dm).
+        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
 
-    Returns
-    -------
-    `FdmtBlock`
+    **Tensor semantics**::
 
-    References
-    ----------
-    This is based on Barak Zackay's FDMT algorithm, see [1]_.
+        Input:  ['pol', 'freq',       'time'], dtype = any real, space = CUDA
+        Output: ['pol', 'dispersion', 'time'], dtype = f32, space = CUDA
 
-    .. [1] Zackay, Barak, and Eran O. Ofek. "An accurate
-       and efficient algorithm for detection of radio bursts
-       with an unknown dispersion measure, for single dish
-       telescopes and interferometers." arXiv preprint arXiv:1411.5373 (2014).
+    Returns:
+        FdmtBlock: A new block instance.
 
-    Notes
-    -----
+    References:
 
-    Use `bifrost.blocks.print_header` to check the output dimensions
-    of this block, if necessary, as they are determined by the `max_dm`
-    parameter as well as other observational parameters.
+        This is based on Barak Zackay's FDMT algorithm, see [1]_.
+
+        .. [1] Zackay, Barak, and Eran O. Ofek. "An accurate
+           and efficient algorithm for detection of radio bursts
+           with an unknown dispersion measure, for single dish
+           telescopes and interferometers." arXiv preprint arXiv:1411.5373
+           (2014).
+
+    Note:
+        The number of dispersion measure trials (delays) computed by
+        this algorithm depends on the value of ``max_dm`` and the time
+        and frequency scales of the input data. The
+        ``bifrost.blocks.print_header`` block can be used to check the
+        output dimensions if needed.
+
     """
-    return FdmtBlock(iring, max_dm, *args, **kwargs)
-    #TODO: No information about required axes!
+    return FdmtBlock(iring, max_dm, exponent, negative_delays,
+                     *args, **kwargs)

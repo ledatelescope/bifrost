@@ -42,7 +42,7 @@ class AudioSourceBlock(SourceBlock):
             '_tensor': {
                 'dtype':  'i' + str(reader.nbits),
                 'shape':  [-1, reader.channels],
-                'labels': ['time', 'channel'], # TODO: 'channel' vs. 'polarization'?
+                'labels': ['time', 'pol'],
                 'scales': [1./reader.rate, None],
                 'units':  ['s', None]
             },
@@ -59,49 +59,41 @@ class AudioSourceBlock(SourceBlock):
             #raise StopIteration
             return [0]
         nframe = ospan.shape[0]
-        print nframe
         return [nframe]
     def stop(self):
         self.reader.stop()
 
 def read_audio(audio_kwargs, gulp_nframe, *args, **kwargs):
-    """Read an audio file from disk into a ring buffer.
+    """Read data from an audio input device.
 
-    Use this block to import audio data into Bifrost from
-        a file. Requires portaudio to be installed.
-        The output header for this block is:
+    Requires the portaudio library to be installed::
 
-    .. code::python
+      $ sudo apt-get install portaudio19-dev
 
-        ohdr = {
-            '_tensor': {
-                'dtype':  'i' + str(reader.nbits),
-                'shape':  [-1, reader.channels],
-                'labels': ['time', 'channel'],
-                'scales': [1./reader.rate, None],
-                'units':  ['s', None]
-            },
-            'frame_rate':   reader.rate,
-            'input_device': reader.input_device,
-            'name': str(id(reader))
+    Args:
+        audio_kwargs (list): List of dicts containing audio input parameters
+           Defaults:
 
-    Where, in the above example, `reader` is the result
-        portaudio.open
+            ``rate=44100``
 
-    Attributes
-    ----------
-    audio_kwargs : dict
-        Keyword arguments for `bifrost.portaudio.open`.
-    gulp_nframe : int
-        How many data frames to output at once.
-    *args
-        Arguments to `bifrost.pipeline.SourceBlock`.
-    **kwargs
-        Keyword Arguments to `bifrost.pipeline.SourceBlock`.
+            ``channels=2``
 
-    Returns
-    -------
-    AudioSourceBlock
+            ``nbits=16``
+
+            ``frames_per_buffer=1024``
+
+            ``input_device=None``
+
+        gulp_nframe (int):   No. frames to read at a time.
+        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
+
+    **Tensor semantics**::
+
+        Output: ['time', 'pol'], dtype = i*, space = SYSTEM
+
+    Returns:
+        AudioBlock: A new block instance.
     """
     # Note: audio_kwargs used in place of sourcenames
-    return AudioSourceBlock(audio_kwargs, gulp_nframe, *args, **kwargs)#.orings[0]
+    return AudioSourceBlock(audio_kwargs, gulp_nframe, *args, **kwargs)

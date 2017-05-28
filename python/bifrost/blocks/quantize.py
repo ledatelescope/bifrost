@@ -62,30 +62,22 @@ class QuantizeBlock(TransformBlock):
         odata = ospan.data
         bf.quantize.quantize(idata, odata, self.scale)
 
-def quantize(iring, dtype, *args, **kwargs):
+def quantize(iring, dtype, scale=1., *args, **kwargs):
     """Apply a requantization of bit depth for the data.
 
-    For example, if the data is 64 bit floating point,
-    and you want it to be 32 bit floating point,
-    you would write:
+    Args:
+        iring (Ring or Block): Input data source.
+        dtype: Output data type or number of bits.
+        scale (float): Scale factor to apply before quantizing.
+        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
 
-    .. code:: python
-        
-        new_data = quantize(old_data, 'f32')
+    **Tensor semantics**::
 
-    Attributes
-    ----------
-    iring : Block
-        A derivative of a Block object.
-    dtype : :obj: `bifrost.DataType`
-        Output data type
-    *args
-        Arguments to `bifrost.pipeline.TransformBlock`.
-    **kwargs
-        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+        Input:  [...], dtype = [c]f32, space = SYSTEM
+        Output: [...], dtype = any (complex) integer type, space = SYSTEM
 
-    Returns
-    -------
-    `QuantizeBlock`
+    Returns:
+        QuantizeBlock: A new block instance.
     """
     return QuantizeBlock(iring, dtype, *args, **kwargs)

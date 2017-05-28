@@ -41,7 +41,6 @@ class ReverseBlock(TransformBlock):
             axes = [axes]
         self.specified_axes = axes
     def define_valid_input_spaces(self):
-        """Return set of valid spaces (or 'any') for each input"""
         return ('cuda',)
     def on_sequence(self, iseq):
         ihdr = iseq.header
@@ -75,25 +74,20 @@ class ReverseBlock(TransformBlock):
         bf.map("b = a(%s)" % inds, shape, *ind_names, a=idata, b=odata)
 
 def reverse(iring, axes, *args, **kwargs):
-    """Reverse data along an axis.
+    """Reverse data along an axis or set of axes.
 
-    For example, if you have three axes in each frame of
-    your data, and on one axis, you want to flip it around,
-    you would simply enter that axis to axes.
+    Args:
+        iring (Ring or Block): Input data source.
+        axes: (List of) strings or integers specifying axes to reverse.
+        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
 
-    Attributes
-    ----------
-    iring : Block
-        A derivative of a Block object.
-    axes : list
-        List of string labels for axes to shift.
-    *args
-        Arguments to `bifrost.pipeline.TransformBlock`.
-    **kwargs
-        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+    **Tensor semantics**::
 
-    Returns
-    -------
-    `ReverseBlock`
+        Input:  [...], dtype = any, space = CUDA
+        Output: [...], dtype = any, space = CUDA
+
+    Returns:
+        ReverseBlock: A new block instance.
     """
     return ReverseBlock(iring, axes, *args, **kwargs)

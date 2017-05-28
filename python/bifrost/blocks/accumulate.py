@@ -74,25 +74,30 @@ class AccumulateBlock(TransformBlock):
             ncommit = 0
         return ncommit
 
-def accumulate(iring, nframe, dtype=None, gulp_nframe=1,
-        *args, **kwargs):
-    """Accumulate and sum frames of a ring on the GPU.
+def accumulate(iring, nframe, dtype=None,
+               *args, **kwargs):
+    """Accumulate `nframe` frames of data, one at a time, before outputting.
 
     Attributes
     ----------
-    iring : :obj:`bifrost.ring.Ring`
-        Input ring.
+    iring : Ring or Block
+        Input data source.
     nframe : int
-        Number of frames to accumulate.
-    dtype : :obj:`str`, optional
-        Output datatype. If None (default),
-        input datatype of `iring` is used.
-    gulp_nframe : int, optional
-        How many incoming frames to read at
-        once.
+        Number of frames to accumulate before outputting.
+    dtype : string
+        Output datatype. If None, input datatype is used.
     *args
         Arguments to `bifrost.pipeline.TransformBlock`.
     **kwargs
         Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Tensor semantics
+    ----------------
+    Input:  [..., 'time', ...], dtype = any, space = CUDA
+    Output: [..., 'time'/nframe, ...], dtype = any, space = CUDA
+
+    Returns
+    -------
+    `AccumulateBlock`
     """
-    return AccumulateBlock(iring, nframe, *args, **kwargs)
+    return AccumulateBlock(iring, nframe, dtype, *args, **kwargs)

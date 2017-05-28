@@ -33,10 +33,10 @@ import bifrost.guppi_raw as guppi_raw
 
 import numpy as np
 
-def get_with_default(obj, key, default=None):
+def _get_with_default(obj, key, default=None):
     return obj[key] if key in obj else default
 
-def mjd2unix(mjd):
+def _mjd2unix(mjd):
     return (mjd - 40587) * 86400
 
 class GuppiRawSourceBlock(SourceBlock):
@@ -66,7 +66,7 @@ class GuppiRawSourceBlock(SourceBlock):
         bytes_per_sec = frame_nbyte / dt_s
         offset_secs   = byte_offset / bytes_per_sec
         tstart_mjd    = ihdr['STT_IMJD'] + (ihdr['STT_SMJD'] + offset_secs) / 86400.
-        tstart_unix   = mjd2unix(tstart_mjd)
+        tstart_unix   = _mjd2unix(tstart_mjd)
         ohdr = {
             '_tensor': {
                 'dtype':  'ci' + str(nbit),
@@ -79,15 +79,15 @@ class GuppiRawSourceBlock(SourceBlock):
                            None],
                 'units':  ['s', 'MHz', 's', None]
             },
-            'az_start':      get_with_default(ihdr, 'AZ'),            # Decimal degrees
-            'za_start':      get_with_default(ihdr, 'ZA'),            # Decimal degrees
-            'raj':           get_with_default(ihdr, 'RA')*(24./360.), # Decimal hours
-            'dej':           get_with_default(ihdr, 'DEC'),           # Decimal degrees
-            'source_name':   get_with_default(ihdr, 'SRC_NAME'),
-            'refdm':         get_with_default(ihdr, 'CHAN_DM'),
+            'az_start':      _get_with_default(ihdr, 'AZ'),            # Decimal degrees
+            'za_start':      _get_with_default(ihdr, 'ZA'),            # Decimal degrees
+            'raj':           _get_with_default(ihdr, 'RA')*(24./360.), # Decimal hours
+            'dej':           _get_with_default(ihdr, 'DEC'),           # Decimal degrees
+            'source_name':   _get_with_default(ihdr, 'SRC_NAME'),
+            'refdm':         _get_with_default(ihdr, 'CHAN_DM'),
             'refdm_units':   'pc cm^-3',
-            'telescope':     get_with_default(ihdr, 'TELESCOP'),
-            'machine':       get_with_default(ihdr, 'BACKEND'),
+            'telescope':     _get_with_default(ihdr, 'TELESCOP'),
+            'machine':       _get_with_default(ihdr, 'BACKEND'),
             'rawdatafile':   sourcename,
             'coord_frame':   'topocentric',
         }
@@ -97,7 +97,7 @@ class GuppiRawSourceBlock(SourceBlock):
         time_tag  = int(round(tstart_unix * 2**32))
         ohdr['time_tag'] = time_tag
         self.already_read_header = True
-        
+
         ohdr['name'] = sourcename
         return [ohdr]
     def on_data(self, reader, ospans):
@@ -118,24 +118,23 @@ class GuppiRawSourceBlock(SourceBlock):
         nframe = nbyte // ospan.frame_nbyte
         return [nframe]
 
-def read_guppi_raw(filenames, *args, **kwargs):
-    """Read in a guppi file (.raw).
+def read_guppi_raw(filenames, gulp_nframe=1, *args, **kwargs):
+    """Read in a GUPPI format raw data file.
 
-    This block reads in a guppi file, which is used
-    in radio astronomy, into a ring buffer. It is a
-    SourceBlock, so does not take any input blocks.
+    Args:
+        filenames (list): List of strings containing filenames.
+        gulp_nframe (int): No. frames (aka. blocks) to process at a time.
+        *args: Arguments to ``bifrost.pipeline.SourceBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.SourceBlock``.
 
-    Attributes
-    ----------
-    filenames : list
-        list of strings containing filenames.
-    *args
-        Arguments to `bifrost.pipeline.SourceBlock`.
-    **kwargs
-        Keyword Arguments to `bifrost.pipeline.SourceBlock`.
+    **Tensor semantics**::
 
-    Returns
-    -------
-    `GuppiRawSourceBlock`
+        Output: ['time', 'freq', 'fine_time', 'pol'], dtype = ci*, space = SYSTEM
+
+    Returns:
+        GuppiRawSourceBlock: A new block instance.
+
+    References:
+        https://github.com/UCBerkeleySETI/breakthrough/blob/master/doc/RAW-File-Format.md
     """
-    return GuppiRawSourceBlock(filenames, *args, **kwargs)
+    return GuppiRawSourceBlock(filenames, gulp_nframe, *args, **kwargs)
