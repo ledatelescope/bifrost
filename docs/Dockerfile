@@ -11,8 +11,6 @@ WORKDIR "/bifrost"
 
 RUN make doc && \
     cd docs && \
-    /bin/bash generate_cpp_reference.sh && \
-    /bin/bash generate_python_reference.sh && \
     make html
 
 WORKDIR "/bifrost/docs/build/html"
