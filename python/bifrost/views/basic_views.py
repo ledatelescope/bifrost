@@ -56,7 +56,7 @@ def expand_dims(block, axis, label, scale=None, units=None):
 	As in, if the shape is [-1, 3, 2], then
 	selecting axis=1 would change the shape to be
 	[-1, 3, 1, 2].
-    """
+	"""
 	expand_dims.axis  = axis
 	expand_dims.label = label
 	expand_dims.scale = scale
