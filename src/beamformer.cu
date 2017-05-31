@@ -246,8 +246,8 @@ private:
 	IType        _ntime;
 	IType        _nchan;
 	IType        _nstand;
-	Complex64*   _prots;
-	double*      _gains;
+	Complex64*   _prots = NULL;
+	double*      _gains = NULL;
 	cudaStream_t _stream;
 public:
 	BFbeamformer_impl() : _ntime(0), _nchan(0), _nstand(0),
@@ -267,6 +267,16 @@ public:
 		_ntime  = ntime;
 		_nchan  = nchan;
 		_nstand = nstand;
+		
+		_prots = NULL;
+		_gains = NULL;
+	}
+	~BFbeamformer_impl() {
+		BF_TRACE();
+		BF_TRACE_STREAM(_stream);
+		cudaDeviceSynchronize();
+		_prots = NULL;
+		_gains = NULL;
 	}
 	void set_delays(double freq0, double freqStep, BFarray const* delays, BFarray const* prots) {
 		BF_TRACE();

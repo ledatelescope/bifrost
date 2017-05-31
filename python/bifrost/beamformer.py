@@ -39,6 +39,10 @@ class Beamformer(object):
 	def __del__(self):
 		if hasattr(self, 'obj') and bool(self.obj):
 			_bf.BeamformerDestroy(self.obj)
+		try:
+			del self._prots
+		except AttributeError:
+			pass
 	def init(self, ntime, nchan, nstand, space='cuda'):
 		space = _string2space(space)
 		psize = None
@@ -52,8 +56,8 @@ class Beamformer(object):
 				del self._prots
 			except AttributeError:
 				pass
-			prots = zeros((self._nchan,self._nstand,2), dtype=np.complex128, space='cuda')
-			self._prots = prots
+			self._prots = zeros((self._nchan,self._nstand,2), dtype=np.complex128, space='cuda')
+			prots = self._prots
 			
 		_check( _bf.BeamformerSetDelays(self.obj, 
 		                                freq0, 
