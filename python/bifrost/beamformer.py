@@ -50,6 +50,10 @@ class Beamformer(object):
 		self._ntime = ntime
 		self._nchan = nchan
 		self._nstand = nstand
+		try:
+			del self._prots
+		except AttributeError:
+			pass
 	def set_delays(self, freq0, freqStep, delays, prots=None):
 		if prots is None:
 			try:
