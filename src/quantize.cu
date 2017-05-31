@@ -97,6 +97,16 @@ F clip_2bit(F x) {
 #endif
 }
 
+template<typename F>
+#ifdef BF_CUDA_ENABLED
+inline __host__ __device__
+#else
+inline
+#endif
+F clip_1bit(F x) {
+	return x >= F(0) ? F(1) : F(0);
+}
+
 template<typename IType, typename SType, typename OType>
 #ifdef BF_CUDA_ENABLED
 __host__ __device__
@@ -424,6 +434,161 @@ inline void launch_foreach_simple_gpu_2bit(T const*     in,
 }
 #endif
 
+template<typename T, typename Func, typename Size>
+#ifdef BF_CUDA_ENABLED
+__host__
+#endif
+void foreach_simple_cpu_1bit(T const* in,
+                             int8_t*  out,
+                             Size     nelement,
+                             Func     func) {
+	T tempA;
+	T tempB;
+	T tempC;
+	T tempD;
+	T tempE;
+	T tempF;
+	T tempG;
+	T tempH;
+	int8_t tempO;
+	for( Size i=0; i<nelement; i+=8 ) {
+		tempA = in[i+0];
+		tempB = in[i+1];
+		tempC = in[i+2];
+		tempD = in[i+3];
+		tempE = in[i+4];
+		tempF = in[i+5];
+		tempG = in[i+6];
+		tempH = in[i+7];
+		if(func.byteswap_in) {
+			byteswap(tempA, &tempA);
+			byteswap(tempB, &tempB);
+			byteswap(tempC, &tempC);
+			byteswap(tempD, &tempD);
+			byteswap(tempE, &tempE);
+			byteswap(tempF, &tempF);
+			byteswap(tempG, &tempG);
+			byteswap(tempH, &tempH);
+		}
+		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
+		tempO = (((int8_t(rint(clip_1bit(tempA*func.scale)))*128)     ) & 0x08) | \
+			   (((int8_t(rint(clip_1bit(tempB*func.scale)))*128) >> 1) & 0x04) | \
+			   (((int8_t(rint(clip_1bit(tempC*func.scale)))*128) >> 2) & 0x02) | \
+			   (((int8_t(rint(clip_1bit(tempD*func.scale)))*128) >> 3) & 0x10) | \
+			   (((int8_t(rint(clip_1bit(tempE*func.scale)))*128) >> 4) & 0x08) | \
+			   (((int8_t(rint(clip_1bit(tempF*func.scale)))*128) >> 5) & 0x04) | \
+			   (((int8_t(rint(clip_1bit(tempG*func.scale)))*128) >> 6) & 0x02) | \
+			   (((int8_t(rint(clip_1bit(tempH*func.scale)))*128) >> 7) & 0x01);
+		if(func.byteswap_out) {
+			byteswap(tempO, &tempO);
+		}
+		out[i/8] = tempO;
+	}
+}
+
+#ifdef BF_CUDA_ENABLED
+template<typename T, typename Func, typename Size>
+__global__
+void foreach_simple_gpu_1bit(T const* in,
+                             int8_t*  out,
+                             Size     nelement,
+                             Func     func) {
+	Size v0 = threadIdx.x + (blockIdx.x + blockIdx.y*gridDim.x)*blockDim.x;
+	
+	T tempA;
+	T tempB;
+	T tempC;
+	T tempD;
+	T tempE;
+	T tempF;
+	T tempG;
+	T tempH;
+	int8_t tempO;
+	if( v0 < nelement ) {
+		tempA = in[8*v0+0];
+		tempB = in[8*v0+1];
+		tempC = in[8*v0+2];
+		tempD = in[8*v0+3];
+		tempE = in[8*v0+4];
+		tempF = in[8*v0+5];
+		tempG = in[8*v0+6];
+		tempH = in[8*v0+7];
+		if(func.byteswap_in) {
+#ifdef __CUDA_ARCH__
+			byteswap_gpu(tempA, &tempA);
+			byteswap_gpu(tempB, &tempB);
+			byteswap_gpu(tempC, &tempC);
+			byteswap_gpu(tempD, &tempD);
+			byteswap_gpu(tempE, &tempE);
+			byteswap_gpu(tempF, &tempF);
+			byteswap_gpu(tempG, &tempG);
+			byteswap_gpu(tempH, &tempH);
+#else
+			byteswap(tempA, &tempA);
+			byteswap(tempB, &tempB);
+			byteswap(tempD, &tempC);
+			byteswap(tempD, &tempD);
+			byteswap(tempE, &tempE);
+			byteswap(tempF, &tempF);
+			byteswap(tempG, &tempG);
+			byteswap(tempH, &tempH);
+#endif
+		}
+		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
+		tempO = (((int8_t(rint(clip_1bit(tempA*func.scale)))*128)     ) & 0x08) | \
+			   (((int8_t(rint(clip_1bit(tempB*func.scale)))*128) >> 1) & 0x04) | \
+			   (((int8_t(rint(clip_1bit(tempC*func.scale)))*128) >> 2) & 0x02) | \
+			   (((int8_t(rint(clip_1bit(tempD*func.scale)))*128) >> 3) & 0x10) | \
+			   (((int8_t(rint(clip_1bit(tempE*func.scale)))*128) >> 4) & 0x08) | \
+			   (((int8_t(rint(clip_1bit(tempF*func.scale)))*128) >> 5) & 0x04) | \
+			   (((int8_t(rint(clip_1bit(tempG*func.scale)))*128) >> 6) & 0x02) | \
+			   (((int8_t(rint(clip_1bit(tempH*func.scale)))*128) >> 7) & 0x01);
+		if(func.byteswap_out) {
+#ifdef __CUDA_ARCH__
+			byteswap_gpu(tempO, &tempO);
+#else
+			byteswap(tempO, &tempO);
+#endif
+		}
+		out[v0] = tempO;
+	}
+}
+
+template<typename T, typename Func, typename Size>
+inline void launch_foreach_simple_gpu_1bit(T const*     in,
+                                           int8_t*      out,
+                                           Size         nelement,
+                                           Func         func,
+                                           cudaStream_t stream=0) {
+	nelement /= 8;
+	//cout << "LAUNCH for " << nelement << endl;
+	dim3 block(512, 1); // TODO: Tune this
+	Size first = std::min((nelement-1)/block.x+1, 65535ul);
+	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
+	if( block.x*first > nelement ) {
+		secnd = 1;
+	}
+	
+	dim3 grid(first, secnd);
+	/*
+	cout << "  Block size is " << block.x << " by " << block.y << endl;
+	cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
+	cout << "  Maximum size is " << block.x*grid.x*grid.y << endl;
+	if( block.x*grid.x*grid.y >= nelement ) {
+		cout << "  -> Valid" << endl;
+	}
+	*/
+	
+	void* args[] = {&in,
+	                &out, 
+	                &nelement, 
+	                &func};
+	cudaLaunchKernel((void*)foreach_simple_gpu_1bit<T,Func,Size>,
+	                 grid, block,
+	                 &args[0], 0, stream);
+}
+#endif
+
 BFstatus bfQuantize(BFarray const* in,
                     BFarray const* out,
                     double         scale) {
@@ -491,6 +656,33 @@ BFstatus bfQuantize(BFarray const* in,
 	if( in->dtype == BF_DTYPE_F32 || in->dtype == BF_DTYPE_CF32 ) {
 		// TODO: Support T-->T with endian conversion (like quantize but with identity func instead)
 		switch( out->dtype ) {
+		case BF_DTYPE_CI1: nelement *= 2;
+		case BF_DTYPE_I1: {
+			BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				launch_foreach_simple_gpu_1bit((float*)in->data, \
+				                               (int8_t*)out->data, \
+				                               nelement, \
+				                               QuantizeFunctor<float,float,uint8_t> \
+				                               (scale,byteswap_in,byteswap_out), \
+				                               (cudaStream_t)0);
+			} else {
+				foreach_simple_cpu_1bit((float*)in->data, \
+				                        (int8_t*)out->data, \
+				                        nelement, \
+				                        QuantizeFunctor<float,float,uint8_t> \
+				                        (scale,byteswap_in,byteswap_out));
+			}
+#else
+			foreach_simple_cpu_1bit((float*)in->data, \
+				                   (int8_t*)out->data, \
+				                   nelement, \
+				                   QuantizeFunctor<float,float,uint8_t> \
+				                   (scale,byteswap_in,byteswap_out));
+#endif
+			break;
+		}
 		case BF_DTYPE_CI2: nelement *= 2;
 		case BF_DTYPE_I2: {
 			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
