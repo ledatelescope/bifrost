@@ -77,7 +77,7 @@ def load_by_filename(filename):
 	
 	contents = {}
 	with open(filename, 'r') as fh:
-		## Read the file all at once to avoid
+		## Read the file all at once to avoid problems
 		lines = fh.read()
 		
 		## Loop through lines
@@ -98,7 +98,7 @@ def load_by_filename(filename):
 	# Done
 	return contents
 
-def load_by_pid(pid):
+def load_by_pid(pid, include_rings=False):
 	"""
 	Function to read in and parse all ProcLog files associated with a given 
 	process ID.  The contents of these files are returned as a collection of
@@ -122,7 +122,9 @@ def load_by_pid(pid):
 		## Extract the block and logfile names
 		logName = os.path.basename(filename)
 		blockName = os.path.basename( os.path.dirname(filename) )
-		
+		if blockName == 'rings' and not include_rings:
+			continue
+			
 		## Load the file's contents
 		subContents = load_by_filename(filename)
 		

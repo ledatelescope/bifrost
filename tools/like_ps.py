@@ -35,6 +35,7 @@ import time
 import getopt
 import subprocess
 
+os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
 
 
@@ -142,7 +143,7 @@ def main(args):
 	
 	for pidDir in pidDirs:
 		pid = int(os.path.basename(pidDir), 10)
-		contents = load_by_pid(pid)
+		contents = load_by_pid(pid, include_rings=True)
 		
 		details = _getProcessDetails(pid)
 		cmd = _getCommandLine(pid)
@@ -159,7 +160,15 @@ def main(args):
 		print "  Thread Count: %i" % details['threads']
 		print "  Rings:"
 		rings = []
+		ring_details = {}
 		for block in contents.keys():
+			if block == 'rings':
+				for ring in contents[block].keys():
+					ring_details[ring] = {}
+					for key in contents[block][ring]:
+						ring_details[ring][key] = contents[block][ring][key]
+				continue
+				
 			for log in contents[block].keys():
 				if log not in ('in', 'out'):
 					continue
@@ -169,9 +178,16 @@ def main(args):
 						if value not in rings:
 							rings.append( value )
 		for i,ring in enumerate(rings):
-			print "    %i: %s" % (i, ring)
+			try:
+				dtls = ring_details[ring]
+				print "    %i: %s on %s of size %.1f MB" % (i, ring, dtls['space'], (dtls['stride']*dtls['nringlet'])/1024.0**2)
+			except KeyError:
+				print "    %i: %s" % (i, ring)
 		print "  Blocks:"
 		for block in contents.keys():
+			if block == 'rings':
+				continue
+				
 			rins, routs = [], []
 			for log in contents[block].keys():
 				if log not in ('in', 'out'):

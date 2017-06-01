@@ -88,7 +88,7 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	  _ghost_dirty(false),
 	  _writing_begun(false), _writing_ended(false), _eod(0),
 	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0), 
-	  _size_log("rings/"+name) {
+	  _size_log(std::string("rings/")+name) {
 
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM       ||
