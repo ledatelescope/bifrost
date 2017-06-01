@@ -36,6 +36,7 @@
 
 #include <bifrost/ring.h>
 #include "assert.hpp"
+#include "proclog.hpp"
 
 #include <stdexcept>
 #include <vector>
@@ -109,6 +110,8 @@ class BFring_impl {
 	BFsize         _nread_open;
 	BFsize         _nwrite_open;
 	BFsize         _nrealloc_pending;
+	
+	ProcLog        _size_log;
 	
 	std::queue<BFsequence_sptr>           _sequence_queue;
 	std::map<std::string,BFsequence_sptr> _sequence_map;

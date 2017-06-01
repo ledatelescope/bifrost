@@ -87,7 +87,8 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	  _tail(0), _head(0), _reserve_head(0),
 	  _ghost_dirty(false),
 	  _writing_begun(false), _writing_ended(false), _eod(0),
-	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0) {
+	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0), 
+	  _size_log("rings/"+name) {
 
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM       ||
@@ -99,6 +100,14 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM,
 	                    BF_STATUS_INVALID_ARGUMENT);
 #endif
+
+	_size_log.update("space     : %s\n"
+	                 "alignment : %llu\n"
+	                 "ghost     : %llu\n"
+	                 "span      : %llu\n"
+	                 "stride    : %llu\n"
+	                 "nringlet  : %llu\n", 
+	                 bfGetSpaceString(_space).c_str(), bfGetAlignment(), _span, _ghost_span, _stride, _nringlet);
 }
 BFring_impl::~BFring_impl() {
 	// TODO: Should check if anything is still open here?
@@ -187,6 +196,13 @@ void BFring_impl::resize(BFsize contiguous_span,
 	_span       = new_span;
 	_stride     = new_stride;
 	_nringlet   = new_nringlet;
+	
+	_size_log.update() << "space     : " << bfGetSpaceString(_space) << "\n"
+	                   << "alignment : " << bfGetAlignment() << "\n"
+	                   << "ghost     : " << _ghost_span << "\n"
+	                   << "span      : " << _span << "\n"
+	                   << "stride    : " << _stride << "\n"
+	                   << "nringlet  : " << _nringlet << "\n";
 }
 void BFring_impl::begin_writing() {
 	lock_guard_type lock(_mutex);

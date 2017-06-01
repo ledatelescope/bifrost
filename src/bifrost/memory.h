@@ -35,6 +35,7 @@
 #define BF_MEMORY_H_INCLUDE_GUARD_
 
 #include <bifrost/common.h>
+#include <string>
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,6 +57,8 @@ BFstatus bfMalloc(void** ptr, BFsize size, BFspace space);
 BFstatus bfFree(void* ptr, BFspace space);
 
 BFstatus bfGetSpace(const void* ptr, BFspace* space);
+
+std::string bfGetSpaceString(BFspace space);
 
 // Note: This is sync wrt host but async wrt device
 BFstatus bfMemcpy(void*       dst,
