@@ -32,13 +32,20 @@ from libbifrost import _bf, _check, _get, _string2space, _space2string
 from ndarray import ndarray
 
 import ctypes
+import string
 import numpy as np
 from uuid import uuid4
+
+def _slugify(name):
+	valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+	valid_chars = frozenset(valid_chars)
+	return ''.join([c for c in name if c in valid_chars])
 
 class Ring(object):
 	def __init__(self, space='system', name=None):
 		if name is None:
 			name = str(uuid4())
+		name = _slugify(name)
 		space = _string2space(space)
 		#self.obj = None
 		self.obj = _get(_bf.RingCreate(name=name, space=space), retarg=0)
