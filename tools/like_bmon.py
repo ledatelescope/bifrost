@@ -37,6 +37,7 @@ import getopt
 import socket
 from datetime import datetime
 
+os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
 
 
@@ -327,6 +328,10 @@ def main(args):
 				## Clear
 				act = None
 				
+			## For sel to be valid - this takes care of any changes between when 
+			## we get what to select and when we polled the bifrost logs
+			sel = min([nPID-1, sel])
+			
 			## Display
 			k = 0
 			### General - selected
@@ -349,7 +354,7 @@ def main(args):
 				curr = stats[o]
 				if o == order[sel]:
 					act = curr
-				
+					
 				drateR, prateR = curr['rx']['drate'], curr['rx']['prate']
 				drateR, drateuR = _setUnits(drateR)
 				
