@@ -135,6 +135,29 @@ def _getCommandLine(pid):
 	return cmd
 
 
+def _getBestSize(value):
+	"""
+	Give a size in bytes, convert it into a nice, human-readable value 
+	with units.
+	"""
+	
+	if value >= 1024.0**4:
+		value = value / 1024.0**4
+		unit = 'TB'
+	elif value >= 1024.0**3:
+		value = value / 1024.0**3
+		unit = 'GB'
+	elif value >= 1024.0**2:
+		value = value / 1024.0**2
+		unit = 'MB'
+	elif value >= 1024.0:
+		value = value / 1024.0
+		unit = 'kB'
+	else:
+		unit = 'B'
+	return value, unit
+
+
 def main(args):
 	config = parseOptions(args)
 	
@@ -180,7 +203,8 @@ def main(args):
 		for i,ring in enumerate(rings):
 			try:
 				dtls = ring_details[ring]
-				print "    %i: %s on %s of size %.1f MB" % (i, ring, dtls['space'], (dtls['stride']*dtls['nringlet'])/1024.0**2)
+				sz, un = _getBestSize(dtls['stride']*dtls['nringlet'])
+				print "    %i: %s on %s of size %.1f %s" % (i, ring, dtls['space'], sz, un)
 			except KeyError:
 				print "    %i: %s" % (i, ring)
 		print "  Blocks:"
