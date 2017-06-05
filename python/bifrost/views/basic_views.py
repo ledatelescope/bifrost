@@ -167,6 +167,7 @@ def merge_axes(block, axis1, axis2, label=None):
 				                 "%f != %f" % (scale1, n*scale2))
 			tensor['scales'][axis1][1] = scale2
 			del tensor['scales'][axis2]
+			del tensor['units'][axis2]
 		if 'labels' in tensor:
 			if label is not None:
 				tensor['labels'][axis1] = label
