@@ -348,8 +348,8 @@ void BFring_impl::open_sequence(BFsequence_sptr sequence,
 void BFring_impl::close_sequence(BFsequence_sptr sequence,
                                  BFbool          guarantee,
                                  BFoffset        guarantee_begin) {
-	lock_guard_type lock(_mutex);
 	if( guarantee ) {
+		lock_guard_type lock(_mutex);
 		this->_remove_guarantee(guarantee_begin);
 		//auto iter = _guarantees.find(guarantee_begin);
 		//BF_ASSERT_EXCEPTION(iter != _guarantees.end(), BF_STATUS_INTERNAL_ERROR);
@@ -451,7 +451,7 @@ void BFring_impl::_pull_tail(unique_lock_type& lock) {
 	// This waits until all guarantees have caught up to the new valid
 	//   buffer region defined by _reserve_head, and then pulls the tail
 	//   along to ensure it is within a distance of _span from _reserve_head.
-	// This must be done whenever _reserve_head is updated.
+	// This must be done whenever _reserve_head is increased.
 	
 	// Note: By using _span, this correctly handles ring resizes that occur
 	//         while waiting on the condition.
@@ -467,7 +467,7 @@ void BFring_impl::_pull_tail(unique_lock_type& lock) {
 	BFoffset cur_span = _reserve_head - _tail;
 	if( cur_span > _span ) {
 		// Pull the tail
-		 _tail += cur_span - _span;
+		_tail += cur_span - _span;
 		// Delete old sequences
 		while( !_sequence_queue.empty() &&
 		       //_sequence_queue.front()->_end != BFsequence_impl::BF_SEQUENCE_OPEN &&
@@ -492,7 +492,7 @@ void BFring_impl::reserve_span(BFsize size, BFoffset* begin, void** data) {
 	
 	*begin = _reserve_head;
 	_reserve_head += size;
-	this->_pull_tail(lock); // Must be called after updating _reserve_head
+	this->_pull_tail(lock); // Must be called whenever _reserve_head is increased
 	/*
 	_write_condition.wait(lock, [&]() {
 			return ((_guarantees.empty() ||
