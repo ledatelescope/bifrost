@@ -36,13 +36,13 @@ from bifrost.units import convert_units
 from copy import deepcopy
 import os
 
-def get_with_default(obj, key, default=None):
+def _get_with_default(obj, key, default=None):
     return obj[key] if key in obj else default
 
-def mjd2unix(mjd):
+def _mjd2unix(mjd):
     return (mjd - 40587) * 86400
 
-def unix2mjd(unix):
+def _unix2mjd(unix):
     return unix / 86400. + 40587
 
 class SigprocSourceBlock(SourceBlock):
@@ -59,7 +59,7 @@ class SigprocSourceBlock(SourceBlock):
         for coord_frame in ['pulsarcentric', 'barycentric', 'topocentric']:
             if coord_frame in ihdr and bool(ihdr[coord_frame]):
                 break
-        tstart_unix = mjd2unix(ihdr['tstart'])
+        tstart_unix = _mjd2unix(ihdr['tstart'])
         nbit = ihdr['nbits']
         if self.unpack:
             nbit = max(nbit, 8)
@@ -74,18 +74,18 @@ class SigprocSourceBlock(SourceBlock):
                 'units':  ['s', None, 'MHz']
             },
             'frame_rate': 1./ihdr['tsamp'], # TODO: Used for anything?
-            'source_name':   get_with_default(ihdr, 'source_name'),
-            'rawdatafile':   get_with_default(ihdr, 'rawdatafile'),
-            'az_start':      get_with_default(ihdr, 'az_start'),
-            'za_start':      get_with_default(ihdr, 'za_start'),
-            'raj':           get_with_default(ihdr, 'src_raj'),
-            'dej':           get_with_default(ihdr, 'src_dej'),
-            'refdm':         get_with_default(ihdr, 'refdm', 0.),
+            'source_name':   _get_with_default(ihdr, 'source_name'),
+            'rawdatafile':   _get_with_default(ihdr, 'rawdatafile'),
+            'az_start':      _get_with_default(ihdr, 'az_start'),
+            'za_start':      _get_with_default(ihdr, 'za_start'),
+            'raj':           _get_with_default(ihdr, 'src_raj'),
+            'dej':           _get_with_default(ihdr, 'src_dej'),
+            'refdm':         _get_with_default(ihdr, 'refdm', 0.),
             'refdm_units':   'pc cm^-3',
-            'telescope':     get_with_default(ihdr, 'telescope_id'),
-            'machine':       get_with_default(ihdr, 'machine_id'),
-            'ibeam':         get_with_default(ihdr, 'ibeam'),
-            'nbeams':        get_with_default(ihdr, 'nbeams'),
+            'telescope':     _get_with_default(ihdr, 'telescope_id'),
+            'machine':       _get_with_default(ihdr, 'machine_id'),
+            'ibeam':         _get_with_default(ihdr, 'ibeam'),
+            'nbeams':        _get_with_default(ihdr, 'nbeams'),
             'coord_frame':   coord_frame,
         }
         # Convert ids to strings
@@ -128,24 +128,34 @@ class SigprocSourceBlock(SourceBlock):
         return [nframe]
 
 def read_sigproc(filenames, gulp_nframe, unpack=True, *args, **kwargs):
+    """Read SIGPROC data files.
+
+    Capable of reading filterbank, time series, and dedispersed subband data.
+
+    Args:
+        filenames (list): List of input filenames.
+        gulp_nframe (int): No. frames to read at a time.
+        unpack (bool): If True, 1-4 bit data are unpacked to 8 bits.
+        *args: Arguments to ``bifrost.pipeline.SourceBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.SourceBlock``.
+
+    **Tensor semantics**::
+
+        Output: ['time', 'pol', 'freq'], dtype = u/i*, space = SYSTEM
+
+    Returns:
+        SigprocSourceBlock: A new block instance.
+    """
     return SigprocSourceBlock(filenames, gulp_nframe, unpack,
                               *args, **kwargs)
 
-def copy_item_if_exists(dst, src, key, newkey=None):
+def _copy_item_if_exists(dst, src, key, newkey=None):
     if key in src:
         if newkey is None:
             newkey = key
         dst[newkey] = src[key]
 
 class SigprocSinkBlock(SinkBlock):
-    """Writes data as Sigproc files.
-    The Sigproc data type is inferred from sequence metadata, and is one of:
-      Filterbank:    [time, pol, freq] (one file per sequence)
-                     [beam, time, pol, freq] (one file per beam)
-      Time series:   [time, pol], (one file per sequence)
-                     [dispersion, time, pol] (one file per DM)
-      Pulse profile: [pol, freq, phase] (one file per frame)
-    """
     def __init__(self, iring, path=None, *args, **kwargs):
         super(SigprocSinkBlock, self).__init__(iring, *args, **kwargs)
         if path is None:
@@ -154,32 +164,32 @@ class SigprocSinkBlock(SinkBlock):
     def on_sequence(self, iseq):
         ihdr = iseq.header
         itensor = ihdr['_tensor']
-        
+
         axnames = tuple(itensor['labels'])
         shape   = itensor['shape']
         scales  = itensor['scales']
         units   = itensor['units']
         ndim    = len(shape)
         dtype   = DataType(itensor['dtype'])
-        
+
         sigproc_hdr = {}
-        copy_item_if_exists(sigproc_hdr, ihdr, 'source_name')
-        copy_item_if_exists(sigproc_hdr, ihdr, 'rawdatafile')
-        copy_item_if_exists(sigproc_hdr, ihdr, 'az_start')
-        copy_item_if_exists(sigproc_hdr, ihdr, 'za_start')
-        copy_item_if_exists(sigproc_hdr, ihdr, 'raj', 'src_raj')
-        copy_item_if_exists(sigproc_hdr, ihdr, 'dej', 'src_dej')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'source_name')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'rawdatafile')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'az_start')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'za_start')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'raj', 'src_raj')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'dej', 'src_dej')
         if 'telescope' in ihdr:
             sigproc_hdr['telescope_id'] = sigproc.telescope2id(ihdr['telescope'])
         if 'machine' in ihdr:
             sigproc_hdr['machine_id'] = sigproc.machine2id(ihdr['machine'])
-        copy_item_if_exists(sigproc_hdr, ihdr, 'telescope_id')
-        copy_item_if_exists(sigproc_hdr, ihdr, 'machine_id')
-        copy_item_if_exists(sigproc_hdr, ihdr, 'ibeam')
-        copy_item_if_exists(sigproc_hdr, ihdr, 'nbeams')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'telescope_id')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'machine_id')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'ibeam')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'nbeams')
         sigproc_hdr['nbits'] = dtype.itemsize_bits
-        copy_item_if_exists(sigproc_hdr, ihdr, 'barycentric')
-        copy_item_if_exists(sigproc_hdr, ihdr, 'pulsarcentric')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'barycentric')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'pulsarcentric')
         if dtype.is_integer and dtype.is_signed:
             sigproc_hdr['signed'] = True
         if 'coord_frame' in ihdr:
@@ -188,16 +198,16 @@ class SigprocSinkBlock(SinkBlock):
             coord_frame = None
         sigproc_hdr['pulsarcentric'] = (coord_frame == 'pulsarcentric')
         sigproc_hdr['barycentric']   = (coord_frame == 'barycentric')
-        
+
         filename = os.path.join(self.path, ihdr['name'])
-        
+
         if ndim >= 3 and axnames[-3:] == ('time', 'pol', 'freq'):
             self.data_format = 'filterbank'
             assert(dtype.is_real)
             sigproc_hdr['data_type'] = 1
             sigproc_hdr['nifs']   = shape[-2]
             sigproc_hdr['nchans'] = shape[-1]
-            sigproc_hdr['tstart'] = unix2mjd(scales[-3][0])
+            sigproc_hdr['tstart'] = _unix2mjd(scales[-3][0])
             sigproc_hdr['tsamp']  = convert_units(scales[-3][1], units[-3], 's')
             sigproc_hdr['fch1']   = convert_units(scales[-1][0], units[-1], 'MHz')
             sigproc_hdr['foff']   = convert_units(scales[-1][1], units[-1], 'MHz')
@@ -222,14 +232,14 @@ class SigprocSinkBlock(SinkBlock):
                     sigproc.write_header(sigproc_hdr, self.ofiles[b])
             else:
                 raise ValueError("Too many dimensions")
-            
+
         elif ndim >= 2 and axnames[-2:] == ('time', 'pol'):
             self.data_format = 'timeseries'
             assert(dtype.is_real)
             sigproc_hdr['data_type'] = 2
             sigproc_hdr['nchans'] = 1
             sigproc_hdr['nifs']   = shape[-2]
-            sigproc_hdr['tstart'] = unix2mjd(scales[-2][0])
+            sigproc_hdr['tstart'] = _unix2mjd(scales[-2][0])
             sigproc_hdr['tsamp']  = convert_units(scales[-2][1], units[-2], 's')
             if 'cfreq' in ihdr and 'bw' in ihdr:
                 sigproc_hdr['fch1'] = convert_units(ihdr['cfreq'],
@@ -262,7 +272,7 @@ class SigprocSinkBlock(SinkBlock):
                     sigproc.write_header(sigproc_hdr, self.ofiles[d])
             else:
                 raise ValueError("Too many dimensions")
-            
+
         elif ndim == 4 and axnames[-3:] == ('pol', 'freq', 'phase'):
             self.data_format = 'pulseprofile'
             assert(dtype.is_real)
@@ -270,7 +280,7 @@ class SigprocSinkBlock(SinkBlock):
             sigproc_hdr['nifs']   = shape[-3]
             sigproc_hdr['nchans'] = shape[-2]
             sigproc_hdr['nbins']  = shape[-1]
-            sigproc_hdr['tstart'] = unix2mjd(scales[-4][0])
+            sigproc_hdr['tstart'] = _unix2mjd(scales[-4][0])
             sigproc_hdr['tsamp']  = convert_units(scales[-4][1], units[-4], 's')
             sigproc_hdr['fch1']   = convert_units(scales[-2][0], units[-2], 'MHz')
             sigproc_hdr['foff']   = convert_units(scales[-2][1], units[-2], 'MHz')
@@ -278,23 +288,23 @@ class SigprocSinkBlock(SinkBlock):
                 sigproc_hdr['refdm'] = convert_units(ihdr['refdm'],
                                                      ihdr['refdm_units'],
                                                      'pc cm^-3')
-            copy_item_if_exists(sigproc_hdr, ihdr, 'npuls')
+            _copy_item_if_exists(sigproc_hdr, ihdr, 'npuls')
             self.filename = filename
             self.sigproc_hdr = sigproc_hdr
             self.t0 = scales[-4][0]
             self.dt = scales[-4][1]
-            
+
         else:
             raise ValueError("Axis labels do not correspond to a known data format: "+
                              str(axnames))
-        
+
     def on_sequence_end(self, iseq):
         if hasattr(self, 'ofile'):
             self.ofile.close()
         elif hasattr(self, 'ofiles'):
             for ofile in self.ofiles:
                 ofile.close()
-    
+
     def on_data(self, ispan):
         idata = ispan.data
         if self.data_format == 'filterbank':
@@ -320,4 +330,32 @@ class SigprocSinkBlock(SinkBlock):
             raise ValueError("Internal error: Unknown data format!")
 
 def write_sigproc(iring, path=None, *args, **kwargs):
+    """Write data as Sigproc files.
+
+    Args:
+        iring (Ring or Block): Input data source.
+        path (str): Path specifying where to write output files.
+        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
+
+    **Tensor semantics**::
+
+        Input:  [time, pol, freq], dtype = any, space = SYSTEM
+        Output: Filterbank, one file per sequence
+
+        Input:  [beam, time, pol, freq], dtype = any, space = SYSTEM
+        Output: Filterbank, one file per beam
+
+        Input:  [time, pol], dtype = any, space = SYSTEM
+        Output: Time series, one file per sequence
+
+        Input:  [dispersion, time, pol], dtype = any, space = SYSTEM
+        Output: Time series, one file per dispersion measure trial
+
+        Input:  [pol, freq, phase], dtype = any, space = SYSTEM
+        Output: Pulse profile, one file per frame
+
+    Returns:
+        SigprocSinkBlock: A new block instance.
+    """
     return SigprocSinkBlock(iring, path, *args, **kwargs)

@@ -37,13 +37,6 @@ from copy import deepcopy
 import math
 
 class FftBlock(TransformBlock):
-    """This block produces an N-dimensional FFT of the input data stream. The
-    transform can be over any set of dimensions that does NOT include the frame
-    (time) dimension. Transforms over the frame dimension can be achieved by
-    first reshaping the input data stream.
-    Axis scales are automatically updated to reflect the Fourier-transformed
-    axes.
-    """
     # TODO: Add support for sizes (aka 's') parameter that defines transform
     #         length in each dimension (i.e., cropped/padded transforms).
     #         Should be able to do this using an input callback and padded
@@ -63,7 +56,6 @@ class FftBlock(TransformBlock):
         self.space       = self.irings[0].space
         self.fft         = Fft()
     def define_valid_input_spaces(self):
-        """Return set of valid spaces (or 'any') for each input"""
         return ('cuda',)
     def on_sequence(self, iseq):
         ihdr = iseq.header
@@ -138,29 +130,37 @@ class FftBlock(TransformBlock):
                                        workspace.ptr, workspace.size,
                                        inverse=self.inverse)
 
-def fft(iring, axes, *args, **kwargs):
+def fft(iring, axes, inverse=False, real_output=False, axis_labels=None,
+        *args, **kwargs):
     """Apply a GPU FFT to the input ring data.
 
     This block produces an N-dimensional FFT of the input data stream. The
-    transform can be over any set of dimensions that does NOT include the frame
-    (time) dimension. Transforms over the frame dimension can be achieved by
-    first reshaping the input data stream.
+    transform can be over any set of dimensions except the frame (time)
+    dimension. Transforms over the frame dimension can be achieved by
+    first reshaping the input data stream using bifrost.views.split_axis.
+
     Axis scales are automatically updated to reflect the Fourier-transformed
     axes.
 
-    Attributes
-    ----------
-    iring : Block
-        A derivative of a Block object.
-    axes : list
-        List of strings, indicating axes included in FFT.
-    *args
-        Arguments to `bifrost.pipeline.TransformBlock`.
-    **kwargs
-        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+    Args:
+        iring (Ring or Block): Input data source.
+        axes (list): List of integers or strings indicating axes to be transformed.
+        inverse (bool): If True, the inverse Fourier transform is applied.
+        real_output (bool): If True, a complex-to-real inverse Fourier
+            transform is applied (input data must be complex).
+        axis_labels (list): A list of strings specifying a new label to give
+             each transformed axis. If None, the output labels are copied from
+             the input labels.
+        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
 
-    Returns
-    -------
-    `FftBlock`
+    **Tensor semantics**::
+
+        Input:  [...], dtype = any real or complex, space = CUDA
+        Output: [...], dtype = [f32, cf32, f64, or cf64], space = CUDA
+
+    Returns:
+        FftBlock: A new block instance.
     """
-    return FftBlock(iring, axes, *args, **kwargs)
+    return FftBlock(iring, axes, inverse, real_output, axis_labels,
+                    *args, **kwargs)

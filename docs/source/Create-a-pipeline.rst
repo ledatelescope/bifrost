@@ -184,14 +184,16 @@ But first, we have to offload from the GPU:
 Then, convert to an 8-bit integer data type for storage, with the
 quantize block (``'i8'`` means an ``8``-bit ``i`` nteger).
 
+.. code:: python
 
+    quantized = bf.blocks.quantize(host_transposed, 'i8')
 
 Finally, we pass the data stream into a `sink` block, which ends
 the pipeline and stores the data in a filterbank file:
 
 .. code:: python
 
-    blocks.write_sigproc(host_transposed)
+    blocks.write_sigproc(quantized)
 
 In this case, the filename will be determined from
 the header information, which contains the name of the original
@@ -222,17 +224,16 @@ For ease of reference, here is all the code at once:
     import bifrost.blocks as blocks
     import bifrost.views as views
 
-    data = blocks.read_wav(['heyjude_short.wav'], gulp_nframe=4096)
-    data = blocks.copy(data, space='cuda')
-    data = views.split_axis(data, 'time', 256, label='fine_time')
-    data = blocks.fft(data, axes='fine_time', axis_labels='freq')
-    data = blocks.detect(data, mode='scalar')
-    data = blocks.transpose(data, ['time', 'pol', 'freq'])
-    data = blocks.copy(data, space='cuda_host')
-    data = bf.blocks.quantize(data, 'i8')
-    blocks.write_sigproc(data)
+    raw_data = blocks.read_wav(['heyjude.wav'], gulp_nframe=4096)
+    gpu_raw_data = blocks.copy(raw_data, space='cuda')
+    chunked_data = views.split_axis(gpu_raw_data, 'time', 256, label='fine_time')
+    fft_output = blocks.fft(chunked_data, axes='fine_time', axis_labels='freq')
+    squared = blocks.detect(fft_output, mode='scalar')
+    transposed = blocks.transpose(squared, ['time', 'pol', 'freq'])
+    host_transposed = blocks.copy(transposed, space='cuda_host')
+    quantized = bf.blocks.quantize(host_transposed, 'i8')
+    blocks.write_sigproc(quantized)
 
     pipeline = bf.get_default_pipeline()
     pipeline.shutdown_on_signals()
     pipeline.run()
-

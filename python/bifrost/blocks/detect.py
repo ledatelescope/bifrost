@@ -26,15 +26,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Detect block
-data = detect(data, mode='jones/stokes', axis=None)
-If axis is None, default to 'pol', and if this is not found, default to single-pol data (i.e., simple square)
-Stokes: complex x,y -> scalar I,Q,U,V
-Jones:  complex x,y -> complex (XX*,YY*),XY*
-Scalar: complex x -> XX*   
-"""
-
 from __future__ import absolute_import
 
 import bifrost as bf
@@ -46,11 +37,6 @@ from copy import deepcopy
 class DetectBlock(TransformBlock):
     def __init__(self, iring, mode, axis=None,
                  *args, **kwargs):
-        """
-        mode='jones':  (xx* + 1j*yy*), xy*
-        mode='stokes': I,Q,U,V
-        mode='scalar': XX* (i.e. power)
-        """
         super(DetectBlock, self).__init__(iring, *args, **kwargs)
         self.specified_axis = axis
         self.mode = mode.lower()
@@ -94,7 +80,6 @@ class DetectBlock(TransformBlock):
     def on_data(self, ispan, ospan):
         idata = ispan.data
         odata = ospan.data
-        
         if self.npol == 1:
             bf.map("b = Complex<b_type>(a).mag2()", a=idata, b=odata)
         else:
@@ -129,30 +114,27 @@ class DetectBlock(TransformBlock):
 def detect(iring, mode, axis=None, *args, **kwargs):
     """Apply square-law detection to create polarization products.
 
-    Used in radio astronomy spectrometers.
-    |   Stokes: complex x,y -> scalar I,Q,U,V
-    |   Jones:  complex x,y -> complex (XX*,YY*),XY*
-    |   Scalar: complex x -> XX*
+    Args:
+        iring (Ring or Block): Input data source.
+        mode (string):
 
-    If axis is None, default to 'pol', and if this is not found,
-    default to single-pol data (i.e., simple square)
+           ``'scalar': x   -> real x.x*``
 
-    Attributes
-    ----------
-    iring : Block
-        A derivative of a Block object.
-    mode : str
-        Either 'stokes', 'jones', or 'scalar'
-    axis : str, optional
-        Axis to run the detect block over. Default
-        is 'pol', and if not, default to squaring data.
-    *args
-        Arguments to `bifrost.pipeline.TransformBlock`.
-    **kwargs
-        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+           ``'jones':  x,y -> complex x.x* + 1j*y.y*, x.y*``
 
-    Returns
-    -------
-    `DetectBlock`
+           ``'stokes': x,y -> real I, Q, U, V``
+
+        axis: Integer or string specifying the polarization axis. Defaults to
+                'pol'. Not used if mode = 'scalar'.
+        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
+
+    **Tensor semantics**::
+
+        Input:  [..., 'pol', ...], dtype = any complex, space = CUDA
+        Output: [..., 'pol', ...], dtype = real or complex, space = CUDA
+
+    Returns:
+        DetectBlock: A new block instance.
     """
     return DetectBlock(iring, mode, axis, *args, **kwargs)

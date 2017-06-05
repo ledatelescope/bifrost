@@ -69,6 +69,17 @@ BFstatus bfRingGetSpace(BFring ring, BFspace* space) {
 //	BF_ASSERT(ring, 0);
 //	return ring->nringlet();
 //}
+BFstatus bfRingSetAffinity(BFring ring, int  core) {
+	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
+	BF_ASSERT(core >= -1, BF_STATUS_INVALID_ARGUMENT);
+	BF_ASSERT(BF_NUMA_ENABLED, BF_STATUS_UNSUPPORTED);
+	BF_TRY_RETURN(ring->set_core(core));
+}
+BFstatus bfRingGetAffinity(BFring ring, int* core) {
+	BF_ASSERT(ring,  BF_STATUS_INVALID_HANDLE);
+	BF_ASSERT(core,  BF_STATUS_INVALID_POINTER);
+	BF_TRY_RETURN(*core = ring->core());
+}
 BFstatus bfRingLock(BFring ring) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
 	BF_TRY_RETURN(ring->lock());

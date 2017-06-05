@@ -33,12 +33,12 @@ import signal
 from copy import copy
 from collections import defaultdict
 from contextlib2 import ExitStack
+import traceback
 
 import bifrost as bf
 from bifrost.ring2 import Ring, ring_view
 from temp_storage import TempStorage
 from bifrost.proclog import ProcLog
-
 
 def izip(*iterables):
 	while True:
@@ -293,7 +293,8 @@ class Block(BlockScope):
 		rnames = {'nring': len(self.irings)}
 		for i,r in enumerate(self.irings):
 			rnames['ring%i' % i] = r.name
-		self.in_proclog.update(rnames) 
+		self.in_proclog.update(rnames)
+		self.init_trace = ''.join(traceback.format_stack())
 		
 	def shutdown(self):
 		self.shutdown_event.set()
@@ -304,14 +305,19 @@ class Block(BlockScope):
 		core = self.core
 		if core is not None:
 			bf.affinity.set_core(core if isinstance(core, int) else core[0])
-		self.bind_proclog.update({'ncore': 1, 
-							 'core0': bf.affinity.get_core()})
+		self.bind_proclog.update({'ncore': 1,
+		                          'core0': bf.affinity.get_core()})
 		if self.gpu is not None:
 			bf.device.set_device(self.gpu)
 		self.cache_scope_hierarchy()
 		with ExitStack() as oring_stack:
 			active_orings = self.begin_writing(oring_stack, self.orings)
-			self.main(active_orings)
+			try:
+				self.main(active_orings)
+			except Exception:
+				print "From block instantiated here:"
+				print self.init_trace
+				raise
 	def num_outputs(self):
 		# TODO: This is a little hacky
 		return len(self.orings)
@@ -436,7 +442,7 @@ class MultiTransformBlock(Block):
 		rnames = {'nring': len(self.orings)}
 		for i,r in enumerate(self.orings):
 			rnames['ring%i' % i] = r.name
-		self.out_proclog.update(rnames)                       
+		self.out_proclog.update(rnames)
 		
 	def main(self, orings):
 		for iseqs in izip(*[iring.read(guarantee=self.guarantee)

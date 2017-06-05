@@ -46,28 +46,26 @@ class CopyBlock(TransformBlock):
         copy_array(ospan.data, ispan.data)
 
 def copy(iring, space=None, *args, **kwargs):
-    """Copy the contents of a ring to another space.
+    """Copy data, possibly to another space.
 
     Use this block to copy data between different
         spaces, such as from system memory to GPU memory.
         The output header for this block is identical
         to the input header.
 
-    Attributes
-    ----------
-    iring : Block
-        A derivative of a Block object.
-    space : str, optional
-        String describing the output data space,
-        such as 'cuda' or 'system'. Default
-        space is same as input.
-    *args
-        Arguments to `bifrost.pipeline.TransformBlock`.
-    **kwargs
-        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+    Args:
+        iring (Ring or Block): Input data source.
+        space (str): Output data space (e.g., 'cuda' or 'system').
+            Default space is same as input.
+        *args:  Arguments to ``bifrost.pipeline.TransformBlock``.
+        *kwargs: Keyword arguments to ``bifrost.pipeline.TransformBlock``.
 
-    Returns
-    -------
-    `CopyBlock`
+    Returns:
+        CopyBlock: A new block instance.
+
+    **Tensor semantics**::
+
+            Input:  [...], dtype = any, space = any
+            Output: [...], dtype = same as input, space = any
     """
     return CopyBlock(iring, space, *args, **kwargs)

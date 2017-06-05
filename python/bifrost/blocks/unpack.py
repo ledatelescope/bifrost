@@ -63,4 +63,20 @@ class UnpackBlock(TransformBlock):
         bf.unpack.unpack(idata, odata, self.align_msb)
 
 def unpack(iring, dtype, *args, **kwargs):
+    """Unpack data to a larger data type.
+
+    Args:
+        iring (Ring or Block): Input data source.
+        dtype: Output data type.
+        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
+
+    **Tensor semantics**::
+
+        Input:  [...], dtype = one of: i/u2, i/u4, ci2, ci4, space = SYSTEM
+        Output: [...], dtype = i8 or ci8 (matching input), space = SYSTEM
+
+    Returns:
+        UnpackBlock: A new block instance.
+    """
     return UnpackBlock(iring, dtype, *args, **kwargs)
