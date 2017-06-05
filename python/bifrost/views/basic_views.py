@@ -40,11 +40,7 @@ def custom(block, hdr_transform):
 	return block_view(block, hdr_transform)
 
 def rename_axis(block, old, new):
-	rename_axis.old = old
-	rename_axis.new = new
-	def header_transform(hdr):
-		old = rename_axis.old
-		new = rename_axis.new
+	def header_transform(hdr, old=old, new=new):
 		axis = hdr['_tensor']['labels'].index(old)
 		hdr['_tensor']['labels'][axis] = new
 		return hdr
@@ -57,15 +53,7 @@ def expand_dims(block, axis, label, scale=None, units=None):
 	selecting axis=1 would change the shape to be
 	[-1, 3, 1, 2].
 	"""
-	expand_dims.axis  = axis
-	expand_dims.label = label
-	expand_dims.scale = scale
-	expand_dims.units = units
-	def header_transform(hdr):
-		axis  = expand_dims.axis
-		label = expand_dims.label
-		scale = expand_dims.scale
-		units = expand_dims.units
+	def header_transform(hdr, axis=axis, label=label, scale=scale, units=units):
 		tensor = hdr['tensor']
 		if isinstance(axis, basestring):
 			axis = tensor['labels'].index(axis)
@@ -77,9 +65,7 @@ def expand_dims(block, axis, label, scale=None, units=None):
 	return block_view(block, header_transform)
 
 def astype(block, dtype):
-	astype.dtype = dtype
-	def header_transform(hdr):
-		new_dtype = astype.dtype
+	def header_transform(hdr, new_dtype=dtype):
 		tensor = hdr['_tensor']
 		old_dtype = tensor['dtype']
 		old_itemsize = DataType(old_dtype).itemsize
@@ -94,13 +80,7 @@ def astype(block, dtype):
 
 def split_axis(block, axis, n, label=None):
 	# Set function attributes to enable capture in nested function (closure)
-	split_axis.axis  = axis
-	split_axis.n     = n
-	split_axis.label = label
-	def header_transform(hdr):
-		axis  = split_axis.axis
-		n     = split_axis.n
-		label = split_axis.label
+	def header_transform(hdr, axis=axis, n=n, label=label):
 		tensor = hdr['_tensor']
 		if isinstance(axis, basestring):
 			axis = tensor['labels'].index(axis)
@@ -130,13 +110,7 @@ def split_axis(block, axis, n, label=None):
 	return block_view(block, header_transform)
 
 def merge_axes(block, axis1, axis2, label=None):
-	merge_axes.axis1 = axis1
-	merge_axes.axis2 = axis2
-	merge_axes.label = label
-	def header_transform(hdr):
-		axis1 = merge_axes.axis1
-		axis2 = merge_axes.axis2
-		label = merge_axes.label
+	def header_transform(hdr, axis1=axis1, axis2=axis2, label=label):
 		tensor = hdr['_tensor']
 		if isinstance(axis1, basestring):
 			axis1 = tensor['labels'].index(axis1)
