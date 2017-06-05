@@ -109,7 +109,7 @@ class DetectBlock(TransformBlock):
                 b(%s) = -2*xy.imag;
                 """ % (inds_[0], inds_[1],
                        inds_[0], inds_[1], inds_[2], inds_[3])
-            bf.map(func, shape, *inds, a=ispan.data, b=ospan.data)
+            bf.map(func, *inds, shape=shape, a=ispan.data, b=ospan.data)
 
 def detect(iring, mode, axis=None, *args, **kwargs):
     """Apply square-law detection to create polarization products.
