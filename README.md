@@ -91,7 +91,7 @@ Install dependencies:
  
 
 ```
-$ sudo pip install numpy matplotlib contextlib2 pint
+$ sudo pip install numpy matplotlib contextlib2 pint git+https://github.com/MatthieuDartiailh/pyclibrary.git@dff70337fd904a43de2bdd05dc548620160354d0
 ```
 
 ### Bifrost installation
