@@ -160,12 +160,6 @@ def merge_axes(block, axis1, axis2, label=None):
 			units1 = tensor['units'][axis1]
 			units2 = tensor['units'][axis2]
 			scale2 = convert_units(scale2, units2, units1)
-			# Note: This axis merge logic needs work.
-			if scale1 < 0 and scale2 > 0:
-				scale2 *= -1
-			if scale1 > 0 and scale2 < 0:
-				raise ValueError("Second merge axis is negative, first is positive: "
-			                     "These cannot be merged: %f, %f" % (scale1, scale2))
 			if not isclose(scale1, n*scale2):
 				raise ValueError("Scales of merge axes do not line up: "
 				                 "%f != %f" % (scale1, n*scale2))
