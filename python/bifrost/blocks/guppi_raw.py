@@ -59,7 +59,7 @@ class GuppiRawSourceBlock(SourceBlock):
         df_MHz = bw_MHz / nchan
         f0_MHz = cfreq_MHz - 0.5*(nchan-1)*df_MHz
         # Note: This will be negative if OBSBW is negative, which is correct
-        dt_s   = np.abs(1. / df_MHz / 1e6)
+        dt_s   = 1. / df_MHz / 1e6
         # Derive the timestamp of this block
         byte_offset   = ihdr['PKTIDX'] * ihdr['PKTSIZE']
         frame_nbyte   = ihdr['BLOCSIZE'] / ihdr['NTIME']
