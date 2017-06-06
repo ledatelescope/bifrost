@@ -42,7 +42,7 @@ doc: $(INC_DIR)/bifrost/*.h Doxyfile
 	$(DOXYGEN) Doxyfile
 .PHONY: doc
 
-python:
+python: libbifrost
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) build
 .PHONY: python
 
