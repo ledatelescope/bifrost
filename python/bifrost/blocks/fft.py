@@ -55,6 +55,10 @@ class FftBlock(TransformBlock):
         self.axis_labels = axis_labels
         self.space       = self.irings[0].space
         self.fft         = Fft()
+        self.plan_ishape   = None
+        self.plan_oshape   = None
+        self.plan_istrides = None
+        self.plan_ostrides = None
     def define_valid_input_spaces(self):
         return ('cuda',)
     def on_sequence(self, iseq):
@@ -110,23 +114,24 @@ class FftBlock(TransformBlock):
                 otensor['scales'][ax][1] = 1. / (scale*length)
             if 'labels' in otensor and self.axis_labels is not None:
                 otensor['labels'][ax] = self.axis_labels[i]
-        self.nframe  = 0
-        self.istride = 0
-        self.ostride = 0
         return ohdr
     def on_data(self, ispan, ospan):
-        # Check if nframe or ring strides have changed
-        if (ispan.nframe != self.nframe or
-            ispan._stride_bytes != self.istride or
-            ospan._stride_bytes != self.ostride):
+        idata = ispan.data
+        odata = ospan.data
+        # Check if shapes or strides have changed
+        if (idata.shape   != self.plan_ishape or
+            odata.shape   != self.plan_oshape or
+            idata.strides != self.plan_istrides or
+            odata.strides != self.plan_ostrides):
             # (Re-)generate the FFT plan
-            self.fft.init(ispan.data, ospan.data, axes=self.axes)
-            self.nframe  = ispan.nframe
-            self.istride = ispan._stride_bytes
-            self.ostride = ospan._stride_bytes
+            self.fft.init(idata, odata, axes=self.axes)
+            self.plan_ishape   = idata.shape
+            self.plan_oshape   = odata.shape
+            self.plan_istrides = idata.strides
+            self.plan_ostrides = odata.strides
         size = self.fft.workspace_size
         with self.get_temp_storage(self.space).allocate(size) as workspace:
-            self.fft.execute_workspace(ispan.data, ospan.data,
+            self.fft.execute_workspace(idata, odata,
                                        workspace.ptr, workspace.size,
                                        inverse=self.inverse)
 

@@ -126,7 +126,7 @@ def merge_axes(block, axis1, axis2, label=None):
 			raise ValueError("Second merge axis cannot be frame axis")
 		elif tensor['shape'][axis1] == -1:
 			# Axis1 is frame axis
-			tensor['gulp_nframe'] *= n
+			hdr['gulp_nframe'] *= n
 		else:
 			# Neither axis is frame axis
 			tensor['shape'][axis1] *= n

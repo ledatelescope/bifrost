@@ -238,26 +238,18 @@ def get_ring(block_or_ring):
 		return block_or_ring
 
 def block_view(block, header_transform):
-	"""Modify the headers of the output ring for a block
-
+	"""View a block with modified output headers
+	
 	Use this function to adjust the output headers of a ring
-	without having to write a new block. This function
-	returns a copy of the original block. This allows you
-	to apply various modifications to a block with a single function.
-
-	Attributes
-	----------
-	block : Block
-		A derivative of a Block object.
-	header_transform : function
-		A function that transforms headers
-		in an outgoing ring from a block
-
-	Returns
-	-------
-	`Block`
-		A copy of the original block,
-		but with modified output rings.
+	on-the-fly, effectively producing a new 'view' of the block.
+	
+	Args:
+	    block (Block): Input block.
+	    header_transform (function): A function f(hdr) -> new_hdr.
+	
+	Returns:
+	    A new block that acts as the old block but modifies its sequence
+	    headers on-the-fly.
 	"""
 	new_block = copy(block)
 	new_block.orings = [ring_view(oring, header_transform)
