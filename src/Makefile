@@ -44,8 +44,17 @@ JIT_SOURCES ?= \
 
 MAKEFILES = ../config.mk ../user.mk Makefile
 
-NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS), \
-  -gencode arch=compute_$(arch),\"code=sm_$(arch),compute_$(arch)\")
+# All CUDA archs supported by this version of nvcc
+GPU_ARCHS_SUPPORTED := $(shell $(NVCC) -h | grep -Po "compute_[0-9]{2}" | cut -d_ -f2 | sort | uniq)
+# Intersection of user-specified archs and supported archs
+GPU_ARCHS_VALID     := $(shell echo $(GPU_ARCHS) $(GPU_ARCHS_SUPPORTED) | xargs -n1 | sort | uniq -d | xargs)
+# Latest valid arch
+GPU_ARCH_LATEST     := $(shell echo $(GPU_ARCHS_VALID) | rev | cut -d' ' -f1 | rev)
+
+# This creates SASS for all valid requested archs, and PTX for the latest one
+NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS_VALID), \
+  -gencode arch=compute_$(arch),\"code=sm_$(arch)\") \
+  -gencode arch=compute_$(GPU_ARCH_LATEST),\"code=compute_$(GPU_ARCH_LATEST)\"
 
 CXXFLAGS  += -std=c++11 -fPIC -fopenmp
 NVCCFLAGS += -std=c++11 -Xcompiler "-fPIC" $(NVCC_GENCODE)
