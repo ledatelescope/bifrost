@@ -36,11 +36,8 @@ def convert_units(value, old_units, new_units):
         new_quantity = old_quantity.to(new_units)
     except pint.DimensionalityError:
         raise ValueError("Cannot convert units %s to %s" %
-		                 (old_units, new_units))
-    if value >= 0:
-        return new_quantity.magnitude
-    else:
-        return -1 * new_quantity.magnitude
+                        (old_units, new_units))    
+    return new_quantity.magnitude
 
 # TODO: May need something more flexible, like a Units wrapper class with __str__
 def transform_units(units, exponent):
