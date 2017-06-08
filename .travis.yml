@@ -14,3 +14,8 @@ install:
 script:
     - docker run --rm ledatelescope/bifrost /bin/sh -c "cd /bifrost/test && sh ./travis.sh"
     - bash ./.travis_deploy_docs.sh
+
+env:
+    global:
+        - ENCRYPTION_LABEL: "886f75ecbd69"
+        - COMMIT_AUTHOR_EMAIL: "miles.cranmer@gmail.com"

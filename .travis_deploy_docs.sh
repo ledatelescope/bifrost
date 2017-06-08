@@ -30,5 +30,27 @@ cd docs
 cp -rf html/* ../out/
 cd ../out
 ./clean_docs.sh # Clean up everything
-ls # Doing a dry run.
 
+# Now set up for commiting this change.
+git config user.name "Travis CI"
+git config user.email "$COMMIT_AUTHOR_EMAIL"
+
+# If there are no changes to the compiled out (e.g. this is a README update) then just bail.
+if git diff --quiet; then
+    echo "No changes to the output on this push; exiting."
+    exit 0
+fi
+
+# Commit the "changes", i.e. the new version.
+# The delta will show diffs between new and old versions.
+git add -A .
+git commit -m "Deploy to GitHub Pages: ${SHA}"
+
+# Get the deploy key by using Travis's stored variables to decrypt deploy_key.enc
+openssl aes-256-cbc -K $encrypted_886f75ecbd69_key -iv $encrypted_886f75ecbd69_iv -in ../deploy_key.enc -out ../deploy_key -d
+chmod 600 ../deploy_key
+eval `ssh-agent -s`
+ssh-add ../deploy_key
+
+# Now that we're all set up, we can push.
+git push $SSH_REPO $TARGET_BRANCH
