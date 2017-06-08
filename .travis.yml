@@ -18,4 +18,4 @@ script:
 env:
     global:
         - ENCRYPTION_LABEL: "886f75ecbd69"
-        - COMMIT_AUTHOR_EMAIL: "miles.cranmer@gmail.com"
+        - COMMIT_AUTHOR_EMAIL: "travis@ledatelescope.github.io"
