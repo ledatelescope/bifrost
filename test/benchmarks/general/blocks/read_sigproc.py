@@ -4,13 +4,21 @@ import bifrost as bf
 from bifrost import pipeline as bfp
 from bifrost import blocks as blocks
 
-class Benchmarker(object):
+class PipelineBenchmarker(object):
+    """ Time total clock and individual parts of blocks in a pipeline """
     def __init__(self):
+        """ Set two clock variables for recording """
         self.total_clock_time = 0
         self.relevant_clock_time = 0
 
     def timeit(self, method):
-        """ Decorator for timing execution of a method """
+        """ Decorator for timing execution of a method 
+        
+        Returns:
+
+            function: the original function, wrapped
+                       with a time accumulator
+        """
         def timed(*args, **kw):
             ts = timer()
             result = method(*args, **kw)
@@ -21,10 +29,19 @@ class Benchmarker(object):
         return timed
     
     def reset_times(self):
+        """ Set the two class clocks to 0 """
         self.total_clock_time = 0
         self.relevant_clock_time = 0
 
     def run_benchmark(self):
+        """ Run the benchmark once 
+
+        This file should contain the wrapping of a method
+        with self.timeit(), e.g., block.on_data = self.timeit(block.on_data),
+        which will set the relevant_clock_time to start tracking
+        that particular method. Note that you can do this with multiple
+        methods, and it will accumulate times for all of them.
+        """
         with bf.Pipeline() as pipeline:
             fil_file = "../../../data/1chan8bitNoDM.fil"
             data = blocks.read_sigproc([fil_file], gulp_nframe=4096)
@@ -36,6 +53,24 @@ class Benchmarker(object):
             self.total_clock_time = end-start
 
     def average_benchmark(self, number_runs):
+        """ Average over a number of tests for more accurate times
+
+        Args:
+
+            number_runs (int): Number of times to run the benchmark,
+                               excluding the first time (which runs
+                               without recording, as it is always
+                               slower)
+        
+        Returns:
+
+            (clock time, relevant time) - A tuple of the total average
+                                          clock time of the pipeline
+                                          and the times which were
+                                          chosen to be measured inside
+                                          run_benchmark
+        """
+
         """ First test is always longer """
         self.run_benchmark()
         self.reset_times()
@@ -49,5 +84,5 @@ class Benchmarker(object):
             self.reset_times()
         return np.average(total_clock_times), np.average(relevant_clock_times)
 
-sigproc_benchmarker = Benchmarker()
+sigproc_benchmarker = PipelineBenchmarker()
 print sigproc_benchmarker.average_benchmark(10)
