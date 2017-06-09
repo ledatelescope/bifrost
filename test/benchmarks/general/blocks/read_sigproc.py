@@ -1,3 +1,4 @@
+import numpy as np
 from timeit import default_timer as timer
 import bifrost as bf
 from bifrost import pipeline as bfp
@@ -34,7 +35,19 @@ class Benchmarker(object):
             end = timer()
             self.total_clock_time = end-start
 
+    def average_benchmark(self, number_runs):
+        """ First test is always longer """
+        self.run_benchmark()
+        self.reset_times()
+
+        total_clock_times = np.zeros(number_runs)
+        relevant_clock_times = np.zeros(number_runs)
+        for i in range(number_runs):
+            self.run_benchmark()
+            total_clock_times[i] = self.total_clock_time
+            relevant_clock_times[i] = self.relevant_clock_time
+            self.reset_times()
+        return np.average(total_clock_times), np.average(relevant_clock_times)
+
 sigproc_benchmarker = Benchmarker()
-sigproc_benchmarker.run_benchmark()
-print sigproc_benchmarker.total_clock_time,
-print sigproc_benchmarker.relevant_clock_time
+print sigproc_benchmarker.average_benchmark(10)
