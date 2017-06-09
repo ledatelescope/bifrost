@@ -1,3 +1,4 @@
+""" Test the sigproc read function """
 from timeit import default_timer as timer
 import bifrost as bf
 from bifrost import pipeline as bfp
@@ -5,6 +6,7 @@ from bifrost import blocks as blocks
 from bifrost_benchmarks import PipelineBenchmarker
 
 class SigprocBenchmarker(PipelineBenchmarker):
+    """ Test the sigproc read function """
     def run_benchmark(self):
         with bf.Pipeline() as pipeline:
             fil_file = "../../../data/1chan8bitNoDM.fil"
