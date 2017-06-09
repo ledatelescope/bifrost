@@ -4,16 +4,33 @@ Bifrost Benchmarks
 This is a list of benchmark tests for Bifrost.
 
 1. General performance benchmarks
-    1. Dedispersion pipeline
-    #. GUPPI raw to filterbank
+    1. Pipelines
+        1. Dedispersion pipeline
+        #. GUPPI raw to filterbank
+        #. Iterated least squares
+    #. Blocks
+        1. accumulate
+        #. audio
+        #. binary_io
+        #. copy
+        #. detect
+        #. fdmt
+        #. fft
+        #. fftshift
+        #. guppi_raw
+        #. print_header
+        #. quantize
+        #. reverse
+        #. scrunch
+        #. sigproc
+        #. transpose
+        #. unpack
+        #. wav
+    #. CUDA kernel generation
 #. Performance comparisons with Serial
-    1. `linear_fft_pipeline.py` - Linear FFT pipeline
-        1. Processing time
+    1. `linear_fft_pipeline.py` - Linear repeated-FFT pipeline
 .. #. Performance comparisons with PSRDADA
 ..     1. Packet capture pipeline
-#. Function-specific performance comparisons
-    1. Dedispersion
-    #. Iterated least squares
 #. Development-effort comparisons with Serial
 #. Development-effort comparisons with PSRDADA
    1. Packet capture pipeline
