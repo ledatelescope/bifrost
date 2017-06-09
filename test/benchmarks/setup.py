@@ -9,7 +9,7 @@ setup(name='bifrost_benchmarks',
       description='Shared benchmarking utility',
       url='github.com/ledatelescope/bifrost',
       packages=['bifrost_benchmarks'],
-      license='MIT',
+      license='BSD-3-Clause',
       package_dir={'bifrost_benchmarks':'bifrost_benchmarks'},
       install_requires=[
           'bifrost',
