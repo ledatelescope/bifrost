@@ -6,7 +6,8 @@ This is a list of benchmark tests for Bifrost.
 1. :code:`general/` - General performance benchmarks
     1. Pipelines
         1. Dedispersion pipeline
-        #. GUPPI raw to filterbank
+        #. Simple copy to GPU and back
+        #. GUPPI raw to filterbank, using GPU
         #. Iterated least squares
     #. Blocks
         1. accumulate
@@ -26,7 +27,14 @@ This is a list of benchmark tests for Bifrost.
         #. transpose
         #. unpack
         #. wav
+    #. Pipeline class
+        1. Simple pipeline initialization and destructions
     #. CUDA kernel generation
+    #. Backend
+        1. General ring operations
+        #. General sequence operations
+        #. Latency of PyCLibrary calls
+    #. Bifrost compile time
 #. :code:`performance_vs_serial/` - Performance comparisons with Serial
     1. :code:`linear_fft_pipeline.py` - Linear repeated-FFT pipeline
 #. :code:`development_vs_serial/` - Development-effort comparisons with Serial
@@ -44,7 +52,9 @@ This is a list of benchmark tests for Bifrost.
         #. Cyclomatic complexity per function
 #. :code:`development_function_specific` - Function-specific development-effort comparisons
     1. Element-wise CUDA kernel
+        1. Source lines of code
     #. Non-element-wise CUDA kernel
+        1. Source lines of code
 
 .. #. Performance comparisons with PSRDADA
 ..     1. Packet capture pipeline
