@@ -1,7 +1,16 @@
 Bifrost Benchmarks
 ==================
 
-This is a list of benchmark tests for Bifrost.
+To run the python benchmarks, install the bifrost_benchmarks module
+by running :code:`python setup.py install` in this directory.
+
+Other benchmarks are shell scripts. Run them by executing them.
+
+
+List of benchmarks
+------------------
+
+Here is a list of all current and future benchmark tests for Bifrost.
 
 1. :code:`general/` - General performance benchmarks
     1. Pipelines
