@@ -32,6 +32,9 @@ This is a list of benchmark tests for Bifrost.
 .. #. Performance comparisons with PSRDADA
 ..     1. Packet capture pipeline
 #. Development-effort comparisons with Serial
+    1. Pipeline using existing blocks
+    #. Pipeline using new blocks
+    #. GPU pipeline using new blocks
 #. Development-effort comparisons with PSRDADA
    1. Packet capture pipeline
         1. Source lines of code
@@ -42,3 +45,5 @@ This is a list of benchmark tests for Bifrost.
         #. Source lines of code per function
         #. Cyclomatic complexity per function
 #. Function-specific development-effort comparisons
+    1. Element-wise CUDA kernel
+    #. Non-element-wise CUDA kernel
