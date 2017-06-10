@@ -69,8 +69,9 @@ class TestFFT(unittest.TestCase):
 		else:
 			known_result = gold_fftn(known_data, axes=axes)
 		np.testing.assert_allclose(odata.copy('system'), known_result, RTOL, ATOL)
-	def run_test_r2c(self, shape, axes):
-		known_data = np.random.uniform(size=shape).astype(np.float32)
+	def run_test_r2c_dtype(self, shape, axes, dtype=np.float32, scale=1.):
+		known_data = np.random.uniform(size=shape).astype(np.float32)*2-1
+		known_data = (known_data*scale).astype(dtype)
 		idata = bf.ndarray(known_data, space='cuda')
 		oshape = list(shape)
 		oshape[axes[-1]] = shape[axes[-1]] // 2 + 1
@@ -78,8 +79,13 @@ class TestFFT(unittest.TestCase):
 		fft = Fft()
 		fft.init(idata, odata, axes=axes)
 		fft.execute(idata, odata)
-		known_result = gold_rfftn(known_data, axes=axes)
+		known_result = gold_rfftn(known_data.astype(np.float32) / scale, axes=axes)
 		np.testing.assert_allclose(odata.copy('system'), known_result, RTOL, ATOL)
+	def run_test_r2c(self, shape, axes, dtype=np.float32):
+		self.run_test_r2c_dtype(shape, axes, np.float32)
+		#self.run_test_r2c_dtype(shape, axes, np.float16) # TODO
+		self.run_test_r2c_dtype(shape, axes, np.int16, (1<<15)-1)
+		self.run_test_r2c_dtype(shape, axes, np.int8, (1<<7)-1)
 	def run_test_c2r(self, shape, axes):
 		ishape = list(shape)
 		ishape[axes[-1]] = shape[axes[-1]] // 2 + 1
