@@ -18,7 +18,7 @@ Here is a list of all current and future benchmark tests for Bifrost.
         #. Simple copy to GPU and back
         #. GUPPI raw to filterbank, using GPU
         #. Iterated least squares
-    #. Blocks
+    #. `blocks/` - Blocks
         1. accumulate
         #. audio
         #. binary_io
@@ -33,6 +33,7 @@ Here is a list of all current and future benchmark tests for Bifrost.
         #. reverse
         #. scrunch
         #. sigproc
+            1. `read_sigproc.py` - read_sigproc
         #. transpose
         #. unpack
         #. wav
@@ -43,7 +44,7 @@ Here is a list of all current and future benchmark tests for Bifrost.
         1. General ring operations
         #. General sequence operations
         #. Latency of PyCLibrary calls
-    #. Bifrost compile time
+    #. `compile_time.sh` - Bifrost compile time
 #. :code:`performance_vs_serial/` - Performance comparisons with Serial
     1. :code:`linear_fft_pipeline.py` - Linear repeated-FFT pipeline
 #. :code:`development_vs_serial/` - Development-effort comparisons with Serial
