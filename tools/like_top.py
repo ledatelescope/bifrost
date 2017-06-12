@@ -35,7 +35,13 @@ import time
 import curses
 import getopt
 import socket
+import traceback
+try:
+	import cStringIO as StringIO
+except ImportError:
+	import StringIO
 
+os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
 
 
@@ -355,10 +361,38 @@ def main(args):
 	except KeyboardInterrupt:
 		pass
 		
-	curses.nocbreak()
+	except Exception as error:
+		exc_type, exc_value, exc_traceback = sys.exc_info()
+		fileObject = StringIO.StringIO()
+		traceback.print_tb(exc_traceback, file=fileObject)
+		tbString = fileObject.getvalue()
+		fileObject.close()
+		
+	# Save the window contents
+	contents = ''
+	y,x = scr.getmaxyx()
+	for i in xrange(y-1):
+		for j in xrange(x):
+			d = scr.inch(i,j)
+			c = d&0xFF
+			a = (d>>8)&0xFF
+			contents += chr(c)
+			
+	# Tear down curses
 	scr.keypad(0)
 	curses.echo()
+	curses.nocbreak()
 	curses.endwin()
+	
+	# Final reporting
+	try:
+		## Error
+		print "%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), traceback.tb_lineno(exc_traceback))
+		for line in tbString.split('\n'):
+			print line
+	except NameError:
+		## Last window contents sans attributes
+		print contents
 
 
 if __name__ == "__main__":
