@@ -60,7 +60,7 @@ extern "C" {
  *        as CUDA device code. Examples:\n
  *        \code{.cpp} "c(i,j,k) = a(i,k) + b" // Using axis_names = {"i", "j", "k"}\endcode
  *        \code{.cpp} "z(_) = x(_) * y(_ - y.shape()/2)"    // Using the built-in index array "_"\endcode
- *        \code{.cpp} "out(i) = in((i + shift) % in.shape(0))" // Using the shape of an array
+ *        \code{.cpp} "out(i) = in((i + shift) % in.shape(0))" // Using the shape of an array\endcode
  *        Broadcasting, negative indexing, and complex math are also supported.
  *  \note Any BFarrays that are immutable, have shape=[1] and are accessible
  *        from system memory are treated as scalars, and must be accessed as,

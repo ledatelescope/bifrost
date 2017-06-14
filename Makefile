@@ -42,7 +42,7 @@ doc: $(INC_DIR)/bifrost/*.h Doxyfile
 	$(DOXYGEN) Doxyfile
 .PHONY: doc
 
-python:
+python: libbifrost
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) build
 .PHONY: python
 
@@ -51,6 +51,13 @@ IMAGE_NAME ?= ledatelescope/bifrost
 docker:
 	docker build --pull -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile.gpu -t $(IMAGE_NAME) .
 .PHONY: docker
+
+#GPU Docker prereq build
+# (To be used for testing new builds rapidly)
+IMAGE_NAME ?= ledatelescope/bifrost
+docker_prereq:
+	docker build --pull -t $(IMAGE_NAME)_prereq:$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile_prereq.gpu -t $(IMAGE_NAME)_prereq .
+.PHONY: docker_prereq
 
 #CPU-only Docker build
 IMAGE_NAME ?= ledatelescope/bifrost

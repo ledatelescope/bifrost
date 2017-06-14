@@ -214,20 +214,22 @@ BFstatus bfMatMul_aa(BFlinalg       handle,
 		astrides[d] /= BF_DTYPE_NBYTE(a->dtype);
 		cstrides[d] /= BF_DTYPE_NBYTE(c->dtype);
 	}
+	// Check that output shape is correct
+	BF_ASSERT(c->shape[ndim-1] == a->shape[ndim-2], BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT(c->shape[ndim-2] == a->shape[ndim-2], BF_STATUS_INVALID_SHAPE);
 	// Determine transposition based on strides, and update strides and shape
 	cublasOperation_t trans;
 	if( astrides[ndim-1] < astrides[ndim-2] ) {
-		BF_ASSERT(c->shape[ndim-1] == a->shape[ndim-2], BF_STATUS_INVALID_SHAPE);
-		BF_ASSERT(c->shape[ndim-2] == a->shape[ndim-2], BF_STATUS_INVALID_SHAPE);
+		// Note: The fastest dim cannot be a batch dim
+		BF_ASSERT(astrides[ndim-1] == 1, BF_STATUS_UNSUPPORTED_STRIDE);
 		trans = (BF_DTYPE_IS_COMPLEX(a->dtype) ?
 		         CUBLAS_OP_C :
 		         CUBLAS_OP_T);
 	} else if( astrides[ndim-1] > astrides[ndim-2] ) {
-		BF_ASSERT(c->shape[ndim-1] == a->shape[ndim-1], BF_STATUS_INVALID_SHAPE);
-		BF_ASSERT(c->shape[ndim-2] == a->shape[ndim-1], BF_STATUS_INVALID_SHAPE);
+		// Note: The fastest dim cannot be a batch dim
+		BF_ASSERT(astrides[ndim-2] == 1, BF_STATUS_UNSUPPORTED_STRIDE);
 		trans = CUBLAS_OP_N;
 		std::swap(astrides[ndim-1], astrides[ndim-2]);
-		std::swap(   shape[ndim-1],    shape[ndim-2]);
 	} else {
 		BF_ASSERT(false, BF_STATUS_INVALID_STRIDE);
 	}

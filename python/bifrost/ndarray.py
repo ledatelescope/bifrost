@@ -246,6 +246,10 @@ class ndarray(np.ndarray):
 		if hasattr(self, 'bf') and self.bf.ownbuffer:
 			raw_free(self.bf.ownbuffer, self.bf.space)
 	def as_BFarray(self):
+		# ***TODO: The caching here is broken because of shape, strides and ctypes.data
+		#            How to fix?
+		#*if self._BFarray is not None:
+		#*	return self._BFarray
 		a = _bf.BFarray()
 		a.data      = self.ctypes.data
 		a.space     = Space(self.bf.space).as_BFspace()

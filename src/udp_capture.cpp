@@ -52,8 +52,7 @@ using bifrost::ring::WriteSequence;
 #include <fstream>
 #include <chrono>
 
-
-#include <immintrin.h> // SSE
+//#include <immintrin.h> // SSE
 
 // TODO: The VMA API is returning unaligned buffers, which prevents use of SSE
 #ifndef BF_VMA_ENABLED

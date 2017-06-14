@@ -91,6 +91,20 @@ BFstatus bfRingResize(BFring ring,
 BFstatus bfRingGetName(BFring ring, const char** name);
 BFstatus bfRingGetSpace(BFring ring, BFspace* space);
 
+/*! \p bfRingSetAffinity causes subsequent ring memory allocations to be bound
+ *       to the NUMA node of the specified CPU core.
+ * \param core Index of a CPU core on the desired NUMA node. A value of -1
+ *          disabled NUMA affinity for subsequent memory allocations.
+ */
+BFstatus bfRingSetAffinity(BFring ring, int  core);
+/*! \p bfRingGetAffinity returns the CPU core specified by a prior call to
+ *     \p bfRingSetAffinity.
+ * \param core Pointer to variable in which the CPU core index will be written.
+ *        If \p bfRingSetAffinity has not been called, the variable will be
+ *        set to a value of -1.
+ */
+BFstatus bfRingGetAffinity(BFring ring, int* core);
+
 //BFsize   bfRingGetNRinglet(BFring ring);
 // TODO: BFsize bfRingGetSizeBytes
 // TODO: Method that returns tail,head,reserve_head plus all sequences' begin,end
