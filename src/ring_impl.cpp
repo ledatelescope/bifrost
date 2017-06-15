@@ -105,6 +105,16 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	                    BF_STATUS_INVALID_ARGUMENT);
 #endif
 
+#if BF_NUMA_ENABLED
+	_size_log.update("space     : %s\n"
+	                 "binding   : %i\n"
+	                 "alignment : %llu\n"
+	                 "ghost     : %llu\n"
+	                 "span      : %llu\n"
+	                 "stride    : %llu\n"
+	                 "nringlet  : %llu\n", 
+	                 bfGetSpaceString(_space).c_str(), _core, bfGetAlignment(), _span, _ghost_span, _stride, _nringlet);
+#else
 	_size_log.update("space     : %s\n"
 	                 "alignment : %llu\n"
 	                 "ghost     : %llu\n"
@@ -112,6 +122,7 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	                 "stride    : %llu\n"
 	                 "nringlet  : %llu\n", 
 	                 bfGetSpaceString(_space).c_str(), bfGetAlignment(), _span, _ghost_span, _stride, _nringlet);
+#endif
 }
 BFring_impl::~BFring_impl() {
 	// TODO: Should check if anything is still open here?
@@ -208,12 +219,22 @@ void BFring_impl::resize(BFsize contiguous_span,
 	_stride     = new_stride;
 	_nringlet   = new_nringlet;
 	
+#if BF_NUMA_ENABLED
+	_size_log.update() << "space     : " << bfGetSpaceString(_space) << "\n"
+	                   << "binding   : " << _core << "\n"
+	                   << "alignment : " << bfGetAlignment() << "\n"
+	                   << "ghost     : " << _ghost_span << "\n"
+	                   << "span      : " << _span << "\n"
+	                   << "stride    : " << _stride << "\n"
+	                   << "nringlet  : " << _nringlet << "\n";
+#else
 	_size_log.update() << "space     : " << bfGetSpaceString(_space) << "\n"
 	                   << "alignment : " << bfGetAlignment() << "\n"
 	                   << "ghost     : " << _ghost_span << "\n"
 	                   << "span      : " << _span << "\n"
 	                   << "stride    : " << _stride << "\n"
 	                   << "nringlet  : " << _nringlet << "\n";
+#endif
 }
 void BFring_impl::begin_writing() {
 	lock_guard_type lock(_mutex);
