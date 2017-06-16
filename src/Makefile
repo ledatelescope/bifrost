@@ -30,6 +30,7 @@ ifndef NOCUDA
   trace.o \
   linalg.o \
   beamformer.o \
+  fir.o \
   #correlate.o \
   blas.o \
   transform.o
@@ -106,7 +107,7 @@ endif
 
 ifndef NOCUDA
   CPPFLAGS  += -DBF_CUDA_ENABLED=1
-  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt
+  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -lcufft_static -lculibos -lnvToolsExt
   # Make sure the unpack.cu and quantize.cu files are ready for nvcc
   $(shell mv -f unpack.cpp unpack.cu 2>/dev/null)
   $(shell mv -f quantize.cpp quantize.cu 2>/dev/null)

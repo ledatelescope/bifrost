@@ -65,6 +65,7 @@ using bifrost::ring::WriteSequence;
 //#define BF_HWLOC_ENABLED 1
 #endif
 
+#define BF_MAX_OPEN_BUFFERS 4
 #define BF_UNPACK_FACTOR 1
 
 enum {
@@ -309,7 +310,8 @@ public:
 	//         saved, accessible via get_last_packet(), and will be
 	//         processed on the next call to run() if possible.
 	template<class PacketDecoder, class PacketProcessor>
-	int run(uint64_t         seq_beg,
+	int run(int              nsrc,
+	        uint64_t         seq_beg,
 	        uint64_t         nseq_per_obuf,
 	        int              nbuf,
 	        uint8_t*         obufs[],
@@ -318,7 +320,13 @@ public:
 	        PacketDecoder*   decode,
 	        PacketProcessor* process) {
 		uint64_t seq_end = seq_beg + nbuf*nseq_per_obuf;
-		size_t local_ngood_bytes[2] = {0, 0};
+		size_t local_ngood_bytes[BF_MAX_OPEN_BUFFERS];
+		size_t* local_src_ngood_bytes[BF_MAX_OPEN_BUFFERS];
+		for(unsigned int i=0; i<BF_MAX_OPEN_BUFFERS; i++) {
+			local_ngood_bytes[i] = 0;
+			local_src_ngood_bytes[i] = (size_t*) malloc(sizeof(size_t)*nsrc);
+			memset(local_src_ngood_bytes[i], 0, sizeof(size_t)*nsrc);
+		}
 		int ret;
 		while( true ) {
 			if( !_have_pkt ) {
@@ -359,14 +367,19 @@ public:
 			_stats.nvalid_bytes += _pkt.payload_size;
 			++_src_stats[_pkt.src].nvalid;
 			_src_stats[_pkt.src].nvalid_bytes += _pkt.payload_size;
-			// HACK TODO: src_ngood_bytes should be accumulated locally and
-			//              then atomically updated, like ngood_bytes. The
-			//              current way is not thread-safe.
 			(*process)(&_pkt, seq_beg, nseq_per_obuf, nbuf, obufs,
-			           local_ngood_bytes, /*local_*/src_ngood_bytes);
+			           local_ngood_bytes, local_src_ngood_bytes);
 		}
-		if( nbuf > 0 ) { atomic_add_and_fetch(ngood_bytes[0], local_ngood_bytes[0]); }
-		if( nbuf > 1 ) { atomic_add_and_fetch(ngood_bytes[1], local_ngood_bytes[1]); }
+		
+		for(unsigned int i=0; i<BF_MAX_OPEN_BUFFERS; i++) {
+			if( nbuf > i ) { 
+				atomic_add_and_fetch(ngood_bytes[i], local_ngood_bytes[i]);
+				for(int j=0; j<nsrc; j++) {
+					atomic_add_and_fetch(&src_ngood_bytes[i][j], local_src_ngood_bytes[i][j]);
+				}
+			}
+			free(local_src_ngood_bytes[i]);
+		}
 		return ret;
 	}
 	inline const PacketDesc* get_last_packet() const {
@@ -445,8 +458,10 @@ public:
 			PKT_NINPUT = 32,
 			PKT_NBIT   = 4
 		};
-		int    obuf_idx = ((pkt->seq - seq0 >= 1*nseq_per_obuf) +
-		                   (pkt->seq - seq0 >= 2*nseq_per_obuf));
+		int    obuf_idx = 0;
+		for(unsigned int i=0; i<BF_MAX_OPEN_BUFFERS; i++) {
+			obuf_idx += (pkt->seq - seq0 >= (i+1)*nseq_per_obuf);
+		}
 		size_t obuf_seq0 = seq0 + obuf_idx*nseq_per_obuf;
 		size_t nbyte = pkt->payload_size * BF_UNPACK_FACTOR;
 		ngood_bytes[obuf_idx]               += nbyte;
@@ -562,9 +577,9 @@ class BFudpcapture_impl {
 	
 	RingWrapper _ring;
 	RingWriter  _oring;
-	std::queue<std::shared_ptr<WriteSpan> > _bufs;
-	std::queue<size_t>                      _buf_ngood_bytes;
-	std::queue<std::vector<size_t> >        _buf_src_ngood_bytes;
+	std::deque<std::shared_ptr<WriteSpan> > _bufs;
+	std::deque<size_t>                      _buf_ngood_bytes;
+	std::deque<std::vector<size_t> >        _buf_src_ngood_bytes;
 	std::shared_ptr<WriteSequence>          _sequence;
 	size_t _ngood_bytes;
 	size_t _nmissing_bytes;
@@ -576,11 +591,11 @@ class BFudpcapture_impl {
 		return _nseq_per_buf * _nsrc * payload_size * BF_UNPACK_FACTOR;
 	}
 	inline void reserve_buf() {
-		_buf_ngood_bytes.push(0);
-		_buf_src_ngood_bytes.push(std::vector<size_t>(_nsrc, 0));
+		_buf_ngood_bytes.push_back(0);
+		_buf_src_ngood_bytes.push_back(std::vector<size_t>(_nsrc, 0));
 		size_t size = this->bufsize();
 		// TODO: Can make this simpler?
-		_bufs.push(std::shared_ptr<WriteSpan>(new bifrost::ring::WriteSpan(_oring, size)));
+		_bufs.push_back(std::shared_ptr<WriteSpan>(new bifrost::ring::WriteSpan(_oring, size)));
 	}
 	inline void commit_buf() {
 		size_t expected_bytes = _bufs.front()->size();
@@ -599,17 +614,17 @@ class BFudpcapture_impl {
 				                            _nchan, _nseq_per_buf);
 			}
 		}
-		_buf_src_ngood_bytes.pop();
+		_buf_src_ngood_bytes.pop_front();
 		
 		_ngood_bytes    += _buf_ngood_bytes.front();
 		//_nmissing_bytes += _bufs.front()->size() - _buf_ngood_bytes.front();
 		//// HACK TESTING 15/16 correction for missing roach11
 		//_nmissing_bytes += _bufs.front()->size()*15/16 - _buf_ngood_bytes.front();
 		_nmissing_bytes += expected_bytes - _buf_ngood_bytes.front();
-		_buf_ngood_bytes.pop();
+		_buf_ngood_bytes.pop_front();
 		
 		_bufs.front()->commit();
-		_bufs.pop();
+		_bufs.pop_front();
 		_seq += _nseq_per_buf;
 	}
 	inline void begin_sequence() {
@@ -619,12 +634,12 @@ class BFudpcapture_impl {
 		BFoffset    time_tag;
 		if( _sequence_callback ) {
 			int status = (*_sequence_callback)(seq0,
-			                                 _chan0,
-			                                 _nchan,
-			                                 _nsrc,
-			                                 &time_tag,
-			                                 &hdr,
-			                                 &hdr_size);
+			                                   _chan0,
+			                                   _nchan,
+			                                   _nsrc,
+			                                   &time_tag,
+			                                   &hdr,
+			                                   &hdr_size);
 			if( status != 0 ) {
 				// TODO: What to do here? Needed?
 				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -668,8 +683,8 @@ public:
 		  // TODO: Add reset method for stats
 		  _ngood_bytes(0), _nmissing_bytes(0) {
 		size_t contig_span  = this->bufsize(max_payload_size);
-		// Note: 2 write bufs may be open for writing at one time
-		size_t total_span   = contig_span * 4;
+		// Note: BF_MAX_OPEN_BUFFERS write bufs may be open for writing at one time
+		size_t total_span   = contig_span * (BF_MAX_OPEN_BUFFERS + BF_MAX_OPEN_BUFFERS);
 		size_t nringlet_max = 1;
 		_ring.resize(contig_span, total_span, nringlet_max);
 		_type_log.update("type : %s", "chips");
@@ -679,10 +694,11 @@ public:
 		_out_log.update("nring : %i\n"
 		                "ring0 : %s\n", 
 		                1, _ring.name());
-		_size_log.update("nsrc         : %i\n"
-		                 "nseq_per_buf : %i\n"
-		                 "slot_ntime   : %i\n",
-		                 _nsrc, _nseq_per_buf, _slot_ntime);
+		_size_log.update("nsrc          : %i\n"
+		                 "nseq_per_buf  : %i\n"
+		                 "slot_ntime    : %i\n",
+		                 "max_open_bufs : %i\n",
+		                 _nsrc, _nseq_per_buf, _slot_ntime, BF_MAX_OPEN_BUFFERS);
 	}
 	inline void flush() {
 		while( _bufs.size() ) {
@@ -699,20 +715,18 @@ public:
 	BFudpcapture_status recv() {
 		_t0 = std::chrono::high_resolution_clock::now();
 		
-		uint8_t* buf_ptrs[2];
-		// Minor HACK to access the buffers in a 2-element queue
-		buf_ptrs[0] = _bufs.size() > 0 ? (uint8_t*)_bufs.front()->data() : NULL;
-		buf_ptrs[1] = _bufs.size() > 1 ? (uint8_t*)_bufs.back()->data()  : NULL;
+		uint8_t* buf_ptrs[BF_MAX_OPEN_BUFFERS];
+		size_t* ngood_bytes_ptrs[BF_MAX_OPEN_BUFFERS];
+		size_t* src_ngood_bytes_ptrs[BF_MAX_OPEN_BUFFERS];
+		// Minor HACK to access the buffers in the buffer deque
+		for(unsigned int i=0; i<BF_MAX_OPEN_BUFFERS; i++) {
+			buf_ptrs[i] = _bufs.size() > i ? (uint8_t*)_bufs[i]->data() : NULL;
+			ngood_bytes_ptrs[i] = _buf_ngood_bytes.size() > i ? &_buf_ngood_bytes[i] : NULL;
+			src_ngood_bytes_ptrs[i] = _buf_src_ngood_bytes.size() > 0 ? &_buf_src_ngood_bytes[i][0] : NULL;
+		}
 		
-		size_t* ngood_bytes_ptrs[2];
-		ngood_bytes_ptrs[0] = _buf_ngood_bytes.size() > 0 ? &_buf_ngood_bytes.front() : NULL;
-		ngood_bytes_ptrs[1] = _buf_ngood_bytes.size() > 1 ? &_buf_ngood_bytes.back()  : NULL;
-		
-		size_t* src_ngood_bytes_ptrs[2];
-		src_ngood_bytes_ptrs[0] = _buf_src_ngood_bytes.size() > 0 ? &_buf_src_ngood_bytes.front()[0] : NULL;
-		src_ngood_bytes_ptrs[1] = _buf_src_ngood_bytes.size() > 1 ? &_buf_src_ngood_bytes.back()[0]  : NULL;
-		
-		int state = _capture.run(_seq,
+		int state = _capture.run(_nsrc,
+		                         _seq,
 		                         _nseq_per_buf,
 		                         _bufs.size(),
 		                         buf_ptrs,
@@ -780,7 +794,7 @@ public:
 					ret = BF_CAPTURE_CONTINUED;
 				}
 			}
-			if( _bufs.size() == 2 ) {
+			if( _bufs.size() == BF_MAX_OPEN_BUFFERS ) {
 				this->commit_buf();
 			}
 			this->reserve_buf();
@@ -800,7 +814,6 @@ public:
 		_perf_log.update() << "acquire_time : " << -1.0 << "\n"
 		                   << "process_time : " << _process_time.count() << "\n"
 		                   << "reserve_time : " << _reserve_time.count() << "\n";
-		
 		return ret;
 	}
 };
