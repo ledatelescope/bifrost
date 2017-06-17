@@ -42,7 +42,7 @@ class FftBlock(TransformBlock):
     #         Should be able to do this using an input callback and padded
     #           output dims.
     def __init__(self, iring, axes, inverse=False, real_output=False,
-                 axis_labels=None,
+                 axis_labels=None, apply_fftshift=False,
                  *args, **kwargs):
         super(FftBlock, self).__init__(iring, *args, **kwargs)
         if not isinstance(axes, list) or isinstance(axes, tuple):
@@ -53,6 +53,7 @@ class FftBlock(TransformBlock):
         self.real_output = real_output
         self.inverse     = inverse
         self.axis_labels = axis_labels
+        self.apply_fftshift = apply_fftshift
         self.space       = self.irings[0].space
         self.fft         = Fft()
         self.plan_ishape   = None
@@ -124,7 +125,8 @@ class FftBlock(TransformBlock):
             idata.strides != self.plan_istrides or
             odata.strides != self.plan_ostrides):
             # (Re-)generate the FFT plan
-            self.fft.init(idata, odata, axes=self.axes)
+            self.fft.init(idata, odata, axes=self.axes,
+                          apply_fftshift=self.apply_fftshift)
             self.plan_ishape   = idata.shape
             self.plan_oshape   = odata.shape
             self.plan_istrides = idata.strides
@@ -136,6 +138,7 @@ class FftBlock(TransformBlock):
                                        inverse=self.inverse)
 
 def fft(iring, axes, inverse=False, real_output=False, axis_labels=None,
+        apply_fftshift=False,
         *args, **kwargs):
     """Apply a GPU FFT to the input ring data.
 
@@ -156,6 +159,10 @@ def fft(iring, axes, inverse=False, real_output=False, axis_labels=None,
         axis_labels (list): A list of strings specifying a new label to give
              each transformed axis. If None, the output labels are copied from
              the input labels.
+        apply_fftshift (bool): If True, the zero-frequency component is shifted
+             to the center of the spectrum. For forward (inverse) transforms,
+             this is equivalent to a positive (negative) cyclic shift of each
+             output (input) axis by ``floor(axis_length / 2)``.
         *args: Arguments to ``bifrost.pipeline.TransformBlock``.
         **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
 
@@ -168,4 +175,4 @@ def fft(iring, axes, inverse=False, real_output=False, axis_labels=None,
         FftBlock: A new block instance.
     """
     return FftBlock(iring, axes, inverse, real_output, axis_labels,
-                    *args, **kwargs)
+                    apply_fftshift, *args, **kwargs)
