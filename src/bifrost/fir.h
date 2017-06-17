@@ -53,6 +53,7 @@ BFstatus bfFIRSetStream(BFfir       plan,
                         void const* stream);
 BFstatus bfFIRSetCoeffs(BFfir          plan, 
                         BFarray const* coeffs);
+BFstatus bfFIRResetState(BFfir plan);
 BFstatus bfFIRExecute(BFfir          plan,
                       BFarray const* in,
                       BFarray const* out);

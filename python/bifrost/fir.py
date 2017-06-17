@@ -50,6 +50,8 @@ class FIR(object):
 	def set_coeffs(self, coeffs):
 		_check( _bf.FIRSetCoeffs(self.obj, 
 		                         asarray(coeffs).as_BFarray()) )
+	def reset_state(self):
+		_check( _bf.FIRResetState(self.obj) )
 	def execute(self, idata, odata):
 		# TODO: Work out how to integrate CUDA stream
 		_check( _bf.FIRExecute(self.obj,
