@@ -316,7 +316,7 @@ public:
 		
 		BF_CHECK_CUDA_EXCEPTION( cudaMemcpyAsync(_state0,
 		                                         _state1,
-		                                         sizeof(Complex64)*_ncoeff*_nstand,
+		                                         sizeof(Complex64)*_ncoeff*_nstand*2,
 		                                         cudaMemcpyDeviceToDevice,
 		                                         _stream),
 		                         BF_STATUS_MEM_OP_FAILED );
