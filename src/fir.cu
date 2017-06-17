@@ -210,31 +210,22 @@ public:
 		}
 		workspace.commit(storage_ptr);
 		
-		Complex64* cstate;
-		cstate = (Complex64*) malloc(sizeof(Complex64)*_ncoeff*_nstand*2);
-		memset(cstate,  0, sizeof(Complex64)*_ncoeff*_nstand*2);
-		BF_CHECK_CUDA_EXCEPTION( cudaMemcpyAsync(_state0,
-		                                         cstate,
-		                                         sizeof(Complex64)*_ncoeff*_nstand*2,
-		                                         cudaMemcpyHostToDevice,
-		                                         _stream),
-		                         BF_STATUS_MEM_OP_FAILED );
-		BF_CHECK_CUDA_EXCEPTION( cudaMemcpyAsync(_state1,
-		                                         _state0,
-		                                         sizeof(Complex64)*_ncoeff*_nstand*2,
-		                                         cudaMemcpyDeviceToDevice,
-		                                         _stream),
-		                         BF_STATUS_MEM_OP_FAILED );
-		BF_CHECK_CUDA_EXCEPTION( cudaStreamSynchronize(_stream),
-		                         BF_STATUS_DEVICE_ERROR );
-		free(cstate);
+		this->reset_state();
 		return true;
 	}
 	void set_coeffs(BFarray const* coeffs) { 
 		BF_TRACE();
 		BF_TRACE_STREAM(_stream);
 		BF_ASSERT_EXCEPTION(coeffs->dtype == BF_DTYPE_F64, BF_STATUS_UNSUPPORTED_DTYPE);
+		
 		_coeffs = (double*) coeffs->data;
+		this->reset_state();
+	}
+	void reset_state() {
+		BF_ASSERT_EXCEPTION(_state0 != NULL,  BF_STATUS_INVALID_STATE);
+		BF_ASSERT_EXCEPTION(_state1 != NULL,  BF_STATUS_INVALID_STATE);
+		
+		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 		
 		// Reset the state
 		Complex64* cstate;
@@ -255,6 +246,8 @@ public:
 		BF_CHECK_CUDA_EXCEPTION( cudaStreamSynchronize(_stream),
 		                         BF_STATUS_DEVICE_ERROR );
 		free(cstate);
+		
+		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 	}
 	void execute(BFarray const* in,
 	             BFarray const* out) {
@@ -376,6 +369,9 @@ BFstatus bfFIRSetCoeffs(BFfir          plan,
 	// TODO: BF_ASSERT(...);
 	BF_ASSERT(space_accessible_from(coeffs->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
 	BF_TRY_RETURN(plan->set_coeffs(coeffs));
+}
+BFstatus bfFIRResetState(BFfir plan) {
+	BF_TRY_RETURN(plan->reset_state());
 }
 BFstatus bfFIRExecute(BFfir          plan,
                       BFarray const* in,
