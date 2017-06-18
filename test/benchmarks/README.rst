@@ -47,19 +47,11 @@ Here is a list of all current and future benchmark tests for Bifrost.
     #. :code:`compile_time.sh` - Bifrost compile time
 #. :code:`performance_vs_serial/` - Performance comparisons with Serial
     1. :code:`linear_fft_pipeline.py` - Linear repeated-FFT pipeline
+#. :code:`development_vs_gpuspec/` - Performance comparisons with Serial
 #. :code:`development_vs_serial/` - Development-effort comparisons with Serial
     1. Pipeline using existing blocks
     #. Pipeline using new blocks
     #. GPU pipeline using new blocks
-#. :code:`development_vs_psrdada/` - Development-effort comparisons with PSRDADA
-    1. Packet capture pipeline
-        1. Source lines of code
-        #. Source lines of code per function
-        #. Cyclomatic complexity per function
-    #. Overall codebase
-        1. Source lines of code
-        #. Source lines of code per function
-        #. Cyclomatic complexity per function
 #. :code:`development_function_specific` - Function-specific development-effort comparisons
     1. Element-wise CUDA kernel
         1. Source lines of code

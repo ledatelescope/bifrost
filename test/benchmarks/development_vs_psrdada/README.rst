@@ -1,2 +1,0 @@
-Development effort vs PSRDADA
-=============================
