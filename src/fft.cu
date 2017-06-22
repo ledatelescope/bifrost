@@ -33,9 +33,6 @@
 
 /*
   TODO: Implicitly padded/cropped transforms using load callback
-        Optional fftshift of output
-          Cyclic shift along each axis of n//2 elements
-            (or negative shift for ifftshift).
 */
 
 #include <bifrost/fft.h>
@@ -60,13 +57,14 @@ class BFfft_impl {
 	BFdtype          _otype;
 	int              _batch_shape[BF_MAX_DIMS];
 	size_t           _workspace_size;
+	std::vector<int> _axes;
+	bool             _do_fftshift;
+	bool             _using_load_callback;
 	thrust::device_vector<char> _dv_tmp_storage;
 	thrust::device_vector<CallbackData> _dv_callback_data;
 	
-	BFstatus execute_impl(void*   idata,
-	                      BFdtype itype,
-	                      void*   odata,
-	                      BFdtype otype,
+	BFstatus execute_impl(BFarray const* in,
+	                      BFarray const* out,
 	                      BFbool  inverse,
 	                      void*   tmp_storage,
 	                      size_t  tmp_storage_size);
@@ -80,6 +78,7 @@ public:
 	              BFarray const* out,
 	              int            rank,
 	              int     const* axes,
+	              bool           do_fftshift,
 	              size_t*        tmp_storage_size);
 	BFstatus execute(BFarray const* in,
 	                 BFarray const* out,
@@ -99,6 +98,7 @@ BFstatus BFfft_impl::init(BFarray const* in,
                           BFarray const* out,
                           int            rank,
                           int     const* axes,
+                          bool           do_fftshift,
                           size_t*        tmp_storage_size) {
 	BF_TRACE();
 	BF_ASSERT(rank > 0 && rank <= BF_MAX_DIMS, BF_STATUS_INVALID_ARGUMENT);
@@ -226,9 +226,12 @@ BFstatus BFfft_impl::init(BFarray const* in,
 	                                    &_workspace_size) );
 #endif
 	
+	_axes.assign(axes, axes+rank);
+	_do_fftshift = do_fftshift;
 	_dv_callback_data.resize(1);
 	CallbackData* callback_data = thrust::raw_pointer_cast(&_dv_callback_data[0]);
-	BF_CHECK( set_fft_load_callback(in->dtype, _nbit, _handle, callback_data) );
+	BF_CHECK( set_fft_load_callback(in->dtype, _nbit, _handle, _do_fftshift,
+	                                callback_data, &_using_load_callback) );
 	
 	if( tmp_storage_size ) {
 		*tmp_storage_size = _workspace_size;
@@ -236,15 +239,13 @@ BFstatus BFfft_impl::init(BFarray const* in,
 	return BF_STATUS_SUCCESS;
 }
 
-BFstatus BFfft_impl::execute_impl(void*   idata,
-                                  BFdtype itype,
-                                  void*   odata,
-                                  BFdtype otype,
+BFstatus BFfft_impl::execute_impl(BFarray const* in,
+                                  BFarray const* out,
                                   BFbool  inverse,
                                   void*   tmp_storage,
                                   size_t  tmp_storage_size) {
-	BF_ASSERT(itype == _itype, BF_STATUS_INVALID_DTYPE);
-	BF_ASSERT(otype == _otype, BF_STATUS_INVALID_DTYPE);
+	BF_ASSERT( in->dtype == _itype, BF_STATUS_INVALID_DTYPE);
+	BF_ASSERT(out->dtype == _otype, BF_STATUS_INVALID_DTYPE);
 	if( !tmp_storage ) {
 		BF_TRY(_dv_tmp_storage.resize(_workspace_size));
 		tmp_storage = thrust::raw_pointer_cast(&_dv_tmp_storage[0]);
@@ -253,14 +254,37 @@ BFstatus BFfft_impl::execute_impl(void*   idata,
 		          BF_STATUS_INSUFFICIENT_STORAGE);
 	}
 	BF_CHECK_CUFFT( cufftSetWorkArea(_handle, tmp_storage) );
+	void* idata = in->data;
+	void* odata = out->data;
 	
 	CallbackData h_callback_data;
 	// WAR for CUFFT insisting that pointer be aligned to sizeof(cufftComplex)
 	int alignment = (_nbit == 32 ?
 	                 sizeof(cufftComplex) :
 	                 sizeof(cufftDoubleComplex));
-	h_callback_data.ptr_offset = (uintptr_t)idata % sizeof(cufftComplex);
-	*(char**)&idata -= h_callback_data.ptr_offset;
+	// TODO: To support f32 input that is not aligned to 8 bytes, we need to
+	//         use a load callback. However, we don't know this during init,
+	//         so we really need to set the callback here instead. Not sure
+	//         how expensive it is to set the callback.
+	if( _using_load_callback ) {
+		h_callback_data.ptr_offset = (uintptr_t)idata % sizeof(cufftComplex);
+		*(char**)&idata -= h_callback_data.ptr_offset;
+	}
+	
+	// Set callback data needed for applying fftshift
+	h_callback_data.inverse = _real_out || (!_real_in && inverse);
+	h_callback_data.do_fftshift = _do_fftshift;
+	h_callback_data.ndim = _axes.size();
+	for( int d=0; d<h_callback_data.ndim; ++d ) {
+		h_callback_data.shape[d]    = in->shape[_axes[d]];
+		int itype_nbyte = BF_DTYPE_NBYTE(in->dtype);
+		h_callback_data.istrides[d] = in->strides[_axes[d]] / itype_nbyte;
+		h_callback_data.inembed[d]  =
+			(_axes[d] > 0 ?
+			 in->strides[_axes[d]-1] / in->strides[_axes[d]] :
+			 in->shape[_axes[d]]);
+	}
+	
 	CallbackData* d_callback_data = thrust::raw_pointer_cast(&_dv_callback_data[0]);
 	cudaMemcpyAsync(d_callback_data, &h_callback_data, sizeof(CallbackData),
 	                cudaMemcpyHostToDevice, g_cuda_stream);
@@ -317,10 +341,13 @@ BFstatus BFfft_impl::execute(BFarray const* in,
 	ShapeIndexer<BF_MAX_DIMS> shape_indexer(_batch_shape, in->ndim);
 	for( long i=0; i<shape_indexer.size(); ++i ) {
 		auto inds = shape_indexer.at(i);
-		void* idata = array_get_pointer( in, inds);
-		void* odata = array_get_pointer(out, inds);
-		BFstatus ret = this->execute_impl(idata, in->dtype,
-		                                  odata, out->dtype,
+		
+		BFarray batch_in  = *in;
+		BFarray batch_out = *out;
+		batch_in.data  = array_get_pointer( in, inds);
+		batch_out.data = array_get_pointer(out, inds);
+		
+		BFstatus ret = this->execute_impl(&batch_in, &batch_out,
 		                                  inverse,
 		                                  tmp_storage, tmp_storage_size);
 		if( ret != BF_STATUS_SUCCESS ) {
@@ -341,12 +368,13 @@ BFstatus bfFftInit(BFfft          plan,
                    BFarray const* out,
                    int            rank,
                    int     const* axes,
+                   BFbool         apply_fftshift,
                    size_t*        tmp_storage_size) {
 	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
-	return plan->init(in, out, rank, axes, tmp_storage_size);
+	return plan->init(in, out, rank, axes, apply_fftshift, tmp_storage_size);
 }
 // in, out = complex, complex => [i]fft
 // in, out = real, complex    => rfft

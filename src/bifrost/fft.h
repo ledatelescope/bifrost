@@ -45,6 +45,7 @@ BFstatus bfFftInit(BFfft          plan,
                    BFarray const* oarray,
                    int            ndim,
                    int     const* axes,
+                   BFbool         apply_fftshift,
                    size_t*        tmp_storage_size);
 // in, out = complex, complex => [i]fft
 // in, out = real, complex    => rfft
