@@ -83,6 +83,7 @@ __global__ void fir_kernel(int                   ncoeff,
 				}
 				d_out[t0/decim*nstand*2 + s*2 + p] = tempO;
 				
+				// TODO:  This doesn't deal with decimation properly
 				c = ncoeff - (ntime - t0);
 				if( c >= 0 && c < ncoeff ) {
 					// Seed the initial state of the next call
