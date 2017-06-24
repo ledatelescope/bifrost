@@ -12,9 +12,10 @@ download:
 	[ -d "without_bifrost/.git" ] || git clone --depth=1 https://github.com/UCBerkeleySETI/gbt_seti ./without_bifrost
 
 test:
+	@echo
 	cd with_bifrost; \
-		lizard -w -t 12
+		echo $$(lizard -t 12 | tail -n 3)
 	cd without_bifrost/src; \
-		lizard -w -t 12
+		echo $$(lizard -t 12 -i 9999 cufft.h guppi2spectra.c guppi2spectra_gpu.cu guppi2spectra_gpu.h filterbank.h | tail -n 3)
 
 all: test download
