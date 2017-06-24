@@ -59,6 +59,9 @@ class NDArrayTest(unittest.TestCase):
 		repr_f = repr_f[repr_f.find('('):]
 		repr_k = repr(self.known_array)
 		repr_k = repr_k[repr_k.find('('):]
+		# Remove whitespace (for some reason the indentation differs)
+		repr_f = repr_f.replace(' ', '')
+		repr_k = repr_k.replace(' ', '')
 		self.assertEqual(repr_f, repr_k)
 	def test_zeros_like(self):
 		g = bf.ndarray(self.known_vals, dtype='f32', space='cuda')
