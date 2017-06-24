@@ -285,7 +285,7 @@ class Block(BlockScope):
 		for i,r in enumerate(self.irings):
 			rnames['ring%i' % i] = r.name
 		self.in_proclog.update(rnames)
-		self.init_trace = ''.join(traceback.format_stack())
+		self.init_trace = ''.join(traceback.format_stack()[:-1])
 		
 	def shutdown(self):
 		self.shutdown_event.set()
