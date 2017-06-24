@@ -82,3 +82,18 @@ BFstatus bfStreamSynchronize() {
 #endif
 	return BF_STATUS_SUCCESS;
 }
+BFstatus bfDevicesSetNoSpinCPU() {
+#if BF_CUDA_ENABLED
+	int old_device;
+	BF_CHECK_CUDA(cudaGetDevice(&old_device), BF_STATUS_DEVICE_ERROR);
+	int ndevices;
+	BF_CHECK_CUDA(cudaGetDeviceCount(&ndevices), BF_STATUS_DEVICE_ERROR);
+	for( int d=0; d<ndevices; ++d ) {
+		BF_CHECK_CUDA(cudaSetDevice(d), BF_STATUS_DEVICE_ERROR);
+		BF_CHECK_CUDA(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync),
+		              BF_STATUS_DEVICE_ERROR);
+	}
+	BF_CHECK_CUDA(cudaSetDevice(old_device), BF_STATUS_DEVICE_ERROR);
+#endif
+	return BF_STATUS_SUCCESS;
+}

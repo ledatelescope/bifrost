@@ -39,6 +39,11 @@ from bifrost.ring2 import Ring, ring_view
 from temp_storage import TempStorage
 from bifrost.proclog import ProcLog
 
+# Note: This must be called before any devices are initialized. It's also
+#          almost always desirable when running pipelines, so we do it here at
+#          module import time to make things easy.
+bf.device.set_devices_no_spin_cpu()
+
 def izip(*iterables):
 	while True:
 		yield [it.next() for it in iterables]

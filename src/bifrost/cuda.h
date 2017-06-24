@@ -41,9 +41,11 @@ BFstatus bfStreamSynchronize();
 BFstatus bfDeviceGet(int* device);
 BFstatus bfDeviceSet(int  device);
 BFstatus bfDeviceSetById(const char* pci_bus_id);
+// This must be called _before_ initializing any devices in the current process
+BFstatus bfDevicesSetNoSpinCPU();
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif // BF_MEMORY_H_INCLUDE_GUARD_
+#endif // BF_CUDA_H_INCLUDE_GUARD_
