@@ -134,8 +134,6 @@ BFstatus bfArrayCopy(const BFarray* dst,
 
 BFstatus bfArrayMemset(const BFarray* array,
                        int            value);
-BFstatus bfArrayTransform(BFarray*    arrays[],
-                          const char* func);
 
 #ifdef __cplusplus
 } // extern "C"
