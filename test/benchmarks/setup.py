@@ -13,4 +13,5 @@ setup(name='bifrost_benchmarks',
       package_dir={'bifrost_benchmarks':'bifrost_benchmarks'},
       install_requires=[
           'bifrost',
+          'lizard'
       ])
