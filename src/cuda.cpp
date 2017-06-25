@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -80,6 +79,21 @@ BFstatus bfStreamSynchronize() {
 #if BF_CUDA_ENABLED
 	BF_CHECK_CUDA(cudaStreamSynchronize(g_cuda_stream),
 	              BF_STATUS_DEVICE_ERROR);
+#endif
+	return BF_STATUS_SUCCESS;
+}
+BFstatus bfDevicesSetNoSpinCPU() {
+#if BF_CUDA_ENABLED
+	int old_device;
+	BF_CHECK_CUDA(cudaGetDevice(&old_device), BF_STATUS_DEVICE_ERROR);
+	int ndevices;
+	BF_CHECK_CUDA(cudaGetDeviceCount(&ndevices), BF_STATUS_DEVICE_ERROR);
+	for( int d=0; d<ndevices; ++d ) {
+		BF_CHECK_CUDA(cudaSetDevice(d), BF_STATUS_DEVICE_ERROR);
+		BF_CHECK_CUDA(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync),
+		              BF_STATUS_DEVICE_ERROR);
+	}
+	BF_CHECK_CUDA(cudaSetDevice(old_device), BF_STATUS_DEVICE_ERROR);
 #endif
 	return BF_STATUS_SUCCESS;
 }

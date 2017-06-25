@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -39,6 +38,11 @@ import bifrost as bf
 from bifrost.ring2 import Ring, ring_view
 from temp_storage import TempStorage
 from bifrost.proclog import ProcLog
+
+# Note: This must be called before any devices are initialized. It's also
+#          almost always desirable when running pipelines, so we do it here at
+#          module import time to make things easy.
+bf.device.set_devices_no_spin_cpu()
 
 def izip(*iterables):
 	while True:
@@ -286,7 +290,7 @@ class Block(BlockScope):
 		for i,r in enumerate(self.irings):
 			rnames['ring%i' % i] = r.name
 		self.in_proclog.update(rnames)
-		self.init_trace = ''.join(traceback.format_stack())
+		self.init_trace = ''.join(traceback.format_stack()[:-1])
 		
 	def shutdown(self):
 		self.shutdown_event.set()
