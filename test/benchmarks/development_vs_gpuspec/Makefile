@@ -1,4 +1,6 @@
-SHELL := /bin/bash
+SHELL := /bin/zsh
+WITH_BIFROST := blocks/accumulate.py blocks/hdf.py
+WITHOUT_BIFROST := guppi2spectra.c guppi2spectra_gpu.cu guppi2spectra_gpu.h filterbank.h
 
 # Be silent
 ifndef VERBOSE
@@ -13,9 +15,16 @@ download:
 
 test:
 	@echo
-	cd with_bifrost; \
-		echo $$(lizard -t 12 | tail -n 3)
-	cd without_bifrost/src; \
-		echo $$(lizard -t 12 -i 9999 cufft.h guppi2spectra.c guppi2spectra_gpu.cu guppi2spectra_gpu.h filterbank.h | tail -n 3)
+	wget -q https://raw.githubusercontent.com/MilesCranmer/vim-stream/master/vims -O vims; \
+		chmod +x vims; \
+		cd with_bifrost; \
+		echo "With Bifrost:"; \
+		$$(cat bf_gpuspec_hires.py | ../vims -e 'class Hdf' 'V/^\S\<enter>kd' > bf_gpuspec_hires2.py); \
+		echo "`lizard -t 12 -i 9999 bf_gpuspec_hires2.py $(WITH_BIFROST) | tail -n 4 | ../vims '1norm yyGp'`"; \
+		cd ..; \
+		cd without_bifrost/src; \
+		echo "Without Bifrost:"; \
+		echo "`lizard -t 12 -i 9999 $(WITHOUT_BIFROST) | tail -n 4 | ../../vims '1norm yyGp'`"
+		rm vims
 
 all: test download
