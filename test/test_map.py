@@ -40,7 +40,8 @@ class TestMap(unittest.TestCase):
 		y = bf.empty_like(x)
 		x.flags['WRITEABLE'] = False
 		x.bf.immutable = True # TODO: Is this actually doing anything? (flags is, just not sure about bf.immutable)
-		bf.map(funcstr, x=x, y=y)
+		for _ in xrange(3):
+			bf.map(funcstr, {'x': x, 'y': y})
 		x = x.copy('system')
 		y = y.copy('system')
 		if isinstance(x_orig, bf.ndarray):
@@ -90,7 +91,8 @@ class TestMap(unittest.TestCase):
 		a = bf.asarray(a, space='cuda')
 		b = a[:,None]
 		c = bf.empty((a.shape[0],b.shape[0]), a.dtype, 'cuda') # TODO: Need way to compute broadcast shape
-		bf.map("c = a*b", a=a, b=b, c=c)
+		for _ in xrange(3):
+			bf.map("c = a*b", data={'a': a, 'b': b, 'c': c})
 		a = a.copy('system')
 		b = b.copy('system')
 		c = c.copy('system')
@@ -102,7 +104,8 @@ class TestMap(unittest.TestCase):
 		x = np.random.randint(1, 256, size=n)
 		x = bf.asarray(x, space='cuda')
 		y = bf.empty_like(x)
-		bf.map("y = (x-m)/s", x=x, y=y, m=1, s=3)
+		for _ in xrange(3):
+			bf.map("y = (x-m)/s", data={'x': x, 'y': y, 'm': 1, 's': 3})
 		x = x.copy('system')
 		y = y.copy('system')
 		np.testing.assert_equal(y, (x-1)//3)
@@ -111,7 +114,8 @@ class TestMap(unittest.TestCase):
 		a = bf.asarray(known_data, space='cuda')
 		a = a[:,:,:,:,:2,:,:,:]
 		b = bf.empty_like(a)
-		bf.map("b = a+1", a=a, b=b)
+		for _ in xrange(3):
+			bf.map("b = a+1", data={'a': a, 'b': b})
 		a = a.copy('system')
 		b = b.copy('system')
 		np.testing.assert_equal(b, a+1)
@@ -120,7 +124,8 @@ class TestMap(unittest.TestCase):
 		a = np.random.randint(65536, size=shape).astype(np.int32)
 		a = bf.asarray(a, space='cuda')
 		b = bf.empty_like(a)
-		bf.map("b = a(_-a.shape()/2)", a=a, b=b)
+		for _ in xrange(3):
+			bf.map("b = a(_-a.shape()/2)", data={'a': a, 'b': b})
 		a = a.copy('system')
 		b = b.copy('system')
 		np.testing.assert_equal(b, np.fft.fftshift(a))
@@ -142,12 +147,13 @@ class TestMap(unittest.TestCase):
 		a_orig = a
 		a = bf.asarray(a, space='cuda')
 		b = bf.empty_like(a)
-		bf.map('''
-		auto x = a(_,0);
-		auto y = a(_,1);
-		b(_,0).assign(x.mag2(), y.mag2());
-		b(_,1) = x*y.conj();
-		''', b.shape[:-1], a=a, b=b)
+		for _ in xrange(3):
+			bf.map('''
+			auto x = a(_,0);
+			auto y = a(_,1);
+			b(_,0).assign(x.mag2(), y.mag2());
+			b(_,1) = x*y.conj();
+			''', shape=b.shape[:-1], data={'a': a, 'b': b})
 		b = b.copy('system')
 		a = a_orig
 		gold = np.empty_like(a)
@@ -160,7 +166,9 @@ class TestMap(unittest.TestCase):
 		a = np.random.randint(65536, size=shape).astype(np.int32)
 		a = bf.asarray(a, space='cuda')
 		b = bf.empty((a.shape[2],a.shape[0], a.shape[1]), a.dtype, 'cuda')
-		bf.map("b(i,j,k) = a(j,k,i)", b.shape, 'i', 'j', 'k', a=a, b=b)
+		for _ in xrange(3):
+			bf.map("b(i,j,k) = a(j,k,i)", shape=b.shape, axis_names=('i','j','k'),
+			       data={'a': a, 'b': b}, block_shape=(64,4), block_axes=('i','k'))
 		a = a.copy('system')
 		b = b.copy('system')
 		np.testing.assert_equal(b, a.transpose([2,0,1]))
@@ -170,7 +178,9 @@ class TestMap(unittest.TestCase):
 		a = bf.asarray(a, space='cuda')
 		b = bf.empty((a.shape[0],a.shape[2]), a.dtype, 'cuda')
 		j = 11
-		bf.map("b(i,k) = a(i,j,k)", b.shape, 'i', 'k', a=a, b=b, j=j)
+		for _ in xrange(3):
+			bf.map("b(i,k) = a(i,j,k)", shape=b.shape, axis_names=('i','k'),
+			       data={'a': a, 'b': b, 'j': j})
 		a = a.copy('system')
 		b = b.copy('system')
 		np.testing.assert_equal(b, a[:,j,:])

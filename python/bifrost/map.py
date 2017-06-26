@@ -47,7 +47,8 @@ def _convert_to_array(arg):
 		arg = arr
 	return bf.asarray(arg)
 
-def map(func_string, data, axis_names=None, shape=None):
+def map(func_string, data, axis_names=None, shape=None,
+        block_shape=None, block_axes=None):
 	"""Apply a function to a set of ndarrays.
 	
 	Args:
@@ -58,6 +59,19 @@ def map(func_string, data, axis_names=None, shape=None):
 	               in func_string.
 	  shape:       The shape of the computation. If None, the broadcast shape
 	               of all data arrays is used.
+	  block_shape: The 2D shape of the thread block (y,x) with which the kernel
+	               is launched.
+	               This is a performance tuning parameter.
+	               If NULL, a heuristic is used to select the block shape.
+	               Changes to this parameter do _not_ require re-compilation of
+	               the kernel.
+	  block_axes:  List of axis indices (or names) specifying the 2 computation
+	               axes to which the thread block (y,x) is mapped.
+	               This is a performance tuning parameter.
+	               If NULL, a heuristic is used to select the block axes.
+	               Values may be negative for reverse indexing.
+	               Changes to this parameter _do_ require re-compilation of the
+	               kernel.
 	
 	Note:
 	    Only GPU computation is currently supported.
@@ -84,6 +98,11 @@ def map(func_string, data, axis_names=None, shape=None):
 	arg_arrays = []
 	args = []
 	arg_names = []
+	if block_axes is not None:
+		# Allow referencing axes by name
+		block_axes = [axis_names.index(bax) if isinstance(bax, basestring)
+		              else bax
+		              for bax in block_axes]
 	for key, arg in data.items():
 		arg = _convert_to_array(arg)
 		# Note: We must keep a reference to each array lest they be garbage
@@ -93,4 +112,4 @@ def map(func_string, data, axis_names=None, shape=None):
 		arg_names.append(key)
 	_check(_bf.Map(ndim, _array(shape, dtype=ctypes.c_long), _array(axis_names),
 	               narg, _array(args), _array(arg_names),
-	               func_string))
+	               func_string, _array(block_shape), _array(block_axes)))
