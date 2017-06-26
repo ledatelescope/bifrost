@@ -58,14 +58,14 @@ def empty_like(arr, space=None):
 		space = arr.bf.space
 	return ndarray(shape=arr.shape, dtype=arr.bf.dtype, space=space,
 	               native=arr.bf.native, conjugated=arr.bf.conjugated)
-def empty(shape, dtype, space=None, **kwargs):
+def empty(shape, dtype='f32', space=None, **kwargs):
 	return ndarray(shape=shape, dtype=dtype, space=space, **kwargs)
 
 def zeros_like(arr, space=None):
 	ret = empty_like(arr, space)
 	memset_array(ret, 0)
 	return ret
-def zeros(shape, dtype, space=None, **kwargs):
+def zeros(shape, dtype='f32', space=None, **kwargs):
 	ret = empty(shape, dtype, space, **kwargs)
 	memset_array(ret, 0)
 	return ret
