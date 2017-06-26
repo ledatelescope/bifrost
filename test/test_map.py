@@ -168,7 +168,7 @@ class TestMap(unittest.TestCase):
 		b = bf.empty((a.shape[2],a.shape[0], a.shape[1]), a.dtype, 'cuda')
 		for _ in xrange(3):
 			bf.map("b(i,j,k) = a(j,k,i)", shape=b.shape, axis_names=('i','j','k'),
-			       data={'a': a, 'b': b})
+			       data={'a': a, 'b': b}, block_shape=(64,4), block_axes=('i','k'))
 		a = a.copy('system')
 		b = b.copy('system')
 		np.testing.assert_equal(b, a.transpose([2,0,1]))
