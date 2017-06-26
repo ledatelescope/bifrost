@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -71,7 +70,8 @@ class ReverseBlock(TransformBlock):
         for ax in self.axes:
             inds[ax] = '-'+inds[ax]
         inds = ','.join(inds)
-        bf.map("b = a(%s)" % inds, shape, *ind_names, a=idata, b=odata)
+        bf.map("b = a(%s)" % inds, shape=shape, axis_names=ind_names,
+               data={'a': idata, 'b': odata})
 
 def reverse(iring, axes, *args, **kwargs):
     """Reverse data along an axis or set of axes.

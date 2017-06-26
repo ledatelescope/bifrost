@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -81,7 +80,7 @@ class DetectBlock(TransformBlock):
         idata = ispan.data
         odata = ospan.data
         if self.npol == 1:
-            bf.map("b = Complex<b_type>(a).mag2()", a=idata, b=odata)
+            bf.map("b = Complex<b_type>(a).mag2()", {'a': idata, 'b': odata})
         else:
             shape = idata.shape[:self.axis] + idata.shape[self.axis+1:]
             inds = ['i%i'%i for i in xrange(idata.ndim)]
@@ -109,7 +108,8 @@ class DetectBlock(TransformBlock):
                 b(%s) = -2*xy.imag;
                 """ % (inds_[0], inds_[1],
                        inds_[0], inds_[1], inds_[2], inds_[3])
-            bf.map(func, shape, *inds, a=ispan.data, b=ospan.data)
+            bf.map(func, shape=shape, axis_names=inds,
+                   data={'a': ispan.data, 'b': ospan.data})
 
 def detect(iring, mode, axis=None, *args, **kwargs):
     """Apply square-law detection to create polarization products.

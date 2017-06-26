@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -77,7 +76,8 @@ class FftShiftBlock(TransformBlock):
             else:
                 inds[ax] += '-a.shape(%i)/2' % ax
         inds = ','.join(inds)
-        bf.map("b = a(%s)" % inds, shape, *ind_names, a=idata, b=odata)
+        bf.map("b = a(%s)" % inds, shape=shape, axis_names=ind_names,
+               data={'a': idata, 'b': odata})
 
 def fftshift(iring, axes, inverse=False, *args, **kwargs):
     """Apply an FFT shift to data along specified axes.

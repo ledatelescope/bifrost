@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -65,7 +64,7 @@ class AccumulateBlock(TransformBlock):
         idata = ispan.data
         odata = ospan.data
         beta = 0. if self.frame_count == 0 else 1.
-        bf.map("b = beta * b + (b_type)a", a=idata, b=odata, beta=beta)
+        bf.map("b = beta * b + (b_type)a", {'a': idata, 'b': odata, 'beta': beta})
         self.frame_count += 1
         if self.frame_count == self.nframe:
             ncommit = 1
