@@ -30,7 +30,7 @@
 
 from libbifrost import _bf, _check, _get, _string2space, _space2string, _fast_call, _fast_get
 from DataType import DataType
-from ndarray import ndarray
+from ndarray import ndarray, _address_as_buffer
 from copy import copy, deepcopy
 
 import ctypes
@@ -186,12 +186,7 @@ class SequenceBase(object):
 			hdr_array = np.empty(0, dtype=np.uint8)
 			hdr_array.flags['WRITEABLE'] = False
 			return json.loads(hdr_array.tostring())
-		BufferType = ctypes.c_byte*size
-		hdr_buffer_ptr = ctypes.cast(self._header_ptr, ctypes.POINTER(BufferType))
-		hdr_buffer = hdr_buffer_ptr.contents
-		#hdr_array = memoryview(hdr_buffer)
-		# WAR for ctypes producing an invalid type code that numpy fails on
-		#hdr_array = buffer(memoryview(hdr_buffer))
+		hdr_buffer = _address_as_buffer(self._header_ptr, size, readonly=True)
 		hdr_array = np.frombuffer(hdr_buffer, dtype=np.uint8)
 		hdr_array.flags['WRITEABLE'] = False
 		self._header = json.loads(hdr_array.tostring())

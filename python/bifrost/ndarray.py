@@ -46,6 +46,17 @@ import sys
 
 # TODO: The stuff here makes array.py redundant (and outdated)
 
+# TODO: ndarray.flags['WRITEABLE'] does not get preserved through ndarray.__init__()
+
+def _address_as_buffer(address, nbyte, readonly=False):
+	# Note: This doesn't work as a buffer when using pypy
+	#return (ctypes.c_byte*nbyte).from_address(address)
+	# Note: This works as a buffer in regular python and pypy
+	# Note: int_asbuffer is undocumented; see here:
+	# https://mail.scipy.org/pipermail/numpy-discussion/2008-January/030938.html
+	return np.core.multiarray.int_asbuffer(
+		address, nbyte, readonly=readonly, check=False)
+
 def asarray(arr, space=None):
 	if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
 		return arr
@@ -214,11 +225,7 @@ class ndarray(np.ndarray):
 			dtype_np = np.dtype(dtype.as_numpy_dtype())
 			if not native:
 				dtype_np = dtype_np.newbyteorder()
-			
-			BufferType = ctypes.c_byte*nbyte
-			data_buffer_ptr = ctypes.cast(buffer, ctypes.POINTER(BufferType))
-			data_buffer     = data_buffer_ptr.contents
-			
+			data_buffer = _address_as_buffer(buffer, nbyte)
 			obj = np.ndarray.__new__(cls, shape, dtype_np,
 			                         data_buffer, offset, strides)
 			obj.bf = BFArrayInfo(space, dtype, native, conjugated, ownbuffer)
