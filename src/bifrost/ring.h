@@ -128,6 +128,9 @@ BFstatus bfRingEndWriting(BFring ring);
 BFstatus bfRingWritingEnded(BFring ring, BFbool* writing_ended);
 
 // Sequence write
+// Note: \p name must either be unique among sequences, or be an empty string
+// Note: \p time_tag should either be monotonically increasing with each
+//         sequence, or be BFoffset(-1).
 BFstatus bfRingSequenceBegin(BFwsequence* sequence,
                              BFring       ring,
                              const char*  name,
