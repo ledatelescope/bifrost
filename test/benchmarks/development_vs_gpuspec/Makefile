@@ -21,7 +21,8 @@ test:
 		cd ..; \
 		cd without_bifrost/src; \
 		echo "Without Bifrost:"; \
-		echo "`lizard -t 12 -i 9999 $(WITHOUT_BIFROST) | tail -n 4 | ../../vims '1norm yyGp'`"
+		echo "`lizard -t 12 -i 9999 $(WITHOUT_BIFROST) | tail -n 4 | ../../vims '1norm yyGp'`"; \
+		cd ../..; \
 		rm vims
 
 all: test download
