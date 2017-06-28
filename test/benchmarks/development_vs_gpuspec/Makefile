@@ -1,5 +1,5 @@
 SHELL := /bin/zsh
-WITH_BIFROST := blocks/accumulate.py blocks/hdf.py
+WITH_BIFROST := blocks/accumulate.py blocks/hdf.py bf_gpuspec.py
 WITHOUT_BIFROST := guppi2spectra.c guppi2spectra_gpu.cu guppi2spectra_gpu.h filterbank.h
 
 # Be silent
@@ -8,10 +8,7 @@ ifndef VERBOSE
 endif
 
 download:
-	mkdir -p with_bifrost
-	[ -d "with_bifrost/.git" ] || git clone --depth=1 https://github.com/telegraphic/bunyip.git ./with_bifrost
-	mkdir -p without_bifrost
-	[ -d "without_bifrost/.git" ] || git clone --depth=1 https://github.com/UCBerkeleySETI/gbt_seti ./without_bifrost
+	WITH_BIFROST="$(WITH_BIFROST)" WITHOUT_BIFROST="$(WITHOUT_BIFROST)" ./download_files.sh
 
 test:
 	@echo
@@ -19,8 +16,7 @@ test:
 		chmod +x vims; \
 		cd with_bifrost; \
 		echo "With Bifrost:"; \
-		$$(cat bf_gpuspec_hires.py | ../vims -e 'class Hdf' 'V/^\S\<enter>kd' > bf_gpuspec_hires2.py); \
-		echo "`lizard -t 12 -i 9999 bf_gpuspec_hires2.py $(WITH_BIFROST) | tail -n 4 | ../vims '1norm yyGp'`"; \
+		echo "`lizard -t 12 -i 9999 $(WITH_BIFROST) | tail -n 4 | ../vims '1norm yyGp'`"; \
 		cd ..; \
 		cd without_bifrost/src; \
 		echo "Without Bifrost:"; \
