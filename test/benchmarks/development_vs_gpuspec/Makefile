@@ -1,3 +1,4 @@
+.DEFAULT_GOAL := all
 SHELL := /bin/zsh
 WITH_BIFROST := blocks/accumulate.py blocks/hdf.py bf_gpuspec.py
 WITHOUT_BIFROST := guppi2spectra.c guppi2spectra_gpu.cu guppi2spectra_gpu.h filterbank.h
