@@ -103,6 +103,10 @@ def map(func_string, data, axis_names=None, shape=None,
 		block_axes = [axis_names.index(bax) if isinstance(bax, basestring)
 		              else bax
 		              for bax in block_axes]
+	if block_axes is not None and len(block_axes) != 2:
+	    raise ValueError("block_axes must contain exactly 2 entries")
+	if block_shape is not None and len(block_shape) != 2:
+	    raise ValueError("block_shape must contain exactly 2 entries")
 	for key, arg in data.items():
 		arg = _convert_to_array(arg)
 		# Note: We must keep a reference to each array lest they be garbage
