@@ -28,7 +28,10 @@ from __future__ import absolute_import
 
 from bifrost.pipeline import SinkBlock
 
+from threading import Lock
+
 class PrintHeaderBlock(SinkBlock):
+    lock = Lock()
     def __init__(self, iring, *args, **kwargs):
         """Prints out the header of each new sequence of a ring
 
@@ -37,7 +40,8 @@ class PrintHeaderBlock(SinkBlock):
         super(PrintHeaderBlock, self).__init__(iring, *args, **kwargs)
     def on_sequence(self, iseq):
         ihdr = iseq.header
-        print ihdr
+        with PrintHeaderBlock.lock:
+            print "Block", self.iring.owner.name, "header:", ihdr
     def on_sequence_end(self, iseq):
         pass
     def on_data(self, ispan):
