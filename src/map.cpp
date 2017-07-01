@@ -205,6 +205,21 @@ BFstatus build_map_kernel(int*                 external_ndim,
 		     << ",_Strides_"       << arg_names[a]
 		     << "> _ArrayIndexer_" << arg_names[a] << ";\n";
 	}
+	// Add a _shape array for the user to use if needed
+	code << "  const int _shape[NDIM] = {";
+	for( int d=0; d<ndim; ++d ) {
+		if( d == block_x_axis && !basic_indexing_only ) {
+			code << x_size;
+		} else if( d == block_y_axis && !basic_indexing_only ) {
+			code << y_size;
+		} else {
+			code << shape[d];
+		}
+		if( d != ndim-1 ) {
+			code << ", ";
+		}
+	}
+	code << "}; (void)_shape[0];\n"; // Note: Prevents unused variable warning
 	if( basic_indexing_only ) {
 		code <<
 			"  int _x0 = threadIdx.x + blockIdx.x*blockDim.x;\n"
@@ -228,8 +243,10 @@ BFstatus build_map_kernel(int*                 external_ndim,
 			"    auto _composite_index  = _ShapeIndexer::lift(_z);\n"
 			"    _composite_index[" << block_x_axis << "] = _x;\n";
 		if( y_size > 1 ) {
-			code << "    _composite_index[" << block_y_axis << "] = _y;\n";
+			code <<
+				"    _composite_index[" << block_y_axis << "] = _y;\n";
 		}
+		// Create the composite index variable for use by the user
 		code << "    auto const& _  = _composite_index;\n";
 	}
 	for( int a=0; a<narg; ++a ) {
@@ -254,7 +271,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 			code << "    typedef " << ctype_string << " " << arg_names[a] << "_type;\n";
 		}
 	}
-	
+	// Create named axis variables
 	if( axis_names ) {
 		for( int d=0; d<ndim; ++d ) {
 			BF_ASSERT(axis_names[d][0] != '_', BF_STATUS_INVALID_ARGUMENT);
