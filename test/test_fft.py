@@ -27,7 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 """This set of unit tests check the functionality
-on the bifrost FFT wrapper, both in device memory and out"""
+on the bifrost FFT wrapper."""
 import ctypes
 import unittest
 import numpy as np
@@ -37,10 +37,16 @@ from numpy.fft import rfftn as gold_rfftn, irfftn as gold_irfftn
 from bifrost.fft import Fft
 import bifrost as bf
 
-# TODO: These tolerances are way too high, but only a tiny fraction of the
-#         result values have such large errors. Need a better way to quantify.
+MTOL = 1e-6 # Relative tolerance at the mean magnitude
 RTOL = 1e-1
-ATOL = 1e-1
+
+def compare(result, gold):
+	#np.testing.assert_allclose(result, gold, RTOL, ATOL)
+	# Note: We compare using an absolute tolerance equal to a fraction of the
+	#         mean magnitude. This ignores large relative errors on values with
+	#         magnitudes much smaller than the mean.
+	absmean = np.abs(gold).mean()
+	np.testing.assert_allclose(result, gold, rtol=RTOL, atol=MTOL*absmean)
 
 class TestFFT(unittest.TestCase):
 	def setUp(self):
@@ -58,7 +64,7 @@ class TestFFT(unittest.TestCase):
 	def run_test_c2c_impl(self, shape, axes, inverse=False, fftshift=False):
 		shape = list(shape)
 		shape[-1] *= 2 # For complex
-		known_data = np.random.uniform(size=shape).astype(np.float32).view(np.complex64)
+		known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
 		idata = bf.ndarray(known_data, space='cuda')
 		odata = bf.empty_like(idata)
 		fft = Fft()
@@ -77,9 +83,9 @@ class TestFFT(unittest.TestCase):
 		x = (np.abs(odata.copy('system') - known_result) / known_result > RTOL).astype(np.int32)
 		a = odata.copy('system')
 		b = known_result
-		np.testing.assert_allclose(odata.copy('system'), known_result, RTOL, ATOL)
+		compare(odata.copy('system'), known_result)
 	def run_test_r2c_dtype(self, shape, axes, dtype=np.float32, scale=1., misalign=0):
-		known_data = np.random.uniform(size=shape).astype(np.float32)*2-1
+		known_data = np.random.normal(size=shape).astype(np.float32)
 		known_data = (known_data*scale).astype(dtype)
 		
 		# Force misaligned data
@@ -96,7 +102,7 @@ class TestFFT(unittest.TestCase):
 		fft.init(idata, odata, axes=axes)
 		fft.execute(idata, odata)
 		known_result = gold_rfftn(known_data.astype(np.float32) / scale, axes=axes)
-		np.testing.assert_allclose(odata.copy('system'), known_result, RTOL, ATOL)
+		compare(odata.copy('system'), known_result)
 	def run_test_r2c(self, shape, axes, dtype=np.float32):
 		self.run_test_r2c_dtype(shape, axes, np.float32)
 		# Note: Misalignment is not currently supported for fp32
@@ -112,7 +118,7 @@ class TestFFT(unittest.TestCase):
 		ishape[axes[-1]] = shape[axes[-1]] // 2 + 1
 		oshape[axes[-1]] = (ishape[axes[-1]] - 1) * 2
 		ishape[-1] *= 2 # For complex
-		known_data = np.random.uniform(size=ishape).astype(np.float32).view(np.complex64)
+		known_data = np.random.normal(size=ishape).astype(np.float32).view(np.complex64)
 		idata = bf.ndarray(known_data, space='cuda')
 		odata = bf.ndarray(shape=oshape, dtype='f32', space='cuda')
 		fft = Fft()
@@ -123,7 +129,7 @@ class TestFFT(unittest.TestCase):
 		if fftshift:
 			known_data = np.fft.ifftshift(known_data, axes=axes)
 		known_result = gold_irfftn(known_data, axes=axes) * norm
-		np.testing.assert_allclose(odata.copy('system'), known_result, RTOL, ATOL)
+		compare(odata.copy('system'), known_result)
 	def run_test_c2c(self, shape, axes):
 		self.run_test_c2c_impl(shape, axes)
 		self.run_test_c2c_impl(shape, axes, inverse=True)
