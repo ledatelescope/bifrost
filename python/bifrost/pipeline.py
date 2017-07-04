@@ -373,6 +373,8 @@ class SourceBlock(Block):
 				for ohdr in oheaders:
 					if 'time_tag' not in ohdr:
 						ohdr['time_tag'] = self._seq_count
+					if 'name' not in ohdr:
+						ohdr['name'] = '<unnamed-%i>' % self._seq_count
 				self._seq_count += 1
 				with ExitStack() as oseq_stack:
 					oseqs = self.begin_sequences(oseq_stack, orings, oheaders, igulp_nframes=[])
