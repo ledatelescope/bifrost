@@ -32,108 +32,108 @@ import bifrost as bf
 from bifrost.blocks import *
 
 class CallbackBlock(CopyBlock):
-        """Testing-only block which calls user-defined
-            functions on sequence and on data"""
-	def __init__(self, iring, seq_callback, data_callback, data_ref=None,
-	             *args, **kwargs):
-		super(CallbackBlock, self).__init__(iring, *args, **kwargs)
-		self.seq_callback  = seq_callback
-		self.data_callback = data_callback
-		self.data_ref = data_ref
-	def on_sequence(self, iseq):
-		self.seq_callback(iseq)
-		return super(CallbackBlock, self).on_sequence(iseq)
-	def on_data(self, ispan, ospan):
-		self.data_callback(ispan, ospan)
-		if self.data_ref is not None:
-			# Note: This can be used to check data from outside the pipeline,
-			#         which is useful when exceptions inside blocks prevent
-			#         downstream callback blocks from ever executing.
-			self.data_ref['odata'] = ospan.data.copy()
-		return super(CallbackBlock, self).on_data(ispan, ospan)
+    """Testing-only block which calls user-defined
+        functions on sequence and on data"""
+    def __init__(self, iring, seq_callback, data_callback, data_ref=None,
+                 *args, **kwargs):
+        super(CallbackBlock, self).__init__(iring, *args, **kwargs)
+        self.seq_callback  = seq_callback
+        self.data_callback = data_callback
+        self.data_ref = data_ref
+    def on_sequence(self, iseq):
+        self.seq_callback(iseq)
+        return super(CallbackBlock, self).on_sequence(iseq)
+    def on_data(self, ispan, ospan):
+        self.data_callback(ispan, ospan)
+        if self.data_ref is not None:
+            # Note: This can be used to check data from outside the pipeline,
+            #         which is useful when exceptions inside blocks prevent
+            #         downstream callback blocks from ever executing.
+            self.data_ref['odata'] = ospan.data.copy()
+        return super(CallbackBlock, self).on_data(ispan, ospan)
 
 class PipelineTest(unittest.TestCase):
-	def setUp(self):
-		# Note: This file needs to be large enough to fill the minimum-size
-		#         ring buffer at least a few times over in order to properly
-		#         test things.
-		self.fil_file = "./data/2chan16bitNoDM.fil"
-	def test_read_sigproc(self):
-		gulp_nframe = 101
-		def check_sequence(seq):
-			tensor = seq.header['_tensor']
-			self.assertEqual(tensor['shape'],  [-1,1,2])
-			self.assertEqual(tensor['dtype'],  'u16')
-			self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
-			self.assertEqual(tensor['units'],  ['s', None, 'MHz'])
-		def check_data(ispan, ospan):
-			self.assertLessEqual(ispan.nframe, gulp_nframe)
-			self.assertEqual(    ospan.nframe, ispan.nframe)
-			self.assertEqual(ispan.data.shape, (ispan.nframe,1,2))
-			self.assertEqual(ospan.data.shape, (ospan.nframe,1,2))
-		with bf.Pipeline() as pipeline:
-			data = read_sigproc([self.fil_file], gulp_nframe)
-			data = CallbackBlock(data, check_sequence, check_data)
-			pipeline.run()
-	def run_test_simple_copy(self, guarantee):
-		def check_sequence(seq):
-			pass
-		def check_data(ispan, ospan):
-			pass
-		gulp_nframe = 101
-		with bf.Pipeline() as pipeline:
-			data = read_sigproc([self.fil_file], gulp_nframe)
-			for _ in xrange(20):
-				data = copy(data, guarantee=guarantee)
-			ref = {}
-			data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
-			pipeline.run()
-			self.assertEqual(ref['odata'].dtype, 'uint16')
-			self.assertEqual(ref['odata'].shape, (29, 1, 2))
-	def test_simple_copy(self):
-		self.run_test_simple_copy(guarantee=True)
-	def test_simple_copy_unguaranteed(self):
-		self.run_test_simple_copy(guarantee=False)
-	def test_cuda_copy(self):
-		def check_sequence(seq):
-			pass
-		def check_data(ispan, ospan):
-			pass
-		gulp_nframe = 101
-		with bf.Pipeline() as pipeline:
-			data = read_sigproc([self.fil_file], gulp_nframe)
-			for _ in xrange(10):
-				data = copy(data, space='cuda')
-				data = copy(data, space='cuda_host')
-			ref = {}
-			data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
-			pipeline.run()
-			self.assertEqual(ref['odata'].dtype, 'uint16')
-			self.assertEqual(ref['odata'].shape, (29, 1, 2))
-	def test_fdmt(self):
-		gulp_nframe = 101
-		# TODO: Check handling of multiple pols (not currently supported?)
-		def check_sequence(seq):
-			tensor = seq.header['_tensor']
-			self.assertEqual(tensor['shape'],  [1,5,-1])
-			self.assertEqual(tensor['dtype'],  'f32')
-			self.assertEqual(tensor['labels'], ['pol', 'dispersion', 'time'])
-			self.assertEqual(tensor['units'],  [None, 'pc cm^-3', 's'])
-		def check_data(ispan, ospan):
-			# Note: nframe = gulp_nframe + max_delay
-			#self.assertLessEqual(ispan.nframe, gulp_nframe)
-			self.assertEqual(    ospan.nframe, ispan.nframe)
-			self.assertEqual(ispan.data.shape, (1,5,ispan.nframe))
-			self.assertEqual(ospan.data.shape, (1,5,ospan.nframe))
-		with bf.Pipeline() as pipeline:
-			data = read_sigproc([self.fil_file], gulp_nframe)
-			data = copy(data, space='cuda')
-			data = transpose(data, ['pol', 'freq', 'time'])
-			data = fdmt(data, max_dm=30.)
-			ref = {}
-			data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
-			data = transpose(data, ['time', 'pol', 'dispersion'])
-			data = copy(data, space='cuda_host')
-			pipeline.run()
-			self.assertEqual(ref['odata'].dtype, 'float32')
-			self.assertEqual(ref['odata'].shape, (1, 5, 17))
+    def setUp(self):
+        # Note: This file needs to be large enough to fill the minimum-size
+        #         ring buffer at least a few times over in order to properly
+        #         test things.
+        self.fil_file = "./data/2chan16bitNoDM.fil"
+    def test_read_sigproc(self):
+        gulp_nframe = 101
+        def check_sequence(seq):
+            tensor = seq.header['_tensor']
+            self.assertEqual(tensor['shape'],  [-1,1,2])
+            self.assertEqual(tensor['dtype'],  'u16')
+            self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
+            self.assertEqual(tensor['units'],  ['s', None, 'MHz'])
+        def check_data(ispan, ospan):
+            self.assertLessEqual(ispan.nframe, gulp_nframe)
+            self.assertEqual(    ospan.nframe, ispan.nframe)
+            self.assertEqual(ispan.data.shape, (ispan.nframe,1,2))
+            self.assertEqual(ospan.data.shape, (ospan.nframe,1,2))
+        with bf.Pipeline() as pipeline:
+            data = read_sigproc([self.fil_file], gulp_nframe)
+            data = CallbackBlock(data, check_sequence, check_data)
+            pipeline.run()
+    def run_test_simple_copy(self, guarantee):
+        def check_sequence(seq):
+            pass
+        def check_data(ispan, ospan):
+            pass
+        gulp_nframe = 101
+        with bf.Pipeline() as pipeline:
+            data = read_sigproc([self.fil_file], gulp_nframe)
+            for _ in xrange(20):
+                data = copy(data, guarantee=guarantee)
+            ref = {}
+            data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
+            pipeline.run()
+            self.assertEqual(ref['odata'].dtype, 'uint16')
+            self.assertEqual(ref['odata'].shape, (29, 1, 2))
+    def test_simple_copy(self):
+        self.run_test_simple_copy(guarantee=True)
+    def test_simple_copy_unguaranteed(self):
+        self.run_test_simple_copy(guarantee=False)
+    def test_cuda_copy(self):
+        def check_sequence(seq):
+            pass
+        def check_data(ispan, ospan):
+            pass
+        gulp_nframe = 101
+        with bf.Pipeline() as pipeline:
+            data = read_sigproc([self.fil_file], gulp_nframe)
+            for _ in xrange(10):
+                data = copy(data, space='cuda')
+                data = copy(data, space='cuda_host')
+            ref = {}
+            data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
+            pipeline.run()
+            self.assertEqual(ref['odata'].dtype, 'uint16')
+            self.assertEqual(ref['odata'].shape, (29, 1, 2))
+    def test_fdmt(self):
+        gulp_nframe = 101
+        # TODO: Check handling of multiple pols (not currently supported?)
+        def check_sequence(seq):
+            tensor = seq.header['_tensor']
+            self.assertEqual(tensor['shape'],  [1,5,-1])
+            self.assertEqual(tensor['dtype'],  'f32')
+            self.assertEqual(tensor['labels'], ['pol', 'dispersion', 'time'])
+            self.assertEqual(tensor['units'],  [None, 'pc cm^-3', 's'])
+        def check_data(ispan, ospan):
+            # Note: nframe = gulp_nframe + max_delay
+            #self.assertLessEqual(ispan.nframe, gulp_nframe)
+            self.assertEqual(    ospan.nframe, ispan.nframe)
+            self.assertEqual(ispan.data.shape, (1,5,ispan.nframe))
+            self.assertEqual(ospan.data.shape, (1,5,ospan.nframe))
+        with bf.Pipeline() as pipeline:
+            data = read_sigproc([self.fil_file], gulp_nframe)
+            data = copy(data, space='cuda')
+            data = transpose(data, ['pol', 'freq', 'time'])
+            data = fdmt(data, max_dm=30.)
+            ref = {}
+            data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
+            data = transpose(data, ['time', 'pol', 'dispersion'])
+            data = copy(data, space='cuda_host')
+            pipeline.run()
+            self.assertEqual(ref['odata'].dtype, 'float32')
+            self.assertEqual(ref['odata'].shape, (1, 5, 17))

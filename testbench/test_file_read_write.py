@@ -22,7 +22,7 @@ if __name__ == "__main__":
     pipeline = bfp.get_default_pipeline()
     print pipeline.dot_graph()
     pipeline.run()
-    
+
     # Check the output files match the input files
     for filename in filenames:
         try:

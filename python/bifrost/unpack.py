@@ -29,9 +29,9 @@ from libbifrost import _bf, _check, _fast_call, _get
 from ndarray import asarray
 
 def unpack(src, dst, align_msb=False):
-	src_bf = asarray(src).as_BFarray()
-	dst_bf = asarray(dst).as_BFarray()
-	_fast_call(_bf.Unpack, src_bf,
-	                  dst_bf,
-	                  align_msb)
-	return dst
+    src_bf = asarray(src).as_BFarray()
+    dst_bf = asarray(dst).as_BFarray()
+    _fast_call(_bf.Unpack, src_bf,
+                      dst_bf,
+                      align_msb)
+    return dst

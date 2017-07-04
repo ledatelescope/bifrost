@@ -31,59 +31,59 @@ import numpy as np
 import bifrost as bf
 
 class NDArrayTest(unittest.TestCase):
-	def setUp(self):
-		self.known_vals  = [[0,1],[2,3],[4,5]]
-		self.known_array = np.array(self.known_vals, dtype=np.float32)
-	def test_construct(self):
-		a = bf.ndarray(self.known_vals, dtype='f32')
-		np.testing.assert_equal(a, self.known_array)
-	def test_assign(self):
-		b = bf.ndarray(shape=(3,2), dtype='f32')
-		b[...] = self.known_array
-		np.testing.assert_equal(b, self.known_array)
-	def test_space_copy(self):
-		c = bf.ndarray(self.known_vals, dtype='f32')
-		c = c.copy(space='cuda').copy(space='cuda_host').copy(space='system')
-		np.testing.assert_equal(c, self.known_array)
-	def test_view(self):
-		d = bf.ndarray(self.known_vals, dtype='f32')
-		d = d.view(dtype='cf32')
-		np.testing.assert_equal(d, np.array([[0+1j],[2+3j],[4+5j]]))
-	def test_str(self):
-		e = bf.ndarray(self.known_vals, dtype='f32', space='cuda')
-		self.assertEqual(str(e), str(self.known_array))
-	def test_repr(self):
-		f = bf.ndarray(self.known_vals, dtype='f32', space='cuda')
-		repr_f = repr(f)
-		# Note: This chops off the class name
-		repr_f = repr_f[repr_f.find('('):]
-		repr_k = repr(self.known_array)
-		repr_k = repr_k[repr_k.find('('):]
-		# Remove whitespace (for some reason the indentation differs)
-		repr_f = repr_f.replace(' ', '')
-		repr_k = repr_k.replace(' ', '')
-		self.assertEqual(repr_f, repr_k)
-	def test_zeros_like(self):
-		g = bf.ndarray(self.known_vals, dtype='f32', space='cuda')
-		g = bf.zeros_like(g)
-		g = g.copy('system')
-		known = np.zeros_like(self.known_array)
-		np.testing.assert_equal(g, known)
-	def test_getitem(self):
-		g = bf.ndarray(self.known_vals, space='cuda')
-		np.testing.assert_equal(g[0].copy('system'),     self.known_array[0])
-		np.testing.assert_equal(g[(0,)].copy('system'),  self.known_array[(0,)])
-		np.testing.assert_equal(int(g[0,0]),             self.known_array[0,0])
-		np.testing.assert_equal(g[:1,1:].copy('system'), self.known_array[:1,1:])
-	def test_setitem(self):
-		g = bf.zeros_like(self.known_vals, space='cuda')
-		g[...] = self.known_vals
-		np.testing.assert_equal(g.copy('system'), self.known_vals)
-		g[:1,1:] = [[999]]
-		np.testing.assert_equal(g.copy('system'), np.array([[0,999],[2,3],[4,5]]))
-		g[0,0] = 888
-		np.testing.assert_equal(g.copy('system'), np.array([[888,999],[2,3],[4,5]]))
-		g[0] = [99,88]
-		np.testing.assert_equal(g.copy('system'), np.array([[99,88],[2,3],[4,5]]))
-		g[:,1] = [77,66,55]
-		np.testing.assert_equal(g.copy('system'), np.array([[99,77],[2,66],[4,55]]))
+    def setUp(self):
+        self.known_vals  = [[0,1],[2,3],[4,5]]
+        self.known_array = np.array(self.known_vals, dtype=np.float32)
+    def test_construct(self):
+        a = bf.ndarray(self.known_vals, dtype='f32')
+        np.testing.assert_equal(a, self.known_array)
+    def test_assign(self):
+        b = bf.ndarray(shape=(3,2), dtype='f32')
+        b[...] = self.known_array
+        np.testing.assert_equal(b, self.known_array)
+    def test_space_copy(self):
+        c = bf.ndarray(self.known_vals, dtype='f32')
+        c = c.copy(space='cuda').copy(space='cuda_host').copy(space='system')
+        np.testing.assert_equal(c, self.known_array)
+    def test_view(self):
+        d = bf.ndarray(self.known_vals, dtype='f32')
+        d = d.view(dtype='cf32')
+        np.testing.assert_equal(d, np.array([[0 + 1j], [2 + 3j], [4 + 5j]]))
+    def test_str(self):
+        e = bf.ndarray(self.known_vals, dtype='f32', space='cuda')
+        self.assertEqual(str(e), str(self.known_array))
+    def test_repr(self):
+        f = bf.ndarray(self.known_vals, dtype='f32', space='cuda')
+        repr_f = repr(f)
+        # Note: This chops off the class name
+        repr_f = repr_f[repr_f.find('('):]
+        repr_k = repr(self.known_array)
+        repr_k = repr_k[repr_k.find('('):]
+        # Remove whitespace (for some reason the indentation differs)
+        repr_f = repr_f.replace(' ', '')
+        repr_k = repr_k.replace(' ', '')
+        self.assertEqual(repr_f, repr_k)
+    def test_zeros_like(self):
+        g = bf.ndarray(self.known_vals, dtype='f32', space='cuda')
+        g = bf.zeros_like(g)
+        g = g.copy('system')
+        known = np.zeros_like(self.known_array)
+        np.testing.assert_equal(g, known)
+    def test_getitem(self):
+        g = bf.ndarray(self.known_vals, space='cuda')
+        np.testing.assert_equal(g[0].copy('system'),     self.known_array[0])
+        np.testing.assert_equal(g[(0,)].copy('system'),  self.known_array[(0,)])
+        np.testing.assert_equal(int(g[0,0]),             self.known_array[0,0])
+        np.testing.assert_equal(g[:1,1:].copy('system'), self.known_array[:1,1:])
+    def test_setitem(self):
+        g = bf.zeros_like(self.known_vals, space='cuda')
+        g[...] = self.known_vals
+        np.testing.assert_equal(g.copy('system'), self.known_vals)
+        g[:1,1:] = [[999]]
+        np.testing.assert_equal(g.copy('system'), np.array([[0,999],[2,3],[4,5]]))
+        g[0,0] = 888
+        np.testing.assert_equal(g.copy('system'), np.array([[888,999],[2,3],[4,5]]))
+        g[0] = [99,88]
+        np.testing.assert_equal(g.copy('system'), np.array([[99,88],[2,3],[4,5]]))
+        g[:,1] = [77,66,55]
+        np.testing.assert_equal(g.copy('system'), np.array([[99,77],[2,66],[4,55]]))

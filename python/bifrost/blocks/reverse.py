@@ -65,10 +65,10 @@ class ReverseBlock(TransformBlock):
         idata = ispan.data
         odata = ospan.data
         shape = idata.shape
-        ind_names = ['i%i'%i for i in xrange(idata.ndim)]
+        ind_names = ['i%i' % i for i in xrange(idata.ndim)]
         inds = list(ind_names)
         for ax in self.axes:
-            inds[ax] = '-'+inds[ax]
+            inds[ax] = '-' + inds[ax]
         inds = ','.join(inds)
         bf.map("b = a(%s)" % inds, shape=shape, axis_names=ind_names,
                data={'a': idata, 'b': odata})

@@ -30,35 +30,35 @@ import bifrost as bf
 import threading
 
 class TempStorage(object):
-	def __init__(self, space):
-		self.space = space
-		self.size  = 0
-		self.ptr   = None
-		self.lock  = threading.Lock()
-	def __del__(self):
-		self._free()
-	def allocate(self, size):
-		return TempStorageAllocation(self, size)
-	def _allocate(self, size):
-		if size > self.size:
-			self._free()
-			self.ptr = bf.memory.raw_malloc(size, self.space)
-			self.size = size
-	def _free(self):
-		if self.ptr:
-			bf.memory.raw_free(self.ptr, self.space)
-			self.ptr  = None
-			self.size = 0
+    def __init__(self, space):
+        self.space = space
+        self.size  = 0
+        self.ptr   = None
+        self.lock  = threading.Lock()
+    def __del__(self):
+        self._free()
+    def allocate(self, size):
+        return TempStorageAllocation(self, size)
+    def _allocate(self, size):
+        if size > self.size:
+            self._free()
+            self.ptr = bf.memory.raw_malloc(size, self.space)
+            self.size = size
+    def _free(self):
+        if self.ptr:
+            bf.memory.raw_free(self.ptr, self.space)
+            self.ptr  = None
+            self.size = 0
 class TempStorageAllocation(object):
-	def __init__(self, parent, size):
-		self.parent = parent
-		self.parent.lock.acquire()
-		self.parent._allocate(size)
-		self.size = parent.size
-		self.ptr  = parent.ptr
-	def release(self):
-		self.parent.lock.release()
-	def __enter__(self):
-		return self
-	def __exit__(self, type, value, tb):
-		self.release()
+    def __init__(self, parent, size):
+        self.parent = parent
+        self.parent.lock.acquire()
+        self.parent._allocate(size)
+        self.size = parent.size
+        self.ptr  = parent.ptr
+    def release(self):
+        self.parent.lock.release()
+    def __enter__(self):
+        return self
+    def __exit__(self, type, value, tb):
+        self.release()

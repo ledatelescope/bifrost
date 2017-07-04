@@ -50,7 +50,7 @@ def extract_obs_offset_in_file(fname):
   for line in headerstr.split('\n'):
     key, value = line.split()
     if key == "OBS_OFFSET": return int(value)
-  
+
   return "UNKNOWN"
 
 # This does work on leda_dbbeam3 files but the n_scans will be in error
@@ -61,7 +61,7 @@ class FileInfo(object):
     if hedr["TIME_OFFSET"] == "UNKNOWN" or hedr["N_SCANS"] == "UNKNOWN" or hedr["INT_TIME"] == "UNKNOWN" or hedr["LST"] == "UNKNOWN" or hedr["FREQCENT"] == "UNKNOWN": 
       lst = freq = t_offset = n_scans = int_time = utc_date = utc_time = 0
     else:
-      t_offset = int(hedr["TIME_OFFSET"])	
+      t_offset = int(hedr["TIME_OFFSET"])    
       n_scans = int(hedr["N_SCANS"])
       int_time = int(hedr["INT_TIME"])
       lst = float(hedr["LST"])
@@ -140,7 +140,7 @@ class BandFiles(object):
     if len(self.start_time_present) > 1:
       print "Error: Files with same timestamp in their name have different internal time. Basename:",basename
       #sys.exit(1)
-    
+
     self.start_time = self.start_time_present[0]
     self.end_time = self.files[0].end_time
     self.lst = self.files[0].lst
@@ -160,7 +160,7 @@ class BandFiles(object):
     for f in self.files:
       if self.find_close_frequency(f.freq): num_present += 1
 
-    if num_present == 0:	# Trying adjusting
+    if num_present == 0:    # Trying adjusting
       for f in self.files:
         if self.find_close_frequency(f.freq+5.244-0.012): num_present += 1
       if num_present > 0:
@@ -174,7 +174,7 @@ class BandFiles(object):
             self.frequency_adjusted2 = True
           for f in self.files: 
             f.freq -= 0.012
-   
+
     return (num_present == 22)
 
   def report(self):

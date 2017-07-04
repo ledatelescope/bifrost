@@ -30,32 +30,32 @@ from ndarray import asarray
 import ctypes
 
 class Fft(object):
-	def __init__(self):
-		self.obj = _get(_bf.FftCreate(), retarg=0)
-	def __del__(self):
-		if hasattr(self, 'obj') and bool(self.obj):
-			_bf.FftDestroy(self.obj)
-	def init(self, iarray, oarray, axes=None, apply_fftshift=False):
-		if isinstance(axes, int):
-			axes = [axes]
-		ndim = len(axes)
-		if axes is not None:
-			axes_type = ctypes.c_int*ndim
-			axes = axes_type(*axes)
-		self.workspace_size = _get(_bf.FftInit(
-			self.obj,
-			iarray=asarray(iarray).as_BFarray(),
-			oarray=asarray(oarray).as_BFarray(),
-			ndim=ndim, axes=axes, apply_fftshift=apply_fftshift))
-	def execute(self, iarray, oarray, inverse=False):
-		return self.execute_workspace(iarray, oarray,
-		                              workspace_ptr=None, workspace_size=0,
-		                              inverse=inverse)
-	def execute_workspace(self, iarray, oarray, workspace_ptr, workspace_size,
-	                      inverse=False):
-		_fast_call(_bf.FftExecute, self.obj,
-		                       asarray(iarray).as_BFarray(),
-		                       asarray(oarray).as_BFarray(),
-		                       inverse,
-		                       workspace_ptr, workspace_size)
-		return oarray
+    def __init__(self):
+        self.obj = _get(_bf.FftCreate(), retarg=0)
+    def __del__(self):
+        if hasattr(self, 'obj') and bool(self.obj):
+            _bf.FftDestroy(self.obj)
+    def init(self, iarray, oarray, axes=None, apply_fftshift=False):
+        if isinstance(axes, int):
+            axes = [axes]
+        ndim = len(axes)
+        if axes is not None:
+            axes_type = ctypes.c_int * ndim
+            axes = axes_type(*axes)
+        self.workspace_size = _get(_bf.FftInit(
+            self.obj,
+            iarray=asarray(iarray).as_BFarray(),
+            oarray=asarray(oarray).as_BFarray(),
+            ndim=ndim, axes=axes, apply_fftshift=apply_fftshift))
+    def execute(self, iarray, oarray, inverse=False):
+        return self.execute_workspace(iarray, oarray,
+                                      workspace_ptr=None, workspace_size=0,
+                                      inverse=inverse)
+    def execute_workspace(self, iarray, oarray, workspace_ptr, workspace_size,
+                          inverse=False):
+        _fast_call(_bf.FftExecute, self.obj,
+                   asarray(iarray).as_BFarray(),
+                   asarray(oarray).as_BFarray(),
+                   inverse,
+                   workspace_ptr, workspace_size)
+        return oarray

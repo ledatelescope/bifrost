@@ -61,19 +61,19 @@ class DadaReader(object):
 
     def __init__(self, filename, warnings, file_size):
         self.filename = filename
-	self.warnings = warnings
- 	self.file_size = file_size	# Externally supplied
-	#print filename, warnings, file_size
-	self.generate_info()
+    self.warnings = warnings
+     self.file_size = file_size    # Externally supplied
+    #print filename, warnings, file_size
+    self.generate_info()
 
     def generate_info(self):
         """ Parse dada header and form useful quantities. Calculate everything that can be calculated 
-	    based on what's in the header. For the rest, call them UNKNOWN. """
+        based on what's in the header. For the rest, call them UNKNOWN. """
 
-	
+
         f = open(self.filename, 'rb')
         headerstr = f.read(self.DEFAULT_HEADER_SIZE)
-	f.close()
+    f.close()
 
         header = {}
         for line in headerstr.split('\n'):
@@ -84,86 +84,86 @@ class DadaReader(object):
             key = key.strip()
             value = value.strip()
             header[key] = value
-                
-	self.source = header["SOURCE"]
-        self.mode = header['MODE']	
-	if "UTC_START" in header: self.datestamp = header['UTC_START']
+
+    self.source = header["SOURCE"]
+        self.mode = header['MODE']    
+    if "UTC_START" in header: self.datestamp = header['UTC_START']
         else: self.datestamp = "UNKNOWN"
         if "CFREQ" in header: self.c_freq_mhz = float(header['CFREQ'])
         else: self.c_freq_mhz = "UNKNOWN"
         if "BW" in header: self.bandwidth_mhz  = float(header['BW'])
         else: self.bandwidth_mhz = "UNKNOWN"
         if "NCHAN" in header: self.n_chans = int(header["NCHAN"])
-	else: self.n_chans = "UNKNOWN"
-	if "DATA_ORDER" in header: self.data_order = header["DATA_ORDER"]
-	else: self.data_order = "UNKNOWN"
+    else: self.n_chans = "UNKNOWN"
+    if "DATA_ORDER" in header: self.data_order = header["DATA_ORDER"]
+    else: self.data_order = "UNKNOWN"
 
-	have_size = True	# If we can settle on a file size for the zipped files.
+    have_size = True    # If we can settle on a file size for the zipped files.
 
         # Calculate number of integrations within this file
         # File may not be complete, hence file_size_dsk is read too.
-	# However this is now complicated by zipping files. I am
-	# trying to be clever to figure the size. - HG
+    # However this is now complicated by zipping files. I am
+    # trying to be clever to figure the size. - HG
 
-        if self.filename[-8:] == ".dadazip":	# Will not unzip to get actual size. Must be specified somehow.
-	  if self.file_size:			# We are given the complete file size which overrides everything else.
-	    data_size_dsk = int(self.file_size)-self.DEFAULT_HEADER_SIZE
-	    data_size_hdr = data_size_dsk
-	  elif "FILE_SIZE" in header:		# Hope that this is right
-	    data_size_dsk = int(header["FILE_SIZE"])	# these data sizes don't include header
-	    data_size_hdr = data_size_dsk
-	  else:					# Failure
-	    if self.warnings: print "WARNING: File is zipped and FILE_SIZE is not in header and file_size not supplied. "
-	    have_size = False
-	    data_size_hdr = data_size_dsk = 0
-	else: 					# File not zipped. Can get true complete file size
-	  data_size_dsk = os.path.getsize(self.filename)-self.DEFAULT_HEADER_SIZE
-	  if "FILE_SIZE" in header: data_size_hdr = int(header["FILE_SIZE"])
-	  else: data_size_hdr = data_size_dsk
+        if self.filename[-8:] == ".dadazip":    # Will not unzip to get actual size. Must be specified somehow.
+      if self.file_size:            # We are given the complete file size which overrides everything else.
+        data_size_dsk = int(self.file_size)-self.DEFAULT_HEADER_SIZE
+        data_size_hdr = data_size_dsk
+      elif "FILE_SIZE" in header:        # Hope that this is right
+        data_size_dsk = int(header["FILE_SIZE"])    # these data sizes don't include header
+        data_size_hdr = data_size_dsk
+      else:                    # Failure
+        if self.warnings: print "WARNING: File is zipped and FILE_SIZE is not in header and file_size not supplied. "
+        have_size = False
+        data_size_hdr = data_size_dsk = 0
+    else:                     # File not zipped. Can get true complete file size
+      data_size_dsk = os.path.getsize(self.filename)-self.DEFAULT_HEADER_SIZE
+      if "FILE_SIZE" in header: data_size_hdr = int(header["FILE_SIZE"])
+      else: data_size_hdr = data_size_dsk
 
         if data_size_hdr != data_size_dsk:
-	  if self.warnings: print "WARNING: Data size in file doesn't match actual size. Using actual size."
+      if self.warnings: print "WARNING: Data size in file doesn't match actual size. Using actual size."
 
-	data_size = data_size_dsk		# Settle on this as the size of the data
+    data_size = data_size_dsk        # Settle on this as the size of the data
 
-	self.file_size = data_size+self.DEFAULT_HEADER_SIZE
-	
-	# Try to be clever and generate values that can be generated, while leaving 
- 	# undefined values as UNKNOWN.
+    self.file_size = data_size+self.DEFAULT_HEADER_SIZE
+
+    # Try to be clever and generate values that can be generated, while leaving 
+     # undefined values as UNKNOWN.
         if "BYTES_PER_AVG" in header:
           bpa = int(header["BYTES_PER_AVG"])
-	       
+
         if "BYTES_PER_AVG" in header and have_size:
- 	  if data_size % bpa != 0:
-	    if self.warnings: print "WARNING: BYTES_PER_AVG does not result in an integral number of scans"
-	    if "DATA_ORDER" in header and self.data_order == 'TIME_SUBSET_CHAN_TRIANGULAR_POL_POL_COMPLEX':
-	      if self.warnings: 
-		print 'DATA_ORDER is TIME_SUBSET_CHAN_TRIANGULAR_POL_POL_COMPLEX, resetting BYTES_PER_AVG to',(109*32896*2*2+9*109*1270*2*2)*8,"(fixed)"
-	      bpa = (109*32896*2*2+9*109*1270*2*2)*8
-	      if data_size % bpa != 0 and self.warnings:
-	        print "WARNING: BYTES_PER_AVG still doesn't give integral number of scans"
+       if data_size % bpa != 0:
+        if self.warnings: print "WARNING: BYTES_PER_AVG does not result in an integral number of scans"
+        if "DATA_ORDER" in header and self.data_order == 'TIME_SUBSET_CHAN_TRIANGULAR_POL_POL_COMPLEX':
+          if self.warnings: 
+        print 'DATA_ORDER is TIME_SUBSET_CHAN_TRIANGULAR_POL_POL_COMPLEX, resetting BYTES_PER_AVG to',(109*32896*2*2+9*109*1270*2*2)*8,"(fixed)"
+          bpa = (109*32896*2*2+9*109*1270*2*2)*8
+          if data_size % bpa != 0 and self.warnings:
+            print "WARNING: BYTES_PER_AVG still doesn't give integral number of scans"
 
           self.n_int = float(data_size) / bpa
 
-	else: self.n_int = "UNKNOWN"
+    else: self.n_int = "UNKNOWN"
 
-	if "TSAMP" in header and "NAVG" in header:
+    if "TSAMP" in header and "NAVG" in header:
           # Calculate integration time per accumulation
           tsamp      = float(header["TSAMP"]) * 1e-6   # Sampling time per channel, in microseconds
           navg       = int(header["NAVG"])             # Number of averages per integration
           int_tim    = tsamp * navg                    # Integration time is tsamp * navg
           self.t_int = int_tim
 
-	  if "OBS_OFFSET" in header and "BYTES_PER_AVG" in header:
+      if "OBS_OFFSET" in header and "BYTES_PER_AVG" in header:
             # Calculate the time offset since the observation started
             byte_offset = int(header["OBS_OFFSET"])
             num_int_since_obs_start = byte_offset / bpa  
             time_offset_since_obs_start = num_int_since_obs_start * int_tim
             self.t_offset = time_offset_since_obs_start
 
-	  else: self.t_offset = "UNKNOWN"	
+      else: self.t_offset = "UNKNOWN"    
 
-	else:
+    else:
           self.t_int = "UNKNOWN"
           self.t_offset = "UNKNOWN"
 
@@ -200,7 +200,7 @@ class DadaTimes(object):
       self.lst_str = "UNKNOWN"
       self.dec_str = "UNKNOWN"
       return
-    
+
 
     # Calculate times including LST
     dt = datetime.datetime.strptime(header.datestamp, "%Y-%m-%d-%H:%M:%S")+datetime.timedelta(seconds=header.t_offset)
@@ -236,27 +236,27 @@ def make_header(filename, write=True, warn=True, size=None):
 
   # Fill and either dump or return header. Slight differences depending on which.
   header_params = {
-	'N_CHANS'    : dada_file.n_chans,
-	'N_SCANS'    : dada_file.n_int,
-	'INT_TIME'   : dada_file.t_int,
-	'FREQCENT'   : dada_file.c_freq_mhz,
-	'BANDWIDTH'  : dada_file.bandwidth_mhz,
-	'RA_HRS'     : dada_times.lst_str,
-	'DEC_DEGS'   : dada_times.dec_str,
-	'DATE'       : dada_times.date_str,
-	'TIME'       : dada_times.time_str,
+    'N_CHANS'    : dada_file.n_chans,
+    'N_SCANS'    : dada_file.n_int,
+    'INT_TIME'   : dada_file.t_int,
+    'FREQCENT'   : dada_file.c_freq_mhz,
+    'BANDWIDTH'  : dada_file.bandwidth_mhz,
+    'RA_HRS'     : dada_times.lst_str,
+    'DEC_DEGS'   : dada_times.dec_str,
+    'DATE'       : dada_times.date_str,
+    'TIME'       : dada_times.time_str,
         'LOCALTIME'  : dada_times.localtime_str,
-	'LST'	     : dada_times.lst_str,
-	'DATA_ORDER' : dada_file.data_order,
-	'FILE_SIZE'  : dada_file.file_size,
-	'MODE'       : dada_file.mode,
-	'TIME_OFFSET': dada_file.t_offset,
-	'SOURCE'     : dada_file.source
+    'LST'         : dada_times.lst_str,
+    'DATA_ORDER' : dada_file.data_order,
+    'FILE_SIZE'  : dada_file.file_size,
+    'MODE'       : dada_file.mode,
+    'TIME_OFFSET': dada_file.t_offset,
+    'SOURCE'     : dada_file.source
   }
 
   if header_params["N_SCANS"] == "UNKNOWN": n_scans = "UNKNOWN"
   else: n_scans = str(int(header_params['N_SCANS']))
-  if write:	# This format is used by corr2uvfits and DuCT for transforming a DADA file.
+  if write:    # This format is used by corr2uvfits and DuCT for transforming a DADA file.
     output = open("header.txt","w")
     output.write("# Generated by make_header.py\n\n")
     output.write("FIELDNAME Zenith\n")
@@ -277,10 +277,10 @@ def make_header(filename, write=True, warn=True, size=None):
     output.write("LST   "+str(dada_times.lst)+"\n")
     output.write("INVERT_FREQ 0           # 1 if the freq decreases with channel number\n")
     output.write("CONJUGATE   1           # conjugate the raw data to fix sign convention problem if necessary\n")
-    output.write("GEOM_CORRECT	0\n")
+    output.write("GEOM_CORRECT    0\n")
     output.close()
 
-  return header_params		# If this function is called from other scripts (e.g. plot scripts) it can supply useful information
+  return header_params        # If this function is called from other scripts (e.g. plot scripts) it can supply useful information
 
 if __name__ == "__main__":
   if len(sys.argv) == 2: make_header(sys.argv[1])

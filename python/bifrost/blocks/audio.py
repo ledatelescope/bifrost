@@ -42,7 +42,7 @@ class AudioSourceBlock(SourceBlock):
                 'dtype':  'i' + str(reader.nbits),
                 'shape':  [-1, reader.channels],
                 'labels': ['time', 'pol'],
-                'scales': [1./reader.rate, None],
+                'scales': [1. / reader.rate, None],
                 'units':  ['s', None]
             },
             'frame_rate':   reader.rate,

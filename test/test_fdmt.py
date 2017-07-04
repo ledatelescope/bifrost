@@ -32,30 +32,33 @@ import bifrost as bf
 from bifrost.fdmt import Fdmt
 
 class FdmtTest(unittest.TestCase):
-	def test_fdmt(self):
-		fdmt = Fdmt()
-		ntime     = 1024
-		nchan     = 128
-		max_delay = 200
-		f0        = 1000.
-		bw        = 400.
-		df        = bw / nchan
-		exponent  = -2.0
-		fdmt.init(nchan, max_delay, f0, df, exponent, 'cuda')
-		idata = bf.asarray(np.random.normal(size=(nchan,ntime)).astype(np.float32), space='cuda')
-		
-		odata1 = bf.asarray(-999*np.ones((max_delay,ntime), np.float32), space='cuda')
-		fdmt.execute(idata, odata1)
-		odata1 = odata1.copy('system')
-		self.assertEqual(odata1.min(), -999)
-		# TODO: Need better tests
-		self.assertLess(odata1.max(), 100.)
-		
-		odata2 = bf.asarray(-999*np.ones((max_delay,ntime), np.float32), space='cuda')
-		workspace_size = fdmt.get_workspace_size(idata, odata2)
-		self.assertEqual(workspace_size, 3293184)
-		workspace = bf.asarray(np.empty(workspace_size, np.uint8), space='cuda')
-		workspace_ptr = workspace.ctypes.data
-		fdmt.execute_workspace(idata, odata2, workspace_ptr, workspace_size)
-		odata2 = odata2.copy('system')
-		np.testing.assert_equal(odata1, odata2)
+    def test_fdmt(self):
+        fdmt = Fdmt()
+        ntime     = 1024
+        nchan     = 128
+        max_delay = 200
+        f0        = 1000.
+        bw        = 400.
+        df        = bw / nchan
+        exponent  = -2.0
+        fdmt.init(nchan, max_delay, f0, df, exponent, 'cuda')
+        idata = bf.asarray(np.random.normal(size=(nchan, ntime))
+                           .astype(np.float32), space='cuda')
+
+        odata1 = bf.asarray(-999 * np.ones((max_delay, ntime), np.float32),
+                            space='cuda')
+        fdmt.execute(idata, odata1)
+        odata1 = odata1.copy('system')
+        self.assertEqual(odata1.min(), -999)
+        # TODO: Need better tests
+        self.assertLess(odata1.max(), 100.)
+
+        odata2 = bf.asarray(-999 * np.ones((max_delay, ntime), np.float32),
+                            space='cuda')
+        workspace_size = fdmt.get_workspace_size(idata, odata2)
+        self.assertEqual(workspace_size, 3293184)
+        workspace = bf.asarray(np.empty(workspace_size, np.uint8), space='cuda')
+        workspace_ptr = workspace.ctypes.data
+        fdmt.execute_workspace(idata, odata2, workspace_ptr, workspace_size)
+        odata2 = odata2.copy('system')
+        np.testing.assert_equal(odata1, odata2)

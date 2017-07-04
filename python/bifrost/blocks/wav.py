@@ -44,9 +44,10 @@ def wav_read_subchunk_fmt(f, size):
     assert(size >= 16)
     packed = f.read(16)
     f.seek(size - 16, 1)
-    keys = ('audio_fmt','nchan','sample_rate','byte_rate','block_align','nbit')
+    keys = ('audio_fmt', 'nchan', 'sample_rate', 'byte_rate',
+            'block_align', 'nbit')
     vals = struct.unpack('<HHIIHH', packed)
-    info = {k:v for k,v in zip(keys,vals)}
+    info = {k: v for k, v in zip(keys, vals)}
     return info
 def wav_read_header(f):
     # **TODO: Some files actually have extra subchunks _after_ the data as well
@@ -80,10 +81,10 @@ class WavSourceBlock(SourceBlock):
         hdr, self.bytes_remaining = wav_read_header(reader)
         ohdr = {
             '_tensor': {
-                'dtype':  'u8' if hdr['nbit'] == 8 else 'i'+str(hdr['nbit']),
+                'dtype':  'u8' if hdr['nbit'] == 8 else 'i' + str(hdr['nbit']),
                 'shape':  [-1, hdr['nchan']],
                 'labels': ['time', 'pol'],
-                'scales': [(0, 1./hdr['sample_rate']),
+                'scales': [(0, 1. / hdr['sample_rate']),
                            None],
                 'units':  ['s', None]
             },
@@ -145,8 +146,8 @@ class WavSinkBlock(SinkBlock):
 
         nchan = shape[-1]
         sample_time = convert_units(scales[-2][1], units[-2], 's')
-        sample_rate = int(round(1./sample_time))
-        frame_nbyte = nchan*dtype.itemsize
+        sample_rate = int(round(1. / sample_time))
+        frame_nbyte = nchan * dtype.itemsize
         ohdr = {
             'audio_fmt':   1, # 1 => PCM (linear quantization, uncompressed)
             'nchan':       nchan,
@@ -158,12 +159,12 @@ class WavSinkBlock(SinkBlock):
         filename = os.path.join(self.path, ihdr['name'])
 
         if ndim == 2 and axnames[-2] == 'time':
-            self.ofile = open(filename+'.wav', 'wb')
+            self.ofile = open(filename + '.wav', 'wb')
             wav_write_header(self.ofile, ohdr)
         elif ndim == 3 and axnames[-2] == 'time':
             nfile = shape[-3]
             filenames = [filename + '.%09i.tim' % i for i in xrange(nfile)]
-            self.ofiles = [open(fname+'.wav', 'wb') for fname in filenames]
+            self.ofiles = [open(fname + '.wav', 'wb') for fname in filenames]
             for ofile in self.ofiles:
                 wav_write_header(ofile, ohdr)
         else:
@@ -213,4 +214,3 @@ def write_wav(iring, path=None, *args, **kwargs):
         subchunks that appear after the data will be misinterpreted as data.
     """
     return WavSinkBlock(iring, path, *args, **kwargs)
-

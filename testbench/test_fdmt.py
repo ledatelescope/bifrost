@@ -77,7 +77,7 @@ class PgmWriterBlock(bfp.SinkBlock):
             #data = data.astype(np.uint16)
         if self.outfile is None:
             return
-        
+
         data.tofile(self.outfile)
         # HACK TESTING only write the first gulp
         self.outfile.close()
@@ -91,7 +91,7 @@ def main():
         print "Usage: example1.py file1.fil [file2.fil ...]"
         sys.exit(-1)
     filenames = sys.argv[1:]
-    
+
     h_filterbank = read_sigproc(filenames, gulp_nframe=16000, core=0)
     h_filterbank = scrunch(h_filterbank, 16, core=0)
     d_filterbank = copy(h_filterbank, space='cuda', gpu=0, core=2)
@@ -101,7 +101,7 @@ def main():
         d_dispersionbank  = transpose(d_dispersionbankT, ['time','pol','dispersion measure'])#[2,0,1])
     h_dispersionbank = copy(d_dispersionbank, space='system', core=3)
     write_pgm(h_dispersionbank, core=3)
-    
+
     pipeline = bfp.get_default_pipeline()
     graph_filename = "example1.dot"
     with open(graph_filename, 'w') as dotfile:

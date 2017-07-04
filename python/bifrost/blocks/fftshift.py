@@ -68,11 +68,11 @@ class FftShiftBlock(TransformBlock):
         idata = ispan.data
         odata = ospan.data
         shape = idata.shape
-        ind_names = ['i%i'%i for i in xrange(idata.ndim)]
+        ind_names = ['i%i' % i for i in xrange(idata.ndim)]
         inds = list(ind_names)
         for ax in self.axes:
             if self.inverse:
-                inds[ax] += '-(a.shape(%i)-a.shape(%i)/2)' % (ax,ax)
+                inds[ax] += '-(a.shape(%i)-a.shape(%i)/2)' % (ax, ax)
             else:
                 inds[ax] += '-a.shape(%i)/2' % ax
         inds = ','.join(inds)

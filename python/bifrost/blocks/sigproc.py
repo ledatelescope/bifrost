@@ -64,15 +64,15 @@ class SigprocSourceBlock(SourceBlock):
             nbit = max(nbit, 8)
         ohdr = {
             '_tensor': {
-                'dtype':  ['u','i'][ihdr['signed']] + str(nbit),
+                'dtype':  ['u', 'i'][ihdr['signed']] + str(nbit),
                 'shape':  [-1, ihdr['nifs'], ihdr['nchans']],
                 'labels': ['time', 'pol', 'freq'],
-                'scales': [(tstart_unix,ihdr['tsamp']),
+                'scales': [(tstart_unix, ihdr['tsamp']),
                            None,
-                           (ihdr['fch1'],ihdr['foff'])],
+                           (ihdr['fch1'], ihdr['foff'])],
                 'units':  ['s', None, 'MHz']
             },
-            'frame_rate': 1./ihdr['tsamp'], # TODO: Used for anything?
+            'frame_rate': 1. / ihdr['tsamp'], # TODO: Used for anything?
             'source_name':   _get_with_default(ihdr, 'source_name'),
             'rawdatafile':   _get_with_default(ihdr, 'rawdatafile'),
             'az_start':      _get_with_default(ihdr, 'az_start'),
@@ -223,7 +223,7 @@ class SigprocSinkBlock(SinkBlock):
                     raise ValueError("Expected first axis to be 'beam'")
                 nbeam = shape[-4]
                 sigproc_hdr['nbeams'] = nbeam
-                filenames = [filename + '.%06iof.%06i.fil' % (b+1, nbeam)
+                filenames = [filename + '.%06iof.%06i.fil' % (b + 1, nbeam)
                              for b in xrange(nbeam)]
                 self.ofiles = [open(fname, 'wb') for fname in filenames]
                 for b in xrange(nbeam):
@@ -262,7 +262,7 @@ class SigprocSinkBlock(SinkBlock):
                 ndm = shape[-3]
                 dm0 = scales[-3][0]
                 ddm = scales[-3][1]
-                dms = [dm0+ddm*d for d in xrange(ndm)]
+                dms = [dm0 + ddm * d for d in xrange(ndm)]
                 dms = [convert_units(dm, units[-3], 'pc cm^-3') for dm in dms]
                 filenames = [filename + '.%09.2f.tim' % dm for dm in dms]
                 self.ofiles = [open(fname, 'wb') for fname in filenames]
@@ -294,7 +294,7 @@ class SigprocSinkBlock(SinkBlock):
             self.dt = scales[-4][1]
 
         else:
-            raise ValueError("Axis labels do not correspond to a known data format: "+
+            raise ValueError("Axis labels do not correspond to a known data format: " +
                              str(axnames))
 
     def on_sequence_end(self, iseq):

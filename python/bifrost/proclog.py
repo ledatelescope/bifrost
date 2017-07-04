@@ -34,102 +34,102 @@ import ctypes
 import numpy as np
 
 try:
-	import simplejson as json
+    import simplejson as json
 except ImportError:
-	print "WARNING: Install simplejson for better performance"
-	import json
+    print "WARNING: Install simplejson for better performance"
+    import json
 
 class ProcLog(object):
-	def __init__(self, name):
-		self.obj = _get(_bf.ProcLogCreate(name=name), retarg=0)
-	def __del__(self):
-		if hasattr(self, 'obj') and bool(self.obj):
-			_bf.ProcLogDestroy(self.obj)
-	def update(self, contents):
-		if isinstance(contents, dict):
-			"""Updates (replaces) the contents of the log
-			contents: string or dict containing data to write to the log
-			"""
-			contents = '\n'.join(['%s : %s' % item
-			                      for item in contents.items()])
-		_check(_bf.ProcLogUpdate(self.obj, contents))
+    def __init__(self, name):
+        self.obj = _get(_bf.ProcLogCreate(name=name), retarg=0)
+    def __del__(self):
+        if hasattr(self, 'obj') and bool(self.obj):
+            _bf.ProcLogDestroy(self.obj)
+    def update(self, contents):
+        if isinstance(contents, dict):
+            """Updates (replaces) the contents of the log
+            contents: string or dict containing data to write to the log
+            """
+            contents = '\n'.join(['%s : %s' % item
+                                  for item in contents.items()])
+        _check(_bf.ProcLogUpdate(self.obj, contents))
 
 def _multi_convert(value):
-	"""
-	Function try and convert numerical values to numerical types.
-	"""
-	
-	try:
-		value = int(value, 10)
-	except ValueError:
-		try:
-			value = float(value)
-		except ValueError:
-			pass
-	return value
+    """
+    Function try and convert numerical values to numerical types.
+    """
+
+    try:
+        value = int(value, 10)
+    except ValueError:
+        try:
+            value = float(value)
+        except ValueError:
+            pass
+    return value
 
 def load_by_filename(filename):
-	"""
-	Function to read in a ProcLog file and return the contents as a 
-	dictionary.
-	"""
-	
-	contents = {}
-	with open(filename, 'r') as fh:
-		## Read the file all at once to avoid
-		lines = fh.read()
-		
-		## Loop through lines
-		for line in lines.split('\n'):
-			### Parse the key : value pairs
-			try:
-				key, value = line.split(':', 1)
-			except ValueError:
-				continue
-				
-			### Trim off excess whitespace
-			key = key.strip().rstrip()
-			value = value.strip().rstrip()
-			
-			### Convert and save
-			contents[key] = _multi_convert(value)
-			
-	# Done
-	return contents
+    """
+    Function to read in a ProcLog file and return the contents as a
+    dictionary.
+    """
+
+    contents = {}
+    with open(filename, 'r') as fh:
+        # Read the file all at once to avoid
+        lines = fh.read()
+
+        # Loop through lines
+        for line in lines.split('\n'):
+            # Parse the key : value pairs
+            try:
+                key, value = line.split(':', 1)
+            except ValueError:
+                continue
+
+            # Trim off excess whitespace
+            key = key.strip().rstrip()
+            value = value.strip().rstrip()
+
+            # Convert and save
+            contents[key] = _multi_convert(value)
+
+    # Done
+    return contents
 
 def load_by_pid(pid):
-	"""
-	Function to read in and parse all ProcLog files associated with a given 
-	process ID.  The contents of these files are returned as a collection of
-	dictionaries ordered by:
-	  block name
-	    ProcLog name
-	       entry name
-	"""
-	
-	# Make sure we have a directory to load from
-	baseDir = os.path.join('/dev/shm/bifrost/', str(pid))
-	if not os.path.isdir(baseDir):
-		raise RuntimeError("Cannot find log directory associated with PID %s" % pid)
-		
-	# Find the relevant files
-	filenames = glob.glob(os.path.join(baseDir, '*', '*'))
-	
-	# Load
-	contents = {}
-	for filename in filenames:
-		## Extract the block and logfile names
-		logName = os.path.basename(filename)
-		blockName = os.path.basename( os.path.dirname(filename) )
-		
-		## Load the file's contents
-		subContents = load_by_filename(filename)
-		
-		## Save
-		try:
-			contents[blockName][logName] = subContents
-		except KeyError:
-			contents[blockName] = {logName:subContents}
-			
-	# Done
-	return contents
+    """
+    Function to read in and parse all ProcLog files associated with a given
+    process ID.  The contents of these files are returned as a collection of
+    dictionaries ordered by:
+      block name
+        ProcLog name
+           entry name
+    """
+
+    # Make sure we have a directory to load from
+    baseDir = os.path.join('/dev/shm/bifrost/', str(pid))
+    if not os.path.isdir(baseDir):
+        raise RuntimeError("Cannot find log directory associated with PID %s" % pid)
+
+    # Find the relevant files
+    filenames = glob.glob(os.path.join(baseDir, '*', '*'))
+
+    # Load
+    contents = {}
+    for filename in filenames:
+        # Extract the block and logfile names
+        logName = os.path.basename(filename)
+        blockName = os.path.basename( os.path.dirname(filename) )
+
+        # Load the file's contents
+        subContents = load_by_filename(filename)
+
+        # Save
+        try:
+            contents[blockName][logName] = subContents
+        except KeyError:
+            contents[blockName] = {logName: subContents}
+
+    # Done
+    return contents

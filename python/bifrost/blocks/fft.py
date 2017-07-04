@@ -70,16 +70,16 @@ class FftBlock(TransformBlock):
         # TODO: This is slightly hacky; it needs to emulate the type casting
         #         that Bifrost does internally for the FFT.
         itype = itype.as_floating_point()
-        
+
         # Get axis indices, allowing for lookup-by-label
         self.axes = [itensor['labels'].index(axis)
                      if isinstance(axis, basestring)
                      else axis
                      for axis in self.specified_axes]
-        
+
         axes = self.axes
         shape = [itensor['shape'][ax] for ax in axes]
-        
+
         otype = itype.as_real() if self.real_output else itype.as_complex()
         ohdr = deepcopy(ihdr)
         otensor = ohdr['_tensor']
@@ -93,7 +93,7 @@ class FftBlock(TransformBlock):
         frame_axis = itensor['shape'].index(-1)
         if frame_axis in axes:
             raise KeyError("Cannot transform frame axis; reshape the data stream first")
-        
+
         # Adjust output shape for real transforms
         if self.mode == 'r2c':
             otensor['shape'][axes[-1]] //= 2
@@ -103,7 +103,7 @@ class FftBlock(TransformBlock):
             otensor['shape'][axes[-1]]  *= 2
             shape[-1] -= 1
             shape[-1] *= 2
-        
+
         for i, (ax, length) in enumerate(zip(axes, shape)):
             if 'units' in otensor:
                 units = otensor['units'][ax]
@@ -111,7 +111,7 @@ class FftBlock(TransformBlock):
             if 'scales' in otensor:
                 otensor['scales'][ax][0] = 0 # TODO: Is this OK?
                 scale = otensor['scales'][ax][1]
-                otensor['scales'][ax][1] = 1. / (scale*length)
+                otensor['scales'][ax][1] = 1. / (scale * length)
             if 'labels' in otensor and self.axis_labels is not None:
                 otensor['labels'][ax] = self.axis_labels[i]
         return ohdr
