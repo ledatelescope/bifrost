@@ -62,7 +62,8 @@ def wav_read_header(f):
         else:
             f.seek(subchunk_size, 1) # Ignore any other subchunks
         subchunk_id, subchunk_size = wav_read_subchunk_desc(f)
-    return hdr
+    data_size = subchunk_size
+    return hdr, data_size
 def wav_write_header(f, hdr, chunk_size=0, data_size=0):
     # Note: chunk_size = file size - 8
     f.write(struct.pack('<4sI4s4sIHHIIHH4sI',
@@ -76,7 +77,7 @@ class WavSourceBlock(SourceBlock):
     def create_reader(self, sourcename):
         return open(sourcename, 'rb')
     def on_sequence(self, reader, sourcename):
-        hdr = wav_read_header(reader)
+        hdr, self.bytes_remaining = wav_read_header(reader)
         ohdr = {
             '_tensor': {
                 'dtype':  'u8' if hdr['nbit'] == 8 else 'i'+str(hdr['nbit']),
@@ -96,6 +97,10 @@ class WavSourceBlock(SourceBlock):
         nbyte = reader.readinto(ospan.data)
         if nbyte % ospan.frame_nbyte:
             raise IOError("Input file is truncated")
+        # Note: This ensures only the data subchunk is read, avoiding any
+        #         subchunks that appear after the data.
+        nbyte = min(nbyte, self.bytes_remaining)
+        self.bytes_remaining -= nbyte
         # HACK TESTING avoid incomplete final gulp that messes up split_axis
         if nbyte < ospan.data.nbytes:
             return [0]
