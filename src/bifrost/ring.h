@@ -203,10 +203,9 @@ BFstatus bfRingSpanAcquire(BFrspan*    span,
                            BFsize      size);
 BFstatus bfRingSpanRelease(BFrspan span);
 
-//BFstatus bfRingSpanClose(BFrspan span);
-BFstatus bfRingSpanStillValid(BFrspan  span,
-                              BFoffset offset,
-                              BFbool*  valid); // true if span not overwritten beyond offset
+// Returns in *val the number of bytes in the span that have been overwritten
+//   at the time of the call (always zero for guaranteed sequences).
+BFstatus bfRingSpanGetSizeOverwritten(BFrspan span, BFsize* val);
 //BFbool bfRingSpanGood(BFrspan span); // true if span opened successfully
 //BFstatus bfRingSpanGetSequence(BFspan span, BFrsequence* sequence);
 // Any span

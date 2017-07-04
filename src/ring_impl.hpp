@@ -500,6 +500,15 @@ public:
 	             BFoffset    offset,
 	             BFsize      size);
 	~BFrspan_impl();
+	inline BFsize size_overwritten() const {
+		if( _sequence->guaranteed() ) {
+			return 0;
+		}
+		BFring_impl::lock_guard_type lock(this->ring()->_mutex);
+		return std::max(std::min(BFdelta(this->ring()->_tail - _begin),
+		                         BFdelta(this->size())),
+		                BFdelta(0));
+	}
 	//void advance(BFdelta delta, BFsize size, BFbool guarantee);
 	//inline virtual BFsequence_sptr sequence() const { return _sequence; }
 	inline virtual void*           data()     const { return _data; }

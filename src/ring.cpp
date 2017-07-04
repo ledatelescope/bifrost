@@ -342,25 +342,15 @@ BFstatus   bfRingSpanRelease(BFrspan span) {
 	return BF_STATUS_SUCCESS;
 }
 
-/*
-BFstatus bfRingSpanOpen(BFrspan*   span,
-                        BFsequence sequence,
-                        BFoffset   offset,
-                        BFsize     size,
-                        BFbool     guarantee);
-BFstatus   bfRingSpanAdvance(BFrspan  span,
-                             BFdelta  delta,
-                             BFsize   size,
-                             BFbool   guarantee);
-BFstatus   bfRingSpanClose(BFrspan span) {
+// Returns in *val the number of bytes in the span that have been overwritten
+//   at the time of the call (always zero for guaranteed sequences).
+BFstatus   bfRingSpanGetSizeOverwritten(BFrspan span, BFsize* val) {
 	BF_ASSERT(span, BF_STATUS_INVALID_HANDLE);
-	delete span;
-	return BF_STATUS_SUCCESS;
+	BF_ASSERT(val,  BF_STATUS_INVALID_POINTER);
+	BF_TRY_RETURN_ELSE(*val = span->size_overwritten(),
+	                   *val = 0);
 }
-BFstatus   bfRingSpanStillValid(BFrspan  span,
-                                BFoffset offset,
-                                BFbool*  valid); // true if span not overwritten beyond offset
-*/
+
 /*
 BFstatus bfRingSpanGetSequence(BFspan span, BFsequence* sequence) {
 	BF_ASSERT(span,     BF_STATUS_INVALID_HANDLE);

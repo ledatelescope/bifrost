@@ -38,6 +38,7 @@ import bifrost as bf
 from bifrost.ring2 import Ring, ring_view
 from temp_storage import TempStorage
 from bifrost.proclog import ProcLog
+from bifrost.ndarray import memset_array # TODO: This feels a bit hacky
 
 # Note: This must be called before any devices are initialized. It's also
 #          almost always desirable when running pipelines, so we do it here at
@@ -330,11 +331,18 @@ class Block(BlockScope):
 		obuf_nframes = [1*ogulp_nframe for ogulp_nframe in ogulp_nframes]
 		return [exit_stack.enter_context(oring.begin_sequence(ohdr,obuf_nframe))
 		        for (oring,ohdr,obuf_nframe) in zip(orings,oheaders,obuf_nframes)]
-	def reserve_spans(self, exit_stack, oseqs, ispans):
-		igulp_nframes = [span.nframe for span in ispans]
+	def reserve_spans(self, exit_stack, oseqs, igulp_nframes=[]):
 		ogulp_nframes = self._define_output_nframes(igulp_nframes)
 		return [exit_stack.enter_context(oseq.reserve(ogulp_nframe))
 		        for (oseq,ogulp_nframe) in zip(oseqs,ogulp_nframes)]
+	def commit_spans(self, ospans, ostrides):
+		# Allow returning None to indicate complete consumption
+		if ostrides is None:
+			ostrides = [ospan.nframe for ospan in ospans]
+		ostrides = [ostride if ostride is not None else ospan.nframe
+		            for (ostride,ospan) in zip(ostrides,ospans)]
+		for ospan, ostride in zip(ospans, ostrides):
+			ospan.commit(ostride)
 	def _define_output_nframes(self, input_nframes):
 		return self.define_output_nframes(input_nframes)
 	def define_output_nframes(self, input_nframes):
@@ -381,14 +389,13 @@ class SourceBlock(Block):
 					while not self.shutdown_event.is_set():
 						prev_time = time.time()
 						with ExitStack() as ospan_stack:
-							ospans = self.reserve_spans(ospan_stack, oseqs, ispans=[])
+							ospans = self.reserve_spans(ospan_stack, oseqs)
 							cur_time = time.time()
 							reserve_time = cur_time - prev_time
 							prev_time = cur_time
 							ostrides = self.on_data(ireader, ospans)
 							bf.device.stream_synchronize()
-							for ospan, ostride in zip(ospans, ostrides):
-								ospan.commit(ostride)
+							self.commit_spans(ospans, ostrides)
 							# TODO: Is this an OK way to detect end-of-data?
 							if any([ostride==0 for ostride in ostrides]):
 								break
@@ -420,6 +427,7 @@ class SourceBlock(Block):
 
 
 def _span_slice(soft_slice):
+	# Infers optional values in soft_slice (i.e., those that are None)
 	start = soft_slice.start or 0
 	return slice(start,
 	             soft_slice.stop,
@@ -482,37 +490,72 @@ class MultiTransformBlock(Block):
 			
 			igulp_nframes = [islice.stop - islice.start for islice in islices]
 			
+			force_skip = False
+			
 			with ExitStack() as oseq_stack:
 				oseqs = self.begin_sequences(oseq_stack, orings, oheaders, igulp_nframes)
 				prev_time = time.time()
 				for ispans in izip(*[iseq.read(islice.stop - islice.start,
-				                              islice.step,
-				                              islice.start)
+				                               islice.step,
+				                               islice.start)
 				                    for (iseq,islice)
 				                    in zip(iseqs,islices)]):
 					if self.shutdown_event.is_set():
 						break
+					
+					if any([ispan.nframe_skipped for ispan in ispans]):
+						# There were skipped (overwritten) frames
+						with ExitStack() as ospan_stack:
+							iskip_slices = [slice(islice.start,
+							                      islice.start + ispan.nframe_skipped,
+							                      islice.step)
+							                for islice,ispan in
+							                zip(islices,ispans)]
+							iskip_nframes = [ispan.nframe_skipped
+							                 for ispan in ispans]
+							ospans = self.reserve_spans(ospan_stack, oseqs, iskip_nframes)
+							self._on_skip(iskip_slices, ospans)
+							bf.device.stream_synchronize()
+							self.commit_spans(ospans, ostrides)
+					
+					if all([ispan.nframe == 0 for ispan in ispans]):
+						# No data to see here, move right along
+						continue
+					
 					cur_time = time.time()
 					acquire_time = cur_time - prev_time
 					prev_time = cur_time
+					
 					with ExitStack() as ospan_stack:
-						ospans = self.reserve_spans(ospan_stack, oseqs, ispans)
+						igulp_nframes = [ispan.nframe for ispan in ispans]
+						ospans = self.reserve_spans(ospan_stack, oseqs, igulp_nframes)
 						cur_time = time.time()
 						reserve_time = cur_time - prev_time
 						prev_time = cur_time
-						# *TODO: See if can fuse together multiple on_data calls here before
-						#          calling stream_synchronize().
-						#        Consider passing .data instead of rings here
-						ostrides = self._on_data(ispans, ospans)
-						# TODO: // Default to not spinning the CPU: cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
-						bf.device.stream_synchronize()
-						# Allow returning None to indicate complete consumption
-						if ostrides is None:
-							ostrides = [ospan.nframe for ospan in ospans]
-						ostrides = [ostride if ostride is not None else ospan.nframe
-						            for (ostride,ospan) in zip(ostrides,ospans)]
-						for ospan, ostride in zip(ospans, ostrides):
-							ospan.commit(ostride)
+						
+						if not force_skip:
+							# *TODO: See if can fuse together multiple on_data calls here before
+							#          calling stream_synchronize().
+							#        Consider passing .data instead of rings here
+							ostrides = self._on_data(ispans, ospans)
+							bf.device.stream_synchronize()
+						
+						any_frames_overwritten = any([ispan.nframe_overwritten
+						                              for ispan in ispans])
+						if force_skip or any_frames_overwritten:
+							# Note: To allow interrupted pipelines to catch up,
+							#         we force-skip an additional gulp whenever
+							#         a span is overwritten during on_data.
+							force_skip = any_frames_overwritten
+							iskip_slices = [slice(ispan.frame_offset,
+							                      ispan.frame_offset + ispan.nframe_overwritten,
+							                      islice.step)
+							                for ispan,islice
+							                in zip(ispans, islices)]
+							ostrides = self._on_skip(iskip_slices, ospans)
+							bf.device.stream_synchronize()
+						
+						self.commit_spans(ospans, ostrides)
 					cur_time = time.time()
 					process_time = cur_time - prev_time
 					prev_time = cur_time
@@ -527,6 +570,8 @@ class MultiTransformBlock(Block):
 		return self.on_sequence_end(iseqs)
 	def _on_data(self, ispans, ospans):
 		return self.on_data(ispans, ospans)
+	def _on_skip(self, islices, ospans):
+		return self.on_skip(islices, ospans)
 	def define_output_nframes(self, input_nframes):
 		"""Return output nframe for each output, given input_nframes.
 		"""
@@ -541,6 +586,9 @@ class MultiTransformBlock(Block):
 	def on_data(self, ispans, ospans):
 		"""Process data from from ispans to ospans and return the number of
 		frames to commit for each output (or None to commit complete spans)."""
+		raise NotImplementedError
+	def on_skip(self, islices, ospans):
+		"""Handle skipped frames"""
 		raise NotImplementedError
 
 class TransformBlock(MultiTransformBlock):
@@ -583,6 +631,18 @@ class TransformBlock(MultiTransformBlock):
 		"""Return the number of output frames to commit, or None to commit all
 		"""
 		raise NotImplementedError
+	def _on_skip(self, islices, ospans):
+		return [self.on_skip(islices[0], ospans[0])]
+	def on_skip(self, islice, ospan):
+		"""Handle skipped frames"""
+		# Note: This zeros the whole gulp, even though only part of the gulp
+		#         may have been overwritten.
+		memset_array(ospan.data, 0)
+		#for i in xrange(0, ispan.nframe_skipped, igulp_nframe):
+		#	inframe = min(igulp_nframe, inskipped - i)
+		#	onframe = self._define_output_nframes(inframe)
+		#	with oseq.reserve(onframe) as ospan:
+		#		bf.ndarray.memset_array(ospan.data, 0)
 
 # TODO: Need something like on_sequence_end to allow closing open files etc.
 class SinkBlock(MultiTransformBlock):

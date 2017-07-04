@@ -430,6 +430,13 @@ class ReadSpan(SpanBase):
 		           frame_offset*tensor['frame_nbyte'],
 		           nframe*tensor['frame_nbyte'])
 		self._set_base_obj(self.obj)
+		self.nframe_skipped = min(self.frame_offset - frame_offset, nframe)
+		self.requested_frame_offset = frame_offset
+	@property
+	def nframe_overwritten(self):
+		nbyte_overwritten = int(_fast_get(_bf.RingSpanGetSizeOverwritten, self.obj))
+		assert(nbyte_overwritten  % self.frame_nbyte == 0)
+		return nbyte_overwritten // self.frame_nbyte
 	def __enter__(self):
 		return self
 	def __exit__(self, type, value, tb):
