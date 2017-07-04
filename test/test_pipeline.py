@@ -29,23 +29,27 @@
 import unittest
 import bifrost as bf
 
-from bifrost.blocks.sigproc   import read_sigproc
-from bifrost.blocks.copy      import copy, CopyBlock
-from bifrost.blocks.transpose import transpose
-from bifrost.blocks.fdmt      import fdmt
+from bifrost.blocks import *
 
 class CallbackBlock(CopyBlock):
         """Testing-only block which calls user-defined
             functions on sequence and on data"""
-	def __init__(self, iring, seq_callback, data_callback, *args, **kwargs):
+	def __init__(self, iring, seq_callback, data_callback, data_ref=None,
+	             *args, **kwargs):
 		super(CallbackBlock, self).__init__(iring, *args, **kwargs)
 		self.seq_callback  = seq_callback
 		self.data_callback = data_callback
+		self.data_ref = data_ref
 	def on_sequence(self, iseq):
 		self.seq_callback(iseq)
 		return super(CallbackBlock, self).on_sequence(iseq)
 	def on_data(self, ispan, ospan):
 		self.data_callback(ispan, ospan)
+		if self.data_ref is not None:
+			# Note: This can be used to check data from outside the pipeline,
+			#         which is useful when exceptions inside blocks prevent
+			#         downstream callback blocks from ever executing.
+			self.data_ref['odata'] = ospan.data.copy()
 		return super(CallbackBlock, self).on_data(ispan, ospan)
 
 class PipelineTest(unittest.TestCase):
@@ -69,19 +73,36 @@ class PipelineTest(unittest.TestCase):
 			data = CallbackBlock(data, check_sequence, check_data)
 			pipeline.run()
 	def test_simple_copy(self):
+		def check_sequence(seq):
+			pass
+		def check_data(ispan, ospan):
+			pass
 		gulp_nframe = 101
 		with bf.Pipeline() as pipeline:
 			data = read_sigproc([self.fil_file], gulp_nframe)
-			data = copy(data)
+			for _ in xrange(100):
+				data = copy(data)
+			ref = {}
+			data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
 			pipeline.run()
+			self.assertEqual(ref['odata'].dtype, 'uint8')
+			self.assertEqual(ref['odata'].shape, (21, 1, 2))
 	def test_cuda_copy(self):
+		def check_sequence(seq):
+			pass
+		def check_data(ispan, ospan):
+			pass
 		gulp_nframe = 101
 		with bf.Pipeline() as pipeline:
 			data = read_sigproc([self.fil_file], gulp_nframe)
 			for _ in xrange(100):
 				data = copy(data, space='cuda')
 				data = copy(data, space='cuda_host')
+			ref = {}
+			data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
 			pipeline.run()
+			self.assertEqual(ref['odata'].dtype, 'uint8')
+			self.assertEqual(ref['odata'].shape, (21, 1, 2))
 	def test_fdmt(self):
 		gulp_nframe = 101
 		# TODO: Check handling of multiple pols (not currently supported?)
@@ -102,8 +123,10 @@ class PipelineTest(unittest.TestCase):
 			data = copy(data, space='cuda')
 			data = transpose(data, ['pol', 'freq', 'time'])
 			data = fdmt(data, max_dm=30.)
-			data = CallbackBlock(data, check_sequence, check_data)
+			ref = {}
+			data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
 			data = transpose(data, ['time', 'pol', 'dispersion'])
 			data = copy(data, space='cuda_host')
 			pipeline.run()
-	
+			self.assertEqual(ref['odata'].dtype, 'float32')
+			self.assertEqual(ref['odata'].shape, (1, 5, 47))
