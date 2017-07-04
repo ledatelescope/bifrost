@@ -405,7 +405,9 @@ class WriteSpan(SpanBase):
 		self.obj = _bf.BFwspan()
 		_fast_call(_bf.RingSpanReserve, self.obj, ring.obj, nbyte)
 		self._set_base_obj(self.obj)
-		self.commit_nframe = nframe
+		# Note: We default to 0 instead of nframe so that we don't accidentally
+		#         commit bogus data if a block throws an exception.
+		self.commit_nframe = 0
 		# TODO: Why do exceptions here not show up properly?
 		#raise ValueError("SHOW ME THE ERROR")
 	def commit(self, nframe):
