@@ -47,5 +47,17 @@ inline void check(BFstatus status) {
 		throw std::runtime_error(bfGetStatusString(status));
 	}
 }
+inline bool check_failure_only(BFstatus status) {
+	BF_DISABLE_DEBUG();
+	switch( status ) {
+	case BF_STATUS_MEM_ALLOC_FAILED:
+	case BF_STATUS_MEM_OP_FAILED:
+	case BF_STATUS_DEVICE_ERROR:
+	case BF_STATUS_INTERNAL_ERROR:
+		check(status);
+		return false; // Unreachable
+	default: return status == BF_STATUS_SUCCESS;
+	}
+}
 
 } // namespace bifrost

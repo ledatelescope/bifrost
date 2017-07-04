@@ -32,6 +32,8 @@
  *         https://arxiv.org/abs/1411.5373
  */
 
+// ***TODO: Replace BFsize with long/size_t/int as appropriate
+
 #ifndef BF_FDMT_H_INCLUDE_GUARD_
 #define BF_FDMT_H_INCLUDE_GUARD_
 
@@ -116,8 +118,8 @@ BFstatus bfFdmtSetStream(BFfdmt      plan,
  *        samples of the computed output array will be incomplete.
  */
 BFstatus bfFdmtExecute(BFfdmt         plan,
-                       BFarray const* in,
-                       BFarray const* out,
+                       BFarray const* iarray,
+                       BFarray const* oarray,
                        BFbool         negative_delays,
                        void*          exec_storage,
                        BFsize*        exec_storage_size);
