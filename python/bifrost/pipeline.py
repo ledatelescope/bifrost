@@ -348,11 +348,13 @@ class Block(BlockScope):
 		return ['any']*len(self.irings)
 
 class SourceBlock(Block):
-	def __init__(self, sourcenames, gulp_nframe, *args, **kwargs):
+	def __init__(self, sourcenames, gulp_nframe, space=None, *args, **kwargs):
 		super(SourceBlock, self).__init__([], *args, gulp_nframe=gulp_nframe, **kwargs)
 		self.sourcenames = sourcenames
 		default_space = 'cuda_host' if bf.core.cuda_enabled() else 'system'
-		self.orings = [self.create_ring(space=default_space)]
+		if space is None:
+			space = default_space
+		self.orings = [self.create_ring(space=space)]
 		self._seq_count = 0
 		self.perf_proclog = ProcLog(self.name+"/perf")
 		self.out_proclog = ProcLog(self.name+"/out")
