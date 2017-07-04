@@ -54,13 +54,16 @@ class CallbackBlock(CopyBlock):
 
 class PipelineTest(unittest.TestCase):
 	def setUp(self):
-		self.fil_file = "./data/2chan4bitNoDM.fil"
+		# Note: This file needs to be large enough to fill the minimum-size
+		#         ring buffer at least a few times over in order to properly
+		#         test things.
+		self.fil_file = "./data/2chan16bitNoDM.fil"
 	def test_read_sigproc(self):
 		gulp_nframe = 101
 		def check_sequence(seq):
 			tensor = seq.header['_tensor']
 			self.assertEqual(tensor['shape'],  [-1,1,2])
-			self.assertEqual(tensor['dtype'],  'u8')
+			self.assertEqual(tensor['dtype'],  'u16')
 			self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
 			self.assertEqual(tensor['units'],  ['s', None, 'MHz'])
 		def check_data(ispan, ospan):
@@ -72,7 +75,7 @@ class PipelineTest(unittest.TestCase):
 			data = read_sigproc([self.fil_file], gulp_nframe)
 			data = CallbackBlock(data, check_sequence, check_data)
 			pipeline.run()
-	def test_simple_copy(self):
+	def run_test_simple_copy(self, guarantee):
 		def check_sequence(seq):
 			pass
 		def check_data(ispan, ospan):
@@ -80,13 +83,17 @@ class PipelineTest(unittest.TestCase):
 		gulp_nframe = 101
 		with bf.Pipeline() as pipeline:
 			data = read_sigproc([self.fil_file], gulp_nframe)
-			for _ in xrange(100):
-				data = copy(data)
+			for _ in xrange(20):
+				data = copy(data, guarantee=guarantee)
 			ref = {}
 			data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
 			pipeline.run()
-			self.assertEqual(ref['odata'].dtype, 'uint8')
-			self.assertEqual(ref['odata'].shape, (21, 1, 2))
+			self.assertEqual(ref['odata'].dtype, 'uint16')
+			self.assertEqual(ref['odata'].shape, (29, 1, 2))
+	def test_simple_copy(self):
+		self.run_test_simple_copy(guarantee=True)
+	def test_simple_copy_unguaranteed(self):
+		self.run_test_simple_copy(guarantee=False)
 	def test_cuda_copy(self):
 		def check_sequence(seq):
 			pass
@@ -95,14 +102,14 @@ class PipelineTest(unittest.TestCase):
 		gulp_nframe = 101
 		with bf.Pipeline() as pipeline:
 			data = read_sigproc([self.fil_file], gulp_nframe)
-			for _ in xrange(100):
+			for _ in xrange(10):
 				data = copy(data, space='cuda')
 				data = copy(data, space='cuda_host')
 			ref = {}
 			data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
 			pipeline.run()
-			self.assertEqual(ref['odata'].dtype, 'uint8')
-			self.assertEqual(ref['odata'].shape, (21, 1, 2))
+			self.assertEqual(ref['odata'].dtype, 'uint16')
+			self.assertEqual(ref['odata'].shape, (29, 1, 2))
 	def test_fdmt(self):
 		gulp_nframe = 101
 		# TODO: Check handling of multiple pols (not currently supported?)
@@ -129,4 +136,4 @@ class PipelineTest(unittest.TestCase):
 			data = copy(data, space='cuda_host')
 			pipeline.run()
 			self.assertEqual(ref['odata'].dtype, 'float32')
-			self.assertEqual(ref['odata'].shape, (1, 5, 47))
+			self.assertEqual(ref['odata'].shape, (1, 5, 17))
