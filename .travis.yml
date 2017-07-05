@@ -9,12 +9,30 @@ services:
     - docker
 
 install:
-    - make docker-cpu
+    - sudo apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        git \
+        pkg-config \
+        software-properties-common \
+        exuberant-ctags
+    - pip --no-cache-dir install \
+        setuptools \
+        numpy \
+        matplotlib \
+        contextlib2 \
+        simplejson \
+        pint \
+        graphviz \
+        git+https://github.com/MatthieuDartiailh/pyclibrary.git
+    - make -j NOCUDA=1
+    - make install
+
     
 script:
-    - docker run --rm ledatelescope/bifrost /bin/sh -c "cd /bifrost/test && sh ./travis.sh"
-    - bash ./.travis_deploy_docs.sh
-
+    - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+    - cd /bifrost/test
+    - sh ./travis.sh
 env:
     global:
         - ENCRYPTION_LABEL: "886f75ecbd69"
