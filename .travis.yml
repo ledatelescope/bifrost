@@ -18,9 +18,10 @@ addons:
             - software-properties-common
             - exuberant-ctags
             - python-dev
+            - gfortran
 
 install:
-    - pip --no-cache-dir install \
+    - sudo pip --no-cache-dir install \
         setuptools \
         numpy \
         matplotlib \
@@ -30,16 +31,14 @@ install:
         graphviz \
         git+https://github.com/MatthieuDartiailh/pyclibrary.git \
         coveralls
-    - make -j NOCUDA=1
+    - sudo make -j NOCUDA=1
     - sudo make install
-    - cd python
-    - python setup.py install
 
-    
+
 script:
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
     - cd test
-    - ./travis.sh
+    - sudo ./travis.sh
 env:
     global:
         - ENCRYPTION_LABEL: "886f75ecbd69"
