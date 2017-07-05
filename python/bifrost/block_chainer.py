@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,36 +25,25 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-Bifrost pipeline processing library
-"""
+import bifrost.blocks
 
-# TODO: Decide how to organise the namespace
-import core, memory, affinity, ring, block, address, udp_socket
-import pipeline
-import device
-from ndarray import ndarray, asarray, empty_like, empty, zeros_like, zeros
-import views
-from map import map
-from pipeline import Pipeline, get_default_pipeline, block_scope
-import blocks
-from block_chainer import BlockChainer
-# import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
-# from transpose import transpose
-# from unpack import unpack
-# from quantize import quantize
+class BlockChainer(object):
+    """Convenient tool for constructing linear chains of blocks
 
-try:
-    from .version import __version__
-except ImportError:
-    print "*************************************************************************"
-    print "Please run `make` from the root of the source tree to generate version.py"
-    print "*************************************************************************"
-    raise
-__author__     = "The Bifrost Authors"
-__copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
-__credits__    = ["Ben Barsdell"]
-__license__    = "BSD 3-Clause"
-__maintainer__ = "Ben Barsdell"
-__email__      = "benbarsdell@gmail.com"
-__status__     = "Development"
+    Examples::
+
+        bc = bf.BlockChainer()
+        bc.read_sigproc("foo.fil", gulp_nframe=1)
+        bc.copy('cuda')
+        bc.copy('cuda_host')
+        bc.write_sigproc()
+    """
+    def __getattr__(self, attr):
+        func = getattr(bifrost.blocks, attr)
+        def wrapper(*args, **kwargs):
+            if hasattr(self, 'block'):
+                self.block = func(self.block, *args, **kwargs)
+            else:
+                self.block = func(*args, **kwargs)
+            return self.block
+        return wrapper
