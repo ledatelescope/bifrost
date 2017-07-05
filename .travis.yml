@@ -8,15 +8,17 @@ python:
 services:
     - docker
 
+addons:
+    apt:
+        packages:
+            - build-essential
+            - curl
+            - git
+            - pkg-config
+            - software-properties-common
+            - exuberant-ctags
+
 install:
-    - sudo apt-get update
-    - sudo apt-get install -y --no-install-recommends \
-        build-essential \
-        curl \
-        git \
-        pkg-config \
-        software-properties-common \
-        exuberant-ctags
     - pip --no-cache-dir install \
         setuptools \
         numpy \
