@@ -144,19 +144,37 @@ class BlockScope(object):
     def dot_graph(self, parent_graph=None):
         from graphviz import Digraph
 
-        g = Digraph('cluster_' + self._name) if parent_graph is None else \
-            parent_graph.subgraph('cluster_' + self._name,
-                                  label=self._name)
+        #graph_attr = {'label': self._name}
+        graph_attr = {}
+        if parent_graph is None:
+            g = Digraph('cluster_' + self._name, graph_attr=graph_attr)
+        else:
+            g = parent_graph.subgraph('cluster_' + self._name,
+                                      label=self._name)
         for child in self._children:
             if isinstance(child, Block):
                 block = child
+                label = block.name.split('/', 1)[1]
+                block_colors = defaultdict(lambda: 'white')
+                block_colors['CopyBlock'] = 'lightsteelblue'
+                block_type = block.__class__.__name__
+                fillcolor = block_colors[block_type]
                 g.node(block.name,
                        #label='%s: %s' % (block.type,block.name),
-                       label=block.name,
-                       shape='box')
+                       label=label,
+                       shape='box',
+                       style='filled',
+                       fillcolor=fillcolor)
                 for oring in block.orings:
+                    space_colors = {
+                        'system':    'orange',
+                        'cuda':      'limegreen',
+                        'cuda_host': 'deepskyblue'
+                    }
                     g.node(oring.name,
-                           shape='ellipse')
+                           shape='ellipse',
+                           style='filled',
+                           fillcolor=space_colors[oring.space])
                     g.edge(block.name, oring.name)
                 for iring in block.irings:
                     g.edge(iring.name, block.name)
