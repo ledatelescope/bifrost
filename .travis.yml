@@ -17,6 +17,7 @@ addons:
             - pkg-config
             - software-properties-common
             - exuberant-ctags
+            - python-dev
 
 install:
     - pip --no-cache-dir install \
