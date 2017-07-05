@@ -27,7 +27,8 @@ install:
         simplejson \
         pint \
         graphviz \
-        git+https://github.com/MatthieuDartiailh/pyclibrary.git
+        git+https://github.com/MatthieuDartiailh/pyclibrary.git \
+        coveralls
     - make -j NOCUDA=1
     - make install
 
@@ -40,3 +41,6 @@ env:
     global:
         - ENCRYPTION_LABEL: "886f75ecbd69"
         - COMMIT_AUTHOR_EMAIL: "travis@ledatelescope.github.io"
+
+after_success:
+    - coveralls
