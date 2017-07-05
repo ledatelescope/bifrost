@@ -38,7 +38,7 @@ install:
 script:
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
     - cd test
-    - sudo ./travis.sh
+    - sudo -E bash ./travis.sh
 env:
     global:
         - ENCRYPTION_LABEL: "886f75ecbd69"
