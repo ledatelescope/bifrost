@@ -36,7 +36,7 @@ install:
     
 script:
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
-    - cd /bifrost/test
+    - cd test
     - sh ./travis.sh
 env:
     global:
