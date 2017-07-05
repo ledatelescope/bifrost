@@ -47,23 +47,34 @@ python: libbifrost
 .PHONY: python
 
 #GPU Docker build
-IMAGE_NAME ?= ledatelescope/bifrost
-docker:
-	docker build --pull -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile.gpu -t $(IMAGE_NAME) .
-.PHONY: docker
+docker-base:
+	echo "FROM $(CUDA_IMAGE_NAME)" > _Dockerfile.tmp
+	cat Dockerfile.base >> _Dockerfile.tmp
+	docker build --pull -t $(IMAGE_NAME):latest-base -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR)-base -f _Dockerfile.tmp .
+	rm _Dockerfile.tmp
+.PHONY: docker-base
 
-#GPU Docker prereq build
-# (To be used for testing new builds rapidly)
-IMAGE_NAME ?= ledatelescope/bifrost
-docker_prereq:
-	docker build --pull -t $(IMAGE_NAME)_prereq:$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile_prereq.gpu -t $(IMAGE_NAME)_prereq .
-.PHONY: docker_prereq
+docker: docker-base
+	echo "FROM $(IMAGE_NAME):latest-base" > _Dockerfile.tmp
+	cat Dockerfile >> _Dockerfile.tmp
+	docker build --build-arg make_args="" -t $(IMAGE_NAME):latest -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f _Dockerfile.tmp .
+	rm _Dockerfile.tmp
+.PHONY: docker
 
 #CPU-only Docker build
-IMAGE_NAME ?= ledatelescope/bifrost
-docker-cpu:
-	docker build --pull -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile.cpu -t $(IMAGE_NAME) .
-.PHONY: docker
+docker-base-cpu:
+	echo "FROM $(CPU_IMAGE_NAME)" > _Dockerfile.tmp
+	cat Dockerfile.base >> _Dockerfile.tmp
+	docker build --pull -t $(IMAGE_NAME):latest-base-cpu -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR)-base-cpu -f _Dockerfile.tmp .
+	rm _Dockerfile.tmp
+.PHONY: docker-base
+
+docker-cpu: docker-base-cpu
+	echo "FROM $(IMAGE_NAME):latest-base-cpu" > _Dockerfile.tmp
+	cat Dockerfile >> _Dockerfile.tmp
+	docker build --build-arg make_args="NOCUDA=1" -t $(IMAGE_NAME):latest-cpu -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR)-cpu -f _Dockerfile.tmp .
+	rm _Dockerfile.tmp
+.PHONY: docker-cpu
 
 # TODO: Consider adding a mode 'develop=1' that makes symlinks instead of copying
 #         the library and headers.

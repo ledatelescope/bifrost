@@ -20,6 +20,11 @@ CUDA_INCDIR   ?= $(CUDA_HOME)/include
 
 ALIGNMENT ?= 4096 # Memory allocation alignment
 
+# Docker image names
+IMAGE_NAME      ?= ledatelescope/bifrost
+CUDA_IMAGE_NAME ?= nvidia/cuda:8.0 # Base layer for the GPU (default) images
+CPU_IMAGE_NAME  ?= ubuntu:16.04    # Base layer for the -cpu images
+
 #NODEBUG    = 1 # Disable debugging mode (use this for production releases)
 #TRACE      = 1 # Enable tracing mode (generates annotations for use with nvprof/nvvp)
 #NOCUDA     = 1 # Disable CUDA support
