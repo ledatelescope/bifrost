@@ -30,7 +30,8 @@ install:
         pint \
         graphviz \
         git+https://github.com/MatthieuDartiailh/pyclibrary.git \
-        coveralls
+        coveralls \
+        codecov
     - sudo make -j NOCUDA=1
     - sudo make install
 
@@ -46,3 +47,4 @@ env:
 
 after_success:
     - coveralls
+    - codecov
