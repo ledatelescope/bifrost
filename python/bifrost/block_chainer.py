@@ -25,25 +25,44 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import bifrost.blocks
+import bifrost
+
+class _BlockChainerProxy(object):
+    def __init__(self, parent, module):
+        self.parent = parent
+        self.module = module
+    def __getattr__(self, attr):
+        func = getattr(self.module, attr)
+        return self.parent._get(func)
 
 class BlockChainer(object):
-    """Convenient tool for constructing linear chains of blocks
+    """Convenient tool for constructing linear chains of blocks and views
 
     Examples::
 
         bc = bf.BlockChainer()
-        bc.read_sigproc("foo.fil", gulp_nframe=1)
-        bc.copy('cuda')
-        bc.copy('cuda_host')
-        bc.write_sigproc()
+        bc.blocks.read_sigproc("foo.fil", gulp_nframe=1)
+        bc.blocks.copy('cuda')
+        bc.views.split_axis('freq', 2, 'fine_freq')
+        bc.views.merge_axes('freq', 'fine_freq')
+        bc.blocks.copy('cuda_host')
+        bc.custom(my_block)(arg1, arg2, ...)
+        bc.blocks.write_sigproc()
+        print bc.last_block # The last added block (this can also be set)
     """
-    def __getattr__(self, attr):
-        func = getattr(bifrost.blocks, attr)
+    @property
+    def blocks(self):
+        return _BlockChainerProxy(self, bifrost.blocks)
+    @property
+    def views(self):
+        return _BlockChainerProxy(self, bifrost.views)
+    def custom(self, func):
+        return self._get(func)
+    def _get(self, func):
         def wrapper(*args, **kwargs):
-            if hasattr(self, 'block'):
-                self.block = func(self.block, *args, **kwargs)
+            if hasattr(self, 'last_block'):
+                self.last_block = func(self.last_block, *args, **kwargs)
             else:
-                self.block = func(*args, **kwargs)
-            return self.block
+                self.last_block = func(*args, **kwargs)
+            return self.last_block
         return wrapper
