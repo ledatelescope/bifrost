@@ -292,10 +292,14 @@ private:
 		std::complex<FType> denom = std::pow(c_fmin, g) - std::pow(c_fmax, g);
 		FType eps = std::numeric_limits<FType>::epsilon();
 		if( std::norm(denom) < eps*eps ) {
-			denom *= eps / std::abs(denom);
+			// Note: The only time I've seen this fail is when nchan==1
+			BF_ASSERT_EXCEPTION(std::norm(numer) < eps*eps,
+			                    BF_STATUS_INTERNAL_ERROR);
+			return 0;
 		}
 		std::complex<FType> result = numer / denom;
-		assert(std::abs(result.imag()) <= eps);
+		BF_ASSERT_EXCEPTION(std::abs(result.imag()) <= eps,
+		                    BF_STATUS_INTERNAL_ERROR);
 		return result.real();
 	}
 	FType rel_delay(FType flo, FType fhi) {
@@ -705,6 +709,8 @@ BFstatus bfFdmtInit(BFfdmt  plan,
                     BFsize* plan_storage_size) {
 	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
+	// TODO: Is there any sensible/natural way to handle nchan==1?
+	BF_ASSERT(nchan > 1, BF_STATUS_INVALID_ARGUMENT);
 	BF_ASSERT(space_accessible_from(space, BF_SPACE_CUDA),
 	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_TRY(plan->init(nchan, max_delay, f0, df, exponent));
