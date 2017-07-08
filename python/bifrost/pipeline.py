@@ -534,7 +534,7 @@ class MultiTransformBlock(Block):
                             iskip_nframes = [ispan.nframe_skipped
                                              for ispan in ispans]
                             ospans = self.reserve_spans(ospan_stack, oseqs, iskip_nframes)
-                            self._on_skip(iskip_slices, ospans)
+                            ostrides = self._on_skip(iskip_slices, ospans)
                             bf.device.stream_synchronize()
                             self.commit_spans(ospans, ostrides)
 
