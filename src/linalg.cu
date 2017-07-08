@@ -500,7 +500,13 @@ BFstatus bfLinAlgMatMul(BFlinalg       handle,
 	BF_ASSERT(handle, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(a, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(c, BF_STATUS_INVALID_POINTER);
+	BF_ASSERT(space_accessible_from(a->space, BF_SPACE_CUDA),
+	          BF_STATUS_UNSUPPORTED_SPACE);
+	BF_ASSERT(space_accessible_from(c->space, BF_SPACE_CUDA),
+	          BF_STATUS_UNSUPPORTED_SPACE);
 	if( b ) {
+		BF_ASSERT(space_accessible_from(b->space, BF_SPACE_CUDA),
+		          BF_STATUS_UNSUPPORTED_SPACE);
 		return bfMatMul_ab(handle, alpha, a, b, beta, c);
 	} else {
 		return bfMatMul_aa(handle, alpha, a, beta, c);
