@@ -74,8 +74,12 @@ class SerializeBlock(SinkBlock):
         if hdr['name'] != '':
             self.basename = hdr['name']
         else:
-            self.basename = '%020i' % hdr.time_tag
-        self.basename = os.path.join(self.path, self.basename)
+            self.basename = '%020i' % hdr['time_tag']
+        if self.path != '':
+            # TODO: May need more flexibility in path handling
+            #         E.g., may want to keep subdirs from original name
+            self.basename = os.path.basename(self.basename)
+            self.basename = os.path.join(self.path, self.basename)
         # Write sequence header file
         with open(self.basename + '.bf.json', 'w') as hdr_file:
             hdr_file.write(json.dumps(hdr, indent=4, sort_keys=True))
