@@ -46,10 +46,12 @@ class ProcLog(object):
         if hasattr(self, 'obj') and bool(self.obj):
             _bf.ProcLogDestroy(self.obj)
     def update(self, contents):
+        """Updates (replaces) the contents of the log
+        contents: string or dict containing data to write to the log
+        """
+        if contents is None:
+            raise ValueError("Contents cannot be None")
         if isinstance(contents, dict):
-            """Updates (replaces) the contents of the log
-            contents: string or dict containing data to write to the log
-            """
             contents = '\n'.join(['%s : %s' % item
                                   for item in contents.items()])
         _check(_bf.ProcLogUpdate(self.obj, contents))
