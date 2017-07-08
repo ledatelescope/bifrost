@@ -334,8 +334,8 @@ def write_sigproc(iring, path=None, *args, **kwargs):
     Args:
         iring (Ring or Block): Input data source.
         path (str): Path specifying where to write output files.
-        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
-        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
+        *args: Arguments to ``bifrost.pipeline.SinkBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.SinkBlock``.
 
     **Tensor semantics**::
 
