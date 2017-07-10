@@ -26,7 +26,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import sys
 import threading
+import Queue
 import time
 import signal
 from copy import copy
@@ -198,6 +200,9 @@ def join_all(threads, timeout):
             return alive_threads
         alive_threads[0].join(available_time)
 
+class PipelineInitError(Exception):
+    pass
+
 class Pipeline(BlockScope):
     instance_count = 0
     def __init__(self, name=None, **kwargs):
@@ -208,9 +213,22 @@ class Pipeline(BlockScope):
         self.blocks = []
         self.shutdown_timeout = 5.
         self.all_blocks_finished_initializing_event = threading.Event()
-        self.block_initialization_failed_event = threading.Event()
+        self.block_init_queue = Queue.Queue()
     def as_default(self):
         return PipelineContext(self)
+    def synchronize_block_initializations(self):
+        # Wait for all blocks to finish initializing
+        uninitialized_blocks = set(self.blocks)
+        while len(uninitialized_blocks):
+            # Note: This will get stuck if a transform block has no input ring
+            block, init_succeeded = self.block_init_queue.get()
+            uninitialized_blocks.remove(block)
+            if not init_succeeded:
+                self.shutdown()
+                raise PipelineInitError(
+                    "The following block failed to initialize: " + block.name)
+        # Tell blocks that they can begin data processing
+        self.all_blocks_finished_initializing_event.set()
     def run(self):
         # Launch blocks as threads
         self.threads = [threading.Thread(target=block.run, name=block.name)
@@ -218,17 +236,7 @@ class Pipeline(BlockScope):
         for thread in self.threads:
             thread.daemon = True
             thread.start()
-
-        # Wait for all blocks to finish initializing
-        for block in self.blocks:
-            block.finished_initializing_event.wait()
-        # Check for initialization failure
-        if self.block_initialization_failed_event.is_set():
-            self.shutdown()
-            raise RuntimeError("One or more blocks failed to initialize")
-        # Tell blocks that they can begin data processing
-        self.all_blocks_finished_initializing_event.set()
-
+        self.synchronize_block_initializations()
         # Wait for blocks to finish processing
         for thread in self.threads:
             # Note: Doing it this way allows signals to be caught here
@@ -325,7 +333,6 @@ class Block(BlockScope):
             rnames['ring%i' % i] = r.name
         self.in_proclog.update(rnames)
         self.init_trace = ''.join(traceback.format_stack()[:-1])
-        self.finished_initializing_event = threading.Event()
     def shutdown(self):
         self.shutdown_event.set()
     def create_ring(self, *args, **kwargs):
@@ -345,10 +352,9 @@ class Block(BlockScope):
             try:
                 self.main(active_orings)
             except Exception:
-                self.pipeline.block_initialization_failed_event.set()
-                self.finished_initializing_event.set()
-                print "From block instantiated here:"
-                print self.init_trace
+                self.pipeline.block_init_queue.put((self, False))
+                sys.stderr.write("From block instantiated here:\n")
+                sys.stderr.write(self.init_trace)
                 raise
     def num_outputs(self):
         # TODO: This is a little hacky
@@ -370,7 +376,7 @@ class Block(BlockScope):
                  in zip(orings, oheaders, obuf_nframes)]
 
         # Synchronize all blocks here to ensure no sequence race conditions
-        self.finished_initializing_event.set()
+        self.pipeline.block_init_queue.put((self, True))
         self.pipeline.all_blocks_finished_initializing_event.wait()
 
         return oseqs
