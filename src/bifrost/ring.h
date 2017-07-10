@@ -167,7 +167,7 @@ BFstatus bfRingSequenceOpenEarliest(BFrsequence* sequence,
 //BFstatus bfRingSequenceOpenNext(BFrsequence* sequence, BFrsequence previous);
 //BFstatus bfRingSequenceNext(BFrsequence* sequence);
 BFstatus bfRingSequenceNext(BFrsequence sequence);
-BFstatus bfRingSequenceOpenSame(BFrsequence* sequence, BFrsequence existing);
+//BFstatus bfRingSequenceOpenSame(BFrsequence* sequence, BFrsequence existing);
 BFstatus bfRingSequenceClose(BFrsequence sequence);
 
 // Sequence common

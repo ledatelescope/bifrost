@@ -197,27 +197,31 @@ public:
 	//inline static ReadSequence open_next(ReadSequence const& previous) {
 	//	BFrsequence obj; check( bfRingSequenceOpenNext(&obj, previous._obj) ); return ReadSequence(obj);
 	//}
-	inline static ReadSequence open_same(ReadSequence const& existing) {
-		BFrsequence obj; check( bfRingSequenceOpenSame(&obj, existing._obj) ); return ReadSequence(obj);
+	//inline static ReadSequence open_same(ReadSequence const& existing) {
+	//	BFrsequence obj; check( bfRingSequenceOpenSame(&obj, existing._obj) ); return ReadSequence(obj);
+	//}
+	inline ReadSequence(ReadSequence&& other)
+		: _obj(other._obj) {
+		other._obj = 0;
 	}
-	inline ReadSequence(ReadSequence const& other)
+	inline ReadSequence(ReadSequence const& other) = delete;/*
 		: _obj(0) {
 		check( bfRingSequenceOpenSame(&_obj, other._obj) );
 		this->set_base_obj((BFsequence)_obj);
-	}
+	}*/
 	inline ReadSequence& increment() {
 		//check( bfRingSequenceNext(&_obj) );
 		check( bfRingSequenceNext(_obj) );
 		return *this;
 	}
-	inline ReadSequence& operator=(ReadSequence const& other) {
+	inline ReadSequence& operator=(ReadSequence const& other) = delete;/* {
 		if( &other != this ) {
 			this->close();
 			ReadSequence cpy(other);
 			this->swap(cpy);
 		}
 		return *this;
-	}
+	}*/
 	inline void swap(ReadSequence& other) {
 		std::swap(_obj, other._obj);
 	}
