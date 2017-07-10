@@ -207,6 +207,8 @@ class Pipeline(BlockScope):
         super(Pipeline, self).__init__(name=name, **kwargs)
         self.blocks = []
         self.shutdown_timeout = 5.
+        self.all_blocks_finished_initializing_event = threading.Event()
+        self.block_initialization_failed_event = threading.Event()
     def as_default(self):
         return PipelineContext(self)
     def run(self):
@@ -216,7 +218,18 @@ class Pipeline(BlockScope):
         for thread in self.threads:
             thread.daemon = True
             thread.start()
-        # Wait for blocks to finish
+
+        # Wait for all blocks to finish initializing
+        for block in self.blocks:
+            block.finished_initializing_event.wait()
+        # Check for initialization failure
+        if self.block_initialization_failed_event.is_set():
+            self.shutdown()
+            raise RuntimeError("One or more blocks failed to initialize")
+        # Tell blocks that they can begin data processing
+        self.all_blocks_finished_initializing_event.set()
+
+        # Wait for blocks to finish processing
         for thread in self.threads:
             # Note: Doing it this way allows signals to be caught here
             while thread.is_alive():
@@ -224,6 +237,8 @@ class Pipeline(BlockScope):
     def shutdown(self):
         for block in self.blocks:
             block.shutdown()
+        # Ensure all blocks can make progress
+        self.all_blocks_finished_initializing_event.set()
         join_all(self.threads, timeout=self.shutdown_timeout)
         for thread in self.threads:
             if thread.is_alive():
@@ -310,7 +325,7 @@ class Block(BlockScope):
             rnames['ring%i' % i] = r.name
         self.in_proclog.update(rnames)
         self.init_trace = ''.join(traceback.format_stack()[:-1])
-
+        self.finished_initializing_event = threading.Event()
     def shutdown(self):
         self.shutdown_event.set()
     def create_ring(self, *args, **kwargs):
@@ -330,6 +345,8 @@ class Block(BlockScope):
             try:
                 self.main(active_orings)
             except Exception:
+                self.pipeline.block_initialization_failed_event.set()
+                self.finished_initializing_event.set()
                 print "From block instantiated here:"
                 print self.init_trace
                 raise
@@ -347,10 +364,16 @@ class Block(BlockScope):
         #         additional buffering is defined by the reader(s) rather
         #         than the writer.
         obuf_nframes = [1 * ogulp_nframe for ogulp_nframe in ogulp_nframes]
-        return [exit_stack.enter_context(oring.begin_sequence(ohdr,
-                                                              obuf_nframe))
-                for (oring, ohdr, obuf_nframe)
-                in zip(orings, oheaders, obuf_nframes)]
+        oseqs = [exit_stack.enter_context(oring.begin_sequence(ohdr,
+                                                               obuf_nframe))
+                 for (oring, ohdr, obuf_nframe)
+                 in zip(orings, oheaders, obuf_nframes)]
+
+        # Synchronize all blocks here to ensure no sequence race conditions
+        self.finished_initializing_event.set()
+        self.pipeline.all_blocks_finished_initializing_event.wait()
+
+        return oseqs
     def reserve_spans(self, exit_stack, oseqs, igulp_nframes=[]):
         ogulp_nframes = self._define_output_nframes(igulp_nframes)
         return [exit_stack.enter_context(oseq.reserve(ogulp_nframe))
@@ -514,6 +537,8 @@ class MultiTransformBlock(Block):
 
             with ExitStack() as oseq_stack:
                 oseqs = self.begin_sequences(oseq_stack, orings, oheaders, igulp_nframes)
+                if self.shutdown_event.is_set():
+                    break
                 prev_time = time.time()
                 for ispans in izip(*[iseq.read(islice.stop - islice.start,
                                                islice.step,
@@ -521,7 +546,7 @@ class MultiTransformBlock(Block):
                                     for (iseq, islice)
                                     in zip(iseqs, islices)]):
                     if self.shutdown_event.is_set():
-                        break
+                        return
 
                     if any([ispan.nframe_skipped for ispan in ispans]):
                         # There were skipped (overwritten) frames
@@ -583,6 +608,8 @@ class MultiTransformBlock(Block):
                         'acquire_time': acquire_time,
                         'reserve_time': reserve_time,
                         'process_time': process_time})
+            # **TODO: This will not be called if an exception is raised
+            #           Need to call it from a context manager somehow
             self._on_sequence_end(iseqs)
     def _on_sequence(self, iseqs):
         return self.on_sequence(iseqs)
