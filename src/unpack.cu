@@ -286,6 +286,25 @@ void foreach_simple_cpu(T const* in,
 	}
 }
 
+template<typename T, typename U, typename V, typename Func, typename Size>
+#ifdef BF_CUDA_ENABLED
+__host__
+#endif
+void foreach_promote_cpu(T const* in,
+                         U*       tmp,
+                         V*       out,
+                         Size     nelement,
+                         Func     func) {
+	U tmp2 = 0;
+	for( Size i=0; i<nelement; ++i ) {
+		func(in[i], tmp2);
+		for( Size j=0; j<sizeof(U)/sizeof(T); j++ ) {
+			out[i*sizeof(U)/sizeof(T) + j] = int8_t((tmp2 >> j*8) & 0xFF);
+		}
+		//std::cout << std::hex << (int)in[i] << " --> " << (int)out[i] << std::endl;
+	}
+}
+
 #ifdef BF_CUDA_ENABLED
 template<typename T, typename U, typename Func, typename Size>
 __global__ void foreach_simple_gpu(T const* in,
@@ -329,6 +348,57 @@ inline void launch_foreach_simple_gpu(T const*     in,
 	                &nelement, 
 	                &func};
 	cudaLaunchKernel((void*)foreach_simple_gpu<T,U,Func,Size>,
+	                 grid, block,
+	                 &args[0], 0, stream);
+}
+
+template<typename T, typename U, typename V, typename Func, typename Size>
+__global__ void foreach_promote_gpu(T const* in,
+                                    V*       out,
+                                    Size     nelement,
+                                    Func     func) {
+	Size v0 = threadIdx.x + (blockIdx.x + blockIdx.y*gridDim.x)*blockDim.x;
+	
+	if( v0 < nelement ) {
+		U tmp2 = 0;
+		func(in[v0], tmp2);
+		for( Size j=0; j<sizeof(U)/sizeof(T); j++ ) {
+			out[v0*sizeof(U)/sizeof(T) + j] = int8_t((tmp2 >> j*8) & 0xFF);
+		}
+		//std::cout << std::hex << (int)in[i] << " --> " << (int)out[i] << std::endl;
+	}
+}
+
+template<typename T, typename U, typename V, typename Func, typename Size>
+inline void launch_foreach_promote_gpu(T const*     in,
+                                       U*           tmp,
+                                       V*           out,
+                                       Size         nelement,
+                                       Func         func,
+                                       cudaStream_t stream=0) {
+	//cout << "LAUNCH for " << nelement << endl;
+	dim3 block(512, 1); // TODO: Tune this
+	Size first = std::min((nelement-1)/block.x+1, 65535ul);
+	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
+	if( block.x*first > nelement ) {
+		secnd = 1;
+	}
+	
+	dim3 grid(first, secnd);
+	/*
+	cout << "  Block size is " << block.x << " by " << block.y << endl;
+	cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
+	cout << "  Maximum size is " << block.x*grid.x*grid.y << endl;
+	if( block.x*grid.x*grid.y >= nelement ) {
+		cout << "  -> Valid" << endl;
+	}
+	*/
+	
+	void* args[] = {&in,
+	                &out, 
+	                &nelement, 
+	                &func};
+	cudaLaunchKernel((void*)foreach_promote_gpu<T,U,V,Func,Size>,
 	                 grid, block,
 	                 &args[0], 0, stream);
 }
@@ -381,6 +451,8 @@ BFstatus bfUnpack(BFarray const* in,
 	}
 #endif
 	
+	float not_really_used = 0;
+	
 #define CALL_FOREACH_SIMPLE_CPU_UNPACK(itype,otype) \
 	foreach_simple_cpu((itype*)in->data, \
 	                   (otype*)out->data, \
@@ -388,6 +460,15 @@ BFstatus bfUnpack(BFarray const* in,
 	                   UnpackFunctor<itype,otype>(byteswap, \
 	                                              align_msb, \
 	                                              conjugate))
+	                                              
+#define CALL_FOREACH_PROMOTE_CPU_UNPACK(itype,ttype,otype) \
+	foreach_promote_cpu((itype*)in->data, \
+	                    (ttype*)&not_really_used, \
+	                    (otype*)out->data, \
+	                    nelement, \
+	                    UnpackFunctor<itype,ttype>(byteswap, \
+	                                               align_msb, \
+	                                               conjugate))
 	                                              
 #ifdef BF_CUDA_ENABLED
 #define CALL_FOREACH_SIMPLE_GPU_UNPACK(itype,otype) \
@@ -398,6 +479,17 @@ BFstatus bfUnpack(BFarray const* in,
 	                                                     align_msb, \
 	                                                     conjugate), \
 	                          (cudaStream_t)0)
+	                          
+#define CALL_FOREACH_PROMOTE_GPU_UNPACK(itype,ttype,otype) \
+	launch_foreach_promote_gpu((itype*)in->data, \
+	                           (ttype*)&not_really_used, \
+	                           (otype*)out->data, \
+	                           nelement, \
+	                           UnpackFunctor<itype,ttype>(byteswap, \
+	                                                      align_msb, \
+	                                                      conjugate), \
+	                           (cudaStream_t)0)
+
 #endif
 	
 	if( out->dtype == BF_DTYPE_I8 ||
@@ -408,7 +500,15 @@ BFstatus bfUnpack(BFarray const* in,
 		case BF_DTYPE_I1: {
 			BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 8;
-			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int64_t); break;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,int64_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int64_t);
+			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int64_t);
+#endif
 		}
 		case BF_DTYPE_CI2: nelement *= 2;
 		case BF_DTYPE_I2: {
@@ -473,12 +573,117 @@ BFstatus bfUnpack(BFarray const* in,
 		}
 		default: BF_FAIL("Supported bfUnpack input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 		}
+		
+	} else if( out->dtype == BF_DTYPE_F32 ||
+	           out->dtype == BF_DTYPE_CF32 ) {
+	//case BF_DTYPE_I8: {
+		switch( in->dtype ) {
+		case BF_DTYPE_CI1: nelement *= 2;
+		case BF_DTYPE_I1: {
+			BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 8;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int64_t,float);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int64_t,float);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int64_t,float);
+#endif
+		}
+		case BF_DTYPE_CI2: nelement *= 2;
+		case BF_DTYPE_I2: {
+			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 4;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int32_t,float);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int32_t,float);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int32_t,float);
+#endif
+			break;
+		}
+		case BF_DTYPE_CI4: nelement *= 2;
+		case BF_DTYPE_I4: {
+			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 2;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int16_t,float);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int16_t,float);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int16_t,float);
+#endif
+			break;
+		}
+		default: BF_FAIL("Supported bfUnpack input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
+		}
+		
+	} else if( out->dtype == BF_DTYPE_F64 ||
+	           out->dtype == BF_DTYPE_CF64 ) {
+	//case BF_DTYPE_I8: {
+		switch( in->dtype ) {
+		case BF_DTYPE_CI1: nelement *= 2;
+		case BF_DTYPE_I1: {
+			BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 8;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int64_t,double);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int64_t,double);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int64_t,double);
+#endif
+		}
+		case BF_DTYPE_CI2: nelement *= 2;
+		case BF_DTYPE_I2: {
+			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 4;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int32_t,double);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int32_t,double);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int32_t,double);
+#endif
+			break;
+		}
+		case BF_DTYPE_CI4: nelement *= 2;
+		case BF_DTYPE_I4: {
+			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 2;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int16_t,double);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int16_t,double);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int16_t,double);
+#endif
+			break;
+		}
+		default: BF_FAIL("Supported bfUnpack input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
+		}
+		
 	} else {
 		BF_FAIL("Supported bfUnpack output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 #undef CALL_FOREACH_SIMPLE_CPU_UNPACK
+#undef CALL_FOREACH_PROMOTE_CPU_UNPACK
 #ifdef BF_CUDA_ENABLED
 #undef CALL_FOREACH_SIMPLE_GPU_UNPACK
+#undef CALL_FOREACH_PROMOTE_GPU_UNPACK
 #endif
 	return BF_STATUS_SUCCESS;
 }
