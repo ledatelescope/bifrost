@@ -146,7 +146,7 @@ void launch_beamformer_kernel(int          ntime,
                               OutType*     d_out,
                               cudaStream_t stream=0) {
 	// cout << "LAUNCH for " << ntime << " by " << nchan << " by " << nstand << endl;
-	dim3 block(32, 16); // TODO: Tune this
+	dim3 block(8, 8); // TODO: Tune this
 	dim3 grid(std::min((ntime-1)/block.x+1, 65535u),
 	          std::min((nchan-1)/block.y+1, 65535u));
 	/*
@@ -217,7 +217,7 @@ void launch_beamformer_kernel_CI4(int          ntime,
                                   OutType*     d_out,
                                   cudaStream_t stream=0) {
 	// cout << "LAUNCH for " << ntime << " by " << nchan << " by " << nstand << endl;
-	dim3 block(32, 16); // TODO: Tune this
+	dim3 block(8, 8); // TODO: Tune this
 	dim3 grid(std::min((ntime-1)/block.x+1, 65535u),
 	          std::min((nchan-1)/block.y+1, 65535u));
 	/*
