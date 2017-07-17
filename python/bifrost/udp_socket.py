@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,27 +31,27 @@ import ctypes
 import numpy as np
 
 class UDPSocket(object):
-	def __init__(self):
-		self.obj = _get(_bf.UdpSocketCreate(), retarg=0)
-	def __del__(self):
-		if hasattr(self, 'obj') and bool(self.obj):
-			_bf.UdpSocketDestroy(self.obj)
-	def bind(self, local_addr):
-		_check( _bf.UdpSocketBind(self.obj, local_addr.obj) )
-	def connect(self, remote_addr):
-		_check( _bf.UdpSocketConnect(self.obj, remote_addr.obj) )
-	def shutdown(self):
-		_check( _bf.UdpSocketShutdown(self.obj) )
-	def close(self):
-		_check( _bf.UdpSocketClose(self.obj) )
-	@property
-	def mtu(self):
-		return _get(_bf.UdpSocketGetMTU(self.obj))
-	def fileno(self):
-		return _get(_bf.UdpSocketGetFD(self.obj))
-	@property
-	def timeout(self):
-		return _get( _bf.UdpSocketGetTimeout(self.obj) )
-	@timeout.setter
-	def timeout(self, secs):
-		_check( _bf.UdpSocketSetTimeout(self.obj, secs) )
+    def __init__(self):
+        self.obj = _get(_bf.UdpSocketCreate(), retarg=0)
+    def __del__(self):
+        if hasattr(self, 'obj') and bool(self.obj):
+            _bf.UdpSocketDestroy(self.obj)
+    def bind(self, local_addr):
+        _check( _bf.UdpSocketBind(self.obj, local_addr.obj) )
+    def connect(self, remote_addr):
+        _check( _bf.UdpSocketConnect(self.obj, remote_addr.obj) )
+    def shutdown(self):
+        _check( _bf.UdpSocketShutdown(self.obj) )
+    def close(self):
+        _check( _bf.UdpSocketClose(self.obj) )
+    @property
+    def mtu(self):
+        return _get(_bf.UdpSocketGetMTU(self.obj))
+    def fileno(self):
+        return _get(_bf.UdpSocketGetFD(self.obj))
+    @property
+    def timeout(self):
+        return _get( _bf.UdpSocketGetTimeout(self.obj) )
+    @timeout.setter
+    def timeout(self, secs):
+        _check( _bf.UdpSocketSetTimeout(self.obj, secs) )

@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -57,13 +56,14 @@ class ScrunchBlock(TransformBlock):
         out_nframe = in_nframe // self.factor
         idata = ispan.data
         odata = ospan.data
-        odata[...] = idata.reshape((out_nframe,self.factor)+idata.shape[1:]).mean(axis=1, dtype=odata.dtype)
+        odata[...] = idata.reshape((out_nframe, self.factor) + idata.shape[1:]) \
+                          .mean(axis=1, dtype=odata.dtype)
         return out_nframe
 
 def scrunch(iring, factor, *args, **kwargs):
     """Average `factor` incoming frames into one output frame.
 
-    This works on system memory. 
+    This works on system memory.
 
     Attributes
     ----------

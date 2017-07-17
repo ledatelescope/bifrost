@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,30 +28,30 @@
 from bifrost.libbifrost import _bf
 
 class Space(object):
-	def __init__(self, s):
-		if isinstance(s, basestring):
-			if s not in set(['auto', 'system',
-			                 'cuda', 'cuda_host', 'cuda_managed']):
-				raise ValueError('Invalid space: %s' % s)
-			self._space = s
-		elif isinstance(s, _bf.BFspace) or isinstance(s, int):
-			spacemap = {_bf.BF_SPACE_AUTO:         'auto',
-			            _bf.BF_SPACE_SYSTEM:       'system',
-			            _bf.BF_SPACE_CUDA:         'cuda',
-			            _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
-			            _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
-			if s not in spacemap:
-				raise KeyError("Invalid space: "+s+
-				               ". Valid spaces: "+str(spacemap.keys()))
-			self._space = spacemap[s]
-		else:
-			raise ValueError('%s is not a space' % s)
-	def as_BFspace(self):
-			spacemap = {'auto':         _bf.BF_SPACE_AUTO,
-			            'system':       _bf.BF_SPACE_SYSTEM,
-			            'cuda':         _bf.BF_SPACE_CUDA,
-			            'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
-			            'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
-			return spacemap[self._space]
-	def __str__(self):
-		return self._space
+    def __init__(self, s):
+        if isinstance(s, basestring):
+            if s not in set(['auto', 'system',
+                             'cuda', 'cuda_host', 'cuda_managed']):
+                raise ValueError('Invalid space: %s' % s)
+            self._space = s
+        elif isinstance(s, _bf.BFspace) or isinstance(s, int):
+            spacemap = {_bf.BF_SPACE_AUTO:         'auto',
+                        _bf.BF_SPACE_SYSTEM:       'system',
+                        _bf.BF_SPACE_CUDA:         'cuda',
+                        _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
+                        _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
+            if s not in spacemap:
+                raise KeyError("Invalid space: " + s +
+                               ". Valid spaces: " + str(spacemap.keys()))
+            self._space = spacemap[s]
+        else:
+            raise ValueError('%s is not a space' % s)
+    def as_BFspace(self):
+            spacemap = {'auto':         _bf.BF_SPACE_AUTO,
+                        'system':       _bf.BF_SPACE_SYSTEM,
+                        'cuda':         _bf.BF_SPACE_CUDA,
+                        'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
+                        'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
+            return spacemap[self._space]
+    def __str__(self):
+        return self._space

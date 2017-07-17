@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,8 +51,7 @@ using bifrost::ring::WriteSequence;
 #include <fstream>
 #include <chrono>
 
-
-#include <immintrin.h> // SSE
+//#include <immintrin.h> // SSE
 
 // TODO: The VMA API is returning unaligned buffers, which prevents use of SSE
 #ifndef BF_VMA_ENABLED

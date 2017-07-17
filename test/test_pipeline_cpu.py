@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import unittest
+import os
 import bifrost as bf
 
 from bifrost.blocks import *
@@ -52,13 +53,51 @@ class CallbackBlock(CopyBlock):
             self.data_ref['odata'] = ospan.data.copy()
         return super(CallbackBlock, self).on_data(ispan, ospan)
 
-class PipelineTest(unittest.TestCase):
+def identity_block(block, *args, **kwargs):
+    return block
+
+def rename_sequence(hdr, name):
+    hdr['name'] = name
+    return hdr
+
+class suppress_fd(object):
+    def __init__(self, fd):
+        if   fd.lower() == 'stdout': fd = 1
+        elif fd.lower() == 'stderr': fd = 2
+        else: assert(isinstance(fd, int))
+        self.fd = fd
+        self.devnull = os.open(os.devnull, os.O_RDWR)
+        self.stderr = os.dup(self.fd) # Save original
+    def __enter__(self):
+        os.dup2(self.devnull, self.fd) # Set stderr to devnull
+    def __exit__(self, type, value, tb):
+        os.dup2(self.stderr, self.fd) # Restore original
+        os.close(self.devnull)
+
+class PipelineTestCPU(unittest.TestCase):
     def setUp(self):
         # Note: This file needs to be large enough to fill the minimum-size
         #         ring buffer at least a few times over in order to properly
         #         test things.
         self.fil_file = "./data/2chan16bitNoDM.fil"
-    def test_cuda_copy(self):
+    def test_read_sigproc(self):
+        gulp_nframe = 101
+        def check_sequence(seq):
+            tensor = seq.header['_tensor']
+            self.assertEqual(tensor['shape'],  [-1,1,2])
+            self.assertEqual(tensor['dtype'],  'u16')
+            self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
+            self.assertEqual(tensor['units'],  ['s', None, 'MHz'])
+        def check_data(ispan, ospan):
+            self.assertLessEqual(ispan.nframe, gulp_nframe)
+            self.assertEqual(    ospan.nframe, ispan.nframe)
+            self.assertEqual(ispan.data.shape, (ispan.nframe,1,2))
+            self.assertEqual(ospan.data.shape, (ospan.nframe,1,2))
+        with bf.Pipeline() as pipeline:
+            data = read_sigproc([self.fil_file], gulp_nframe)
+            data = CallbackBlock(data, check_sequence, check_data)
+            pipeline.run()
+    def run_test_simple_copy(self, guarantee, test_views=False):
         def check_sequence(seq):
             pass
         def check_data(ispan, ospan):
@@ -66,38 +105,47 @@ class PipelineTest(unittest.TestCase):
         gulp_nframe = 101
         with bf.Pipeline() as pipeline:
             data = read_sigproc([self.fil_file], gulp_nframe)
-            for _ in xrange(10):
-                data = copy(data, space='cuda')
-                data = copy(data, space='cuda_host')
+            if test_views:
+                data = bf.views.split_axis(data, 'freq', 2, 'fine_freq')
+                data = bf.views.rename_axis(data, 'freq', 'chan')
+                data = bf.views.merge_axes(data, 'chan', 'fine_freq')
+                data = bf.views.astype(data, 'u16')
+                data = bf.views.custom(
+                    data, lambda hdr: rename_sequence(hdr, hdr['name']))
+            for _ in xrange(20):
+                data = copy(data, guarantee=guarantee)
             ref = {}
             data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
             pipeline.run()
             self.assertEqual(ref['odata'].dtype, 'uint16')
             self.assertEqual(ref['odata'].shape, (29, 1, 2))
-    def test_fdmt(self):
-        gulp_nframe = 101
-        # TODO: Check handling of multiple pols (not currently supported?)
-        def check_sequence(seq):
-            tensor = seq.header['_tensor']
-            self.assertEqual(tensor['shape'],  [1,5,-1])
-            self.assertEqual(tensor['dtype'],  'f32')
-            self.assertEqual(tensor['labels'], ['pol', 'dispersion', 'time'])
-            self.assertEqual(tensor['units'],  [None, 'pc cm^-3', 's'])
-        def check_data(ispan, ospan):
-            # Note: nframe = gulp_nframe + max_delay
-            #self.assertLessEqual(ispan.nframe, gulp_nframe)
-            self.assertEqual(    ospan.nframe, ispan.nframe)
-            self.assertEqual(ispan.data.shape, (1,5,ispan.nframe))
-            self.assertEqual(ospan.data.shape, (1,5,ospan.nframe))
+    def test_simple_copy(self):
+        self.run_test_simple_copy(guarantee=True)
+    def test_simple_copy_unguaranteed(self):
+        self.run_test_simple_copy(guarantee=False)
+    def test_simple_views(self):
+        self.run_test_simple_copy(guarantee=True, test_views=True)
+    def test_simple_views_unguaranteed(self):
+        self.run_test_simple_copy(guarantee=False, test_views=True)
+    def test_block_chainer(self):
         with bf.Pipeline() as pipeline:
-            data = read_sigproc([self.fil_file], gulp_nframe)
-            data = copy(data, space='cuda')
-            data = transpose(data, ['pol', 'freq', 'time'])
-            data = fdmt(data, max_dm=30.)
-            ref = {}
-            data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
-            data = transpose(data, ['time', 'pol', 'dispersion'])
-            data = copy(data, space='cuda_host')
+            bc = bf.BlockChainer()
+            bc.blocks.read_sigproc([self.fil_file], gulp_nframe=100)
+            bc.blocks.transpose(['freq', 'time', 'pol'])
+            bc.views.split_axis('time', 1)
+            bc.custom(identity_block)()
             pipeline.run()
-            self.assertEqual(ref['odata'].dtype, 'float32')
-            self.assertEqual(ref['odata'].shape, (1, 5, 17))
+    def test_block_initialization_failure(self):
+        def check_sequence(seq):
+            raise ValueError("Intentional on_sequence failure")
+        def check_data(ispan, ospan):
+            pass
+        with bf.Pipeline() as pipeline:
+            data = read_sigproc([self.fil_file], gulp_nframe=101)
+            data = copy(data)
+            data = copy(data)
+            data = CallbackBlock(data, check_sequence, check_data)
+            data = copy(data)
+            data = copy(data)
+            with suppress_fd('stderr'):
+                self.assertRaises(bf.pipeline.PipelineInitError, pipeline.run)

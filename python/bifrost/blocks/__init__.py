@@ -1,5 +1,4 @@
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -45,6 +44,7 @@ from .unpack import unpack, UnpackBlock
 from .quantize import quantize, QuantizeBlock
 from .wav import read_wav, WavSourceBlock
 from .wav import write_wav, WavSinkBlock
+from .serialize import serialize, SerializeBlock
 
 try: # Avoid error if portaudio library not installed
     from .audio import read_audio, AudioSourceBlock

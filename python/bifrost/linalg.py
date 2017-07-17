@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,32 +29,31 @@ from libbifrost import _bf, _check, _get
 from ndarray import asarray
 
 class LinAlg(object):
-	def __init__(self):
-		self.obj = _get(_bf.LinAlgCreate(), retarg=0)
-	def __del__(self):
-		if hasattr(self, 'obj') and bool(self.obj):
-			_bf.LinAlgDestroy(self.obj)
-	def matmul(self, alpha, a, b, beta, c):
-		"""Computes:
-		  c = alpha*a.b + beta*c
-		if b is not None, else:
-		  c = alpha*a.a^ + beta*c
-		where '.' is matrix product and '^' is Hermitian transpose.
-		Multi-dimensional semantics are the same as numpy.matmul:
-		  The last two dims represent the matrix, and all other dims are
-		  used as batch dims to be matched or broadcast between a and b.
-		"""
-		if alpha is None:
-			alpha = 1.
-		if beta is None:
-			beta = 0.
-		beta  = float(beta)
-		alpha = float(alpha)
-		a_array = asarray(a).as_BFarray()
-		b_array = asarray(b).as_BFarray() if b is not None else None
-		c_array = asarray(c).as_BFarray()
-		_check(_bf.LinAlgMatMul(self.obj,
-		                        alpha, a_array, b_array,
-		                        beta, c_array))
-		return c
-
+    def __init__(self):
+        self.obj = _get(_bf.LinAlgCreate(), retarg=0)
+    def __del__(self):
+        if hasattr(self, 'obj') and bool(self.obj):
+            _bf.LinAlgDestroy(self.obj)
+    def matmul(self, alpha, a, b, beta, c):
+        """Computes:
+          c = alpha*a.b + beta*c
+        if b is not None, else:
+          c = alpha*a.a^ + beta*c
+        where '.' is matrix product and '^' is Hermitian transpose.
+        Multi-dimensional semantics are the same as numpy.matmul:
+          The last two dims represent the matrix, and all other dims are
+          used as batch dims to be matched or broadcast between a and b.
+        """
+        if alpha is None:
+            alpha = 1.
+        if beta is None:
+            beta = 0.
+        beta  = float(beta)
+        alpha = float(alpha)
+        a_array = asarray(a).as_BFarray()
+        b_array = asarray(b).as_BFarray() if b is not None else None
+        c_array = asarray(c).as_BFarray()
+        _check(_bf.LinAlgMatMul(self.obj,
+                                alpha, a_array, b_array,
+                                beta, c_array))
+        return c

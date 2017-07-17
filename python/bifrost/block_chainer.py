@@ -25,34 +25,44 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _string2space, _space2string
+import bifrost
 
-import ctypes
-import numpy as np
-import socket
+class _BlockChainerProxy(object):
+    def __init__(self, parent, module):
+        self.parent = parent
+        self.module = module
+    def __getattr__(self, attr):
+        func = getattr(self.module, attr)
+        return self.parent._get(func)
 
+class BlockChainer(object):
+    """Convenient tool for constructing linear chains of blocks and views
 
-class Address(object):
-    def __init__(self, address, port, family=socket.AF_UNSPEC):
-        self.obj = _get(_bf.AddressCreate(addr_string=address,
-                                          port=port,
-                                          family=family), retarg=0)
-    def __del__(self):
-        if hasattr(self, 'obj') and bool(self.obj):
-            _bf.AddressDestroy(self.obj)
+    Examples::
+
+        bc = bf.BlockChainer()
+        bc.blocks.read_sigproc("foo.fil", gulp_nframe=1)
+        bc.blocks.copy('cuda')
+        bc.views.split_axis('freq', 2, 'fine_freq')
+        bc.views.merge_axes('freq', 'fine_freq')
+        bc.blocks.copy('cuda_host')
+        bc.custom(my_block)(arg1, arg2, ...)
+        bc.blocks.write_sigproc()
+        print bc.last_block # The last added block (this can also be set)
+    """
     @property
-    def family(self):
-        return _get(_bf.AddressGetFamily(self.obj))
+    def blocks(self):
+        return _BlockChainerProxy(self, bifrost.blocks)
     @property
-    def port(self):
-        return _get(_bf.AddressGetPort(self.obj))
-    @property
-    def mtu(self):
-        return _get(_bf.AddressGetMTU(self.obj))
-    @property
-    def address(self):
-        buflen = 128
-        buf = ctypes.create_string_buffer(buflen)
-        return _get(_bf.AddressGetString(self.obj, buflen, buf))
-    def __str__(self):
-        return "%s:%i" % (self.address, self.port)
+    def views(self):
+        return _BlockChainerProxy(self, bifrost.views)
+    def custom(self, func):
+        return self._get(func)
+    def _get(self, func):
+        def wrapper(*args, **kwargs):
+            if hasattr(self, 'last_block'):
+                self.last_block = func(self.last_block, *args, **kwargs)
+            else:
+                self.last_block = func(*args, **kwargs)
+            return self.last_block
+        return wrapper

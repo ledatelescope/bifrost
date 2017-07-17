@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -43,7 +42,7 @@ class AudioSourceBlock(SourceBlock):
                 'dtype':  'i' + str(reader.nbits),
                 'shape':  [-1, reader.channels],
                 'labels': ['time', 'pol'],
-                'scales': [1./reader.rate, None],
+                'scales': [1. / reader.rate, None],
                 'units':  ['s', None]
             },
             'frame_rate':   reader.rate,

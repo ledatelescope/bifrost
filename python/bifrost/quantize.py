@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,9 +29,7 @@ from libbifrost import _bf, _check, _get, _fast_call
 from ndarray import asarray
 
 def quantize(src, dst, scale=1.):
-	src_bf = asarray(src).as_BFarray()
-	dst_bf = asarray(dst).as_BFarray()
-	_fast_call(_bf.Quantize, src_bf,
-	                    dst_bf,
-	                    scale)
-	return dst
+    src_bf = asarray(src).as_BFarray()
+    dst_bf = asarray(dst).as_BFarray()
+    _fast_call(_bf.Quantize, src_bf, dst_bf, scale)
+    return dst

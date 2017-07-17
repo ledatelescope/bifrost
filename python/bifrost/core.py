@@ -29,8 +29,8 @@
 from libbifrost import _bf, _check, _get, _retval
 
 def status_string(status):
-	return _retval(_bf.GetStatusString(status))
+    return _retval(_bf.GetStatusString(status))
 def debug_enabled():
-	return bool(_retval(_bf.GetDebugEnabled()))
+    return bool(_retval(_bf.GetDebugEnabled()))
 def cuda_enabled():
-	return bool(_retval(_bf.GetCudaEnabled()))
+    return bool(_retval(_bf.GetCudaEnabled()))

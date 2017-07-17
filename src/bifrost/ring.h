@@ -128,6 +128,9 @@ BFstatus bfRingEndWriting(BFring ring);
 BFstatus bfRingWritingEnded(BFring ring, BFbool* writing_ended);
 
 // Sequence write
+// Note: \p name must either be unique among sequences, or be an empty string
+// Note: \p time_tag should either be monotonically increasing with each
+//         sequence, or be BFoffset(-1).
 BFstatus bfRingSequenceBegin(BFwsequence* sequence,
                              BFring       ring,
                              const char*  name,
@@ -164,7 +167,7 @@ BFstatus bfRingSequenceOpenEarliest(BFrsequence* sequence,
 //BFstatus bfRingSequenceOpenNext(BFrsequence* sequence, BFrsequence previous);
 //BFstatus bfRingSequenceNext(BFrsequence* sequence);
 BFstatus bfRingSequenceNext(BFrsequence sequence);
-BFstatus bfRingSequenceOpenSame(BFrsequence* sequence, BFrsequence existing);
+//BFstatus bfRingSequenceOpenSame(BFrsequence* sequence, BFrsequence existing);
 BFstatus bfRingSequenceClose(BFrsequence sequence);
 
 // Sequence common
@@ -200,10 +203,9 @@ BFstatus bfRingSpanAcquire(BFrspan*    span,
                            BFsize      size);
 BFstatus bfRingSpanRelease(BFrspan span);
 
-//BFstatus bfRingSpanClose(BFrspan span);
-BFstatus bfRingSpanStillValid(BFrspan  span,
-                              BFoffset offset,
-                              BFbool*  valid); // true if span not overwritten beyond offset
+// Returns in *val the number of bytes in the span that have been overwritten
+//   at the time of the call (always zero for guaranteed sequences).
+BFstatus bfRingSpanGetSizeOverwritten(BFrspan span, BFsize* val);
 //BFbool bfRingSpanGood(BFrspan span); // true if span opened successfully
 //BFstatus bfRingSpanGetSequence(BFspan span, BFrsequence* sequence);
 // Any span

@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -63,7 +62,8 @@ class FdmtBlock(TransformBlock):
         f0 = convert_units(f0_, itensor['units'][-2], 'MHz')
         df = convert_units(df_, itensor['units'][-2], 'MHz')
         dt = convert_units(dt_, itensor['units'][-1], 's')
-        rel_delay = self.kdm / dt * self.max_dm * (f0**-2 - (f0+nchan*df)**-2)
+        rel_delay = (self.kdm / dt * self.max_dm *
+                     (f0**-2 - (f0 + nchan * df)**-2))
         self.max_delay = int(math.ceil(abs(rel_delay)))
         self.dm_step   = self.max_dm / self.max_delay
         if self.negative_delays:
@@ -78,14 +78,14 @@ class FdmtBlock(TransformBlock):
         ohdr['_tensor']['dtype']      = 'f32'
         ohdr['_tensor']['shape'][-2]  = self.max_delay
         ohdr['_tensor']['labels'][-2] = 'dispersion'
-        ohdr['_tensor']['scales'][-2] = (refdm,self.dm_step)
+        ohdr['_tensor']['scales'][-2] = (refdm, self.dm_step)
         ohdr['_tensor']['units'][-2]  = self.dm_units
         # Add some new metadata
         ohdr['max_dm']       = self.max_dm
         ohdr['max_dm_units'] = self.dm_units
-        ohdr['cfreq']        = 0.5*(f0_ + (nchan-1)*df_)
+        ohdr['cfreq']        = 0.5 * (f0_ + (nchan - 1) * df_)
         ohdr['cfreq_units']  = itensor['units'][-2]
-        ohdr['bw']           = nchan*df_
+        ohdr['bw']           = nchan * df_
         ohdr['bw_units']     = itensor['units'][-2]
         gulp_nframe = self.gulp_nframe or ihdr['gulp_nframe']
         return ohdr, slice(0, gulp_nframe + self.max_delay, gulp_nframe)
@@ -93,7 +93,7 @@ class FdmtBlock(TransformBlock):
         if ispan.nframe <= self.max_delay:
             # Cannot fully process any frames
             return 0
-        
+
         size = self.fdmt.get_workspace_size(ispan.data, ospan.data)
         with self.get_temp_storage(self.space).allocate(size) as temp_storage:
             self.fdmt.execute_workspace(ispan.data, ospan.data,

@@ -136,7 +136,7 @@ class Test_data_manip(unittest.TestCase):
         initial_nframe = testfile.get_nframe()
         random_stream = np.random.randint(63, size=10000).astype('uint8').T
         testfile.append_data(random_stream)
-        self.assertEqual(testfile.data.shape[0],initial_nframe+10000)
+        self.assertEqual(testfile.data.shape[0], initial_nframe + 10000)
     def test_data_slice(self):
         testFile = SigprocFile()
         testFile.open(filename='./data/1chan8bitNoDM.fil', mode='r+b')
@@ -175,7 +175,7 @@ class Test_16bit_2chan(unittest.TestCase):
         self.assertEqual(self.my16bitfile.read_data().shape[-1], 2)
     def test_append_2chan_data(self):
         initial_nframe = self.my16bitfile.get_nframe()
-        random_stream = np.random.randint(2**16-1, size=(10000,2)).astype('uint16')
+        random_stream = np.random.randint(2**16 - 1, size=(10000, 2)).astype('uint16')
         file1 = SigprocFile()
         file1.header = self.my16bitfile.header
         file1.interpret_header()
@@ -198,8 +198,7 @@ class Test_data_slicing(unittest.TestCase):
     def test_only_negative_end_given(self):
         data = self.myfile.read_data(end=-3)
         self.assertEqual(data.shape[1:],(1,1))
-        self.assertTrue(data.shape[0] > 100) #assumes more than 100 frames in .fil
+        self.assertTrue(data.shape[0] > 100) # assumes more than 100 frames in .fil
     def test_different_signs(self):
         data = self.myfile.read_data(3,-3)
-        self.assertEqual(data.shape,(12800-6, 1, 1)) #assumes more than ~100 frames in .fil
-
+        self.assertEqual(data.shape, (12800 - 6, 1, 1)) # assumes more than ~100 frames in .fil

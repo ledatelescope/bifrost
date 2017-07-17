@@ -97,7 +97,7 @@ class TestScrunchBlock(unittest.TestCase):
     @unittest.skip("TODO: Fix this test!")
     def test_simple_scrunch(self):
         """Check that scrunching 2 spans changes header correctly"""
-        self.shape_settings = [-1, 1, 2*2]
+        self.shape_settings = [-1, 1, 2 * 2]
         self.gulp_nframe = 101
         with bfp.Pipeline() as pipeline:
             data = blocks.sigproc.read_sigproc([self.fil_file], self.gulp_nframe)

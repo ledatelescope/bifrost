@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,6 +45,18 @@ inline void check(BFstatus status) {
 	if( status != BF_STATUS_SUCCESS ) {
 		// TODO: BFexception?
 		throw std::runtime_error(bfGetStatusString(status));
+	}
+}
+inline bool check_failure_only(BFstatus status) {
+	BF_DISABLE_DEBUG();
+	switch( status ) {
+	case BF_STATUS_MEM_ALLOC_FAILED:
+	case BF_STATUS_MEM_OP_FAILED:
+	case BF_STATUS_DEVICE_ERROR:
+	case BF_STATUS_INTERNAL_ERROR:
+		check(status);
+		return false; // Unreachable
+	default: return status == BF_STATUS_SUCCESS;
 	}
 }
 

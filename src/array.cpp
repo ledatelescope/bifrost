@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -109,7 +108,14 @@ BFstatus bfArrayCopy(const BFarray* dst,
 		                src->data, src->space,
 		                size_bytes);
 	} else if( ndim == 1 || ndim == 2 ) {
+		// Note: ndim == 1 here means a 1D array with a stride between elements
 		long itemsize_bytes = BF_DTYPE_NBYTE(src->dtype);
+		// Note: bfMemcpy2D doesn't support strides on the inner dimension, so
+		//         we can't support transposed or fast-strided 2D arrays here.
+		BF_ASSERT(!(ndim == 2 && dst->strides[1] != itemsize_bytes),
+		          BF_STATUS_UNSUPPORTED_STRIDE);
+		BF_ASSERT(!(ndim == 2 && src->strides[1] != itemsize_bytes),
+		          BF_STATUS_UNSUPPORTED_STRIDE);
 		long width_bytes = (ndim == 2 ? shape[1] : 1) * itemsize_bytes;
 		return bfMemcpy2D(dst->data, dst->strides[0], dst->space,
 		                  src->data, src->strides[0], src->space,
@@ -137,7 +143,12 @@ BFstatus bfArrayMemset(const BFarray* dst,
 		return bfMemset(dst->data, dst->space,
 		                value, size_bytes);
 	} else if( ndim == 1 || ndim == 2 ) {
+		// Note: ndim == 1 here means a 1D array with a stride between elements
 		long itemsize_bytes = BF_DTYPE_NBYTE(dst->dtype);
+		// Note: bfMemset2D doesn't support strides on the inner dimension, so
+		//         we can't support transposed or fast-strided 2D arrays here.
+		BF_ASSERT(!(ndim == 2 && dst->strides[1] != itemsize_bytes),
+		          BF_STATUS_UNSUPPORTED_STRIDE);
 		long width_bytes = (ndim == 2 ? shape[1] : 1) * itemsize_bytes;
 		return bfMemset2D(dst->data, dst->strides[0], dst->space,
 		                  value, width_bytes, shape[0]);

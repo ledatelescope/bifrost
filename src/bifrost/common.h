@@ -82,6 +82,7 @@ typedef enum {
 // Utility
 const char* bfGetStatusString(BFstatus status);
 BFbool      bfGetDebugEnabled();
+BFstatus    bfSetDebugEnabled(BFbool enabled);
 BFbool      bfGetCudaEnabled();
 
 #ifdef __cplusplus

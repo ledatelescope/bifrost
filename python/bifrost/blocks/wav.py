@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -45,9 +44,10 @@ def wav_read_subchunk_fmt(f, size):
     assert(size >= 16)
     packed = f.read(16)
     f.seek(size - 16, 1)
-    keys = ('audio_fmt','nchan','sample_rate','byte_rate','block_align','nbit')
+    keys = ('audio_fmt', 'nchan', 'sample_rate', 'byte_rate',
+            'block_align', 'nbit')
     vals = struct.unpack('<HHIIHH', packed)
-    info = {k:v for k,v in zip(keys,vals)}
+    info = {k: v for k, v in zip(keys, vals)}
     return info
 def wav_read_header(f):
     # **TODO: Some files actually have extra subchunks _after_ the data as well
@@ -63,7 +63,8 @@ def wav_read_header(f):
         else:
             f.seek(subchunk_size, 1) # Ignore any other subchunks
         subchunk_id, subchunk_size = wav_read_subchunk_desc(f)
-    return hdr
+    data_size = subchunk_size
+    return hdr, data_size
 def wav_write_header(f, hdr, chunk_size=0, data_size=0):
     # Note: chunk_size = file size - 8
     f.write(struct.pack('<4sI4s4sIHHIIHH4sI',
@@ -77,13 +78,13 @@ class WavSourceBlock(SourceBlock):
     def create_reader(self, sourcename):
         return open(sourcename, 'rb')
     def on_sequence(self, reader, sourcename):
-        hdr = wav_read_header(reader)
+        hdr, self.bytes_remaining = wav_read_header(reader)
         ohdr = {
             '_tensor': {
-                'dtype':  'u8' if hdr['nbit'] == 8 else 'i'+str(hdr['nbit']),
+                'dtype':  'u8' if hdr['nbit'] == 8 else 'i' + str(hdr['nbit']),
                 'shape':  [-1, hdr['nchan']],
                 'labels': ['time', 'pol'],
-                'scales': [(0, 1./hdr['sample_rate']),
+                'scales': [(0, 1. / hdr['sample_rate']),
                            None],
                 'units':  ['s', None]
             },
@@ -97,6 +98,10 @@ class WavSourceBlock(SourceBlock):
         nbyte = reader.readinto(ospan.data)
         if nbyte % ospan.frame_nbyte:
             raise IOError("Input file is truncated")
+        # Note: This ensures only the data subchunk is read, avoiding any
+        #         subchunks that appear after the data.
+        nbyte = min(nbyte, self.bytes_remaining)
+        self.bytes_remaining -= nbyte
         # HACK TESTING avoid incomplete final gulp that messes up split_axis
         if nbyte < ospan.data.nbytes:
             return [0]
@@ -141,8 +146,8 @@ class WavSinkBlock(SinkBlock):
 
         nchan = shape[-1]
         sample_time = convert_units(scales[-2][1], units[-2], 's')
-        sample_rate = int(round(1./sample_time))
-        frame_nbyte = nchan*dtype.itemsize
+        sample_rate = int(round(1. / sample_time))
+        frame_nbyte = nchan * dtype.itemsize
         ohdr = {
             'audio_fmt':   1, # 1 => PCM (linear quantization, uncompressed)
             'nchan':       nchan,
@@ -154,12 +159,12 @@ class WavSinkBlock(SinkBlock):
         filename = os.path.join(self.path, ihdr['name'])
 
         if ndim == 2 and axnames[-2] == 'time':
-            self.ofile = open(filename+'.wav', 'wb')
+            self.ofile = open(filename + '.wav', 'wb')
             wav_write_header(self.ofile, ohdr)
         elif ndim == 3 and axnames[-2] == 'time':
             nfile = shape[-3]
             filenames = [filename + '.%09i.tim' % i for i in xrange(nfile)]
-            self.ofiles = [open(fname+'.wav', 'wb') for fname in filenames]
+            self.ofiles = [open(fname + '.wav', 'wb') for fname in filenames]
             for ofile in self.ofiles:
                 wav_write_header(ofile, ohdr)
         else:
@@ -209,4 +214,3 @@ def write_wav(iring, path=None, *args, **kwargs):
         subchunks that appear after the data will be misinterpreted as data.
     """
     return WavSinkBlock(iring, path, *args, **kwargs)
-

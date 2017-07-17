@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,14 +28,22 @@
 from libbifrost import _bf, _check, _get, _fast_call
 
 def set_device(device):
-	if isinstance(device, int):
-		_check(_bf.DeviceSet(device))
-	else:
-		_check(_bf.DeviceSetById(device))
+    if isinstance(device, int):
+        _check(_bf.DeviceSet(device))
+    else:
+        _check(_bf.DeviceSetById(device))
 def get_device():
-	return _get(_bf.DeviceGet())
+    return _get(_bf.DeviceGet())
 
 # TODO: set/get_stream
 
 def stream_synchronize():
-	_fast_call(_bf.StreamSynchronize)
+    _fast_call(_bf.StreamSynchronize)
+
+def set_devices_no_spin_cpu():
+    """Sets a flag on all GPU devices that tells them not to spin the CPU when
+    synchronizing. This is useful for reducing CPU load in GPU pipelines.
+
+    This function must be called _before_ any GPU devices are
+    initialized (i.e., at the start of the process)."""
+    _check(_bf.DevicesSetNoSpinCPU())

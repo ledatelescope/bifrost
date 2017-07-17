@@ -31,20 +31,20 @@ from setuptools import setup, find_packages
 # Parse version file to extract __version__ value
 bifrost_version_file = 'bifrost/version.py'
 try:
-	with open(bifrost_version_file, 'r') as version_file:
-		for line in version_file:
-			line = line.strip()
-			if len(line) == 0 or line[0] == '#':
-				continue
-			if '__version__' in line:
-				__version__ = line.split('=', 1)[1].strip()
-				__version__ = ''.join([c for c in __version__
-				                       if c.isalnum() or c in ".-_"])
+    with open(bifrost_version_file, 'r') as version_file:
+        for line in version_file:
+            line = line.strip()
+            if len(line) == 0 or line[0] == '#':
+                continue
+            if '__version__' in line:
+                __version__ = line.split('=', 1)[1].strip()
+                __version__ = ''.join([c for c in __version__
+                                       if c.isalnum() or c in ".-_"])
 except IOError:
-	print "*************************************************************************"
-	print "Please run `make` from the root of the source tree to generate version.py"
-	print "*************************************************************************"
-	raise
+    print "*************************************************************************"
+    print "Please run `make` from the root of the source tree to generate version.py"
+    print "*************************************************************************"
+    raise
 
 setup(name='Bifrost',
       version=__version__,
