@@ -66,8 +66,8 @@ class BinaryIOTest(unittest.TestCase):
 
         # Setup pipeline
         filenames   = ['numpy_data0.bin', 'numpy_data1.bin']
-        b_read      = blocks.BinaryFileReadBlock(filenames, 32768, 1, 'f32')
-        b_write     = blocks.BinaryFileWriteBlock(b_read.orings[0])
+        b_read      = blocks.binary_read(filenames, 32768, 1, 'f32')
+        b_write     = blocks.binary_write(b_read.orings[0])
 
         # Run pipeline
         pipeline = bfp.get_default_pipeline()
