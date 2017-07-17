@@ -40,6 +40,7 @@ from .sigproc import write_sigproc, SigprocSinkBlock
 from .scrunch import scrunch, ScrunchBlock
 from .accumulate import accumulate, AccumulateBlock
 from .binary_io import BinaryFileReadBlock, BinaryFileWriteBlock
+from .binary_io import binary_read, binary_write
 from .unpack import unpack, UnpackBlock
 from .quantize import quantize, QuantizeBlock
 from .wav import read_wav, WavSourceBlock

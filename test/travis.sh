@@ -10,4 +10,5 @@ coverage run --source=bifrost.ring,bifrost,bifrost.pipeline -m unittest \
   test_unpack \
   test_print_header \
   test_pipeline_cpu \
-  test_serialize
+  test_serialize \
+  test_binary_io
