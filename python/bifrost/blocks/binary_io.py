@@ -66,14 +66,6 @@ class BinaryFileRead(object):
 
 
 class BinaryFileReadBlock(bfp.SourceBlock):
-    """ Block for reading binary data from file and streaming it into a bifrost pipeline
-
-    Args:
-        filenames (list): A list of filenames to open
-        gulp_size (int): Number of elements in a gulp (i.e. sub-array size)
-        gulp_nframe (int): Number of frames in a gulp. (Ask Ben / Miles for good explanation)
-        dtype (bifrost dtype string): dtype, e.g. f32, cf32
-    """
     def __init__(self, filenames, gulp_size, gulp_nframe, dtype, *args, **kwargs):
         super(BinaryFileReadBlock, self).__init__(filenames, gulp_nframe, *args, **kwargs)
         self.dtype = dtype
@@ -107,14 +99,6 @@ class BinaryFileReadBlock(bfp.SourceBlock):
             return [0]
 
 class BinaryFileWriteBlock(bfp.SinkBlock):
-    """ Write ring data to a binary file
-
-    Args:
-        file_ext (str): Output file extension. Defaults to '.out'
-
-    Notes:
-        output filename is generated from the header 'name' keyword + file_ext
-    """
     def __init__(self, iring, file_ext='out', *args, **kwargs):
         super(BinaryFileWriteBlock, self).__init__(iring, *args, **kwargs)
         self.current_fileobj = None
@@ -129,3 +113,25 @@ class BinaryFileWriteBlock(bfp.SinkBlock):
 
     def on_data(self, ispan):
         self.current_fileobj.write(ispan.data.tobytes())
+
+def binary_read(filenames, gulp_size, gulp_nframe, dtype, *args, **kwargs):
+    """ Block for reading binary data from file and streaming it into a bifrost pipeline
+
+    Args:
+        filenames (list): A list of filenames to open
+        gulp_size (int): Number of elements in a gulp (i.e. sub-array size)
+        gulp_nframe (int): Number of frames in a gulp. (Ask Ben / Miles for good explanation)
+        dtype (bifrost dtype string): dtype, e.g. f32, cf32
+    """
+    return BinaryFileReadBlock(filenames, gulp_size, gulp_nframe, dtype, *args, **kwargs)
+
+def binary_write(iring, file_ext='out', *args, **kwargs):
+    """ Write ring data to a binary file
+
+    Args:
+        file_ext (str): Output file extension. Defaults to '.out'
+
+    Notes:
+        output filename is generated from the header 'name' keyword + file_ext
+    """
+    return BinaryFileWriteBlock(iring, file_ext, *args, **kwargs)
