@@ -36,9 +36,6 @@ import bifrost as bf
 import bifrost.pipeline as bfp
 from bifrost.dtype import name_nbit2numpy
 
-np.set_printoptions(precision=2)
-
-
 class BinaryFileRead(object):
     """ Simple file-like reading object for pipeline testing
 
@@ -83,7 +80,6 @@ class BinaryFileReadBlock(bfp.SourceBlock):
         self.gulp_size = gulp_size
 
     def create_reader(self, filename):
-        print "Loading %s" % filename
         # Do a lookup on bifrost datatype to numpy datatype
         dcode = self.dtype.rstrip('0123456789')
         nbits = int(self.dtype[len(dcode):])
