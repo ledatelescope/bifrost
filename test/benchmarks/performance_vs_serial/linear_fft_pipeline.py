@@ -11,9 +11,12 @@ class GPUFFTBenchmarker(PipelineBenchmarker):
     def run_benchmark(self):
         with bf.Pipeline() as pipeline:
             datafile = "numpy_data0.bin"
-            data = blocks.binary_io.BinaryFileReadBlock(
+
+            bc = bf.BlockChainer()
+            bc.blocks.binary_io.BinaryFileReadBlock(
                     [datafile], gulp_size=32768, gulp_nframe=4, dtype='f32')
-            #data.on_data = self.timeit(data.on_data)
+            bc.blocks.copy('cuda')
+            bc.blocks.print_header()
 
             start = timer()
             pipeline.run()
@@ -29,4 +32,4 @@ s = np.sin(w * 4 * t, dtype='float32')
 with open('numpy_data0.bin', 'wb') as myfile: pass
 s.tofile('numpy_data0.bin')
 gpufftbenchmarker = GPUFFTBenchmarker()
-print gpufftbenchmarker.average_benchmark(10)
+print gpufftbenchmarker.average_benchmark(4)
