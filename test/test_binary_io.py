@@ -77,11 +77,5 @@ class BinaryIOTest(unittest.TestCase):
         outdata0 = np.fromfile('numpy_data0.bin.out', dtype='float32')
         outdata1 = np.fromfile('numpy_data1.bin.out', dtype='float32')
 
-        try:
-            assert np.allclose(s0, outdata0)
-            assert np.allclose(s1, outdata1)
-            print "Input data and output data match."
-        except AssertionError:
-            print "Error: input and output data do not match."
-            raise
-
+        np.testing.assert_almost_equal(s0, outdata0)
+        np.testing.assert_almost_equal(s1, outdata1)
