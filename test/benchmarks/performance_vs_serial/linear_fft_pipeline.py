@@ -10,7 +10,8 @@ from skcuda.fft import fft, Plan, ifft
 import pycuda.gpuarray as gpuarray
 import pycuda.autoinit
 
-NUMBER_FFT = 10
+NUMBER_FFT = 5
+SIZE_MULTIPLIER=2*2*2
 
 class GPUFFTBenchmarker(PipelineBenchmarker):
     """ Test the sigproc read function """
@@ -20,7 +21,7 @@ class GPUFFTBenchmarker(PipelineBenchmarker):
 
             bc = bf.BlockChainer()
             bc.blocks.binary_read(
-                    [datafile], gulp_size=32768, gulp_nframe=128, dtype='f32')
+                    [datafile], gulp_size=32768*1024//8, gulp_nframe=1, dtype='f32')
             bc.blocks.copy('cuda')
             for _ in range(NUMBER_FFT):
                 bc.blocks.fft(['gulped'], axis_labels=['ft_gulped'])
@@ -57,17 +58,24 @@ def scikit_gpu_fft_pipeline(filename):
     data = []
     start = timer()
     with open(filename, 'r') as file_obj:
-        data = np.fromfile(file_obj, dtype=np.float32).astype(np.complex64)
-    g_data = gpuarray.to_gpu(data)
-    #g_data2 = gpuarray.empty(data.shape, np.complex64)
-    plan = Plan(data.shape, np.complex64, np.complex64)
-    for _ in range(NUMBER_FFT):
-        fft(g_data, g_data, plan)
-        ifft(g_data, g_data, plan)
+        for _ in range(8*SIZE_MULTIPLIER):
+            data = np.fromfile(file_obj, dtype=np.float32, count=32768*1024//8).astype(np.complex64)
+            g_data = gpuarray.to_gpu(data)
+            plan = Plan(data.shape, np.complex64, np.complex64)
+            tmp1 = gpuarray.empty(data.shape, dtype=np.complex64)
+            tmp2 = gpuarray.empty(data.shape, dtype=np.complex64)
+            fft(g_data, tmp1, plan)
+            ifft(tmp1, tmp2, plan)
+            for _ in range(NUMBER_FFT-1):
+                # Can't do FFT in place for fairness (emulating full pipeline)
+                tmp1 = gpuarray.empty(data.shape, dtype=np.complex64)
+                fft(tmp2, tmp1, plan)
+                tmp2 = gpuarray.empty(data.shape, dtype=np.complex64)
+                ifft(tmp1, tmp2, plan)
     end = timer()
     return end-start
 
-t = np.arange(32768*1024)
+t = np.arange(32768*1024*SIZE_MULTIPLIER)
 w = 0.01
 s = np.sin(w * 4 * t, dtype='float32')
 with open('numpy_data0.bin', 'wb') as myfile: pass
