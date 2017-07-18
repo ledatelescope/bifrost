@@ -6,6 +6,8 @@ from bifrost import pipeline as bfp
 from bifrost import blocks as blocks
 from bifrost_benchmarks import PipelineBenchmarker
 
+NUMBER_FFT = 10
+
 class GPUFFTBenchmarker(PipelineBenchmarker):
     """ Test the sigproc read function """
     def run_benchmark(self):
@@ -13,18 +15,18 @@ class GPUFFTBenchmarker(PipelineBenchmarker):
             datafile = "numpy_data0.bin"
 
             bc = bf.BlockChainer()
-            bc.blocks.binary_io.BinaryFileReadBlock(
-                    [datafile], gulp_size=32768, gulp_nframe=4, dtype='f32')
+            bc.blocks.binary_read(
+                    [datafile], gulp_size=32768, gulp_nframe=128, dtype='f32')
             bc.blocks.copy('cuda')
+            for _ in range(NUMBER_FFT):
+                bc.blocks.fft(['gulped'], axis_labels=['ft_gulped'])
+                bc.blocks.fft(['ft_gulped'], axis_labels=['gulped'], inverse=True)
             bc.blocks.print_header()
 
             start = timer()
             pipeline.run()
             end = timer()
             self.total_clock_time = end-start
-
-#sigproc_benchmarker = SigprocBenchmarker()
-#print sigproc_benchmarker.average_benchmark(10)
 
 t = np.arange(32768*1024)
 w = 0.01
