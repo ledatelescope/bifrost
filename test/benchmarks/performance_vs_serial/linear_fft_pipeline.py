@@ -6,6 +6,9 @@ from bifrost import pipeline as bfp
 from bifrost import blocks as blocks
 from bifrost_benchmarks import PipelineBenchmarker
 from scipy import fftpack
+from skcuda.fft import fft, Plan, ifft
+import pycuda.gpuarray as gpuarray
+import pycuda.autoinit
 
 NUMBER_FFT = 10
 
@@ -39,7 +42,7 @@ def regular_numpy_fft_pipeline(filename):
     end = timer()
     return end-start
 
-def scipy_fftpack_gpu_fft_pipeline(filename):
+def scipy_fftpack_fft_pipeline(filename):
     data = []
     start = timer()
     with open(filename, 'r') as file_obj:
@@ -50,14 +53,33 @@ def scipy_fftpack_gpu_fft_pipeline(filename):
     end = timer()
     return end-start
 
+def scikit_gpu_fft_pipeline(filename):
+    data = []
+    start = timer()
+    with open(filename, 'r') as file_obj:
+        data = np.fromfile(file_obj, dtype=np.float32).astype(np.complex64)
+    g_data = gpuarray.to_gpu(data)
+    #g_data2 = gpuarray.empty(data.shape, np.complex64)
+    plan = Plan(data.shape, np.complex64, np.complex64)
+    for _ in range(NUMBER_FFT):
+        fft(g_data, g_data, plan)
+        ifft(g_data, g_data, plan)
+    end = timer()
+    return end-start
+
 t = np.arange(32768*1024)
 w = 0.01
 s = np.sin(w * 4 * t, dtype='float32')
 with open('numpy_data0.bin', 'wb') as myfile: pass
 s.tofile('numpy_data0.bin')
+
 gpufftbenchmarker = GPUFFTBenchmarker()
-#print "Bifrost gets:", gpufftbenchmarker.average_benchmark(4)[0]
+
+print "Bifrost gets:", gpufftbenchmarker.average_benchmark(2)[0]
 
 #print "Regular single-threaded numpy gets:", regular_numpy_fft_pipeline('numpy_data0.bin')
 
-print "scipy fftpack gets:", scipy_fftpack_gpu_fft_pipeline('numpy_data0.bin')
+#print "scipy fftpack gets:", scipy_fftpack_fft_pipeline('numpy_data0.bin')
+
+print "scikit fftpack gets:", scikit_gpu_fft_pipeline('numpy_data0.bin')
+
