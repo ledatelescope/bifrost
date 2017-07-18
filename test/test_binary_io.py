@@ -81,3 +81,19 @@ class BinaryIOTest(unittest.TestCase):
 
         np.testing.assert_almost_equal(self.s0, outdata0)
         np.testing.assert_almost_equal(self.s1, outdata1)
+    def test_header_compliance(self):
+        """Make sure that the binary in has all required header labels"""
+        def seq_callback(iseq):
+            for key in ['_tensor']:
+                self.assertTrue(bool(key in iseq.header))
+            for key in ['units', 'labels', 'scales', 'dtype', 'shape']:
+                self.assertTrue(key in iseq.header['_tensor'])
+        def data_callback(ispan, ospan):
+            pass
+
+        self.fil_file = "./data/2chan16bitNoDM.fil"
+        with bf.Pipeline() as pipeline:
+            b_read = blocks.binary_read(self.filenames, 32768, 1, 'f32')
+            callback = CallbackBlock(b_read, seq_callback, data_callback)
+
+            pipeline.run()
