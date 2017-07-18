@@ -5,6 +5,7 @@ import bifrost as bf
 from bifrost import pipeline as bfp
 from bifrost import blocks as blocks
 from bifrost_benchmarks import PipelineBenchmarker
+from scipy import fftpack
 
 NUMBER_FFT = 10
 
@@ -31,10 +32,21 @@ def regular_numpy_fft_pipeline(filename):
     data = []
     start = timer()
     with open(filename, 'r') as file_obj:
-        data = np.fromfile(file_obj, dtype=np.float32)
+        data = np.fromfile(file_obj, dtype=np.float32).astype(np.complex64)
     for _ in range(NUMBER_FFT):
         data = np.fft.fft(data)
         data = np.fft.ifft(data)
+    end = timer()
+    return end-start
+
+def scipy_fftpack_gpu_fft_pipeline(filename):
+    data = []
+    start = timer()
+    with open(filename, 'r') as file_obj:
+        data = np.fromfile(file_obj, dtype=np.float32).astype(np.complex64)
+    for _ in range(NUMBER_FFT):
+        data = fftpack.fft(data)
+        data = fftpack.ifft(data)
     end = timer()
     return end-start
 
@@ -44,6 +56,8 @@ s = np.sin(w * 4 * t, dtype='float32')
 with open('numpy_data0.bin', 'wb') as myfile: pass
 s.tofile('numpy_data0.bin')
 gpufftbenchmarker = GPUFFTBenchmarker()
-print "Bifrost gets:", gpufftbenchmarker.average_benchmark(4)[0]
+#print "Bifrost gets:", gpufftbenchmarker.average_benchmark(4)[0]
 
-print "Regular single-threaded numpy gets:", regular_numpy_fft_pipeline('numpy_data0.bin')
+#print "Regular single-threaded numpy gets:", regular_numpy_fft_pipeline('numpy_data0.bin')
+
+print "scipy fftpack gets:", scipy_fftpack_gpu_fft_pipeline('numpy_data0.bin')
