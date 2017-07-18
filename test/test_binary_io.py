@@ -88,6 +88,7 @@ class BinaryIOTest(unittest.TestCase):
                 self.assertTrue(bool(key in iseq.header))
             for key in ['units', 'labels', 'scales', 'dtype', 'shape']:
                 self.assertTrue(key in iseq.header['_tensor'])
+            self.assertTrue(type(iseq.header['_tensor']['scales'][0]) is list)
         def data_callback(ispan, ospan):
             pass
 
