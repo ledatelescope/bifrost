@@ -85,6 +85,9 @@ class BinaryFileReadBlock(bfp.SourceBlock):
             '_tensor': {
                 'dtype':  self.dtype,
                 'shape':  [-1, self.gulp_size],
+                'labels':  ['streamed', 'gulped'],
+                'units': [None, None],
+                'scales': [None, None]
             },
         }
         return [ohdr]

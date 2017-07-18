@@ -54,20 +54,22 @@ class CallbackBlock(blocks.CopyBlock):
 
 class BinaryIOTest(unittest.TestCase):
     """Test simple IO for the binary read/write blocks"""
-    def test_read_write(self):
-        """Read from a binary file, then write to another one"""
+    def setUp(self):
+        """Generate some dummy data to read"""
         # Generate test vector and save to file
         t = np.arange(32768 * 1024)
         w = 0.01
-        s0 = np.sin(w * t, dtype='float32')
-        s0.tofile('numpy_data0.bin')
-        s1 = np.sin(w * 4 * t, dtype='float32')
-        s1.tofile('numpy_data1.bin')
+        self.s0 = np.sin(w * t, dtype='float32')
+        self.s0.tofile('numpy_data0.bin')
+        self.s1 = np.sin(w * 4 * t, dtype='float32')
+        self.s1.tofile('numpy_data1.bin')
 
         # Setup pipeline
-        filenames   = ['numpy_data0.bin', 'numpy_data1.bin']
-        b_read      = blocks.binary_read(filenames, 32768, 1, 'f32')
-        b_write     = blocks.binary_write(b_read.orings[0])
+        self.filenames = ['numpy_data0.bin', 'numpy_data1.bin']
+    def test_read_write(self):
+        """Read from a binary file, then write to another one"""
+        b_read = blocks.binary_read(self.filenames, 32768, 1, 'f32')
+        b_write = blocks.binary_write(b_read.orings[0])
 
         # Run pipeline
         pipeline = bfp.get_default_pipeline()
@@ -77,5 +79,21 @@ class BinaryIOTest(unittest.TestCase):
         outdata0 = np.fromfile('numpy_data0.bin.out', dtype='float32')
         outdata1 = np.fromfile('numpy_data1.bin.out', dtype='float32')
 
-        np.testing.assert_almost_equal(s0, outdata0)
-        np.testing.assert_almost_equal(s1, outdata1)
+        np.testing.assert_almost_equal(self.s0, outdata0)
+        np.testing.assert_almost_equal(self.s1, outdata1)
+    def test_header_compliance(self):
+        """Make sure that the binary in has all required header labels"""
+        def seq_callback(iseq):
+            for key in ['_tensor']:
+                self.assertTrue(bool(key in iseq.header))
+            for key in ['units', 'labels', 'scales', 'dtype', 'shape']:
+                self.assertTrue(key in iseq.header['_tensor'])
+        def data_callback(ispan, ospan):
+            pass
+
+        self.fil_file = "./data/2chan16bitNoDM.fil"
+        with bf.Pipeline() as pipeline:
+            b_read = blocks.binary_read(self.filenames, 32768, 1, 'f32')
+            callback = CallbackBlock(b_read, seq_callback, data_callback)
+
+            pipeline.run()
