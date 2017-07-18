@@ -87,7 +87,7 @@ class BinaryFileReadBlock(bfp.SourceBlock):
                 'shape':  [-1, self.gulp_size],
                 'labels':  ['streamed', 'gulped'],
                 'units': [None, None],
-                'scales': [None, None]
+                'scales': [[0, None], [0, None]]
             },
         }
         return [ohdr]
