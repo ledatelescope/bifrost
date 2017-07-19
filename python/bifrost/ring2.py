@@ -332,7 +332,7 @@ class SpanBase(object):
         return int(self._info.stride)
     @property
     def frame_nbyte(self):
-        return self.tensor['frame_nbyte']
+        return self.sequence.tensor['frame_nbyte']
     @property
     def frame_offset(self):
         # **TODO: Change back-end to use long instead of uint64_t
@@ -349,18 +349,18 @@ class SpanBase(object):
     @property
     def nframe(self):
         size_bytes = self._size_bytes
-        assert(size_bytes % self.tensor['frame_nbyte'] == 0)
-        nframe  = size_bytes // self.tensor['frame_nbyte']
+        assert(size_bytes % self.sequence.tensor['frame_nbyte'] == 0)
+        nframe  = size_bytes // self.sequence.tensor['frame_nbyte']
         return nframe
     @property
     def shape(self):
-        shape = (self.tensor['ringlet_shape'] +
+        shape = (self.sequence.tensor['ringlet_shape'] +
                  [self.nframe] +
-                 self.tensor['frame_shape'])
+                 self.sequence.tensor['frame_shape'])
         return shape
     @property
     def strides(self):
-        tensor = self.tensor
+        tensor = self.sequence.tensor
         strides = [tensor['dtype_nbyte']]
         for dim in reversed(tensor['frame_shape']):
             strides.append(dim * strides[-1])
@@ -372,7 +372,7 @@ class SpanBase(object):
         return strides
     @property
     def dtype(self):
-        return self.tensor['dtype']
+        return self.sequence.tensor['dtype']
     @property
     def data(self):
 
@@ -403,7 +403,7 @@ class WriteSpan(SpanBase):
                  sequence,
                  nframe):
         SpanBase.__init__(self, ring, sequence, writeable=True)
-        nbyte = nframe * self.tensor['frame_nbyte']
+        nbyte = nframe * self.sequence.tensor['frame_nbyte']
         self.obj = _bf.BFwspan()
         _fast_call(_bf.RingSpanReserve, self.obj, ring.obj, nbyte)
         self._set_base_obj(self.obj)
@@ -419,7 +419,7 @@ class WriteSpan(SpanBase):
     def __exit__(self, type, value, tb):
         self.close()
     def close(self):
-        commit_nbyte = self.commit_nframe * self.tensor['frame_nbyte']
+        commit_nbyte = self.commit_nframe * self.sequence.tensor['frame_nbyte']
         _fast_call(_bf.RingSpanCommit, self.obj, commit_nbyte)
 
 class ReadSpan(SpanBase):
