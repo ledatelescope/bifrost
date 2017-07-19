@@ -42,6 +42,8 @@ except ImportError:
     print "WARNING: Install simplejson for better performance"
     import json
 
+BF_RING_SPAN_GET_INFO = _bf.bfRingSpanGetInfo
+
 # TODO: Should probably move this elsewhere (e.g., utils)
 def split_shape(shape):
     """Splits a shape into its ringlet shape and frame shape
@@ -312,7 +314,7 @@ class SpanBase(object):
         self._cache_info()
     def _cache_info(self):
         self._info = _bf.BFspan_info()
-        _fast_call(_bf.bfRingSpanGetInfo, self._base_obj, self._info)
+        _fast_call(BF_RING_SPAN_GET_INFO, self._base_obj, self._info)
     @property
     def ring(self):
         return self._ring
