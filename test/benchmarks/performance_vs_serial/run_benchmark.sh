@@ -13,12 +13,13 @@ do
 for k in "${gulp_array[@]}"
 do
 
+echo "STARTING NEW BENCHMARK"
 export NUMBER_FFT="$i"
 export SIZE_MULTIPLIER="$j"
 export GULP_SIZE="$(echo "32768*1024/$k" | bc)"
+echo "$NUMBER_FFT, $SIZE_MULTIPLIER, $GULP_SIZE"
 NUM1="$(python -OO linear_fft_pipeline.py)"
 NUM2="$(python skcuda_fft_pipeline.py)"
-echo "$NUMBER_FFT, $SIZE_MULTIPLIER, $GULP_SIZE"
 echo "Bifrost has $NUM1"
 echo "Scikit has $NUM2"
 echo "Bifrost is: "
