@@ -231,9 +231,10 @@ def _fast_get(f, *args):
     return ret_val.value
 
 def _string2space(s):
-    if s not in LUT:
-        raise KeyError("Invalid space '" + str(s) +
-                       "'.\nValid spaces: " + str(LUT.keys()))
+    if __debug__:
+        if s not in LUT:
+            raise KeyError("Invalid space '" + str(s) +
+                           "'.\nValid spaces: " + str(LUT.keys()))
     return LUT[s]
 
 GLOBAL_BF_SPACE_AUTO = _bf.BF_SPACE_AUTO
