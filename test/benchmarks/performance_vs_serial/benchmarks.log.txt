@@ -1,0 +1,196 @@
+Bifrost has 5.82783293724
+Scikit has 9.47857999802
+Bifrost is: 
+1.62643
+times faster
+Bifrost has 4.88118600845
+Scikit has 8.11016201973
+Bifrost is: 
+1.66151
+times faster
+Bifrost has 8.44632315636
+Scikit has 10.1200881004
+Bifrost is: 
+1.19816
+times faster
+Bifrost has 3.31879496574
+Scikit has 7.99034786224
+Bifrost is: 
+2.40760
+times faster
+Bifrost has 3.69852995872
+Scikit has 7.88111615181
+Bifrost is: 
+2.13087
+times faster
+1, 2, 33554432
+Bifrost has 2.1592168808
+Scikit has 0.809389829636
+Bifrost is: 
+.37485
+times faster
+STARTING NEW BENCHMARK
+, , 
+Bifrost has 2.14713406563
+Scikit has 0.787629127502
+Bifrost is: 
+.36682
+times faster
+STARTING NEW BENCHMARK
+1, 2, 33554432
+STARTING NEW BENCHMARK
+1, 2, 33554432
+Bifrost has 2.14731097221
+Scikit has 0.804691076279
+Bifrost is: 
+.37474
+times faster
+STARTING NEW BENCHMARK
+1, 2, 16777216
+Bifrost has 1.13552904129
+Scikit has 0.826695919037
+Bifrost is: 
+.72802
+times faster
+STARTING NEW BENCHMARK
+1, 2, 8388608
+Bifrost has 0.626473903656
+Scikit has 0.825279951096
+Bifrost is: 
+1.31734
+times faster
+STARTING NEW BENCHMARK
+1, 2, 4194304
+Bifrost has 0.399655103683
+Scikit has 0.828284025192
+Bifrost is: 
+2.07249
+times faster
+STARTING NEW BENCHMARK
+1, 2, 2097152
+Bifrost has 0.312634944916
+Scikit has 0.767138004303
+Bifrost is: 
+2.45378
+times faster
+STARTING NEW BENCHMARK
+1, 2, 1048576
+Bifrost has 0.345160007477
+Scikit has 0.867915153503
+Bifrost is: 
+2.51452
+times faster
+STARTING NEW BENCHMARK
+1, 2, 524288
+Bifrost has 0.440378904343
+Scikit has 0.878082990646
+Bifrost is: 
+1.99392
+times faster
+STARTING NEW BENCHMARK
+1, 2, 262144
+Bifrost has 0.737426996231
+Scikit has 1.30929088593
+Bifrost is: 
+1.77548
+times faster
+STARTING NEW BENCHMARK
+1, 2, 131072
+Bifrost has 1.44875693321
+Scikit has 1.93347597122
+Bifrost is: 
+1.33457
+times faster
+STARTING NEW BENCHMARK
+1, 2, 65536
+Bifrost has 2.72311592102
+Scikit has 2.23314404488
+Bifrost is: 
+.82006
+times faster
+STARTING NEW BENCHMARK
+1, 2, 32768
+Bifrost has 5.30162405968
+Scikit has 2.88406705856
+Bifrost is: 
+.54399
+times faster
+STARTING NEW BENCHMARK
+1, 4, 33554432
+Bifrost has 2.26284790039
+Scikit has 1.2600209713
+Bifrost is: 
+.55682
+times faster
+STARTING NEW BENCHMARK
+1, 4, 16777216
+Bifrost has 1.24468803406
+Scikit has 1.26304006577
+Bifrost is: 
+1.01474
+times faster
+STARTING NEW BENCHMARK
+1, 4, 8388608
+Bifrost has 0.755832910538
+Scikit has 1.3080739975
+Bifrost is: 
+1.73063
+times faster
+STARTING NEW BENCHMARK
+1, 4, 4194304
+Bifrost has 0.604228973389
+Scikit has 1.28488206863
+Bifrost is: 
+2.12648
+times faster
+STARTING NEW BENCHMARK
+1, 4, 2097152
+Bifrost has 0.517762899399
+Scikit has 1.1578168869
+Bifrost is: 
+2.23619
+times faster
+STARTING NEW BENCHMARK
+1, 4, 1048576
+Bifrost has 0.598678827286
+Scikit has 1.17711400986
+Bifrost is: 
+1.96618
+times faster
+STARTING NEW BENCHMARK
+1, 4, 524288
+Bifrost has 0.842576026917
+Scikit has 1.4077899456
+Bifrost is: 
+1.67081
+times faster
+STARTING NEW BENCHMARK
+1, 4, 262144
+Bifrost has 1.50252699852
+Scikit has 2.18797087669
+Bifrost is: 
+1.45619
+times faster
+STARTING NEW BENCHMARK
+1, 4, 131072
+Bifrost has 2.82037091255
+Scikit has 3.66713786125
+Bifrost is: 
+1.30023
+times faster
+STARTING NEW BENCHMARK
+1, 4, 65536
+Bifrost has 5.47086787224
+Scikit has 4.23265004158
+Bifrost is: 
+.77367
+times faster
+STARTING NEW BENCHMARK
+1, 4, 32768
+Bifrost has 10.6251120567
+Scikit has 5.42336416245
+Bifrost is: 
+.51042
+times faster
+STARTING NEW BENCHMARK
+1, 8, 33554432
