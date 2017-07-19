@@ -27,6 +27,18 @@
 
 from bifrost.libbifrost import _bf
 
+SPACEMAP_TO_STR = {_bf.BF_SPACE_AUTO:         'auto',
+                   _bf.BF_SPACE_SYSTEM:       'system',
+                   _bf.BF_SPACE_CUDA:         'cuda',
+                   _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
+                   _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
+
+SPACEMAP_FROM_STR = {'auto':         _bf.BF_SPACE_AUTO,
+                     'system':       _bf.BF_SPACE_SYSTEM,
+                     'cuda':         _bf.BF_SPACE_CUDA,
+                     'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
+                     'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
+
 class Space(object):
     def __init__(self, s):
         if isinstance(s, basestring):
@@ -35,23 +47,13 @@ class Space(object):
                 raise ValueError('Invalid space: %s' % s)
             self._space = s
         elif isinstance(s, _bf.BFspace) or isinstance(s, int):
-            spacemap = {_bf.BF_SPACE_AUTO:         'auto',
-                        _bf.BF_SPACE_SYSTEM:       'system',
-                        _bf.BF_SPACE_CUDA:         'cuda',
-                        _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
-                        _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
-            if s not in spacemap:
+            if s not in SPACEMAP_TO_STR:
                 raise KeyError("Invalid space: " + s +
-                               ". Valid spaces: " + str(spacemap.keys()))
-            self._space = spacemap[s]
+                               ". Valid spaces: " + str(SPACEMAP_TO_STR.keys()))
+            self._space = SPACEMAP_TO_STR[s]
         else:
             raise ValueError('%s is not a space' % s)
     def as_BFspace(self):
-            spacemap = {'auto':         _bf.BF_SPACE_AUTO,
-                        'system':       _bf.BF_SPACE_SYSTEM,
-                        'cuda':         _bf.BF_SPACE_CUDA,
-                        'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
-                        'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
-            return spacemap[self._space]
+            return SPACEMAP_FROM_STR[self._space]
     def __str__(self):
         return self._space
