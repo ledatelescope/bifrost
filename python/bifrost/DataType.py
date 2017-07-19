@@ -53,6 +53,25 @@ ci32 = np.dtype([('re', np.int32),   ('im', np.int32)])
 ci64 = np.dtype([('re', np.int64),   ('im', np.int64)])
 cf16 = np.dtype([('re', np.float16), ('im', np.float16)])
 
+TYPEMAP = {
+    'i':  { 1: _bf.BF_DTYPE_I1,   2: _bf.BF_DTYPE_I2,
+            4: _bf.BF_DTYPE_I4,   8: _bf.BF_DTYPE_I8,
+           16: _bf.BF_DTYPE_I16, 32: _bf.BF_DTYPE_I32,
+           64: _bf.BF_DTYPE_I64},
+    'u':  { 1: _bf.BF_DTYPE_U1,   2: _bf.BF_DTYPE_U2,
+            4: _bf.BF_DTYPE_U4,   8: _bf.BF_DTYPE_U8,
+           16: _bf.BF_DTYPE_U16, 32: _bf.BF_DTYPE_U32,
+           64: _bf.BF_DTYPE_U64},
+    'f':  {16: _bf.BF_DTYPE_F16,  32: _bf.BF_DTYPE_F32,
+           64: _bf.BF_DTYPE_F64, 128: _bf.BF_DTYPE_F128},
+    'ci': { 1: _bf.BF_DTYPE_CI1,   2: _bf.BF_DTYPE_CI2,
+            4: _bf.BF_DTYPE_CI4,   8: _bf.BF_DTYPE_CI8,
+           16: _bf.BF_DTYPE_CI16, 32: _bf.BF_DTYPE_CI32,
+           64: _bf.BF_DTYPE_CI64},
+    'cf': {16: _bf.BF_DTYPE_CF16,  32: _bf.BF_DTYPE_CF32,
+           64: _bf.BF_DTYPE_CF64, 128: _bf.BF_DTYPE_CF128}
+}
+
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
     def __init__(self, t=None):
@@ -103,25 +122,7 @@ class DataType(object):
     def __ne__(self, other):
         return not (self == other)
     def as_BFdtype(self):
-        typemap = {
-            'i':  { 1: _bf.BF_DTYPE_I1,   2: _bf.BF_DTYPE_I2,
-                    4: _bf.BF_DTYPE_I4,   8: _bf.BF_DTYPE_I8,
-                   16: _bf.BF_DTYPE_I16, 32: _bf.BF_DTYPE_I32,
-                   64: _bf.BF_DTYPE_I64},
-            'u':  { 1: _bf.BF_DTYPE_U1,   2: _bf.BF_DTYPE_U2,
-                    4: _bf.BF_DTYPE_U4,   8: _bf.BF_DTYPE_U8,
-                   16: _bf.BF_DTYPE_U16, 32: _bf.BF_DTYPE_U32,
-                   64: _bf.BF_DTYPE_U64},
-            'f':  {16: _bf.BF_DTYPE_F16,  32: _bf.BF_DTYPE_F32,
-                   64: _bf.BF_DTYPE_F64, 128: _bf.BF_DTYPE_F128},
-            'ci': { 1: _bf.BF_DTYPE_CI1,   2: _bf.BF_DTYPE_CI2,
-                    4: _bf.BF_DTYPE_CI4,   8: _bf.BF_DTYPE_CI8,
-                   16: _bf.BF_DTYPE_CI16, 32: _bf.BF_DTYPE_CI32,
-                   64: _bf.BF_DTYPE_CI64},
-            'cf': {16: _bf.BF_DTYPE_CF16,  32: _bf.BF_DTYPE_CF32,
-                   64: _bf.BF_DTYPE_CF64, 128: _bf.BF_DTYPE_CF128}
-        }
-        return typemap[self._kind][self._nbit]
+        return TYPEMAP[self._kind][self._nbit]
     def as_numpy_dtype(self):
         typemap = {
             'i':  {  8: np.int8,  16: np.int16,
