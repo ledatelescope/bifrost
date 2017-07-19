@@ -32,6 +32,7 @@ import ctypes
 import numpy as np
 
 GLOBAL_BFsize = _bf.BFsize
+
 class Fdmt(object):
     def __init__(self):
         self.obj = _get(_bf.FdmtCreate(), retarg=0)

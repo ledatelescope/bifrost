@@ -45,6 +45,8 @@ from DataType import DataType
 from Space import Space
 import sys
 
+GLOBAL_BFarray = _bf.BFarray
+
 # TODO: The stuff here makes array.py redundant (and outdated)
 
 # TODO: ndarray.flags['WRITEABLE'] does not get preserved
@@ -113,7 +115,6 @@ class BFArrayInfo(object):
 # A np.ndarray subclass that adds support for different spaces and
 #   bifrost-specific metadata.
 # See https://docs.scipy.org/doc/numpy/user/basics.subclassing.html
-GLOBAL_BFarray = _bf.BFarray
 class ndarray(np.ndarray):
     def __new__(cls, base=None, space=None, shape=None, dtype=None,
                 buffer=None, offset=0, strides=None,

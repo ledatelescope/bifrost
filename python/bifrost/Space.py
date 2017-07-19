@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from bifrost.libbifrost import _bf
+GLOBAL_BFspace = _bf.BFspace
 
 SPACEMAP_TO_STR = {_bf.BF_SPACE_AUTO:         'auto',
                    _bf.BF_SPACE_SYSTEM:       'system',
@@ -39,7 +40,6 @@ SPACEMAP_FROM_STR = {'auto':         _bf.BF_SPACE_AUTO,
                      'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
                      'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
 
-GLOBAL_BFspace = _bf.BFspace
 class Space(object):
     def __init__(self, s):
         if isinstance(s, basestring):

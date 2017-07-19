@@ -36,6 +36,12 @@ from copy import copy, deepcopy
 import ctypes
 import numpy as np
 
+GLOBAL_BFrspan = _bf.BFrspan
+GLOBAL_BFwspan = _bf.BFwspan
+GLOBAL_BFspan_info = _bf.BFspan_info
+GLOBAL_BFspan = _bf.BFspan
+GLOBAL_BFsequence = _bf.BFsequence
+
 try:
     import simplejson as json
 except ImportError:
@@ -130,7 +136,6 @@ class RingWriter(object):
                              header=header,
                              buf_nframe=buf_nframe)
 
-GLOBAL_BFsequence = _bf.BFsequence
 class SequenceBase(object):
     """Python object for a ring's sequence (data unit)"""
     def __init__(self, ring):
@@ -304,8 +309,6 @@ def accumulate(vals, op='+', init=None, reverse=False):
         results = list(reversed(results))
     return results
 
-GLOBAL_BFspan = _bf.BFspan
-GLOBAL_BFspan_info = _bf.BFspan_info
 class SpanBase(object):
     def __init__(self, ring, sequence, writeable):
         self._ring     = ring
@@ -402,7 +405,6 @@ class SpanBase(object):
 
         return data_array
 
-GLOBAL_BFwspan = _bf.BFwspan
 class WriteSpan(SpanBase):
     def __init__(self,
                  ring,
@@ -428,7 +430,6 @@ class WriteSpan(SpanBase):
         commit_nbyte = self.commit_nframe * self.sequence.tensor['frame_nbyte']
         _fast_call(_bf.RingSpanCommit, self.obj, commit_nbyte)
 
-GLOBAL_BFrspan = _bf.BFrspan
 class ReadSpan(SpanBase):
     def __init__(self, sequence, frame_offset, nframe):
         SpanBase.__init__(self, sequence.ring, sequence, writeable=False)

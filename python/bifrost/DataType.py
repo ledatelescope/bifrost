@@ -40,6 +40,12 @@ cf32: 32+32-bit complex floating point
 
 from libbifrost import _bf
 import numpy as np
+GLOBAL_BF_DTYPE_TYPE_BITS = _bf.BF_DTYPE_TYPE_BITS
+GLOBAL_BF_DTYPE_COMPLEX_BIT = _bf.BF_DTYPE_COMPLEX_BIT
+GLOBAL_BF_DTYPE_FLOAT_TYPE = _bf.BF_DTYPE_FLOAT_TYPE
+GLOBAL_BF_DTYPE_UINT_TYPE = _bf.BF_DTYPE_UINT_TYPE
+GLOBAL_BF_DTYPE_INT_TYPE = _bf.BF_DTYPE_INT_TYPE
+GLOBAL_BFdtype = _bf.BFdtype
 
 # Custom dtypes to represent additional complex types
 # Note: These can be constructed using tuples
@@ -72,12 +78,6 @@ TYPEMAP = {
            64: _bf.BF_DTYPE_CF64, 128: _bf.BF_DTYPE_CF128}
 }
 
-GLOBAL_BFdtype = _bf.BFdtype
-GLOBAL_BF_DTYPE_INT_TYPE = _bf.BF_DTYPE_INT_TYPE
-GLOBAL_BF_DTYPE_UINT_TYPE = _bf.BF_DTYPE_UINT_TYPE
-GLOBAL_BF_DTYPE_FLOAT_TYPE = _bf.BF_DTYPE_FLOAT_TYPE
-GLOBAL_BF_DTYPE_COMPLEX_BIT = _bf.BF_DTYPE_COMPLEX_BIT
-GLOBAL_BF_DTYPE_TYPE_BITS = _bf.BF_DTYPE_TYPE_BITS
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
     def __init__(self, t=None):

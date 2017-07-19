@@ -35,6 +35,9 @@ import ctypes
 import numpy as np
 from uuid import uuid4
 
+GLOBAL_BFspan = _bf.BFspan
+GLOBAL_BFsequence = _bf.BFsequence
+
 class Ring(object):
     def __init__(self, space='system', name=None):
         if name is None:
@@ -134,7 +137,6 @@ class RingWriter(object):
         return WriteSequence(ring=self.ring, name=name, time_tag=time_tag,
                              header=header, nringlet=nringlet)
 
-GLOBAL_BFsequence = _bf.BFsequence
 class SequenceBase(object):
     """Python object for a ring's sequence (data unit)"""
     def __init__(self, ring):
@@ -245,7 +247,6 @@ class ReadSequence(SequenceBase):
                 yield ispan
             offset += stride
 
-GLOBAL_BFspan = _bf.BFspan
 class SpanBase(object):
     def __init__(self, ring, writeable):
         self._ring = ring

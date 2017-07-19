@@ -145,8 +145,6 @@ DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
 
 # Internal helper functions below
 
-GLOBAL_BFarray = _bf.BFarray
-GLOBAL_BFarray = _bf.BFarray
 def _array(size_or_vals, dtype=None):
     from pyclibrary import build_array
     import ctypes
@@ -223,6 +221,7 @@ def _string2space(s):
         raise KeyError("Invalid space '" + str(s) +
                        "'.\nValid spaces: " + str(LUT.keys()))
     return LUT[s]
+
 GLOBAL_BF_SPACE_AUTO = _bf.BF_SPACE_AUTO
 GLOBAL_BF_SPACE_SYSTEM = _bf.BF_SPACE_SYSTEM
 GLOBAL_BF_SPACE_CUDA = _bf.BF_SPACE_CUDA
