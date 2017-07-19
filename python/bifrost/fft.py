@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _fast_call, _string2space
+from libbifrost import _bf, _check, _get, _fast_call, _string2space, _check_fast
 from ndarray import asarray
 import ctypes
 
@@ -53,9 +53,9 @@ class Fft(object):
                                       inverse=inverse)
     def execute_workspace(self, iarray, oarray, workspace_ptr, workspace_size,
                           inverse=False):
-        _fast_call(_bf.FftExecute, self.obj,
+        _check_fast(_bf.FftExecute.func(self.obj,
                    asarray(iarray).as_BFarray(),
                    asarray(oarray).as_BFarray(),
                    inverse,
-                   workspace_ptr, workspace_size)
+                   workspace_ptr, workspace_size))
         return oarray

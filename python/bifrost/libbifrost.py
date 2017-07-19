@@ -202,9 +202,20 @@ def _retval(f):
     return ret
 
 # Note: These are much faster than _check and _get above, but less convenient
+def _check_fast(status):
+    if status != BF_STATUS_SUCCESS:
+        if status is None:
+            raise RuntimeError("WTF, status is None")
+        if status == GLOBAL_BF_STATUS_END_OF_DATA:
+            raise StopIteration()
+        else:
+            status_str, _ = _bf.GetStatusString(status)
+            raise RuntimeError(status_str)
+    return status
+
 def _fast_call(f, *args):
-    # Note: f.func is much faster than f(*args, **kwargs)
     return _check( (f.func(*args), None) )
+
 def _fast_get(f, *args):
     """Calls the getter function f and returns the value from the last arg"""
     # TODO: Is there a proper way to do this that supports general types?

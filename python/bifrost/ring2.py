@@ -28,7 +28,7 @@
 # TODO: Some of this code has gotten a bit hacky
 #         Also consider merging some of the logic into the backend
 
-from libbifrost import _bf, _check, _get, _string2space, _space2string, _fast_call, _fast_get
+from libbifrost import _bf, _check, _get, _string2space, _space2string, _fast_call, _fast_get, _check_fast
 from DataType import DataType
 from ndarray import ndarray, _address_as_buffer
 from copy import copy, deepcopy
@@ -320,7 +320,7 @@ class SpanBase(object):
         self._cache_info()
     def _cache_info(self):
         self._info = GLOBAL_BFspan_info()
-        _fast_call(BF_RING_SPAN_GET_INFO, self._base_obj, self._info)
+        _check_fast(BF_RING_SPAN_GET_INFO.func(self._base_obj, self._info))
     @property
     def ring(self):
         return self._ring
@@ -413,7 +413,7 @@ class WriteSpan(SpanBase):
         SpanBase.__init__(self, ring, sequence, writeable=True)
         nbyte = nframe * self.sequence.tensor['frame_nbyte']
         self.obj = GLOBAL_BFwspan()
-        _fast_call(_bf.RingSpanReserve, self.obj, ring.obj, nbyte)
+        _check_fast(_bf.RingSpanReserve.func( self.obj, ring.obj, nbyte))
         self._set_base_obj(self.obj)
         # Note: We default to 0 instead of nframe so that we don't accidentally
         #         commit bogus data if a block throws an exception.
@@ -428,7 +428,7 @@ class WriteSpan(SpanBase):
         self.close()
     def close(self):
         commit_nbyte = self.commit_nframe * self.sequence.tensor['frame_nbyte']
-        _fast_call(_bf.RingSpanCommit, self.obj, commit_nbyte)
+        _check_fast(_bf.RingSpanCommit.func( self.obj, commit_nbyte))
 
 class ReadSpan(SpanBase):
     def __init__(self, sequence, frame_offset, nframe):
@@ -452,4 +452,4 @@ class ReadSpan(SpanBase):
     def __exit__(self, type, value, tb):
         self.release()
     def release(self):
-        _fast_call(_bf.RingSpanRelease, self.obj)
+        _check_fast(_bf.RingSpanRelease.func( self.obj))

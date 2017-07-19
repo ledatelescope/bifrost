@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _fast_call
+from libbifrost import _bf, _check, _get, _fast_call, _check_fast
 
 def set_device(device):
     if isinstance(device, int):
@@ -38,7 +38,7 @@ def get_device():
 # TODO: set/get_stream
 
 def stream_synchronize():
-    _fast_call(_bf.StreamSynchronize)
+    _check_fast(_bf.StreamSynchronize.func())
 
 def set_devices_no_spin_cpu():
     """Sets a flag on all GPU devices that tells them not to spin the CPU when
