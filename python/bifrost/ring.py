@@ -277,8 +277,8 @@ class SpanBase(object):
         return self.data_view()
     def data_view(self, dtype=np.uint8, shape=-1):
         itemsize = dtype().itemsize
-        assert( self.size   % itemsize == 0 )
-        assert( self.stride % itemsize == 0 )
+        if __debug__: assert( self.size   % itemsize == 0 )
+        if __debug__: assert( self.stride % itemsize == 0 )
         data_ptr = self._data_ptr
         #if self.sequence.ring.space == 'cuda':
         #    # TODO: See if can wrap this in something like PyCUDA's GPUArray

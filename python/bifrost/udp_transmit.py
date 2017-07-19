@@ -60,6 +60,6 @@ class UDPTransmit(object):
         ptr, siz = _packet2pointer(packet)
         return _get( _bf.UdpTransmitSend(self.obj, ptr, siz) )
     def sendmany(self, packets):
-        assert(type(packets) is list)
+        if __debug__: assert(type(packets) is list)
         ptr, siz, count = _packets2pointer(packets)
         return _get( _bf.UdpTransmitSendMany(self.obj, ptr, siz, count) )
