@@ -39,6 +39,7 @@ SPACEMAP_FROM_STR = {'auto':         _bf.BF_SPACE_AUTO,
                      'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
                      'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
 
+GLOBAL_BFspace = _bf.BFspace
 class Space(object):
     def __init__(self, s):
         if isinstance(s, basestring):
@@ -46,7 +47,7 @@ class Space(object):
                              'cuda', 'cuda_host', 'cuda_managed']):
                 raise ValueError('Invalid space: %s' % s)
             self._space = s
-        elif isinstance(s, _bf.BFspace) or isinstance(s, int):
+        elif isinstance(s, GLOBAL_BFspace) or isinstance(s, int):
             if s not in SPACEMAP_TO_STR:
                 raise KeyError("Invalid space: " + s +
                                ". Valid spaces: " + str(SPACEMAP_TO_STR.keys()))

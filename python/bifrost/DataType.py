@@ -72,6 +72,12 @@ TYPEMAP = {
            64: _bf.BF_DTYPE_CF64, 128: _bf.BF_DTYPE_CF128}
 }
 
+GLOBAL_BFdtype = _bf.BFdtype
+GLOBAL_BF_DTYPE_INT_TYPE = _bf.BF_DTYPE_INT_TYPE
+GLOBAL_BF_DTYPE_UINT_TYPE = _bf.BF_DTYPE_UINT_TYPE
+GLOBAL_BF_DTYPE_FLOAT_TYPE = _bf.BF_DTYPE_FLOAT_TYPE
+GLOBAL_BF_DTYPE_COMPLEX_BIT = _bf.BF_DTYPE_COMPLEX_BIT
+GLOBAL_BF_DTYPE_TYPE_BITS = _bf.BF_DTYPE_TYPE_BITS
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
     def __init__(self, t=None):
@@ -81,14 +87,14 @@ class DataType(object):
                     break
             self._kind =     t[:i]
             self._nbit = int(t[i:])
-        elif isinstance(t, _bf.BFdtype): # Note: This is actually just a c_int
+        elif isinstance(t, GLOBAL_BFdtype): # Note: This is actually just a c_int
             t = int(t)
             self._nbit = t & BF_DTYPE_NBIT_BITS
-            kindmap = {_bf.BF_DTYPE_INT_TYPE:   'i',
-                       _bf.BF_DTYPE_UINT_TYPE:  'u',
-                       _bf.BF_DTYPE_FLOAT_TYPE: 'f'}
-            is_complex = bool(t & _bf.BF_DTYPE_COMPLEX_BIT)
-            self._kind = kindmap[t & _bf.BF_DTYPE_TYPE_BITS]
+            kindmap = {GLOBAL_BF_DTYPE_INT_TYPE:   'i',
+                       GLOBAL_BF_DTYPE_UINT_TYPE:  'u',
+                       GLOBAL_BF_DTYPE_FLOAT_TYPE: 'f'}
+            is_complex = bool(t & GLOBAL_BF_DTYPE_COMPLEX_BIT)
+            self._kind = kindmap[t & GLOBAL_BF_DTYPE_TYPE_BITS]
             if is_complex:
                 self._kind = 'c' + self._kind
         elif isinstance(t, DataType):

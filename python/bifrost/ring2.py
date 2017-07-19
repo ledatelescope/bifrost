@@ -130,6 +130,7 @@ class RingWriter(object):
                              header=header,
                              buf_nframe=buf_nframe)
 
+GLOBAL_BFsequence = _bf.BFsequence
 class SequenceBase(object):
     """Python object for a ring's sequence (data unit)"""
     def __init__(self, ring):
@@ -138,7 +139,7 @@ class SequenceBase(object):
         self._tensor = None
     @property
     def _base_obj(self):
-        return ctypes.cast(self.obj, _bf.BFsequence)
+        return ctypes.cast(self.obj, GLOBAL_BFsequence)
     @property
     def ring(self):
         return self._ring
@@ -303,6 +304,8 @@ def accumulate(vals, op='+', init=None, reverse=False):
         results = list(reversed(results))
     return results
 
+GLOBAL_BFspan = _bf.BFspan
+GLOBAL_BFspan_info = _bf.BFspan_info
 class SpanBase(object):
     def __init__(self, ring, sequence, writeable):
         self._ring     = ring
@@ -310,10 +313,10 @@ class SpanBase(object):
         self.writeable = writeable
         self._data = None
     def _set_base_obj(self, obj):
-        self._base_obj = ctypes.cast(obj, _bf.BFspan)
+        self._base_obj = ctypes.cast(obj, GLOBAL_BFspan)
         self._cache_info()
     def _cache_info(self):
-        self._info = _bf.BFspan_info()
+        self._info = GLOBAL_BFspan_info()
         _fast_call(BF_RING_SPAN_GET_INFO, self._base_obj, self._info)
     @property
     def ring(self):
@@ -399,6 +402,7 @@ class SpanBase(object):
 
         return data_array
 
+GLOBAL_BFwspan = _bf.BFwspan
 class WriteSpan(SpanBase):
     def __init__(self,
                  ring,
@@ -406,7 +410,7 @@ class WriteSpan(SpanBase):
                  nframe):
         SpanBase.__init__(self, ring, sequence, writeable=True)
         nbyte = nframe * self.sequence.tensor['frame_nbyte']
-        self.obj = _bf.BFwspan()
+        self.obj = GLOBAL_BFwspan()
         _fast_call(_bf.RingSpanReserve, self.obj, ring.obj, nbyte)
         self._set_base_obj(self.obj)
         # Note: We default to 0 instead of nframe so that we don't accidentally
@@ -424,11 +428,12 @@ class WriteSpan(SpanBase):
         commit_nbyte = self.commit_nframe * self.sequence.tensor['frame_nbyte']
         _fast_call(_bf.RingSpanCommit, self.obj, commit_nbyte)
 
+GLOBAL_BFrspan = _bf.BFrspan
 class ReadSpan(SpanBase):
     def __init__(self, sequence, frame_offset, nframe):
         SpanBase.__init__(self, sequence.ring, sequence, writeable=False)
         tensor = sequence.tensor
-        self.obj = _bf.BFrspan()
+        self.obj = GLOBAL_BFrspan()
         _fast_call(_bf.RingSpanAcquire, self.obj,
                    sequence.obj,
                    frame_offset * tensor['frame_nbyte'],

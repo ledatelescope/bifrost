@@ -113,6 +113,7 @@ class BFArrayInfo(object):
 # A np.ndarray subclass that adds support for different spaces and
 #   bifrost-specific metadata.
 # See https://docs.scipy.org/doc/numpy/user/basics.subclassing.html
+GLOBAL_BFarray = _bf.BFarray
 class ndarray(np.ndarray):
     def __new__(cls, base=None, space=None, shape=None, dtype=None,
                 buffer=None, offset=0, strides=None,
@@ -270,7 +271,7 @@ class ndarray(np.ndarray):
         #            How to fix?
         #*if self._BFarray is not None:
         #*    return self._BFarray
-        a = _bf.BFarray()
+        a = GLOBAL_BFarray()
         a.data      = self.ctypes.data
         a.space     = Space(self.bf.space).as_BFspace()
         a.dtype     = self.bf.dtype.as_BFdtype()

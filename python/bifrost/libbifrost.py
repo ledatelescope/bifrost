@@ -145,6 +145,8 @@ DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
 
 # Internal helper functions below
 
+GLOBAL_BFarray = _bf.BFarray
+GLOBAL_BFarray = _bf.BFarray
 def _array(size_or_vals, dtype=None):
     from pyclibrary import build_array
     import ctypes
@@ -169,10 +171,10 @@ def _array(size_or_vals, dtype=None):
                 dtype = ctypes.c_double
             elif isinstance(vals[0], basestring):
                 dtype = ctypes.c_char_p
-            elif isinstance(vals[0], _bf.BFarray):
+            elif isinstance(vals[0], GLOBAL_BFarray):
                 # Note: PyCLibrary does this automatically for scalar args,
                 #         but we must do it manually here for arrays.
-                dtype = ctypes.POINTER(_bf.BFarray)
+                dtype = ctypes.POINTER(GLOBAL_BFarray)
                 vals = [ctypes.pointer(val) for val in vals]
             # else:
             #    dtype = type(vals[0])
@@ -180,12 +182,13 @@ def _array(size_or_vals, dtype=None):
                 raise TypeError("Cannot deduce C type from ", type(vals[0]))
         return build_array(_bf, dtype, size=len(vals), vals=vals)
 
+GLOBAL_BF_STATUS_END_OF_DATA = _bf.BF_STATUS_END_OF_DATA
 def _check(f):
     status, args = f
     if status != BF_STATUS_SUCCESS:
         if status is None:
             raise RuntimeError("WTF, status is None")
-        if status == _bf.BF_STATUS_END_OF_DATA:
+        if status == GLOBAL_BF_STATUS_END_OF_DATA:
             raise StopIteration()
         else:
             status_str, _ = _bf.GetStatusString(status)
@@ -220,9 +223,14 @@ def _string2space(s):
         raise KeyError("Invalid space '" + str(s) +
                        "'.\nValid spaces: " + str(LUT.keys()))
     return LUT[s]
+GLOBAL_BF_SPACE_AUTO = _bf.BF_SPACE_AUTO
+GLOBAL_BF_SPACE_SYSTEM = _bf.BF_SPACE_SYSTEM
+GLOBAL_BF_SPACE_CUDA = _bf.BF_SPACE_CUDA
+GLOBAL_BF_SPACE_CUDA_HOST = _bf.BF_SPACE_CUDA_HOST
+GLOBAL_BF_SPACE_CUDA_MANAGED = _bf.BF_SPACE_CUDA_MANAGED
 def _space2string(i):
-    return {_bf.BF_SPACE_AUTO:         'auto',
-            _bf.BF_SPACE_SYSTEM:       'system',
-            _bf.BF_SPACE_CUDA:         'cuda',
-            _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
-            _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}[i]
+    return {GLOBAL_BF_SPACE_AUTO:         'auto',
+            GLOBAL_BF_SPACE_SYSTEM:       'system',
+            GLOBAL_BF_SPACE_CUDA:         'cuda',
+            GLOBAL_BF_SPACE_CUDA_HOST:    'cuda_host',
+            GLOBAL_BF_SPACE_CUDA_MANAGED: 'cuda_managed'}[i]

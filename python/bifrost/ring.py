@@ -134,13 +134,14 @@ class RingWriter(object):
         return WriteSequence(ring=self.ring, name=name, time_tag=time_tag,
                              header=header, nringlet=nringlet)
 
+GLOBAL_BFsequence = _bf.BFsequence
 class SequenceBase(object):
     """Python object for a ring's sequence (data unit)"""
     def __init__(self, ring):
         self._ring = ring
     @property
     def _base_obj(self):
-        return ctypes.cast(self.obj, _bf.BFsequence)
+        return ctypes.cast(self.obj, GLOBAL_BFsequence)
     @property
     def ring(self):
         return self._ring
@@ -244,13 +245,14 @@ class ReadSequence(SequenceBase):
                 yield ispan
             offset += stride
 
+GLOBAL_BFspan = _bf.BFspan
 class SpanBase(object):
     def __init__(self, ring, writeable):
         self._ring = ring
         self.writeable = writeable
     @property
     def _base_obj(self):
-        return ctypes.cast(self.obj, _bf.BFspan)
+        return ctypes.cast(self.obj, GLOBAL_BFspan)
     @property
     def ring(self):
         return self._ring
