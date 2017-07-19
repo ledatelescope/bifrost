@@ -174,7 +174,7 @@ class SequenceBase(object):
         frame_nelement = reduce(lambda x, y: x * y, frame_shape,   1)
         dtype = header['_tensor']['dtype']
         nbit = DataType(dtype).itemsize_bits
-        if __debug__: assert(nbit % 8 == 0)
+        assert(nbit % 8 == 0)
         frame_nbyte = frame_nelement * nbit // 8
         self._tensor = {}
         self._tensor['dtype']         = DataType(dtype)
@@ -348,7 +348,7 @@ class SpanBase(object):
     def frame_offset(self):
         # **TODO: Change back-end to use long instead of uint64_t
         byte_offset = int(self._info.offset)
-        if __debug__: assert(byte_offset % self.frame_nbyte == 0)
+        assert(byte_offset % self.frame_nbyte == 0)
         return byte_offset // self.frame_nbyte
     @property
     def _nringlet(self):
@@ -360,8 +360,8 @@ class SpanBase(object):
     @property
     def nframe(self):
         size_bytes = self._size_bytes
-        if __debug__: assert(size_bytes % self._sequence.tensor['frame_nbyte'] == 0)
-        nframe  = size_bytes // self._sequence.tensor['frame_nbyte']
+        assert(size_bytes % self.sequence.tensor['frame_nbyte'] == 0)
+        nframe  = size_bytes // self.sequence.tensor['frame_nbyte']
         return nframe
     @property
     def shape(self):
@@ -460,7 +460,7 @@ class ReadSpan(SpanBase):
     @property
     def nframe_overwritten(self):
         nbyte_overwritten = int(_fast_get(_bf.RingSpanGetSizeOverwritten, self.obj))
-        if __debug__: assert(nbyte_overwritten  % self.frame_nbyte == 0)
+        assert(nbyte_overwritten  % self.frame_nbyte == 0)
         return nbyte_overwritten // self.frame_nbyte
     def __enter__(self):
         return self

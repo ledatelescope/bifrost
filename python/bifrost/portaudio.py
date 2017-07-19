@@ -118,7 +118,7 @@ class suppress_fd(object):
     def __init__(self, fd):
         if   fd.lower() == 'stdout': fd = 1
         elif fd.lower() == 'stderr': fd = 2
-        if __debug__: else: assert(isinstance(fd, int))
+        else: assert(isinstance(fd, int))
         self.fd = fd
         self.devnull = os.open(os.devnull, os.O_RDWR)
         self.stderr = os.dup(self.fd) # Save original
@@ -206,7 +206,7 @@ class Stream(object):
         return self.readinto(buf)
     def readinto(self, buf):
         with self.lock:
-            if __debug__: assert(len(buf) % self.frame_nbyte == 0)
+            assert(len(buf) % self.frame_nbyte == 0)
             nframe = len(buf) // self.frame_nbyte
             # Note: This allows buf to be a buffer/memoryview object
             #         E.g., numpy.ndarray.data
@@ -218,7 +218,7 @@ class Stream(object):
             return buf
     def write(self, buf):
         with self.lock:
-            if __debug__: assert(len(buf) % self.frame_nbyte == 0)
+            assert(len(buf) % self.frame_nbyte == 0)
             nframe = len(buf) // self.frame_nbyte
             buf_view = (ctypes.c_byte * len(buf)).from_buffer(buf)
             _check(_lib.Pa_WriteStream(self.stream, buf_view, nframe))
