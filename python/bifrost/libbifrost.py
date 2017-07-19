@@ -36,33 +36,6 @@
 
 import ctypes
 
-DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
-                                        ctypes.c_char,
-                                        ctypes.c_char_p,
-                                        ctypes.c_float,
-                                        ctypes.c_double,
-                                        ctypes.c_longdouble,
-                                        ctypes.c_int,
-                                        ctypes.c_int8,
-                                        ctypes.c_int16,
-                                        ctypes.c_int32,
-                                        ctypes.c_int64,
-                                        ctypes.c_long,
-                                        ctypes.c_longlong,
-                                        ctypes.c_short,
-                                        ctypes.c_size_t,
-                                        ctypes.c_ssize_t,
-                                        ctypes.c_uint,
-                                        ctypes.c_uint8,
-                                        ctypes.c_uint16,
-                                        ctypes.c_uint32,
-                                        ctypes.c_uint64,
-                                        ctypes.c_ulong,
-                                        ctypes.c_ulonglong,
-                                        ctypes.c_ushort,
-                                        ctypes.c_void_p,
-                                        ctypes.c_wchar,
-                                        ctypes.c_wchar_p]}
 
 def _load_bifrost_lib():
     import os
@@ -136,6 +109,40 @@ def _load_bifrost_lib():
 _bf = _load_bifrost_lib() # Internal access to library
 bf = _bf                  # External access to library
 
+BF_STATUS_SUCCESS = _bf.BF_STATUS_SUCCESS
+LUT = {'auto':         _bf.BF_SPACE_AUTO,
+       'system':       _bf.BF_SPACE_SYSTEM,
+       'cuda':         _bf.BF_SPACE_CUDA,
+       'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
+       'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
+DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
+                                        ctypes.c_char,
+                                        ctypes.c_char_p,
+                                        ctypes.c_float,
+                                        ctypes.c_double,
+                                        ctypes.c_longdouble,
+                                        ctypes.c_int,
+                                        ctypes.c_int8,
+                                        ctypes.c_int16,
+                                        ctypes.c_int32,
+                                        ctypes.c_int64,
+                                        ctypes.c_long,
+                                        ctypes.c_longlong,
+                                        ctypes.c_short,
+                                        ctypes.c_size_t,
+                                        ctypes.c_ssize_t,
+                                        ctypes.c_uint,
+                                        ctypes.c_uint8,
+                                        ctypes.c_uint16,
+                                        ctypes.c_uint32,
+                                        ctypes.c_uint64,
+                                        ctypes.c_ulong,
+                                        ctypes.c_ulonglong,
+                                        ctypes.c_ushort,
+                                        ctypes.c_void_p,
+                                        ctypes.c_wchar,
+                                        ctypes.c_wchar_p]}
+
 # Internal helper functions below
 
 def _array(size_or_vals, dtype=None):
@@ -175,7 +182,7 @@ def _array(size_or_vals, dtype=None):
 
 def _check(f):
     status, args = f
-    if status != _bf.BF_STATUS_SUCCESS:
+    if status != BF_STATUS_SUCCESS:
         if status is None:
             raise RuntimeError("WTF, status is None")
         if status == _bf.BF_STATUS_END_OF_DATA:
@@ -209,15 +216,10 @@ def _fast_get(f, *args):
     return ret_val.value
 
 def _string2space(s):
-    lut = {'auto':         _bf.BF_SPACE_AUTO,
-           'system':       _bf.BF_SPACE_SYSTEM,
-           'cuda':         _bf.BF_SPACE_CUDA,
-           'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
-           'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
-    if s not in lut:
+    if s not in LUT:
         raise KeyError("Invalid space '" + str(s) +
-                       "'.\nValid spaces: " + str(lut.keys()))
-    return lut[s]
+                       "'.\nValid spaces: " + str(LUT.keys()))
+    return LUT[s]
 def _space2string(i):
     return {_bf.BF_SPACE_AUTO:         'auto',
             _bf.BF_SPACE_SYSTEM:       'system',
