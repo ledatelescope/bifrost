@@ -181,16 +181,18 @@ def _array(size_or_vals, dtype=None):
         return build_array(_bf, dtype, size=len(vals), vals=vals)
 
 GLOBAL_BF_STATUS_END_OF_DATA = _bf.BF_STATUS_END_OF_DATA
+
 def _check(f):
-    status, args = f
-    if status != BF_STATUS_SUCCESS:
-        if status is None:
-            raise RuntimeError("WTF, status is None")
-        if status == GLOBAL_BF_STATUS_END_OF_DATA:
-            raise StopIteration()
-        else:
-            status_str, _ = _bf.GetStatusString(status)
-            raise RuntimeError(status_str)
+    if __debug__:
+        status, args = f
+        if status != BF_STATUS_SUCCESS:
+            if status is None:
+                raise RuntimeError("WTF, status is None")
+            if status == GLOBAL_BF_STATUS_END_OF_DATA:
+                raise StopIteration()
+            else:
+                status_str, _ = _bf.GetStatusString(status)
+                raise RuntimeError(status_str)
     return f
 
 def _get(f, retarg=-1):
@@ -203,14 +205,15 @@ def _retval(f):
 
 # Note: These are much faster than _check and _get above, but less convenient
 def _check_fast(status):
-    if status != BF_STATUS_SUCCESS:
-        if status is None:
-            raise RuntimeError("WTF, status is None")
-        if status == GLOBAL_BF_STATUS_END_OF_DATA:
-            raise StopIteration()
-        else:
-            status_str, _ = _bf.GetStatusString(status)
-            raise RuntimeError(status_str)
+    if __debug__:
+        if status != BF_STATUS_SUCCESS:
+            if status is None:
+                raise RuntimeError("WTF, status is None")
+            if status == GLOBAL_BF_STATUS_END_OF_DATA:
+                raise StopIteration()
+            else:
+                status_str, _ = _bf.GetStatusString(status)
+                raise RuntimeError(status_str)
     return status
 
 def _fast_call(f, *args):
