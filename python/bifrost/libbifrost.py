@@ -183,8 +183,8 @@ def _array(size_or_vals, dtype=None):
 GLOBAL_BF_STATUS_END_OF_DATA = _bf.BF_STATUS_END_OF_DATA
 
 def _check(f):
+    status, args = f
     if __debug__:
-        status, args = f
         if status != BF_STATUS_SUCCESS:
             if status is None:
                 raise RuntimeError("WTF, status is None")
@@ -193,6 +193,9 @@ def _check(f):
             else:
                 status_str, _ = _bf.GetStatusString(status)
                 raise RuntimeError(status_str)
+    else:
+        if status == GLOBAL_BF_STATUS_END_OF_DATA:
+            raise StopIteration()
     return f
 
 def _get(f, retarg=-1):
@@ -214,6 +217,9 @@ def _check_fast(status):
             else:
                 status_str, _ = _bf.GetStatusString(status)
                 raise RuntimeError(status_str)
+    else:
+        if status == GLOBAL_BF_STATUS_END_OF_DATA:
+            raise StopIteration()
     return status
 
 def _fast_call(f, *args):
