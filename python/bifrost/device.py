@@ -38,10 +38,7 @@ def get_device():
 # TODO: set/get_stream
 
 def stream_synchronize():
-    if __debug__:
-        _check_fast(_bf.StreamSynchronize.func())
-    else:
-        _bf.StreamSynchronize.func()
+    _check_fast(_bf.StreamSynchronize.func())
 
 def set_devices_no_spin_cpu():
     """Sets a flag on all GPU devices that tells them not to spin the CPU when

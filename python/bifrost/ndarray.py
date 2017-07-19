@@ -92,10 +92,7 @@ def copy_array(dst, src):
         space_accessible(src_bf.bf.space, ['system'])):
         np.copyto(dst_bf, src_bf)
     else:
-        if __debug__:
-            _check_fast(_bf.ArrayCopy.func( dst_bf.as_BFarray(), src_bf.as_BFarray()))
-        else:
-            _bf.ArrayCopy.func( dst_bf.as_BFarray(), src_bf.as_BFarray())
+        _check_fast(_bf.ArrayCopy.func( dst_bf.as_BFarray(), src_bf.as_BFarray()))
         if dst_bf.bf.space != src_bf.bf.space:
             # TODO: Decide where/when these need to be called
             device.stream_synchronize()
@@ -103,10 +100,7 @@ def copy_array(dst, src):
 
 def memset_array(dst, value):
     dst_bf = asarray(dst)
-    if __debug__:
-        _check_fast(_bf.ArrayMemset.func( dst_bf.as_BFarray(), value))
-    else:
-        _bf.ArrayMemset.func( dst_bf.as_BFarray(), value)
+    _check_fast(_bf.ArrayMemset.func( dst_bf.as_BFarray(), value))
     return dst
 
 # Stores Bifrost-specific metadata that augments Numpy's metadata

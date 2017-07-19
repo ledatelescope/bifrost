@@ -31,12 +31,7 @@ from ndarray import asarray
 def unpack(src, dst, align_msb=False):
     src_bf = asarray(src).as_BFarray()
     dst_bf = asarray(dst).as_BFarray()
-    if __debug__:
-        _check_fast(_bf.Unpack.func(src_bf,
+    _check_fast(_bf.Unpack.func(src_bf,
                       dst_bf,
                       align_msb))
-    else:
-        _bf.Unpack.func(src_bf,
-                      dst_bf,
-                      align_msb)
     return dst

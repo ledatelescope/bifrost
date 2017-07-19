@@ -53,16 +53,9 @@ class Fft(object):
                                       inverse=inverse)
     def execute_workspace(self, iarray, oarray, workspace_ptr, workspace_size,
                           inverse=False):
-        if __debug__:
-            _check_fast(_bf.FftExecute.func(self.obj,
+        _check_fast(_bf.FftExecute.func(self.obj,
                    asarray(iarray).as_BFarray(),
                    asarray(oarray).as_BFarray(),
                    inverse,
                    workspace_ptr, workspace_size))
-        else:
-            _bf.FftExecute.func(self.obj,
-                   asarray(iarray).as_BFarray(),
-                   asarray(oarray).as_BFarray(),
-                   inverse,
-                   workspace_ptr, workspace_size)
         return oarray
