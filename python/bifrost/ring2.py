@@ -435,10 +435,10 @@ class ReadSpan(SpanBase):
         SpanBase.__init__(self, sequence.ring, sequence, writeable=False)
         tensor = sequence.tensor
         self.obj = GLOBAL_BFrspan()
-        _fast_call(_bf.RingSpanAcquire, self.obj,
+        _check_fast(_bf.RingSpanAcquire.func(self.obj,
                    sequence.obj,
                    frame_offset * tensor['frame_nbyte'],
-                   nframe * tensor['frame_nbyte'])
+                   nframe * tensor['frame_nbyte']))
         self._set_base_obj(self.obj)
         self.nframe_skipped = min(self.frame_offset - frame_offset, nframe)
         self.requested_frame_offset = frame_offset
