@@ -320,7 +320,10 @@ class SpanBase(object):
         self._cache_info()
     def _cache_info(self):
         self._info = GLOBAL_BFspan_info()
-        _check_fast(BF_RING_SPAN_GET_INFO.func(self._base_obj, self._info))
+        if __debug__:
+            _check_fast(BF_RING_SPAN_GET_INFO.func(self._base_obj, self._info))
+        else:
+            BF_RING_SPAN_GET_INFO.func(self._base_obj, self._info)
     @property
     def ring(self):
         return self._ring
@@ -413,7 +416,10 @@ class WriteSpan(SpanBase):
         SpanBase.__init__(self, ring, sequence, writeable=True)
         nbyte = nframe * self._sequence.tensor['frame_nbyte']
         self.obj = GLOBAL_BFwspan()
-        _check_fast(_bf.RingSpanReserve.func( self.obj, ring.obj, nbyte))
+        if __debug__:
+            _check_fast(_bf.RingSpanReserve.func( self.obj, ring.obj, nbyte))
+        else:
+            _bf.RingSpanReserve.func( self.obj, ring.obj, nbyte)
         self._set_base_obj(self.obj)
         # Note: We default to 0 instead of nframe so that we don't accidentally
         #         commit bogus data if a block throws an exception.
@@ -428,17 +434,26 @@ class WriteSpan(SpanBase):
         self.close()
     def close(self):
         commit_nbyte = self.commit_nframe * self._sequence.tensor['frame_nbyte']
-        _check_fast(_bf.RingSpanCommit.func( self.obj, commit_nbyte))
+        if __debug__:
+            _check_fast(_bf.RingSpanCommit.func( self.obj, commit_nbyte))
+        else:
+            _bf.RingSpanCommit.func( self.obj, commit_nbyte)
 
 class ReadSpan(SpanBase):
     def __init__(self, sequence, frame_offset, nframe):
         SpanBase.__init__(self, sequence.ring, sequence, writeable=False)
         tensor = sequence.tensor
         self.obj = GLOBAL_BFrspan()
-        _check_fast(_bf.RingSpanAcquire.func(self.obj,
+        if __debug__:
+            _check_fast(_bf.RingSpanAcquire.func(self.obj,
                    sequence.obj,
                    frame_offset * tensor['frame_nbyte'],
                    nframe * tensor['frame_nbyte']))
+        else:
+            _bf.RingSpanAcquire.func(self.obj,
+                   sequence.obj,
+                   frame_offset * tensor['frame_nbyte'],
+                   nframe * tensor['frame_nbyte'])
         self._set_base_obj(self.obj)
         self.nframe_skipped = min(self.frame_offset - frame_offset, nframe)
         self.requested_frame_offset = frame_offset
@@ -452,4 +467,7 @@ class ReadSpan(SpanBase):
     def __exit__(self, type, value, tb):
         self.release()
     def release(self):
-        _check_fast(_bf.RingSpanRelease.func( self.obj))
+        if __debug__:
+            _check_fast(_bf.RingSpanRelease.func( self.obj))
+        else:
+            _bf.RingSpanRelease.func( self.obj)

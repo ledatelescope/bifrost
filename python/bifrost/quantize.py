@@ -31,5 +31,8 @@ from ndarray import asarray
 def quantize(src, dst, scale=1.):
     src_bf = asarray(src).as_BFarray()
     dst_bf = asarray(dst).as_BFarray()
-    _check_fast(_bf.Quantize.func( src_bf, dst_bf, scale))
+    if __debug__:
+        _check_fast(_bf.Quantize.func( src_bf, dst_bf, scale))
+    else:
+        _bf.Quantize.func( src_bf, dst_bf, scale)
     return dst
