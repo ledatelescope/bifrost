@@ -31,38 +31,3 @@ echo "times faster"
 done
 done
 done
-
-#1.23392
-#NUMBER_FFT = 4
-#SIZE_MULTIPLIER = 32
-#GULP_SIZE = 32768*1024//8**2
-
-#1.72889
-#export NUMBER_FFT="2"
-#export SIZE_MULTIPLIER="32"
-#export GULP_SIZE="$(echo '32768*1024/8' | bc)"
-
-# 1.66151
-#export NUMBER_FFT="2"
-#export SIZE_MULTIPLIER="32"
-#export GULP_SIZE="$(echo '32768*1024/16' | bc)"
-
-#1.62643
-#export NUMBER_FFT="2"
-#export SIZE_MULTIPLIER="32"
-#export GULP_SIZE="$(echo '32768*1024/4' | bc)"
-
-# 1.19816
-#export NUMBER_FFT="3"
-#export SIZE_MULTIPLIER="32"
-#export GULP_SIZE="$(echo '32768*1024/8' | bc)"
-
-# 2.40760
-#export NUMBER_FFT="1"
-#export SIZE_MULTIPLIER="32"
-#export GULP_SIZE="$(echo '32768*1024/8' | bc)"
-
-# 2.13087
-#export NUMBER_FFT="1"
-#export SIZE_MULTIPLIER="32"
-#export GULP_SIZE="$(echo '32768*1024/2' | bc)"
