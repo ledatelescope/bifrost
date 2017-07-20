@@ -30,15 +30,6 @@ Bifrost is:
 .37485
 times faster
 STARTING NEW BENCHMARK
-, , 
-Bifrost has 2.14713406563
-Scikit has 0.787629127502
-Bifrost is: 
-.36682
-times faster
-STARTING NEW BENCHMARK
-1, 2, 33554432
-STARTING NEW BENCHMARK
 1, 2, 33554432
 Bifrost has 2.14731097221
 Scikit has 0.804691076279
@@ -501,23 +492,6 @@ Bifrost is:
 .47326
 times faster
 STARTING NEW BENCHMARK
-2, 2, 33554432
-memory.cpp:93 Condition failed: cuda_ret == cudaSuccess
-memory.cpp:93 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-Bifrost has memory.cpp:93 cudaGetErrorString(cuda_ret) = out of memory
-4.71374583244
-Scikit has 0.884368896484
-Bifrost is: 
-(standard_in) 1: syntax error
-(standard_in) 1: illegal character: :
-(standard_in) 1: illegal character: G
-(standard_in) 1: illegal character: S
-(standard_in) 1: syntax error
-4.71374583244
-times faster
-STARTING NEW BENCHMARK
 2, 2, 16777216
 Bifrost has 2.49261784554
 Scikit has 0.885046005249
@@ -586,25 +560,6 @@ Bifrost has 7.94705295563
 Scikit has 3.11913514137
 Bifrost is: 
 .39248
-times faster
-STARTING NEW BENCHMARK
-2, 4, 33554432
-memory.cpp:93 Condition failed: cuda_ret == cudaSuccess
-memory.cpp:93 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-Bifrost has memory.cpp:93 cudaGetErrorString(cuda_ret) = out of memory
-4.73240303993
-Scikit has 1.39081287384
-Bifrost is: 
-(standard_in) 1: syntax error
-(standard_in) 1: illegal character: :
-(standard_in) 1: illegal character: G
-(standard_in) 1: illegal character: S
-(standard_in) 1: syntax error
-4.73240303993
 times faster
 STARTING NEW BENCHMARK
 2, 4, 16777216
@@ -677,29 +632,6 @@ Bifrost is:
 .36919
 times faster
 STARTING NEW BENCHMARK
-2, 8, 33554432
-memory.cpp:93 Condition failed: cuda_ret == cudaSuccess
-memory.cpp:93 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-Bifrost has memory.cpp:93 cudaGetErrorString(cuda_ret) = out of memory
-5.10610604286
-Scikit has 2.47342181206
-Bifrost is: 
-(standard_in) 1: syntax error
-(standard_in) 1: illegal character: :
-(standard_in) 1: illegal character: G
-(standard_in) 1: illegal character: S
-(standard_in) 1: syntax error
-5.10610604286
-times faster
-STARTING NEW BENCHMARK
 2, 8, 16777216
 Bifrost has 3.37007808685
 Scikit has 2.52433991432
@@ -768,37 +700,6 @@ Bifrost has 31.4976539612
 Scikit has 11.4423928261
 Bifrost is: 
 .36327
-times faster
-STARTING NEW BENCHMARK
-2, 16, 33554432
-memory.cpp:93 Condition failed: cuda_ret == cudaSuccess
-memory.cpp:93 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-Bifrost has memory.cpp:93 cudaGetErrorString(cuda_ret) = out of memory
-6.2151081562
-Scikit has 4.56702303886
-Bifrost is: 
-(standard_in) 1: syntax error
-(standard_in) 1: illegal character: :
-(standard_in) 1: illegal character: G
-(standard_in) 1: illegal character: S
-(standard_in) 1: syntax error
-6.2151081562
 times faster
 STARTING NEW BENCHMARK
 2, 16, 16777216
@@ -871,53 +772,6 @@ Bifrost is:
 .35121
 times faster
 STARTING NEW BENCHMARK
-2, 32, 33554432
-memory.cpp:93 Condition failed: cuda_ret == cudaSuccess
-memory.cpp:93 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-Bifrost has memory.cpp:93 cudaGetErrorString(cuda_ret) = out of memory
-8.40694594383
-Scikit has 8.9932949543
-Bifrost is: 
-(standard_in) 1: syntax error
-(standard_in) 1: illegal character: :
-(standard_in) 1: illegal character: G
-(standard_in) 1: illegal character: S
-(standard_in) 1: syntax error
-8.40694594383
-times faster
-STARTING NEW BENCHMARK
 2, 32, 16777216
 Bifrost has 7.279266119
 Scikit has 9.01002216339
@@ -986,85 +840,6 @@ Bifrost has 126.245372057
 Scikit has 44.3462967873
 Bifrost is: 
 .35127
-times faster
-STARTING NEW BENCHMARK
-2, 64, 33554432
-memory.cpp:93 Condition failed: cuda_ret == cudaSuccess
-memory.cpp:93 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-fft.cu:249 error 16: BF_STATUS_MEM_ALLOC_FAILED
-Bifrost has memory.cpp:93 cudaGetErrorString(cuda_ret) = out of memory
-12.3618409634
-Scikit has 17.4562561512
-Bifrost is: 
-(standard_in) 1: syntax error
-(standard_in) 1: illegal character: :
-(standard_in) 1: illegal character: G
-(standard_in) 1: illegal character: S
-(standard_in) 1: syntax error
-12.3618409634
 times faster
 STARTING NEW BENCHMARK
 2, 64, 16777216
@@ -1136,18 +911,3 @@ Scikit has 87.7060542107
 Bifrost is: 
 .34334
 times faster
-STARTING NEW BENCHMARK
-3, 2, 33554432
-memory.cpp:93 Condition failed: cuda_ret == cudaSuccess
-memory.cpp:93 error 16: BF_STATUS_MEM_ALLOC_FAILED
-ring_impl.cpp:157 Condition failed: bfMalloc((void**)&new_buf, new_nbyte, _space) == BF_STATUS_SUCCESS
-ring_impl.cpp:157 error 16: BF_STATUS_MEM_ALLOC_FAILED
-ring.cpp:55 error 16: BF_STATUS_MEM_ALLOC_FAILED
-memory.cpp:93 Condition failed: cuda_ret == cudaSuccess
-memory.cpp:93 error 16: BF_STATUS_MEM_ALLOC_FAILED
-ring_impl.cpp:157 Condition failed: bfMalloc((void**)&new_buf, new_nbyte, _space) == BF_STATUS_SUCCESS
-ring_impl.cpp:157 error 16: BF_STATUS_MEM_ALLOC_FAILED
-ring.cpp:55 error 16: BF_STATUS_MEM_ALLOC_FAILED
-ring_impl.cpp:289 Condition failed: nringlet <= _nringlet
-ring_impl.cpp:289 error 4: BF_STATUS_INVALID_ARGUMENT
-ring.cpp:138 error 4: BF_STATUS_INVALID_ARGUMENT
