@@ -1,913 +1,126 @@
-Bifrost has 5.82783293724
-Scikit has 9.47857999802
-Bifrost is: 
-1.62643
-times faster
-Bifrost has 4.88118600845
-Scikit has 8.11016201973
-Bifrost is: 
-1.66151
-times faster
-Bifrost has 8.44632315636
-Scikit has 10.1200881004
-Bifrost is: 
-1.19816
-times faster
-Bifrost has 3.31879496574
-Scikit has 7.99034786224
-Bifrost is: 
-2.40760
-times faster
-Bifrost has 3.69852995872
-Scikit has 7.88111615181
-Bifrost is: 
-2.13087
-times faster
-1, 2, 33554432
-Bifrost has 2.1592168808
-Scikit has 0.809389829636
-Bifrost is: 
-.37485
-times faster
-STARTING NEW BENCHMARK
-1, 2, 33554432
-Bifrost has 2.14731097221
-Scikit has 0.804691076279
-Bifrost is: 
-.37474
-times faster
-STARTING NEW BENCHMARK
-1, 2, 16777216
-Bifrost has 1.13552904129
-Scikit has 0.826695919037
-Bifrost is: 
-.72802
-times faster
-STARTING NEW BENCHMARK
-1, 2, 8388608
-Bifrost has 0.626473903656
-Scikit has 0.825279951096
-Bifrost is: 
-1.31734
-times faster
-STARTING NEW BENCHMARK
-1, 2, 4194304
-Bifrost has 0.399655103683
-Scikit has 0.828284025192
-Bifrost is: 
-2.07249
-times faster
-STARTING NEW BENCHMARK
-1, 2, 2097152
-Bifrost has 0.312634944916
-Scikit has 0.767138004303
-Bifrost is: 
-2.45378
-times faster
-STARTING NEW BENCHMARK
-1, 2, 1048576
-Bifrost has 0.345160007477
-Scikit has 0.867915153503
-Bifrost is: 
-2.51452
-times faster
-STARTING NEW BENCHMARK
-1, 2, 524288
-Bifrost has 0.440378904343
-Scikit has 0.878082990646
-Bifrost is: 
-1.99392
-times faster
-STARTING NEW BENCHMARK
-1, 2, 262144
-Bifrost has 0.737426996231
-Scikit has 1.30929088593
-Bifrost is: 
-1.77548
-times faster
-STARTING NEW BENCHMARK
-1, 2, 131072
-Bifrost has 1.44875693321
-Scikit has 1.93347597122
-Bifrost is: 
-1.33457
-times faster
-STARTING NEW BENCHMARK
-1, 2, 65536
-Bifrost has 2.72311592102
-Scikit has 2.23314404488
-Bifrost is: 
-.82006
-times faster
-STARTING NEW BENCHMARK
-1, 2, 32768
-Bifrost has 5.30162405968
-Scikit has 2.88406705856
-Bifrost is: 
-.54399
-times faster
-STARTING NEW BENCHMARK
-1, 4, 33554432
-Bifrost has 2.26284790039
-Scikit has 1.2600209713
-Bifrost is: 
-.55682
-times faster
-STARTING NEW BENCHMARK
-1, 4, 16777216
-Bifrost has 1.24468803406
-Scikit has 1.26304006577
-Bifrost is: 
-1.01474
-times faster
-STARTING NEW BENCHMARK
-1, 4, 8388608
-Bifrost has 0.755832910538
-Scikit has 1.3080739975
-Bifrost is: 
-1.73063
-times faster
-STARTING NEW BENCHMARK
-1, 4, 4194304
-Bifrost has 0.604228973389
-Scikit has 1.28488206863
-Bifrost is: 
-2.12648
-times faster
-STARTING NEW BENCHMARK
-1, 4, 2097152
-Bifrost has 0.517762899399
-Scikit has 1.1578168869
-Bifrost is: 
-2.23619
-times faster
-STARTING NEW BENCHMARK
-1, 4, 1048576
-Bifrost has 0.598678827286
-Scikit has 1.17711400986
-Bifrost is: 
-1.96618
-times faster
-STARTING NEW BENCHMARK
-1, 4, 524288
-Bifrost has 0.842576026917
-Scikit has 1.4077899456
-Bifrost is: 
-1.67081
-times faster
-STARTING NEW BENCHMARK
-1, 4, 262144
-Bifrost has 1.50252699852
-Scikit has 2.18797087669
-Bifrost is: 
-1.45619
-times faster
-STARTING NEW BENCHMARK
-1, 4, 131072
-Bifrost has 2.82037091255
-Scikit has 3.66713786125
-Bifrost is: 
-1.30023
-times faster
-STARTING NEW BENCHMARK
-1, 4, 65536
-Bifrost has 5.47086787224
-Scikit has 4.23265004158
-Bifrost is: 
-.77367
-times faster
-STARTING NEW BENCHMARK
-1, 4, 32768
-Bifrost has 10.6251120567
-Scikit has 5.42336416245
-Bifrost is: 
-.51042
-times faster
-STARTING NEW BENCHMARK
-1, 8, 33554432
-Bifrost has 2.58837389946
-Scikit has 2.09960484505
-Bifrost is: 
-.81116
-times faster
-STARTING NEW BENCHMARK
-1, 8, 16777216
-Bifrost has 1.5101749897
-Scikit has 2.21946001053
-Bifrost is: 
-1.46967
-times faster
-STARTING NEW BENCHMARK
-1, 8, 8388608
-Bifrost has 1.13382196426
-Scikit has 2.26881790161
-Bifrost is: 
-2.00103
-times faster
-STARTING NEW BENCHMARK
-1, 8, 4194304
-Bifrost has 1.00824379921
-Scikit has 2.2117369175
-Bifrost is: 
-2.19365
-times faster
-STARTING NEW BENCHMARK
-1, 8, 2097152
-Bifrost has 1.0684709549
-Scikit has 1.95931696892
-Bifrost is: 
-1.83375
-times faster
-STARTING NEW BENCHMARK
-1, 8, 1048576
-Bifrost has 1.15359902382
-Scikit has 2.12229299545
-Bifrost is: 
-1.83971
-times faster
-STARTING NEW BENCHMARK
-1, 8, 524288
-Bifrost has 1.70077300072
-Scikit has 2.83136916161
-Bifrost is: 
-1.66475
-times faster
-STARTING NEW BENCHMARK
-1, 8, 262144
-Bifrost has 2.92053103447
-Scikit has 4.14190196991
-Bifrost is: 
-1.41820
-times faster
-STARTING NEW BENCHMARK
-1, 8, 131072
-Bifrost has 5.56596493721
-Scikit has 6.79448008537
-Bifrost is: 
-1.22071
-times faster
-STARTING NEW BENCHMARK
-1, 8, 65536
-Bifrost has 10.7122650146
-Scikit has 8.02162790298
-Bifrost is: 
-.74882
-times faster
-STARTING NEW BENCHMARK
-1, 8, 32768
-Bifrost has 20.8694968224
-Scikit has 10.3897771835
-Bifrost is: 
-.49784
-times faster
-STARTING NEW BENCHMARK
-1, 16, 33554432
-Bifrost has 3.01089692116
-Scikit has 3.79053902626
-Bifrost is: 
-1.25894
-times faster
-STARTING NEW BENCHMARK
-1, 16, 16777216
-Bifrost has 2.13562607765
-Scikit has 4.06186199188
-Bifrost is: 
-1.90195
-times faster
-STARTING NEW BENCHMARK
-1, 16, 8388608
-Bifrost has 1.87080597878
-Scikit has 4.18968486786
-Bifrost is: 
-2.23950
-times faster
-STARTING NEW BENCHMARK
-1, 16, 4194304
-Bifrost has 1.81050896645
-Scikit has 4.07915592194
-Bifrost is: 
-2.25304
-times faster
-STARTING NEW BENCHMARK
-1, 16, 2097152
-Bifrost has 1.9271838665
-Scikit has 3.58634805679
-Bifrost is: 
-1.86092
-times faster
-STARTING NEW BENCHMARK
-1, 16, 1048576
-Bifrost has 2.11270308495
-Scikit has 3.84974718094
-Bifrost is: 
-1.82219
-times faster
-STARTING NEW BENCHMARK
-1, 16, 524288
-Bifrost has 3.27059602737
-Scikit has 5.20374894142
-Bifrost is: 
-1.59107
-times faster
-STARTING NEW BENCHMARK
-1, 16, 262144
-Bifrost has 5.75865793228
-Scikit has 7.93041801453
-Bifrost is: 
-1.37712
-times faster
-STARTING NEW BENCHMARK
-1, 16, 131072
-Bifrost has 11.0611760616
-Scikit has 13.3418889046
-Bifrost is: 
-1.20619
-times faster
-STARTING NEW BENCHMARK
-1, 16, 65536
-Bifrost has 21.5576279163
-Scikit has 15.722878933
-Bifrost is: 
-.72934
-times faster
-STARTING NEW BENCHMARK
-1, 16, 32768
-Bifrost has 41.2577579021
-Scikit has 20.3502509594
-Bifrost is: 
-.49324
-times faster
-STARTING NEW BENCHMARK
-1, 32, 33554432
-Bifrost has 4.22277092934
-Scikit has 7.62731599808
-Bifrost is: 
-1.80623
-times faster
-STARTING NEW BENCHMARK
-1, 32, 16777216
-Bifrost has 3.71779203415
-Scikit has 7.65193390846
-Bifrost is: 
-2.05819
-times faster
-STARTING NEW BENCHMARK
-1, 32, 8388608
-Bifrost has 3.66532301903
-Scikit has 8.00688791275
-Bifrost is: 
-2.18449
-times faster
-STARTING NEW BENCHMARK
-1, 32, 4194304
-Bifrost has 2.92401885986
-Scikit has 7.66835999489
-Bifrost is: 
-2.62254
-times faster
-STARTING NEW BENCHMARK
-1, 32, 2097152
-Bifrost has 3.79058909416
-Scikit has 6.94567108154
-Bifrost is: 
-1.83234
-times faster
-STARTING NEW BENCHMARK
-1, 32, 1048576
-Bifrost has 4.07923698425
-Scikit has 7.66164898872
-Bifrost is: 
-1.87820
-times faster
-STARTING NEW BENCHMARK
-1, 32, 524288
-Bifrost has 6.49840903282
-Scikit has 10.2588391304
-Bifrost is: 
-1.57866
-times faster
-STARTING NEW BENCHMARK
-1, 32, 262144
-Bifrost has 11.4816861153
-Scikit has 14.9760799408
-Bifrost is: 
-1.30434
-times faster
-STARTING NEW BENCHMARK
-1, 32, 131072
-Bifrost has 21.6180210114
-Scikit has 26.1379458904
-Bifrost is: 
-1.20908
-times faster
-STARTING NEW BENCHMARK
-1, 32, 65536
-Bifrost has 42.5343680382
-Scikit has 30.7891180515
-Bifrost is: 
-.72386
-times faster
-STARTING NEW BENCHMARK
-1, 32, 32768
-Bifrost has 82.7200930119
-Scikit has 40.2258410454
-Bifrost is: 
-.48628
-times faster
-STARTING NEW BENCHMARK
-1, 64, 33554432
-Bifrost has 6.3626139164
-Scikit has 14.681812048
-Bifrost is: 
-2.30751
-times faster
-STARTING NEW BENCHMARK
-1, 64, 16777216
-Bifrost has 5.9275188446
-Scikit has 15.0387880802
-Bifrost is: 
-2.53711
-times faster
-STARTING NEW BENCHMARK
-1, 64, 8388608
-Bifrost has 5.85299491882
-Scikit has 15.4221098423
-Bifrost is: 
-2.63490
-times faster
-STARTING NEW BENCHMARK
-1, 64, 4194304
-Bifrost has 6.84099507332
-Scikit has 15.0178728104
-Bifrost is: 
-2.19527
-times faster
-STARTING NEW BENCHMARK
-1, 64, 2097152
-Bifrost has 6.41328597069
-Scikit has 12.8437070847
-Bifrost is: 
-2.00267
-times faster
-STARTING NEW BENCHMARK
-1, 64, 1048576
-Bifrost has 8.47539114952
-Scikit has 14.5765030384
-Bifrost is: 
-1.71986
-times faster
-STARTING NEW BENCHMARK
-1, 64, 524288
-Bifrost has 12.4773180485
-Scikit has 18.6187171936
-Bifrost is: 
-1.49220
-times faster
-STARTING NEW BENCHMARK
-1, 64, 262144
-Bifrost has 22.6511929035
-Scikit has 30.1625988483
-Bifrost is: 
-1.33161
-times faster
-STARTING NEW BENCHMARK
-1, 64, 131072
-Bifrost has 43.5402760506
-Scikit has 52.1373169422
-Bifrost is: 
-1.19745
-times faster
-STARTING NEW BENCHMARK
-1, 64, 65536
-Bifrost has 85.7834880352
-Scikit has 59.8675160408
-Bifrost is: 
-.69789
-times faster
-STARTING NEW BENCHMARK
-1, 64, 32768
-Bifrost has 168.217104912
-Scikit has 79.6112549305
-Bifrost is: 
-.47326
-times faster
-STARTING NEW BENCHMARK
-2, 2, 16777216
-Bifrost has 2.49261784554
-Scikit has 0.885046005249
-Bifrost is: 
-.35506
-times faster
-STARTING NEW BENCHMARK
-2, 2, 8388608
-Bifrost has 1.39940309525
-Scikit has 0.912277936935
-Bifrost is: 
-.65190
-times faster
-STARTING NEW BENCHMARK
-2, 2, 4194304
-Bifrost has 0.881110906601
-Scikit has 0.888394117355
-Bifrost is: 
-1.00826
-times faster
-STARTING NEW BENCHMARK
-2, 2, 2097152
-Bifrost has 0.599319934845
-Scikit has 0.850589990616
-Bifrost is: 
-1.41925
-times faster
-STARTING NEW BENCHMARK
-2, 2, 1048576
-Bifrost has 0.537192106247
-Scikit has 0.934947013855
-Bifrost is: 
-1.74043
-times faster
-STARTING NEW BENCHMARK
-2, 2, 524288
-Bifrost has 0.599894046783
-Scikit has 1.09823608398
-Bifrost is: 
-1.83071
-times faster
-STARTING NEW BENCHMARK
-2, 2, 262144
-Bifrost has 1.15903282166
-Scikit has 1.61998295784
-Bifrost is: 
-1.39770
-times faster
-STARTING NEW BENCHMARK
-2, 2, 131072
-Bifrost has 2.12502813339
-Scikit has 2.57792901993
-Bifrost is: 
-1.21312
-times faster
-STARTING NEW BENCHMARK
-2, 2, 65536
-Bifrost has 4.16181302071
-Scikit has 3.01085495949
-Bifrost is: 
-.72344
-times faster
-STARTING NEW BENCHMARK
-2, 2, 32768
-Bifrost has 7.94705295563
-Scikit has 3.11913514137
-Bifrost is: 
-.39248
-times faster
-STARTING NEW BENCHMARK
-2, 4, 16777216
-Bifrost has 2.69463086128
-Scikit has 1.42714715004
-Bifrost is: 
-.52962
-times faster
-STARTING NEW BENCHMARK
-2, 4, 8388608
-Bifrost has 1.67828798294
-Scikit has 1.43861508369
-Bifrost is: 
-.85719
-times faster
-STARTING NEW BENCHMARK
-2, 4, 4194304
-Bifrost has 1.14968204498
-Scikit has 1.43627810478
-Bifrost is: 
-1.24928
-times faster
-STARTING NEW BENCHMARK
-2, 4, 2097152
-Bifrost has 0.893736839294
-Scikit has 1.33127212524
-Bifrost is: 
-1.48955
-times faster
-STARTING NEW BENCHMARK
-2, 4, 1048576
-Bifrost has 0.905429124832
-Scikit has 1.40625405312
-Bifrost is: 
-1.55313
-times faster
-STARTING NEW BENCHMARK
-2, 4, 524288
-Bifrost has 1.16343188286
-Scikit has 1.95204401016
-Bifrost is: 
-1.67783
-times faster
-STARTING NEW BENCHMARK
-2, 4, 262144
-Bifrost has 2.27218389511
-Scikit has 2.86458301544
-Bifrost is: 
-1.26071
-times faster
-STARTING NEW BENCHMARK
-2, 4, 131072
-Bifrost has 4.2151529789
-Scikit has 4.86551213264
-Bifrost is: 
-1.15429
-times faster
-STARTING NEW BENCHMARK
-2, 4, 65536
-Bifrost has 8.20009994507
-Scikit has 5.71035289764
-Bifrost is: 
-.69637
-times faster
-STARTING NEW BENCHMARK
-2, 4, 32768
-Bifrost has 16.1459209919
-Scikit has 5.96107196808
-Bifrost is: 
-.36919
-times faster
-STARTING NEW BENCHMARK
-2, 8, 16777216
-Bifrost has 3.37007808685
-Scikit has 2.52433991432
-Bifrost is: 
-.74904
-times faster
-STARTING NEW BENCHMARK
-2, 8, 8388608
-Bifrost has 2.26300787926
-Scikit has 2.54356694221
-Bifrost is: 
-1.12397
-times faster
-STARTING NEW BENCHMARK
-2, 8, 4194304
-Bifrost has 1.75676488876
-Scikit has 2.5502910614
-Bifrost is: 
-1.45169
-times faster
-STARTING NEW BENCHMARK
-2, 8, 2097152
-Bifrost has 1.44723200798
-Scikit has 2.19041395187
-Bifrost is: 
-1.51351
-times faster
-STARTING NEW BENCHMARK
-2, 8, 1048576
-Bifrost has 1.61395812035
-Scikit has 2.4356341362
-Bifrost is: 
-1.50910
-times faster
-STARTING NEW BENCHMARK
-2, 8, 524288
-Bifrost has 2.27595686913
-Scikit has 3.33848810196
-Bifrost is: 
-1.46685
-times faster
-STARTING NEW BENCHMARK
-2, 8, 262144
-Bifrost has 4.31886792183
-Scikit has 5.4532160759
-Bifrost is: 
-1.26264
-times faster
-STARTING NEW BENCHMARK
-2, 8, 131072
-Bifrost has 8.40545392036
-Scikit has 9.30300688744
-Bifrost is: 
-1.10678
-times faster
-STARTING NEW BENCHMARK
-2, 8, 65536
-Bifrost has 16.4260900021
-Scikit has 10.9717550278
-Bifrost is: 
-.66794
-times faster
-STARTING NEW BENCHMARK
-2, 8, 32768
-Bifrost has 31.4976539612
-Scikit has 11.4423928261
-Bifrost is: 
-.36327
-times faster
-STARTING NEW BENCHMARK
-2, 16, 16777216
-Bifrost has 4.61020207405
-Scikit has 4.65412712097
-Bifrost is: 
-1.00952
-times faster
-STARTING NEW BENCHMARK
-2, 16, 8388608
-Bifrost has 3.46343398094
-Scikit has 4.85728597641
-Bifrost is: 
-1.40244
-times faster
-STARTING NEW BENCHMARK
-2, 16, 4194304
-Bifrost has 2.95915412903
-Scikit has 4.77883481979
-Bifrost is: 
-1.61493
-times faster
-STARTING NEW BENCHMARK
-2, 16, 2097152
-Bifrost has 2.57574605942
-Scikit has 4.09244894981
-Bifrost is: 
-1.58884
-times faster
-STARTING NEW BENCHMARK
-2, 16, 1048576
-Bifrost has 3.10564899445
-Scikit has 4.84857606888
-Bifrost is: 
-1.56121
-times faster
-STARTING NEW BENCHMARK
-2, 16, 524288
-Bifrost has 4.61438107491
-Scikit has 6.49596810341
-Bifrost is: 
-1.40776
-times faster
-STARTING NEW BENCHMARK
-2, 16, 262144
-Bifrost has 8.78322410583
-Scikit has 10.4474031925
-Bifrost is: 
-1.18947
-times faster
-STARTING NEW BENCHMARK
-2, 16, 131072
-Bifrost has 16.9266889095
-Scikit has 18.6472201347
-Bifrost is: 
-1.10164
-times faster
-STARTING NEW BENCHMARK
-2, 16, 65536
-Bifrost has 32.2141420841
-Scikit has 21.3303301334
-Bifrost is: 
-.66214
-times faster
-STARTING NEW BENCHMARK
-2, 16, 32768
-Bifrost has 63.7008149624
-Scikit has 22.3728702068
-Bifrost is: 
-.35121
-times faster
-STARTING NEW BENCHMARK
-2, 32, 16777216
-Bifrost has 7.279266119
-Scikit has 9.01002216339
-Bifrost is: 
-1.23776
-times faster
-STARTING NEW BENCHMARK
-2, 32, 8388608
-Bifrost has 5.85252809525
-Scikit has 9.3776512146
-Bifrost is: 
-1.60232
-times faster
-STARTING NEW BENCHMARK
-2, 32, 4194304
-Bifrost has 5.3510890007
-Scikit has 9.05713915825
-Bifrost is: 
-1.69257
-times faster
-STARTING NEW BENCHMARK
-2, 32, 2097152
-Bifrost has 4.88376498222
-Scikit has 8.21950387955
-Bifrost is: 
-1.68302
-times faster
-STARTING NEW BENCHMARK
-2, 32, 1048576
-Bifrost has 5.90605998039
-Scikit has 8.65593099594
-Bifrost is: 
-1.46560
-times faster
-STARTING NEW BENCHMARK
-2, 32, 524288
-Bifrost has 8.6968588829
-Scikit has 12.3988070488
-Bifrost is: 
-1.42566
-times faster
-STARTING NEW BENCHMARK
-2, 32, 262144
-Bifrost has 16.9118609428
-Scikit has 20.1988890171
-Bifrost is: 
-1.19436
-times faster
-STARTING NEW BENCHMARK
-2, 32, 131072
-Bifrost has 32.9603838921
-Scikit has 35.5547809601
-Bifrost is: 
-1.07871
-times faster
-STARTING NEW BENCHMARK
-2, 32, 65536
-Bifrost has 65.1674730778
-Scikit has 42.5118010044
-Bifrost is: 
-.65234
-times faster
-STARTING NEW BENCHMARK
-2, 32, 32768
-Bifrost has 126.245372057
-Scikit has 44.3462967873
-Bifrost is: 
-.35127
-times faster
-STARTING NEW BENCHMARK
-2, 64, 16777216
-Bifrost has 12.2428429127
-Scikit has 17.7527401447
-Bifrost is: 
-1.45005
-times faster
-STARTING NEW BENCHMARK
-2, 64, 8388608
-Bifrost has 10.5295710564
-Scikit has 18.0400538445
-Bifrost is: 
-1.71327
-times faster
-STARTING NEW BENCHMARK
-2, 64, 4194304
-Bifrost has 10.1122510433
-Scikit has 17.9445669651
-Bifrost is: 
-1.77453
-times faster
-STARTING NEW BENCHMARK
-2, 64, 2097152
-Bifrost has 9.34515285492
-Scikit has 15.4255440235
-Bifrost is: 
-1.65064
-times faster
-STARTING NEW BENCHMARK
-2, 64, 1048576
-Bifrost has 11.7012951374
-Scikit has 18.1982619762
-Bifrost is: 
-1.55523
-times faster
-STARTING NEW BENCHMARK
-2, 64, 524288
-Bifrost has 17.6936299801
-Scikit has 23.7671170235
-Bifrost is: 
-1.34325
-times faster
-STARTING NEW BENCHMARK
-2, 64, 262144
-Bifrost has 34.1961479187
-Scikit has 39.7555389404
-Bifrost is: 
-1.16257
-times faster
-STARTING NEW BENCHMARK
-2, 64, 131072
-Bifrost has 65.3730261326
-Scikit has 71.191357851
-Bifrost is: 
-1.08900
-times faster
-STARTING NEW BENCHMARK
-2, 64, 65536
-Bifrost has 130.899441004
-Scikit has 83.3919270039
-Bifrost is: 
-.63706
-times faster
-STARTING NEW BENCHMARK
-2, 64, 32768
-Bifrost has 255.448440075
-Scikit has 87.7060542107
-Bifrost is: 
-.34334
-times faster
+1, 64, 8388608, 2.63490
+1, 32, 4194304, 2.62254
+1, 64, 16777216, 2.53711
+1, 2, 1048576, 2.51452
+1, 2, 2097152, 2.45378
+1, 64, 33554432, 2.30751
+1, 16, 4194304, 2.25304
+1, 16, 8388608, 2.23950
+1, 4, 2097152, 2.23619
+1, 64, 4194304, 2.19527
+1, 8, 4194304, 2.19365
+1, 32, 8388608, 2.18449
+1, 4, 4194304, 2.12648
+1, 2, 4194304, 2.07249
+1, 32, 16777216, 2.05819
+1, 64, 2097152, 2.00267
+1, 8, 8388608, 2.00103
+1, 2, 524288, 1.99392
+1, 4, 1048576, 1.96618
+1, 16, 16777216, 1.90195
+1, 32, 1048576, 1.87820
+1, 16, 2097152, 1.86092
+1, 8, 1048576, 1.83971
+1, 8, 2097152, 1.83375
+1, 32, 2097152, 1.83234
+2, 2, 524288, 1.83071
+1, 16, 1048576, 1.82219
+1, 32, 33554432, 1.80623
+1, 2, 262144, 1.77548
+2, 64, 4194304, 1.77453
+2, 2, 1048576, 1.74043
+1, 4, 8388608, 1.73063
+1, 64, 1048576, 1.71986
+2, 64, 8388608, 1.71327
+2, 32, 4194304, 1.69257
+2, 32, 2097152, 1.68302
+2, 4, 524288, 1.67783
+1, 4, 524288, 1.67081
+1, 8, 524288, 1.66475
+2, 64, 2097152, 1.65064
+2, 16, 4194304, 1.61493
+2, 32, 8388608, 1.60232
+1, 16, 524288, 1.59107
+2, 16, 2097152, 1.58884
+1, 32, 524288, 1.57866
+2, 16, 1048576, 1.56121
+2, 64, 1048576, 1.55523
+2, 4, 1048576, 1.55313
+2, 8, 2097152, 1.51351
+2, 8, 1048576, 1.50910
+1, 64, 524288, 1.49220
+2, 4, 2097152, 1.48955
+1, 8, 16777216, 1.46967
+2, 8, 524288, 1.46685
+2, 32, 1048576, 1.46560
+1, 4, 262144, 1.45619
+2, 8, 4194304, 1.45169
+2, 64, 16777216, 1.45005
+2, 32, 524288, 1.42566
+2, 2, 2097152, 1.41925
+1, 8, 262144, 1.41820
+2, 16, 524288, 1.40776
+2, 16, 8388608, 1.40244
+2, 2, 262144, 1.39770
+1, 16, 262144, 1.37712
+2, 64, 524288, 1.34325
+1, 2, 131072, 1.33457
+1, 64, 262144, 1.33161
+1, 2, 8388608, 1.31734
+1, 32, 262144, 1.30434
+1, 4, 131072, 1.30023
+2, 8, 262144, 1.26264
+2, 4, 262144, 1.26071
+1, 16, 33554432, 1.25894
+2, 4, 4194304, 1.24928
+2, 32, 16777216, 1.23776
+1, 8, 131072, 1.22071
+2, 2, 131072, 1.21312
+1, 32, 131072, 1.20908
+1, 16, 131072, 1.20619
+1, 64, 131072, 1.19745
+2, 32, 262144, 1.19436
+2, 16, 262144, 1.18947
+2, 64, 262144, 1.16257
+2, 4, 131072, 1.15429
+2, 8, 8388608, 1.12397
+2, 8, 131072, 1.10678
+2, 16, 131072, 1.10164
+2, 64, 131072, 1.08900
+2, 32, 131072, 1.07871
+1, 4, 16777216, 1.01474
+2, 16, 16777216, 1.00952
+2, 2, 4194304, 1.00826
+2, 4, 8388608, .85719
+1, 2, 65536, .82006
+1, 8, 33554432, .81116
+1, 4, 65536, .77367
+2, 8, 16777216, .74904
+1, 8, 65536, .74882
+1, 16, 65536, .72934
+1, 2, 16777216, .72802
+1, 32, 65536, .72386
+2, 2, 65536, .72344
+1, 64, 65536, .69789
+2, 4, 65536, .69637
+2, 8, 65536, .66794
+2, 16, 65536, .66214
+2, 32, 65536, .65234
+2, 2, 8388608, .65190
+2, 64, 65536, .63706
+1, 4, 33554432, .55682
+1, 2, 32768, .54399
+2, 4, 16777216, .52962
+1, 4, 32768, .51042
+1, 8, 32768, .49784
+1, 16, 32768, .49324
+1, 32, 32768, .48628
+1, 64, 32768, .47326
+2, 2, 32768, .39248
+1, 2, 33554432, .37474
+2, 4, 32768, .36919
+2, 8, 32768, .36327
+2, 2, 16777216, .35506
+2, 32, 32768, .35127
+2, 16, 32768, .35121
+2, 64, 32768, .34334
