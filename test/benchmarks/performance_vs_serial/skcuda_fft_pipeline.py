@@ -10,11 +10,15 @@ NUMBER_FFT = int(os.environ['NUMBER_FFT'])
 SIZE_MULTIPLIER = int(os.environ['SIZE_MULTIPLIER'])
 GULP_SIZE = int(os.environ['GULP_SIZE'])
 
+# This needs to be here because gulps are now technically twice
+# as large
+COMPLEX_MULTIPLIER = 2
+
 def scikit_gpu_fft_pipeline(filename):
     data = []
     start = timer()
     with open(filename, 'r') as file_obj:
-        for _ in range(32768*1024*SIZE_MULTIPLIER//GULP_SIZE):
+        for _ in range((32768*1024*SIZE_MULTIPLIER//GULP_SIZE)//COMPLEX_MULTIPLIER):
             data = np.fromfile(file_obj, dtype=np.complex64, count=GULP_SIZE)
             g_data = gpuarray.to_gpu(data)
             plan = Plan(data.shape, np.complex64, np.complex64)
