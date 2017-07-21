@@ -11,6 +11,7 @@ NUMBER_FFT = int(os.environ['NUMBER_FFT'])
 SIZE_MULTIPLIER = int(os.environ['SIZE_MULTIPLIER'])
 GULP_SIZE = int(os.environ['GULP_SIZE'])
 GULP_FRAME = int(os.environ['GULP_FRAME'])
+GULP_FRAME_FFT = int(os.environ['GULP_FRAME_FFT'])
 
 class GPUFFTBenchmarker(PipelineBenchmarker):
     """ Test the sigproc read function """
@@ -23,8 +24,8 @@ class GPUFFTBenchmarker(PipelineBenchmarker):
                     [datafile], gulp_size=GULP_SIZE, gulp_nframe=GULP_FRAME, dtype='cf32')
             bc.blocks.copy('cuda', gulp_nframe=GULP_FRAME)
             for _ in range(NUMBER_FFT):
-                bc.blocks.fft(['gulped'], axis_labels=['ft_gulped'])
-                bc.blocks.fft(['ft_gulped'], axis_labels=['gulped'], inverse=True)
+                bc.blocks.fft(['gulped'], axis_labels=['ft_gulped'], gulp_nframe=GULP_FRAME_FFT)
+                bc.blocks.fft(['ft_gulped'], axis_labels=['gulped'], inverse=True, gulp_nframe=GULP_FRAME_FFT)
 
             start = timer()
             pipeline.run()
