@@ -19,7 +19,7 @@ class GPUFFTBenchmarker(PipelineBenchmarker):
 
             bc = bf.BlockChainer()
             bc.blocks.binary_read(
-                    [datafile], gulp_size=GULP_SIZE, gulp_nframe=1, dtype='f32')
+                    [datafile], gulp_size=GULP_SIZE, gulp_nframe=1, dtype='cf32')
             bc.blocks.copy('cuda')
             for _ in range(NUMBER_FFT):
                 bc.blocks.fft(['gulped'], axis_labels=['ft_gulped'])

@@ -15,7 +15,7 @@ def scikit_gpu_fft_pipeline(filename):
     start = timer()
     with open(filename, 'r') as file_obj:
         for _ in range(32768*1024*SIZE_MULTIPLIER//GULP_SIZE):
-            data = np.fromfile(file_obj, dtype=np.float32, count=GULP_SIZE).astype(np.complex64)
+            data = np.fromfile(file_obj, dtype=np.complex64, count=GULP_SIZE)
             g_data = gpuarray.to_gpu(data)
             plan = Plan(data.shape, np.complex64, np.complex64)
             tmp1 = gpuarray.empty(data.shape, dtype=np.complex64)
