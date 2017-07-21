@@ -25,7 +25,7 @@ export SIZE_MULTIPLIER="1"
 export GULP_SIZE="$(echo "32768*1024/$k" | bc)"
 export GULP_FRAME="$l"
 export GULP_FRAME_FFT="$j"
-echo -n "$NUMBER_FFT, $SIZE_MULTIPLIER, $GULP_SIZE, $GULP_FRAME, $GULP_FRAME_FFT "
+echo -n "$NUMBER_FFT, $SIZE_MULTIPLIER, $GULP_SIZE, $GULP_FRAME, $GULP_FRAME_FFT, "
 NUM1="$(python -OO linear_fft_pipeline.py)"
 NUM2="$(python skcuda_fft_pipeline.py)"
 speedup=$(echo "scale=5; $NUM2/$NUM1" | bc)
