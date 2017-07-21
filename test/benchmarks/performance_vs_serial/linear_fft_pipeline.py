@@ -10,6 +10,7 @@ from bifrost_benchmarks import PipelineBenchmarker
 NUMBER_FFT = int(os.environ['NUMBER_FFT'])
 SIZE_MULTIPLIER = int(os.environ['SIZE_MULTIPLIER'])
 GULP_SIZE = int(os.environ['GULP_SIZE'])
+GULP_FRAME = int(os.environ['GULP_FRAME'])
 
 class GPUFFTBenchmarker(PipelineBenchmarker):
     """ Test the sigproc read function """
@@ -19,8 +20,8 @@ class GPUFFTBenchmarker(PipelineBenchmarker):
 
             bc = bf.BlockChainer()
             bc.blocks.binary_read(
-                    [datafile], gulp_size=GULP_SIZE, gulp_nframe=1, dtype='cf32')
-            bc.blocks.copy('cuda')
+                    [datafile], gulp_size=GULP_SIZE, gulp_nframe=GULP_FRAME, dtype='cf32')
+            bc.blocks.copy('cuda', gulp_nframe=GULP_FRAME)
             for _ in range(NUMBER_FFT):
                 bc.blocks.fft(['gulped'], axis_labels=['ft_gulped'])
                 bc.blocks.fft(['ft_gulped'], axis_labels=['gulped'], inverse=True)
@@ -39,4 +40,3 @@ with open('numpy_data0.bin', 'wb') as myfile: pass
 s.tofile('numpy_data0.bin')
 
 print gpufftbenchmarker.average_benchmark(1)[0]
-
