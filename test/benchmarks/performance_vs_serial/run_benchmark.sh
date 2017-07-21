@@ -1,7 +1,5 @@
 #!/bin/bash
 
-export BF_CORES=4
-
 declare -a fft_array=("1" "2")
 declare -a size_array=("2" "4" "8" "16")
 declare -a gulp_array=("1" "2" "4" "8" "16" "32" "64" "128")
