@@ -64,6 +64,7 @@
 #include "cuda/stream.hpp"
 #include "ShapeIndexer.cuh"
 #include "trace.hpp"
+#include "Complex.hpp"
 
 class BFlinalg_impl {
 	cublasHandle_t _cublas;
@@ -82,19 +83,19 @@ public:
 	cublasHandle_t cublas() const { return _cublas; }
 };
 
-BFstatus bfMatMul_aa_exec(BFlinalg    handle,
-                          cudaStream_t stream,
-                          cublasOperation_t trans,
-                          long        n,
-                          long        k,
-                          double      alpha,
-                          void const* a_data,
-                          BFdtype     a_type,
-                          long        a_stride,
-                          double      beta,
-                          void const* c_data,
-                          BFdtype     c_type,
-                          long        c_stride) {
+BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
+                                  cudaStream_t stream,
+                                  cublasOperation_t trans,
+                                  long        n,
+                                  long        k,
+                                  double      alpha,
+                                  void const* a_data,
+                                  BFdtype     a_type,
+                                  long        a_stride,
+                                  double      beta,
+                                  void*       c_data,
+                                  BFdtype     c_type,
+                                  long        c_stride) {
 	BF_TRACE_STREAM(stream);
 	BF_CHECK_CUBLAS(cublasSetStream(handle->cublas(), stream));
 	// Note: UPPER here means lower for row-major ordering
@@ -190,24 +191,118 @@ BFstatus bfMatMul_aa_exec(BFlinalg    handle,
 	return BF_STATUS_SUCCESS;
 }
 
+BFstatus bfMatMul_aa_exec(BFlinalg    handle,
+                          cudaStream_t stream,
+                          cublasOperation_t trans,
+                          long        n,
+                          long        k,
+                          long        nbatch,
+                          double      alpha,
+                          void const* a_data,
+                          BFdtype     a_type,
+                          long        a_stride,
+                          long        a_batchstride,
+                          double      beta,
+                          void*       c_data,
+                          BFdtype     c_type,
+                          long        c_stride,
+                          long        c_batchstride) {
+	// TODO: Use batched algos here where possible
+	
+	//char* use_bf_cherk_str = getenv("BF_CHERK");
+	//bool use_bf_cherk = use_bf_cherk_str && atoi(use_bf_cherk_str);
+	enum { BF_CUBLAS_CHERK_THRESHOLD = 896 };
+	if( //use_bf_cherk &&
+	    (CUDART_VERSION < 8000 || n < BF_CUBLAS_CHERK_THRESHOLD) &&
+	    trans == CUBLAS_OP_N &&
+	    k % 4 == 0 &&
+	    n % 2 == 0 &&
+	    a_stride % 2 == 0 && a_batchstride % 2 == 0 &&
+	    c_stride % 2 == 0 && c_batchstride % 2 == 0 &&
+	    (a_type == BF_DTYPE_CI8 || a_type == BF_DTYPE_CI16) &&
+	    c_type == BF_DTYPE_CF32 ) {
+		BF_TRY_RETURN(bf_cherk_N(
+			n, k, nbatch,
+			alpha,
+			a_data, a_type, a_stride, a_batchstride,
+			beta,
+			c_data, c_type, c_stride, c_batchstride,
+			stream));
+	}
+	
+	for( long b=0; b<nbatch; ++b ) {
+		cuda::child_stream child_stream(stream);
+		BF_CHECK( bfMatMul_aa_exec_nobatch(handle, child_stream,
+		                                   trans, n, k,
+		                                   alpha,
+		                                   a_data, a_type, a_stride,
+		                                   beta,
+		                                   c_data, c_type, c_stride) );
+		a_data = (char*)a_data + a_batchstride * BF_DTYPE_NBYTE(a_type);
+		c_data = (char*)c_data + c_batchstride * BF_DTYPE_NBYTE(c_type);
+	}
+	return BF_STATUS_SUCCESS;
+}
+
 BFstatus bfMatMul_aa(BFlinalg       handle,
                      double         alpha,
                      BFarray const* a,
+                     bool           adjoint,
                      double         beta,
                      BFarray const* c) {
 	BF_TRACE();
 	BF_ASSERT(c->ndim == a->ndim, BF_STATUS_INVALID_SHAPE);
 	int ndim = a->ndim;
+	BFarray a_mutable;
+	::memcpy(&a_mutable, a, sizeof(BFarray));
+	a = &a_mutable;
+	if( adjoint ) {
+		std::swap(a_mutable.shape[  ndim-1], a_mutable.shape[  ndim-2]);
+		std::swap(a_mutable.strides[ndim-1], a_mutable.strides[ndim-2]);
+		a_mutable.conjugated = !a_mutable.conjugated;
+	}
 	// Check that output shape is correct
 	BF_ASSERT(c->shape[ndim-1] == a->shape[ndim-2], BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT(c->shape[ndim-2] == a->shape[ndim-2], BF_STATUS_INVALID_SHAPE);
-	// TODO: Need to check for matching batch dims? Does broadcasting work?
+	
+	// Handle batch dims by merging the contiguous ones together and selecting
+	//   the largest one to be the kernel batch dim.
+	long nbatch = 1;
+	int  batch_dim = -1;
+	int  batch_shape[BF_MAX_DIMS];
+	BFarray a_flattened, c_flattened;
+	for( int d=0; d<ndim; ++d ) {
+		batch_shape[d] = 1;
+	}
+	if( ndim > 2 ) {
+		// Keep the last 3 dims but attempt to flatten all others
+		unsigned long keep_dims_mask = 0x7 << (ndim-3);
+		keep_dims_mask |= padded_dims_mask(a);
+		keep_dims_mask |= padded_dims_mask(c);
+		flatten(a, &a_flattened, keep_dims_mask);
+		flatten(c, &c_flattened, keep_dims_mask);
+		a = &a_flattened;
+		c = &c_flattened;
+		BF_ASSERT(a_flattened.ndim == c_flattened.ndim, BF_STATUS_INTERNAL_ERROR);
+		ndim = c->ndim;
+		
+		for( int d=0; d<ndim-2; ++d ) {
+			BF_ASSERT(a->shape[d] == c->shape[d] || a->shape[d] == 1, BF_STATUS_INVALID_SHAPE);
+			batch_shape[d] = c->shape[d];
+			// Find longest dimension to use as kernel batch dim
+			if( c->shape[d] >= nbatch ) {
+				nbatch = c->shape[d];
+				batch_dim = d;
+			}
+		}
+		// Remove the kernel batch dim from the rest of the batch shape
+		batch_shape[batch_dim] = 1;
+	}
+	
 	// Convert byte strides to element strides
-	int batch_shape[BF_MAX_DIMS];
 	int astrides[BF_MAX_DIMS];
 	int cstrides[BF_MAX_DIMS];
 	for( int d=0; d<ndim ; ++d ) {
-		batch_shape[d] = a->shape[d];
 		astrides[d] = a->strides[d];
 		cstrides[d] = c->strides[d];
 	}
@@ -222,51 +317,68 @@ BFstatus bfMatMul_aa(BFlinalg       handle,
 	if( astrides[ndim-1] < astrides[ndim-2] ) {
 		// Note: The fastest dim cannot be a batch dim
 		BF_ASSERT(astrides[ndim-1] == 1, BF_STATUS_UNSUPPORTED_STRIDE);
-		trans = (BF_DTYPE_IS_COMPLEX(a->dtype) ?
-		         CUBLAS_OP_C :
-		         CUBLAS_OP_T);
+		if( BF_DTYPE_IS_COMPLEX(a->dtype) ) {
+			// Note: Because BLAS uses col-major ordering, we can only support
+			//         the non-conjugated case here.
+			BF_ASSERT(!a->conjugated, BF_STATUS_UNSUPPORTED);
+			trans = CUBLAS_OP_C;
+		} else {
+			trans = CUBLAS_OP_T;
+		}
 	} else if( astrides[ndim-1] > astrides[ndim-2] ) {
 		// Note: The fastest dim cannot be a batch dim
 		BF_ASSERT(astrides[ndim-2] == 1, BF_STATUS_UNSUPPORTED_STRIDE);
+		// Note: Because BLAS uses col-major ordering, we can only support
+		//         the conjugated case here.
+		if( BF_DTYPE_IS_COMPLEX(a->dtype) ) {
+			BF_ASSERT(a->conjugated, BF_STATUS_UNSUPPORTED);
+		}
 		trans = CUBLAS_OP_N;
 		std::swap(astrides[ndim-1], astrides[ndim-2]);
 	} else {
+		// TODO: I think this actually occurs legitimately when shape[-1] = 1
 		BF_ASSERT(false, BF_STATUS_INVALID_STRIDE);
 	}
-	BF_ASSERT(cstrides[ndim-2] > cstrides[ndim-1], BF_STATUS_UNSUPPORTED_STRIDE);
+	BF_ASSERT(cstrides[ndim-2] >= cstrides[ndim-1], BF_STATUS_UNSUPPORTED_STRIDE);
+	
+	if( nbatch > 1 ) {
+		// Enable broadcasting in the kernel batch dim
+		if( a->shape[batch_dim] == 1 ) { astrides[batch_dim] = 0; }
+	}
+	
 	// Loop over batch dims
-	ShapeIndexer<BF_MAX_DIMS> shape_indexer(batch_shape, ndim-2);
+	ShapeIndexer<BF_MAX_DIMS> shape_indexer(batch_shape, ndim);
 	for( long i=0; i<shape_indexer.size(); ++i ) {
 		auto inds = shape_indexer.at(i);
 		void* a_data = array_get_pointer(a, inds);
 		void* c_data = array_get_pointer(c, inds);
 		cuda::child_stream stream(g_cuda_stream);
 		BF_CHECK( bfMatMul_aa_exec(handle, stream, trans,
-		                           a->shape[ndim-2], a->shape[ndim-1],
-		                           alpha, a_data, a->dtype, astrides[ndim-2],
-		                           beta,  c_data, c->dtype, cstrides[ndim-2]) );
+		                           a->shape[ndim-2], a->shape[ndim-1], nbatch,
+		                           alpha, a_data, a->dtype, astrides[ndim-2], astrides[batch_dim],
+		                           beta,  c_data, c->dtype, cstrides[ndim-2], cstrides[batch_dim]) );
 	}
 	return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfMatMul_ab_exec(BFlinalg    handle,
-                          cudaStream_t stream,
-                          cublasOperation_t trans_a,
-                          cublasOperation_t trans_b,
-                          long        m,
-                          long        n,
-                          long        k,
-                          double      alpha,
-                          void const* a_data,
-                          BFdtype     a_type,
-                          long        a_stride,
-                          void const* b_data,
-                          BFdtype     b_type,
-                          long        b_stride,
-                          double      beta,
-                          void const* c_data,
-                          BFdtype     c_type,
-                          long        c_stride) {
+BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
+                                  cudaStream_t stream,
+                                  cublasOperation_t trans_a,
+                                  cublasOperation_t trans_b,
+                                  long        m,
+                                  long        n,
+                                  long        k,
+                                  double      alpha,
+                                  void const* a_data,
+                                  BFdtype     a_type,
+                                  long        a_stride,
+                                  void const* b_data,
+                                  BFdtype     b_type,
+                                  long        b_stride,
+                                  double      beta,
+                                  void*       c_data,
+                                  BFdtype     c_type,
+                                  long        c_stride) {
 	BF_TRACE_STREAM(stream);
 	BF_CHECK_CUBLAS(cublasSetStream(handle->cublas(), stream));
 	BF_CHECK_CUBLAS(cublasSetPointerMode(handle->cublas(),
@@ -373,6 +485,65 @@ BFstatus bfMatMul_ab_exec(BFlinalg    handle,
 	return BF_STATUS_SUCCESS;
 }
 
+BFstatus bfMatMul_ab_exec(BFlinalg    handle,
+                          cudaStream_t stream,
+                          cublasOperation_t trans_a,
+                          cublasOperation_t trans_b,
+                          long        m,
+                          long        n,
+                          long        k,
+                          long        nbatch,
+                          double      alpha,
+                          void const* a_data,
+                          BFdtype     a_type,
+                          long        a_stride,
+                          long        a_batchstride,
+                          void const* b_data,
+                          BFdtype     b_type,
+                          long        b_stride,
+                          long        b_batchstride,
+                          double      beta,
+                          void*       c_data,
+                          BFdtype     c_type,
+                          long        c_stride,
+                          long        c_batchstride) {
+	// TODO: Use batched algos here where possible
+	
+	//char* use_bf_cgemm_str = getenv("BF_CGEMM");
+	//bool use_bf_cgemm = use_bf_cgemm_str && atoi(use_bf_cgemm_str);
+	if( //use_bf_cgemm &&
+	    n <= 12 &&
+	    trans_a == CUBLAS_OP_T && trans_b == CUBLAS_OP_N &&
+	    (a_type == BF_DTYPE_CI4  || a_type == BF_DTYPE_CI8) &&
+	    (b_type == BF_DTYPE_CI16 || b_type == BF_DTYPE_CF16 || b_type == BF_DTYPE_CF32) &&
+	    c_type == BF_DTYPE_CF32 ) {
+		BF_TRY_RETURN(bf_cgemm_TN_smallM(
+			m, n, k, nbatch,
+			alpha,
+			a_data, a_type, a_stride, a_batchstride,
+			b_data, b_type, b_stride, b_batchstride,
+			beta,
+			c_data, c_type, c_stride, c_batchstride,
+			stream));
+	}
+	
+	for( long b=0; b<nbatch; ++b ) {
+		cuda::child_stream child_stream(stream);
+		BF_CHECK( bfMatMul_ab_exec_nobatch(handle, child_stream,
+		                                   trans_a, trans_b,
+		                                   m, n, k,
+		                                   alpha,
+		                                   a_data, a_type, a_stride,
+		                                   b_data, b_type, b_stride,
+		                                   beta,
+		                                   c_data, c_type, c_stride) );
+		a_data = (char*)a_data + a_batchstride * BF_DTYPE_NBYTE(a_type);
+		b_data = (char*)b_data + b_batchstride * BF_DTYPE_NBYTE(b_type);
+		c_data = (char*)c_data + c_batchstride * BF_DTYPE_NBYTE(c_type);
+	}
+	return BF_STATUS_SUCCESS;
+}
+
 BFstatus bfMatMul_ab(BFlinalg       handle,
                      double         alpha,
                      BFarray const* a,
@@ -387,14 +558,51 @@ BFstatus bfMatMul_ab(BFlinalg       handle,
 	BF_ASSERT(c->shape[ndim-2] == a->shape[ndim-2], BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT(c->shape[ndim-1] == b->shape[ndim-1], BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT(a->shape[ndim-1] == b->shape[ndim-2], BF_STATUS_INVALID_SHAPE);
-	// TODO: Need to check for matching batch dims? Does broadcasting work?
+	
+	// Handle batch dims by merging the contiguous ones together and selecting
+	//   the largest one to be the kernel batch dim.
+	long nbatch = 1;
+	int  batch_dim = -1;
+	int  batch_shape[BF_MAX_DIMS];
+	BFarray a_flattened, b_flattened, c_flattened;
+	for( int d=0; d<ndim; ++d ) {
+		batch_shape[d] = 1;
+	}
+	if( ndim > 2 ) {
+		// Keep the last 3 dims but attempt to flatten all others
+		unsigned long keep_dims_mask = 0x7 << (ndim-3);
+		keep_dims_mask |= padded_dims_mask(a);
+		keep_dims_mask |= padded_dims_mask(b);
+		keep_dims_mask |= padded_dims_mask(c);
+		flatten(a, &a_flattened, keep_dims_mask);
+		flatten(b, &b_flattened, keep_dims_mask);
+		flatten(c, &c_flattened, keep_dims_mask);
+		a = &a_flattened;
+		b = &b_flattened;
+		c = &c_flattened;
+		BF_ASSERT(a_flattened.ndim == b_flattened.ndim, BF_STATUS_INTERNAL_ERROR);
+		BF_ASSERT(c_flattened.ndim == b_flattened.ndim, BF_STATUS_INTERNAL_ERROR);
+		ndim = c->ndim;
+		
+		for( int d=0; d<ndim-2; ++d ) {
+			BF_ASSERT(a->shape[d] == c->shape[d] || a->shape[d] == 1, BF_STATUS_INVALID_SHAPE);
+			BF_ASSERT(b->shape[d] == c->shape[d] || b->shape[d] == 1, BF_STATUS_INVALID_SHAPE);
+			batch_shape[d] = c->shape[d];
+			// Find longest dimension to use as kernel batch dim
+			if( c->shape[d] >= nbatch ) {
+				nbatch = c->shape[d];
+				batch_dim = d;
+			}
+		}
+		// Remove the kernel batch dim from the rest of the batch shape
+		batch_shape[batch_dim] = 1;
+	}
+	
 	// Convert byte strides to element strides
-	int batch_shape[BF_MAX_DIMS];
 	int astrides[BF_MAX_DIMS];
 	int bstrides[BF_MAX_DIMS];
 	int cstrides[BF_MAX_DIMS];
 	for( int d=0; d<ndim ; ++d ) {
-		batch_shape[d] = a->shape[d];
 		astrides[d] = a->strides[d];
 		bstrides[d] = b->strides[d];
 		cstrides[d] = c->strides[d];
@@ -425,6 +633,7 @@ BFstatus bfMatMul_ab(BFlinalg       handle,
 		           CUBLAS_OP_T);
 		std::swap(astrides[ndim-1], astrides[ndim-2]);
 	} else {
+		// TODO: I think this actually occurs legitimately when shape[-1] = 1
 		BF_ASSERT(false, BF_STATUS_INVALID_STRIDE);
 	}
 	if( bstrides[ndim-1] < bstrides[ndim-2] ) {
@@ -444,27 +653,34 @@ BFstatus bfMatMul_ab(BFlinalg       handle,
 	} else {
 		BF_ASSERT(false, BF_STATUS_INVALID_STRIDE);
 	}
-	BF_ASSERT(cstrides[ndim-2] > cstrides[ndim-1], BF_STATUS_UNSUPPORTED_STRIDE);
-	// Loop over batch dims
-	ShapeIndexer<BF_MAX_DIMS> shape_indexer(batch_shape, ndim-2);
+	BF_ASSERT(cstrides[ndim-2] >= cstrides[ndim-1], BF_STATUS_UNSUPPORTED_STRIDE);
+	
+	if( nbatch > 1 ) {
+		// Enable broadcasting in the kernel batch dim
+		if( a->shape[batch_dim] == 1 ) { astrides[batch_dim] = 0; }
+		if( b->shape[batch_dim] == 1 ) { bstrides[batch_dim] = 0; }
+	}
+	
+	ShapeIndexer<BF_MAX_DIMS> shape_indexer(batch_shape, ndim);
 	for( long i=0; i<shape_indexer.size(); ++i ) {
 		auto inds = shape_indexer.at(i);
 		void* a_data = array_get_pointer(a, inds);
 		void* b_data = array_get_pointer(b, inds);
 		void* c_data = array_get_pointer(c, inds);
 		cuda::child_stream stream(g_cuda_stream);
-		BF_CHECK( bfMatMul_ab_exec(handle, stream,  trans_b,trans_a,
+		BF_CHECK( bfMatMul_ab_exec(handle, stream, trans_b, trans_a,
 		                           c->shape[ndim-1], // m
 		                           c->shape[ndim-2], // n
 		                           a->shape[ndim-1], // k
+		                           nbatch,
 		                           alpha,
 		                           // Note: We swap a and b here because
 		                           //         CUBLAS uses column-major
 		                           //         while we use row-major order.
-		                           b_data, b->dtype, bstrides[ndim-2],
-		                           a_data, a->dtype, astrides[ndim-2],
+		                           b_data, b->dtype, bstrides[ndim-2], bstrides[batch_dim],
+		                           a_data, a->dtype, astrides[ndim-2], astrides[batch_dim],
 		                           beta,
-		                           c_data, c->dtype, cstrides[ndim-2]) );
+		                           c_data, c->dtype, cstrides[ndim-2], cstrides[batch_dim]) );
 	}
 	return BF_STATUS_SUCCESS;
 }
@@ -481,34 +697,32 @@ BFstatus bfLinAlgDestroy(BFlinalg handle) {
 	delete handle;
 	return BF_STATUS_SUCCESS;
 }
-// Computes c = a.b or a.a^H if b is NULL
+// Computes c = a.b, or a.a^H or b^H.b if either a or b are NULL
 BFstatus bfLinAlgMatMul(BFlinalg       handle,
                         double         alpha,
                         BFarray const* a,   // [...,i,j]
                         BFarray const* b,   // [...,j,k]
                         double         beta,
                         BFarray const* c) {  // [...,i,k]
-	// TODO: Use weight_and_sum kernel when:
-	//         Dim i is the fastest dim of a
-	//         Dim j is the fastest dim of b
-	//         Dim k is NOT the fastest dim of c
-	//         [Dim k is small (say < 64)]
-	// TODO: Generalise weight_and_sum kernel to arbitrary strides and dtypes
-	//         For dtypes, need Complex<T> to work for vectorized loads
-	//           UNLESS, we use something like storage_type<T>::type
 	BF_TRACE();
 	BF_ASSERT(handle, BF_STATUS_INVALID_HANDLE);
-	BF_ASSERT(a, BF_STATUS_INVALID_POINTER);
+	BF_ASSERT(a || b, BF_STATUS_INVALID_ARGUMENT);
 	BF_ASSERT(c, BF_STATUS_INVALID_POINTER);
-	BF_ASSERT(space_accessible_from(a->space, BF_SPACE_CUDA),
-	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_ASSERT(space_accessible_from(c->space, BF_SPACE_CUDA),
 	          BF_STATUS_UNSUPPORTED_SPACE);
-	if( b ) {
+	if( a && b ) {
+		BF_ASSERT(space_accessible_from(a->space, BF_SPACE_CUDA),
+	          BF_STATUS_UNSUPPORTED_SPACE);
 		BF_ASSERT(space_accessible_from(b->space, BF_SPACE_CUDA),
 		          BF_STATUS_UNSUPPORTED_SPACE);
 		return bfMatMul_ab(handle, alpha, a, b, beta, c);
+		//BF_TRY_RETURN(bfMatMul_ab(handle, alpha, a, b, beta, c));
 	} else {
-		return bfMatMul_aa(handle, alpha, a, beta, c);
+		BFarray const* input = a ? a : b;
+		BF_ASSERT(space_accessible_from(input->space, BF_SPACE_CUDA),
+		          BF_STATUS_UNSUPPORTED_SPACE);
+		bool adjoint = (input == b);
+		// TODO: BF_TRY_RETURN
+		return bfMatMul_aa(handle, alpha, input, adjoint, beta, c);
 	}
 }

@@ -37,9 +37,11 @@ class LinAlg(object):
     def matmul(self, alpha, a, b, beta, c):
         """Computes:
           c = alpha*a.b + beta*c
-        if b is not None, else:
-          c = alpha*a.a^ + beta*c
-        where '.' is matrix product and '^' is Hermitian transpose.
+        or if b is None:
+          c = alpha*a.a^H + beta*c
+        or if a is None:
+          c = alpha*b^H.b + beta*c
+        where '.' is matrix product and '^H' is Hermitian transpose.
         Multi-dimensional semantics are the same as numpy.matmul:
           The last two dims represent the matrix, and all other dims are
           used as batch dims to be matched or broadcast between a and b.
@@ -50,7 +52,7 @@ class LinAlg(object):
             beta = 0.
         beta  = float(beta)
         alpha = float(alpha)
-        a_array = asarray(a).as_BFarray()
+        a_array = asarray(a).as_BFarray() if a is not None else None
         b_array = asarray(b).as_BFarray() if b is not None else None
         c_array = asarray(c).as_BFarray()
         _check(_bf.LinAlgMatMul(self.obj,

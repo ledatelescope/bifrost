@@ -29,10 +29,7 @@ ifndef NOCUDA
   map.o \
   trace.o \
   linalg.o \
-  #correlate.o \
-  blas.o \
-  transform.o
-  #apsynth.o
+  linalg_kernels.o
 endif
 
 JIT_SOURCES ?= \
