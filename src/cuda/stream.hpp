@@ -80,7 +80,7 @@ int main() {
 
 namespace cuda {
 
-void check_error(cudaError_t ret) {
+inline void check_error(cudaError_t ret) {
 	if( ret != cudaSuccess ) {
 		throw std::runtime_error(cudaGetErrorString(ret));
 	}
