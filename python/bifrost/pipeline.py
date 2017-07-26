@@ -102,7 +102,8 @@ class BlockScope(object):
     def __enter__(self):
         thread_local.blockscope_stack.append(self)
     def __exit__(self, type, value, tb):
-        assert(thread_local.blockscope_stack.pop() is self)
+        if __debug__: assert(thread_local.blockscope_stack.pop() is self)
+        else: thread_local.blockscope_stack.pop()
     def __getattr__(self, name):
         # Use child's value if set, othersize defer to parent
         if not hasattr(self, '_' + name):
@@ -271,7 +272,8 @@ class Pipeline(BlockScope):
         thread_local.pipeline_stack.append(self)
         return self
     def __exit__(self, type, value, tb):
-        assert(thread_local.pipeline_stack.pop() is self)
+        if __debug__: assert(thread_local.pipeline_stack.pop() is self)
+        else: thread_local.pipeline_stack.pop()
 
 # Create the default pipeline object
 thread_local.pipeline_stack.append(Pipeline())

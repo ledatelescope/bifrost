@@ -25,11 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _fast_call
+from libbifrost import _bf, _check, _get, _fast_call, _check_fast
 from ndarray import asarray
 
 def quantize(src, dst, scale=1.):
     src_bf = asarray(src).as_BFarray()
     dst_bf = asarray(dst).as_BFarray()
-    _fast_call(_bf.Quantize, src_bf, dst_bf, scale)
+    _check_fast(_bf.Quantize.func( src_bf, dst_bf, scale))
     return dst

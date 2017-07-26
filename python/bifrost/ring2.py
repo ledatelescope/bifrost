@@ -28,7 +28,7 @@
 # TODO: Some of this code has gotten a bit hacky
 #         Also consider merging some of the logic into the backend
 
-from libbifrost import _bf, _check, _get, _string2space, _space2string, _fast_call, _fast_get
+from libbifrost import _bf, _check, _get, _string2space, _space2string, _fast_call, _fast_get, _check_fast
 from DataType import DataType
 from ndarray import ndarray, _address_as_buffer
 from copy import copy, deepcopy
@@ -36,11 +36,19 @@ from copy import copy, deepcopy
 import ctypes
 import numpy as np
 
+GLOBAL_BFrspan = _bf.BFrspan
+GLOBAL_BFwspan = _bf.BFwspan
+GLOBAL_BFspan_info = _bf.BFspan_info
+GLOBAL_BFspan = _bf.BFspan
+GLOBAL_BFsequence = _bf.BFsequence
+
 try:
     import simplejson as json
 except ImportError:
     print "WARNING: Install simplejson for better performance"
     import json
+
+BF_RING_SPAN_GET_INFO = _bf.bfRingSpanGetInfo
 
 # TODO: Should probably move this elsewhere (e.g., utils)
 def split_shape(shape):
@@ -136,7 +144,7 @@ class SequenceBase(object):
         self._tensor = None
     @property
     def _base_obj(self):
-        return ctypes.cast(self.obj, _bf.BFsequence)
+        return ctypes.cast(self.obj, GLOBAL_BFsequence)
     @property
     def ring(self):
         return self._ring
@@ -308,11 +316,11 @@ class SpanBase(object):
         self.writeable = writeable
         self._data = None
     def _set_base_obj(self, obj):
-        self._base_obj = ctypes.cast(obj, _bf.BFspan)
+        self._base_obj = ctypes.cast(obj, GLOBAL_BFspan)
         self._cache_info()
     def _cache_info(self):
-        self._info = _bf.BFspan_info()
-        _fast_call(_bf.bfRingSpanGetInfo, self._base_obj, self._info)
+        self._info = GLOBAL_BFspan_info()
+        _check_fast(BF_RING_SPAN_GET_INFO.func(self._base_obj, self._info))
     @property
     def ring(self):
         return self._ring
@@ -321,7 +329,7 @@ class SpanBase(object):
         return self._sequence
     @property
     def tensor(self):
-        return self.sequence.tensor
+        return self._sequence.tensor
     @property
     def _size_bytes(self):
         # **TODO: Change back-end to use long instead of uint64_t
@@ -332,7 +340,7 @@ class SpanBase(object):
         return int(self._info.stride)
     @property
     def frame_nbyte(self):
-        return self.tensor['frame_nbyte']
+        return self._sequence.tensor['frame_nbyte']
     @property
     def frame_offset(self):
         # **TODO: Change back-end to use long instead of uint64_t
@@ -349,18 +357,18 @@ class SpanBase(object):
     @property
     def nframe(self):
         size_bytes = self._size_bytes
-        assert(size_bytes % self.tensor['frame_nbyte'] == 0)
-        nframe  = size_bytes // self.tensor['frame_nbyte']
+        assert(size_bytes % self.sequence.tensor['frame_nbyte'] == 0)
+        nframe  = size_bytes // self.sequence.tensor['frame_nbyte']
         return nframe
     @property
     def shape(self):
-        shape = (self.tensor['ringlet_shape'] +
+        shape = (self._sequence.tensor['ringlet_shape'] +
                  [self.nframe] +
-                 self.tensor['frame_shape'])
+                 self._sequence.tensor['frame_shape'])
         return shape
     @property
     def strides(self):
-        tensor = self.tensor
+        tensor = self._sequence.tensor
         strides = [tensor['dtype_nbyte']]
         for dim in reversed(tensor['frame_shape']):
             strides.append(dim * strides[-1])
@@ -372,7 +380,7 @@ class SpanBase(object):
         return strides
     @property
     def dtype(self):
-        return self.tensor['dtype']
+        return self._sequence.tensor['dtype']
     @property
     def data(self):
 
@@ -403,9 +411,9 @@ class WriteSpan(SpanBase):
                  sequence,
                  nframe):
         SpanBase.__init__(self, ring, sequence, writeable=True)
-        nbyte = nframe * self.tensor['frame_nbyte']
-        self.obj = _bf.BFwspan()
-        _fast_call(_bf.RingSpanReserve, self.obj, ring.obj, nbyte)
+        nbyte = nframe * self._sequence.tensor['frame_nbyte']
+        self.obj = GLOBAL_BFwspan()
+        _check_fast(_bf.RingSpanReserve.func( self.obj, ring.obj, nbyte))
         self._set_base_obj(self.obj)
         # Note: We default to 0 instead of nframe so that we don't accidentally
         #         commit bogus data if a block throws an exception.
@@ -419,18 +427,18 @@ class WriteSpan(SpanBase):
     def __exit__(self, type, value, tb):
         self.close()
     def close(self):
-        commit_nbyte = self.commit_nframe * self.tensor['frame_nbyte']
-        _fast_call(_bf.RingSpanCommit, self.obj, commit_nbyte)
+        commit_nbyte = self.commit_nframe * self._sequence.tensor['frame_nbyte']
+        _check_fast(_bf.RingSpanCommit.func( self.obj, commit_nbyte))
 
 class ReadSpan(SpanBase):
     def __init__(self, sequence, frame_offset, nframe):
         SpanBase.__init__(self, sequence.ring, sequence, writeable=False)
         tensor = sequence.tensor
-        self.obj = _bf.BFrspan()
-        _fast_call(_bf.RingSpanAcquire, self.obj,
+        self.obj = GLOBAL_BFrspan()
+        _check_fast(_bf.RingSpanAcquire.func(self.obj,
                    sequence.obj,
                    frame_offset * tensor['frame_nbyte'],
-                   nframe * tensor['frame_nbyte'])
+                   nframe * tensor['frame_nbyte']))
         self._set_base_obj(self.obj)
         self.nframe_skipped = min(self.frame_offset - frame_offset, nframe)
         self.requested_frame_offset = frame_offset
@@ -444,4 +452,4 @@ class ReadSpan(SpanBase):
     def __exit__(self, type, value, tb):
         self.release()
     def release(self):
-        _fast_call(_bf.RingSpanRelease, self.obj)
+        _check_fast(_bf.RingSpanRelease.func( self.obj))

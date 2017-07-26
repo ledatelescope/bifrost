@@ -39,11 +39,13 @@ TODO: Some calls result in segfault with space=cuda (e.g., __getitem__
 import ctypes
 import numpy as np
 from memory import raw_malloc, raw_free, raw_get_space, space_accessible
-from bifrost.libbifrost import _bf, _check, _fast_call
+from bifrost.libbifrost import _bf, _check, _fast_call, _check_fast
 import device
 from DataType import DataType
 from Space import Space
 import sys
+
+GLOBAL_BFarray = _bf.BFarray
 
 # TODO: The stuff here makes array.py redundant (and outdated)
 
@@ -90,7 +92,7 @@ def copy_array(dst, src):
         space_accessible(src_bf.bf.space, ['system'])):
         np.copyto(dst_bf, src_bf)
     else:
-        _fast_call(_bf.ArrayCopy, dst_bf.as_BFarray(), src_bf.as_BFarray())
+        _check_fast(_bf.ArrayCopy.func( dst_bf.as_BFarray(), src_bf.as_BFarray()))
         if dst_bf.bf.space != src_bf.bf.space:
             # TODO: Decide where/when these need to be called
             device.stream_synchronize()
@@ -98,7 +100,7 @@ def copy_array(dst, src):
 
 def memset_array(dst, value):
     dst_bf = asarray(dst)
-    _fast_call(_bf.ArrayMemset, dst_bf.as_BFarray(), value)
+    _check_fast(_bf.ArrayMemset.func( dst_bf.as_BFarray(), value))
     return dst
 
 # Stores Bifrost-specific metadata that augments Numpy's metadata
@@ -270,7 +272,7 @@ class ndarray(np.ndarray):
         #            How to fix?
         #*if self._BFarray is not None:
         #*    return self._BFarray
-        a = _bf.BFarray()
+        a = GLOBAL_BFarray()
         a.data      = self.ctypes.data
         a.space     = Space(self.bf.space).as_BFspace()
         a.dtype     = self.bf.dtype.as_BFdtype()

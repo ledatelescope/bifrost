@@ -31,6 +31,8 @@ from ndarray import asarray
 import ctypes
 import numpy as np
 
+GLOBAL_BFsize = _bf.BFsize
+
 class Fdmt(object):
     def __init__(self):
         self.obj = _get(_bf.FdmtCreate(), retarg=0)
@@ -58,7 +60,7 @@ class Fdmt(object):
                                 False, 0) )
     def execute_workspace(self, idata, odata, workspace_ptr, workspace_size,
                           negative_delays=False):
-        size = _bf.BFsize(workspace_size)
+        size = GLOBAL_BFsize(workspace_size)
         _fast_call(_bf.FdmtExecute, self.obj,
                    asarray(idata).as_BFarray(),
                    asarray(odata).as_BFarray(),

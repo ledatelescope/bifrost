@@ -36,6 +36,7 @@
 
 import ctypes
 
+
 def _load_bifrost_lib():
     import os
     import glob
@@ -108,6 +109,40 @@ def _load_bifrost_lib():
 _bf = _load_bifrost_lib() # Internal access to library
 bf = _bf                  # External access to library
 
+BF_STATUS_SUCCESS = _bf.BF_STATUS_SUCCESS
+LUT = {'auto':         _bf.BF_SPACE_AUTO,
+       'system':       _bf.BF_SPACE_SYSTEM,
+       'cuda':         _bf.BF_SPACE_CUDA,
+       'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
+       'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
+DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
+                                        ctypes.c_char,
+                                        ctypes.c_char_p,
+                                        ctypes.c_float,
+                                        ctypes.c_double,
+                                        ctypes.c_longdouble,
+                                        ctypes.c_int,
+                                        ctypes.c_int8,
+                                        ctypes.c_int16,
+                                        ctypes.c_int32,
+                                        ctypes.c_int64,
+                                        ctypes.c_long,
+                                        ctypes.c_longlong,
+                                        ctypes.c_short,
+                                        ctypes.c_size_t,
+                                        ctypes.c_ssize_t,
+                                        ctypes.c_uint,
+                                        ctypes.c_uint8,
+                                        ctypes.c_uint16,
+                                        ctypes.c_uint32,
+                                        ctypes.c_uint64,
+                                        ctypes.c_ulong,
+                                        ctypes.c_ulonglong,
+                                        ctypes.c_ushort,
+                                        ctypes.c_void_p,
+                                        ctypes.c_wchar,
+                                        ctypes.c_wchar_p]}
+
 # Internal helper functions below
 
 def _array(size_or_vals, dtype=None):
@@ -134,10 +169,10 @@ def _array(size_or_vals, dtype=None):
                 dtype = ctypes.c_double
             elif isinstance(vals[0], basestring):
                 dtype = ctypes.c_char_p
-            elif isinstance(vals[0], _bf.BFarray):
+            elif isinstance(vals[0], GLOBAL_BFarray):
                 # Note: PyCLibrary does this automatically for scalar args,
                 #         but we must do it manually here for arrays.
-                dtype = ctypes.POINTER(_bf.BFarray)
+                dtype = ctypes.POINTER(GLOBAL_BFarray)
                 vals = [ctypes.pointer(val) for val in vals]
             # else:
             #    dtype = type(vals[0])
@@ -145,16 +180,22 @@ def _array(size_or_vals, dtype=None):
                 raise TypeError("Cannot deduce C type from ", type(vals[0]))
         return build_array(_bf, dtype, size=len(vals), vals=vals)
 
+GLOBAL_BF_STATUS_END_OF_DATA = _bf.BF_STATUS_END_OF_DATA
+
 def _check(f):
     status, args = f
-    if status != _bf.BF_STATUS_SUCCESS:
-        if status is None:
-            raise RuntimeError("WTF, status is None")
-        if status == _bf.BF_STATUS_END_OF_DATA:
+    if __debug__:
+        if status != BF_STATUS_SUCCESS:
+            if status is None:
+                raise RuntimeError("WTF, status is None")
+            if status == GLOBAL_BF_STATUS_END_OF_DATA:
+                raise StopIteration()
+            else:
+                status_str, _ = _bf.GetStatusString(status)
+                raise RuntimeError(status_str)
+    else:
+        if status == GLOBAL_BF_STATUS_END_OF_DATA:
             raise StopIteration()
-        else:
-            status_str, _ = _bf.GetStatusString(status)
-            raise RuntimeError(status_str)
     return f
 
 def _get(f, retarg=-1):
@@ -166,39 +207,27 @@ def _retval(f):
     return ret
 
 # Note: These are much faster than _check and _get above, but less convenient
+def _check_fast(status):
+    if __debug__:
+        if status != BF_STATUS_SUCCESS:
+            if status is None:
+                raise RuntimeError("WTF, status is None")
+            if status == GLOBAL_BF_STATUS_END_OF_DATA:
+                raise StopIteration()
+            else:
+                status_str, _ = _bf.GetStatusString(status)
+                raise RuntimeError(status_str)
+    else:
+        if status == GLOBAL_BF_STATUS_END_OF_DATA:
+            raise StopIteration()
+    return status
+
 def _fast_call(f, *args):
-    # Note: f.func is much faster than f(*args, **kwargs)
     return _check( (f.func(*args), None) )
+
 def _fast_get(f, *args):
     """Calls the getter function f and returns the value from the last arg"""
     # TODO: Is there a proper way to do this that supports general types?
-    DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
-                                            ctypes.c_char,
-                                            ctypes.c_char_p,
-                                            ctypes.c_float,
-                                            ctypes.c_double,
-                                            ctypes.c_longdouble,
-                                            ctypes.c_int,
-                                            ctypes.c_int8,
-                                            ctypes.c_int16,
-                                            ctypes.c_int32,
-                                            ctypes.c_int64,
-                                            ctypes.c_long,
-                                            ctypes.c_longlong,
-                                            ctypes.c_short,
-                                            ctypes.c_size_t,
-                                            ctypes.c_ssize_t,
-                                            ctypes.c_uint,
-                                            ctypes.c_uint8,
-                                            ctypes.c_uint16,
-                                            ctypes.c_uint32,
-                                            ctypes.c_uint64,
-                                            ctypes.c_ulong,
-                                            ctypes.c_ulonglong,
-                                            ctypes.c_ushort,
-                                            ctypes.c_void_p,
-                                            ctypes.c_wchar,
-                                            ctypes.c_wchar_p]}
     ff = f.func
     retarg = -1
     dtype = DEREF[ff.argtypes[retarg]]
@@ -208,18 +237,20 @@ def _fast_get(f, *args):
     return ret_val.value
 
 def _string2space(s):
-    lut = {'auto':         _bf.BF_SPACE_AUTO,
-           'system':       _bf.BF_SPACE_SYSTEM,
-           'cuda':         _bf.BF_SPACE_CUDA,
-           'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
-           'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
-    if s not in lut:
-        raise KeyError("Invalid space '" + str(s) +
-                       "'.\nValid spaces: " + str(lut.keys()))
-    return lut[s]
+    if __debug__:
+        if s not in LUT:
+            raise KeyError("Invalid space '" + str(s) +
+                           "'.\nValid spaces: " + str(LUT.keys()))
+    return LUT[s]
+
+GLOBAL_BF_SPACE_AUTO = _bf.BF_SPACE_AUTO
+GLOBAL_BF_SPACE_SYSTEM = _bf.BF_SPACE_SYSTEM
+GLOBAL_BF_SPACE_CUDA = _bf.BF_SPACE_CUDA
+GLOBAL_BF_SPACE_CUDA_HOST = _bf.BF_SPACE_CUDA_HOST
+GLOBAL_BF_SPACE_CUDA_MANAGED = _bf.BF_SPACE_CUDA_MANAGED
 def _space2string(i):
-    return {_bf.BF_SPACE_AUTO:         'auto',
-            _bf.BF_SPACE_SYSTEM:       'system',
-            _bf.BF_SPACE_CUDA:         'cuda',
-            _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
-            _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}[i]
+    return {GLOBAL_BF_SPACE_AUTO:         'auto',
+            GLOBAL_BF_SPACE_SYSTEM:       'system',
+            GLOBAL_BF_SPACE_CUDA:         'cuda',
+            GLOBAL_BF_SPACE_CUDA_HOST:    'cuda_host',
+            GLOBAL_BF_SPACE_CUDA_MANAGED: 'cuda_managed'}[i]

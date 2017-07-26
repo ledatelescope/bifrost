@@ -35,6 +35,9 @@ import ctypes
 import numpy as np
 from uuid import uuid4
 
+GLOBAL_BFspan = _bf.BFspan
+GLOBAL_BFsequence = _bf.BFsequence
+
 class Ring(object):
     def __init__(self, space='system', name=None):
         if name is None:
@@ -140,7 +143,7 @@ class SequenceBase(object):
         self._ring = ring
     @property
     def _base_obj(self):
-        return ctypes.cast(self.obj, _bf.BFsequence)
+        return ctypes.cast(self.obj, GLOBAL_BFsequence)
     @property
     def ring(self):
         return self._ring
@@ -250,7 +253,7 @@ class SpanBase(object):
         self.writeable = writeable
     @property
     def _base_obj(self):
-        return ctypes.cast(self.obj, _bf.BFspan)
+        return ctypes.cast(self.obj, GLOBAL_BFspan)
     @property
     def ring(self):
         return self._ring
