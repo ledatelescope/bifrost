@@ -98,7 +98,13 @@ class PipelineTestCPU(unittest.TestCase):
             pipeline.run()
     def run_test_simple_copy(self, guarantee, test_views=False):
         def check_sequence(seq):
-            pass
+            hdr = seq.header
+            tensor = hdr['_tensor']
+            self.assertEqual(tensor['shape'],  [-1,1,2])
+            self.assertEqual(tensor['scales'], [[813283200.0, 8e-05], None, [433.968, -0.062]])
+            self.assertEqual(tensor['dtype'],  'u16')
+            self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
+            self.assertEqual(tensor['units'],  ['s', None, 'MHz'])
         def check_data(ispan, ospan):
             pass
         gulp_nframe = 101
@@ -106,8 +112,14 @@ class PipelineTestCPU(unittest.TestCase):
             data = read_sigproc([self.fil_file], gulp_nframe)
             if test_views:
                 data = bf.views.split_axis(data, 'freq', 2, 'fine_freq')
+                data = bf.views.merge_axes(data, 'freq', 'fine_freq')
                 data = bf.views.rename_axis(data, 'freq', 'chan')
-                data = bf.views.merge_axes(data, 'chan', 'fine_freq')
+                data = bf.views.rename_axis(data, 'chan', 'freq')
+                data = bf.views.reverse_scale(data, 'freq')
+                data = bf.views.reverse_scale(data, 'freq')
+                data = bf.views.reinterpret_axis(data, 'freq', label='chan', scale=[0, 1], units='THz')
+                data = bf.views.reinterpret_axis(data, 'chan', label='freq', scale=[433.968, -0.062], units='MHz')
+                data = bf.views.astype(data, 'i16')
                 data = bf.views.astype(data, 'u16')
                 data = bf.views.custom(
                     data, lambda hdr: rename_sequence(hdr, hdr['name']))
