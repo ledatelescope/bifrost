@@ -29,7 +29,7 @@
 from libbifrost import _bf, _check, _get, _string2space, _space2string
 
 import os
-import glob
+import time
 import ctypes
 import numpy as np
 
@@ -72,36 +72,40 @@ def _multi_convert(value):
 
 def load_by_filename(filename):
     """
-    Function to read in a ProcLog file and return the contents as a
+    Function to read in a ProcLog file and return the contents as a 
     dictionary.
     """
 
     contents = {}
     with open(filename, 'r') as fh:
-        # Read the file all at once to avoid
+        ## Read the file all at once to avoid problems but only after it has a size
+        for attempt in xrange(5):
+            if os.path.getsize(filename) != 0:
+                break
+            time.sleep(0.001)
         lines = fh.read()
 
-        # Loop through lines
+        ## Loop through lines
         for line in lines.split('\n'):
-            # Parse the key : value pairs
+            ### Parse the key : value pairs
             try:
                 key, value = line.split(':', 1)
             except ValueError:
                 continue
 
-            # Trim off excess whitespace
+            ### Trim off excess whitespace
             key = key.strip().rstrip()
             value = value.strip().rstrip()
 
-            # Convert and save
+            ### Convert and save
             contents[key] = _multi_convert(value)
 
     # Done
     return contents
 
-def load_by_pid(pid):
+def load_by_pid(pid, include_rings=False):
     """
-    Function to read in and parse all ProcLog files associated with a given
+    Function to read in and parse all ProcLog files associated with a given 
     process ID.  The contents of these files are returned as a collection of
     dictionaries ordered by:
       block name
@@ -114,24 +118,29 @@ def load_by_pid(pid):
     if not os.path.isdir(baseDir):
         raise RuntimeError("Cannot find log directory associated with PID %s" % pid)
 
-    # Find the relevant files
-    filenames = glob.glob(os.path.join(baseDir, '*', '*'))
-
     # Load
     contents = {}
-    for filename in filenames:
-        # Extract the block and logfile names
-        logName = os.path.basename(filename)
-        blockName = os.path.basename( os.path.dirname(filename) )
+    for parent,subnames,filenames in os.walk(baseDir):
+        for filename in filenames:
+            filename = os.path.join(parent, filename)
 
-        # Load the file's contents
-        subContents = load_by_filename(filename)
+            ## Extract the block and logfile names
+            logName = os.path.basename(filename)
+            blockName = os.path.basename( os.path.dirname(filename) )
+            if blockName == 'rings' and not include_rings:
+                continue
 
-        # Save
-        try:
-            contents[blockName][logName] = subContents
-        except KeyError:
-            contents[blockName] = {logName: subContents}
+            ## Load the file's contents
+            try:
+                subContents = load_by_filename(filename)
+            except IOError:
+                continue
+
+            ## Save
+            try:
+                contents[blockName][logName] = subContents
+            except KeyError:
+                contents[blockName] = {logName:subContents}
 
     # Done
     return contents

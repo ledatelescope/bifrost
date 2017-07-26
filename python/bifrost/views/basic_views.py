@@ -30,8 +30,9 @@ from __future__ import absolute_import
 from bifrost.pipeline import block_view
 from bifrost.DataType import DataType
 from bifrost.units import convert_units
-
 from numpy import isclose
+from copy import deepcopy
+
 
 def custom(block, hdr_transform):
     """An alias to `bifrost.pipeline.block_view`
@@ -45,6 +46,29 @@ def rename_axis(block, old, new):
         return hdr
     return block_view(block, header_transform)
 
+def reinterpret_axis(block, axis, label, scale=None, units=None):
+	""" Manually reinterpret the scale and/or units on an axis """
+	def header_transform(hdr, axis=axis, label=label, scale=scale, units=units):
+		tensor = hdr['_tensor']
+		if isinstance(axis, basestring):
+			axis = tensor['labels'].index(axis)
+		if scale is not None:
+			tensor['scales'][axis] = scale
+		if units is not None:
+			tensor['units'][axis] = units
+		return hdr
+	return block_view(block, header_transform)
+
+def reverse_scale(block, axis):
+	""" Manually reverse the scale factor on a given axis"""
+	def header_transform(hdr, axis=axis):
+		tensor = hdr['_tensor']
+		if isinstance(axis, basestring):
+			axis = tensor['labels'].index(axis)
+			tensor['scales'][axis][1] *= -1
+		return hdr
+	return block_view(block, header_transform)
+
 def expand_dims(block, axis, label, scale=None, units=None):
     """Add an extra dimension to the frame
 
@@ -53,7 +77,7 @@ def expand_dims(block, axis, label, scale=None, units=None):
     [-1, 3, 1, 2].
     """
     def header_transform(hdr, axis=axis, label=label, scale=scale, units=units):
-        tensor = hdr['tensor']
+        tensor = hdr['_tensor']
         if isinstance(axis, basestring):
             axis = tensor['labels'].index(axis)
         tensor['shape'].insert(axis, 1)

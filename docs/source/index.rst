@@ -12,6 +12,9 @@ Welcome to Bifrost's documentation!
    Getting-started-guide
    Create-a-pipeline
    your-first-blocks.rst
+   views
+   tools-intro
+   bfmap
    How-Python-and-C---fits-together
    Common-installation-and-execution-problems
    bifrost.blocks
