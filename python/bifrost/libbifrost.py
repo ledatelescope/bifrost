@@ -36,7 +36,6 @@
 
 import ctypes
 
-
 def _load_bifrost_lib():
     import os
     import glob
@@ -108,6 +107,8 @@ def _load_bifrost_lib():
 
 _bf = _load_bifrost_lib() # Internal access to library
 bf = _bf                  # External access to library
+
+GLOBAL_BFarray = _bf.BFarray
 
 BF_STATUS_SUCCESS = _bf.BF_STATUS_SUCCESS
 LUT = {'auto':         _bf.BF_SPACE_AUTO,
