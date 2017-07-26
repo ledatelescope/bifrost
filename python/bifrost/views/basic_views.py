@@ -52,6 +52,8 @@ def reinterpret_axis(block, axis, label, scale=None, units=None):
         tensor = hdr['_tensor']
         if isinstance(axis, basestring):
             axis = tensor['labels'].index(axis)
+        if label is not None:
+            tensor['labels'][axis] = label
         if scale is not None:
             tensor['scales'][axis] = scale
         if units is not None:
