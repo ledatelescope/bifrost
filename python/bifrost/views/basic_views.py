@@ -47,27 +47,27 @@ def rename_axis(block, old, new):
     return block_view(block, header_transform)
 
 def reinterpret_axis(block, axis, label, scale=None, units=None):
-	""" Manually reinterpret the scale and/or units on an axis """
-	def header_transform(hdr, axis=axis, label=label, scale=scale, units=units):
-		tensor = hdr['_tensor']
-		if isinstance(axis, basestring):
-			axis = tensor['labels'].index(axis)
-		if scale is not None:
-			tensor['scales'][axis] = scale
-		if units is not None:
-			tensor['units'][axis] = units
-		return hdr
-	return block_view(block, header_transform)
+    """ Manually reinterpret the scale and/or units on an axis """
+    def header_transform(hdr, axis=axis, label=label, scale=scale, units=units):
+        tensor = hdr['_tensor']
+        if isinstance(axis, basestring):
+            axis = tensor['labels'].index(axis)
+        if scale is not None:
+            tensor['scales'][axis] = scale
+        if units is not None:
+            tensor['units'][axis] = units
+        return hdr
+    return block_view(block, header_transform)
 
 def reverse_scale(block, axis):
-	""" Manually reverse the scale factor on a given axis"""
-	def header_transform(hdr, axis=axis):
-		tensor = hdr['_tensor']
-		if isinstance(axis, basestring):
-			axis = tensor['labels'].index(axis)
-			tensor['scales'][axis][1] *= -1
-		return hdr
-	return block_view(block, header_transform)
+    """ Manually reverse the scale factor on a given axis"""
+    def header_transform(hdr, axis=axis):
+        tensor = hdr['_tensor']
+        if isinstance(axis, basestring):
+            axis = tensor['labels'].index(axis)
+            tensor['scales'][axis][1] *= -1
+        return hdr
+    return block_view(block, header_transform)
 
 def expand_dims(block, axis, label, scale=None, units=None):
     """Add an extra dimension to the frame

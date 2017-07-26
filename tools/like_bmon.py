@@ -38,9 +38,9 @@ import socket
 import traceback
 from datetime import datetime
 try:
-	import cStringIO as StringIO
+    import cStringIO as StringIO
 except ImportError:
-	import StringIO
+    import StringIO
 
 os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
