@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -222,6 +221,7 @@ movable_ofstream_WAR BFproclog_impl::update() {
 
 BFstatus bfProcLogCreate(BFproclog* log_ptr, const char* name) {
 	BF_ASSERT(log_ptr, BF_STATUS_INVALID_POINTER);
+	BF_ASSERT(name,    BF_STATUS_INVALID_POINTER);
 	BF_TRY_RETURN_ELSE(*log_ptr = new BFproclog_impl(name),
 	                   *log_ptr = 0);
 }
@@ -231,5 +231,7 @@ BFstatus bfProcLogDestroy(BFproclog log) {
 	return BF_STATUS_SUCCESS;
 }
 BFstatus bfProcLogUpdate(BFproclog log, const char* str) {
+	BF_ASSERT(log, BF_STATUS_INVALID_HANDLE);
+	BF_ASSERT(str, BF_STATUS_INVALID_POINTER);
 	BF_TRY_RETURN(log->update_s(str));
 }

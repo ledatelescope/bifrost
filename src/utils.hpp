@@ -122,10 +122,16 @@ inline void byteswap_impl(uint16_t value, uint16_t* result) {
 }
 
 template<typename T, typename U>
+#if BF_CUDA_ENABLED
+__host__ __device__
+#endif
 inline T type_pun(U x) {
-	union {
+	static_assert(sizeof(T) == sizeof(U),
+	              "Cannot pun type to different size");
+	union punner_union {
 		T t;
 		U u;
+		__host__ __device__ inline punner_union() {}
 	} punner;
 	punner.u = x;
 	return punner.t;
@@ -140,13 +146,13 @@ byteswap(T value, T* result) {
 template<typename T>
 inline typename std::enable_if<sizeof(T)==4>::type
 byteswap(T value, T* result) {
-	return byteswap_impl(type_pun<uint64_t>(value),
+	return byteswap_impl(type_pun<uint32_t>(value),
 	                     (uint32_t*)result);
 }
 template<typename T>
 inline typename std::enable_if<sizeof(T)==2>::type
 byteswap(T value, T* result) {
-	return byteswap_impl(type_pun<uint64_t>(value),
+	return byteswap_impl(type_pun<uint16_t>(value),
 	                     (uint16_t*)result);
 }
 template<typename T>
@@ -206,6 +212,10 @@ inline BFsize capacity_bytes(const BFarray* array) {
 	return array->strides[0] * array->shape[0];
 }
 inline bool is_contiguous(const BFarray* array) {
+	// TODO: Consider supporting ndim=0 (scalar arrays)
+	//if( array->ndim == 0 ) {
+	//	return true;
+	//}
 	BFsize logical_size = get_dtype_nbyte(array->dtype);
 	for( int d=0; d<array->ndim; ++d ) {
 		logical_size *= array->shape[d];
@@ -214,6 +224,10 @@ inline bool is_contiguous(const BFarray* array) {
 	return logical_size == physical_size;
 }
 inline BFsize num_contiguous_elements(const BFarray* array ) {
+	// TODO: Consider supporting ndim=0 (scalar arrays)
+	//if( array->ndim == 0 ) {
+	//	return 1;
+	//}
 	// Assumes array is contiguous
 	return capacity_bytes(array) / BF_DTYPE_NBYTE(array->dtype);
 }
@@ -367,9 +381,13 @@ inline bool broadcast_shapes(int  narray,
 
 template<typename I>
 inline void* array_get_pointer(BFarray const* arr,
-                               IndexArray<I,BF_MAX_DIMS> const& inds) {
+                               IndexArray<I,BF_MAX_DIMS> const& inds,
+                               int ndim=-1) {
+	if( ndim == -1 ) {
+		ndim = arr->ndim;
+	}
 	I offset = 0;
-	for( int d=0; d<arr->ndim; ++d ) {
+	for( int d=0; d<ndim; ++d ) {
 		I length = arr->shape[d];
 		I stride = arr->strides[d];
 		if( length == 1 ) {

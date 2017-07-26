@@ -19,7 +19,7 @@ pulsar_filelist =[
 voyager_filelist = ['https://storage.googleapis.com/gbt_fil/voyager_f1032192_t300_v2.fil']
 
 if __name__ == "__main__":
-    
+
     cont = raw_input("This will download approximately 5GB of data. Type Y to continue: ")
 
     if not cont.lower() == 'y':
@@ -27,7 +27,7 @@ if __name__ == "__main__":
 
     if not os.path.exists('testdata'):
         os.mkdir('testdata')
-    
+
     if not os.path.exists('testdata/pulsars'):
         os.mkdir('testdata/pulsars')    
 
@@ -41,15 +41,15 @@ if __name__ == "__main__":
     for filename in raw_filelist:
         bname = os.path.basename(filename)
         os.system("curl -O %s; mv %s testdata/guppi_raw/" % (filename, bname))
-   
+
     print "Downloading Breakthough Listen pulsar data"
     for filename in pulsar_filelist:
         bname = os.path.basename(filename)
         os.system("curl -O %s; mv %s testdata/pulsars/" % (filename, bname))
-   
+
     print "Downloading Breakthough Listen Voyager data"
     for filename in voyager_filelist:
         bname = os.path.basename(filename)
         os.system("curl -O %s; mv %s testdata/" % (filename, bname))
-   
-        
+
+

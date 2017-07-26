@@ -28,194 +28,198 @@
 
 # This file provides a direct interface to libbifrost.so
 
-# PYCLIBRARY ISSUE: Passing the wrong handle type to a function gives this meaningless error:
-#  ArgumentError: argument 1: <type 'exceptions.TypeError'>: expected LP_s instance instead of LP_s
+# PYCLIBRARY ISSUE: Passing the wrong handle type to a function gives this
+#                     meaningless error:
+#  ArgumentError: argument 1: <type 'exceptions.TypeError'>: expected LP_s
+#    instance instead of LP_s
 #  E.g., _bf.RingSequenceGetName(<BFspan>) [should be <BFsequence>]
 
 import ctypes
 
 def _load_bifrost_lib():
-	import os
-	import glob
-	
-	library_name = "libbifrost.so"
-	api_prefix   = "bf"
-	header_paths = ["/usr/local/include/bifrost",
-					"../src/bifrost"] # TODO: Remove this one?
-	include_env  = 'BIFROST_INCLUDE_PATH'
-	# PYCLIBRARY ISSUE
-	# TODO: Would it make sense to build this into PyCLibrary?
-	library_env  = 'LD_LIBRARY_PATH'
-	home_dir     = os.path.expanduser("~")
-	parser_cache = os.path.join(home_dir, ".cache/bifrost.parse")
-	
-	def _get_env_paths(env):
-		paths = os.getenv(env)
-		if paths is None:
-			return []
-		return [p for p in paths.split(':')
-				if len(p.strip())]
-		
-	import pyclibrary
-	from pyclibrary import CParser, CLibrary
-	
-	import ctypes
-	# PYCLIBRARY ISSUE Should these be built in? Optional extra?
-	# Note: This is needed because pyclibrary starts with only
-	#         the fundamental types (short, int, float etc.).
-	#extra_types = {}
-	#extra_types = {'uint64_t': ctypes.c_uint64}
-	extra_types = {
-		 'uint8_t': ctypes.c_uint8,
-		  'int8_t': ctypes.c_int8,
-		'uint16_t': ctypes.c_uint16,
-		 'int16_t': ctypes.c_int16,
-		'uint32_t': ctypes.c_uint32,
-		 'int32_t': ctypes.c_int32,
-		'uint64_t': ctypes.c_uint64,
-		 'int64_t': ctypes.c_int64,
-		  'size_t': ctypes.c_ulong
-	}
-	
-	try:
-		pyclibrary.auto_init(extra_types=extra_types)
-	except RuntimeError:
-		pass # WAR for annoying "Can only initialise the parser once"
-	header_paths = _get_env_paths(include_env) + header_paths
-	valid_header_paths = [p for p in header_paths if os.path.exists(p)]
-	
-	# HACK TODO: Decide on what to do here
-	valid_header_paths = valid_header_paths[:1]
-	if len(valid_header_paths) == 0:
-		raise ValueError("No valid Bifrost header paths found. Run make install or set BIFROST_INCLUDE_PATH.")
-	header_path = valid_header_paths[0]
-	headers = glob.glob(os.path.join(header_path, '*.h'))
-	
-	pyclibrary.utils.add_header_locations(valid_header_paths)
-	try:
-		_parser = CParser(headers, cache=unicode(parser_cache, "utf-8"))
-	except AttributeError: # # PYCLIBRARY ISSUE WAR for "'tuple' has no attribute 'endswith'" bug
-		raise ValueError("Could not find Bifrost headers.\nSearch paths: "+
-						 str(header_paths))
-	pyclibrary.utils.add_library_locations(_get_env_paths(library_env))
-	lib = CLibrary(library_name, _parser, prefix=api_prefix)
-	return lib
+    import os
+    import glob
+
+    library_name = "libbifrost.so"
+    api_prefix   = "bf"
+    header_paths = ["/usr/local/include/bifrost",
+                    "../src/bifrost"] # TODO: Remove this one?
+    include_env  = 'BIFROST_INCLUDE_PATH'
+    # PYCLIBRARY ISSUE
+    # TODO: Would it make sense to build this into PyCLibrary?
+    library_env  = 'LD_LIBRARY_PATH'
+    home_dir     = os.path.expanduser("~")
+    parser_cache = os.path.join(home_dir, ".cache/bifrost.parse")
+
+    def _get_env_paths(env):
+        paths = os.getenv(env)
+        if paths is None:
+            return []
+        return [p for p in paths.split(':')
+                if len(p.strip())]
+
+    import pyclibrary
+    from pyclibrary import CParser, CLibrary
+
+    import ctypes
+    # PYCLIBRARY ISSUE Should these be built in? Optional extra?
+    # Note: This is needed because pyclibrary starts with only
+    #         the fundamental types (short, int, float etc.).
+    # extra_types = {}
+    # extra_types = {'uint64_t': ctypes.c_uint64}
+    extra_types = {
+         'uint8_t': ctypes.c_uint8,
+          'int8_t': ctypes.c_int8,
+        'uint16_t': ctypes.c_uint16,
+         'int16_t': ctypes.c_int16,
+        'uint32_t': ctypes.c_uint32,
+         'int32_t': ctypes.c_int32,
+        'uint64_t': ctypes.c_uint64,
+         'int64_t': ctypes.c_int64,
+          'size_t': ctypes.c_ulong
+    }
+
+    try:
+        pyclibrary.auto_init(extra_types=extra_types)
+    except RuntimeError:
+        pass # WAR for annoying "Can only initialise the parser once"
+    header_paths = _get_env_paths(include_env) + header_paths
+    valid_header_paths = [p for p in header_paths if os.path.exists(p)]
+
+    # HACK TODO: Decide on what to do here
+    valid_header_paths = valid_header_paths[:1]
+    if len(valid_header_paths) == 0:
+        raise ValueError("No valid Bifrost header paths found. Run make "
+                         "install or set BIFROST_INCLUDE_PATH.")
+    header_path = valid_header_paths[0]
+    headers = glob.glob(os.path.join(header_path, '*.h'))
+
+    pyclibrary.utils.add_header_locations(valid_header_paths)
+    try:
+        _parser = CParser(headers, cache=unicode(parser_cache, "utf-8"))
+    except AttributeError:
+        # PYCLIBRARY ISSUE WAR for "'tuple' has no attribute 'endswith'" bug
+        raise ValueError("Could not find Bifrost headers.\nSearch paths: " +
+                         str(header_paths))
+    pyclibrary.utils.add_library_locations(_get_env_paths(library_env))
+    lib = CLibrary(library_name, _parser, prefix=api_prefix)
+    return lib
 
 _bf = _load_bifrost_lib() # Internal access to library
 bf = _bf                  # External access to library
 
 # Internal helper functions below
 
-#def _array(typ, size_or_vals):
 def _array(size_or_vals, dtype=None):
-	from pyclibrary import build_array
-	import ctypes
-	if size_or_vals is None:
-		return None
-	try:
-		_ = iter(size_or_vals)
-	except TypeError:
-		# Not iterable, so assume it's the size and create an empty array
-		size = size_or_vals
-		return build_array(_bf, dtype, size=size)
-	else:
-		# Iterable, so convert it to a ctypes array
-		vals = size_or_vals
-		if len(vals) == 0:
-			return None
-		if dtype is None:
-			# Try to deduce type
-			if isinstance(vals[0], int):
-				dtype = ctypes.c_int
-			elif isinstance(vals[0], float):
-				dtype = ctypes.c_double
-			elif isinstance(vals[0], basestring):
-				dtype = ctypes.c_char_p
-			elif isinstance(vals[0], _bf.BFarray):
-				# Note: PyCLibrary does this automatically for scalar args,
-				#         but we must do it manually here for arrays.
-				dtype = ctypes.POINTER(_bf.BFarray)
-				vals = [ctypes.pointer(val) for val in vals]
-			#else:
-			#	dtype = type(vals[0])
-			else:
-				raise TypeError("Cannot deduce C type from ", type(vals[0]))
-		return build_array(_bf, dtype, size=len(vals), vals=vals)
+    from pyclibrary import build_array
+    import ctypes
+    if size_or_vals is None:
+        return None
+    try:
+        _ = iter(size_or_vals)
+    except TypeError:
+        # Not iterable, so assume it's the size and create an empty array
+        size = size_or_vals
+        return build_array(_bf, dtype, size=size)
+    else:
+        # Iterable, so convert it to a ctypes array
+        vals = size_or_vals
+        if len(vals) == 0:
+            return None
+        if dtype is None:
+            # Try to deduce type
+            if isinstance(vals[0], int):
+                dtype = ctypes.c_int
+            elif isinstance(vals[0], float):
+                dtype = ctypes.c_double
+            elif isinstance(vals[0], basestring):
+                dtype = ctypes.c_char_p
+            elif isinstance(vals[0], _bf.BFarray):
+                # Note: PyCLibrary does this automatically for scalar args,
+                #         but we must do it manually here for arrays.
+                dtype = ctypes.POINTER(_bf.BFarray)
+                vals = [ctypes.pointer(val) for val in vals]
+            # else:
+            #    dtype = type(vals[0])
+            else:
+                raise TypeError("Cannot deduce C type from ", type(vals[0]))
+        return build_array(_bf, dtype, size=len(vals), vals=vals)
 
 def _check(f):
-	status, args = f
-	if status != _bf.BF_STATUS_SUCCESS:
-		if status is None:
-			raise RuntimeError("WTF, status is None")
-		if status == _bf.BF_STATUS_END_OF_DATA:
-			raise StopIteration()
-		else:
-			status_str, _ = _bf.GetStatusString(status)
-			raise RuntimeError(status_str)
-	return f
+    status, args = f
+    if status != _bf.BF_STATUS_SUCCESS:
+        if status is None:
+            raise RuntimeError("WTF, status is None")
+        if status == _bf.BF_STATUS_END_OF_DATA:
+            raise StopIteration()
+        else:
+            status_str, _ = _bf.GetStatusString(status)
+            raise RuntimeError(status_str)
+    return f
 
 def _get(f, retarg=-1):
-	status, args = _check(f)
-	return list(args)[retarg]
+    status, args = _check(f)
+    return list(args)[retarg]
 
 def _retval(f):
-	ret, args = f
-	return ret
+    ret, args = f
+    return ret
 
 # Note: These are much faster than _check and _get above, but less convenient
 def _fast_call(f, *args):
-	# Note: f.func is much faster than f(*args, **kwargs)
-	return _check( (f.func(*args), None) )
+    # Note: f.func is much faster than f(*args, **kwargs)
+    return _check( (f.func(*args), None) )
 def _fast_get(f, *args):
-	"""Calls the getter function f and returns the value from the last arg"""
-	# TODO: Is there a proper way to do this that supports general types?
-	DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
-	                                        ctypes.c_char,
-	                                        ctypes.c_char_p,
-	                                        ctypes.c_float,
-	                                        ctypes.c_double,
-	                                        ctypes.c_longdouble,
-	                                        ctypes.c_int,
-	                                        ctypes.c_int8,
-	                                        ctypes.c_int16,
-	                                        ctypes.c_int32,
-	                                        ctypes.c_int64,
-	                                        ctypes.c_long,
-	                                        ctypes.c_longlong,
-	                                        ctypes.c_short,
-	                                        ctypes.c_size_t,
-	                                        ctypes.c_ssize_t,
-	                                        ctypes.c_uint,
-	                                        ctypes.c_uint8,
-	                                        ctypes.c_uint16,
-	                                        ctypes.c_uint32,
-	                                        ctypes.c_uint64,
-	                                        ctypes.c_ulong,
-	                                        ctypes.c_ulonglong,
-	                                        ctypes.c_ushort,
-	                                        ctypes.c_void_p,
-	                                        ctypes.c_wchar,
-	                                        ctypes.c_wchar_p]}
-	ff = f.func
-	retarg = -1
-	dtype = DEREF[ff.argtypes[retarg]]
-	ret_val = dtype()
-	args = args + (ctypes.byref(ret_val),)
-	_check( (ff(*args), None) )
-	return ret_val.value
+    """Calls the getter function f and returns the value from the last arg"""
+    # TODO: Is there a proper way to do this that supports general types?
+    DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
+                                            ctypes.c_char,
+                                            ctypes.c_char_p,
+                                            ctypes.c_float,
+                                            ctypes.c_double,
+                                            ctypes.c_longdouble,
+                                            ctypes.c_int,
+                                            ctypes.c_int8,
+                                            ctypes.c_int16,
+                                            ctypes.c_int32,
+                                            ctypes.c_int64,
+                                            ctypes.c_long,
+                                            ctypes.c_longlong,
+                                            ctypes.c_short,
+                                            ctypes.c_size_t,
+                                            ctypes.c_ssize_t,
+                                            ctypes.c_uint,
+                                            ctypes.c_uint8,
+                                            ctypes.c_uint16,
+                                            ctypes.c_uint32,
+                                            ctypes.c_uint64,
+                                            ctypes.c_ulong,
+                                            ctypes.c_ulonglong,
+                                            ctypes.c_ushort,
+                                            ctypes.c_void_p,
+                                            ctypes.c_wchar,
+                                            ctypes.c_wchar_p]}
+    ff = f.func
+    retarg = -1
+    dtype = DEREF[ff.argtypes[retarg]]
+    ret_val = dtype()
+    args = args + (ctypes.byref(ret_val),)
+    _check( (ff(*args), None) )
+    return ret_val.value
 
 def _string2space(s):
-	lut = {'auto':         _bf.BF_SPACE_AUTO,
-	       'system':       _bf.BF_SPACE_SYSTEM,
-	       'cuda':         _bf.BF_SPACE_CUDA,
-	       'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
-	       'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
-	if s not in lut:
-		raise KeyError("Invalid space '"+str(s)+"'.\nValid spaces: "+str(lut.keys()))
-	return lut[s]
+    lut = {'auto':         _bf.BF_SPACE_AUTO,
+           'system':       _bf.BF_SPACE_SYSTEM,
+           'cuda':         _bf.BF_SPACE_CUDA,
+           'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
+           'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
+    if s not in lut:
+        raise KeyError("Invalid space '" + str(s) +
+                       "'.\nValid spaces: " + str(lut.keys()))
+    return lut[s]
 def _space2string(i):
-	return {_bf.BF_SPACE_AUTO:         'auto',
-	        _bf.BF_SPACE_SYSTEM:       'system',
-	        _bf.BF_SPACE_CUDA:         'cuda',
-	        _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
-	        _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}[i]
+    return {_bf.BF_SPACE_AUTO:         'auto',
+            _bf.BF_SPACE_SYSTEM:       'system',
+            _bf.BF_SPACE_CUDA:         'cuda',
+            _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
+            _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}[i]

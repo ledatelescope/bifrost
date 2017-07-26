@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,31 +31,31 @@ import ctypes
 import numpy as np
 
 class UDPCapture(object):
-	def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
-	             buffer_ntime, slot_ntime, sequence_callback, core=None):
-		self.obj = None
-		if core is None:
-			core = -1
-		self.obj = _get(_bf.UdpCaptureCreate(format=fmt,
-		                                     fd=sock.fileno(),
-		                                     ring=ring.obj,
-		                                     nsrc=nsrc,
-		                                     src0=src0,
-		                                     max_payload_size=max_payload_size,
-		                                     buffer_ntime=buffer_ntime,
-		                                     slot_ntime=slot_ntime,
-		                                     sequence_callback=sequence_callback,
-		                                     core=core), retarg=0)
-	def __del__(self):
-		if hasattr(self, 'obj') and bool(self.obj):
-			_bf.UdpCaptureDestroy(self.obj)
-	def __enter__(self):
-		return self
-	def __exit__(self, type, value, tb):
-		self.end()
-	def recv(self):
-		return _fast_get(_bf.UdpCaptureRecv, self.obj)
-	def flush(self):
-		_check( _bf.UdpCaptureFlush(self.obj) )
-	def end(self):
-		_check( _bf.UdpCaptureEnd(self.obj) )
+    def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
+                 buffer_ntime, slot_ntime, sequence_callback, core=None):
+        self.obj = None
+        if core is None:
+            core = -1
+        self.obj = _get(_bf.UdpCaptureCreate(format=fmt,
+                                             fd=sock.fileno(),
+                                             ring=ring.obj,
+                                             nsrc=nsrc,
+                                             src0=src0,
+                                             max_payload_size=max_payload_size,
+                                             buffer_ntime=buffer_ntime,
+                                             slot_ntime=slot_ntime,
+                                             sequence_callback=sequence_callback,
+                                             core=core), retarg=0)
+    def __del__(self):
+        if hasattr(self, 'obj') and bool(self.obj):
+            _bf.UdpCaptureDestroy(self.obj)
+    def __enter__(self):
+        return self
+    def __exit__(self, type, value, tb):
+        self.end()
+    def recv(self):
+        return _fast_get(_bf.UdpCaptureRecv, self.obj)
+    def flush(self):
+        _check( _bf.UdpCaptureFlush(self.obj) )
+    def end(self):
+        _check( _bf.UdpCaptureEnd(self.obj) )

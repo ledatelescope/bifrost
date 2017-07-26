@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +31,8 @@
  *         Transform (FDMT) of Zackay and Ofek (2014),
  *         https://arxiv.org/abs/1411.5373
  */
+
+// ***TODO: Replace BFsize with long/size_t/int as appropriate
 
 #ifndef BF_FDMT_H_INCLUDE_GUARD_
 #define BF_FDMT_H_INCLUDE_GUARD_
@@ -117,8 +118,8 @@ BFstatus bfFdmtSetStream(BFfdmt      plan,
  *        samples of the computed output array will be incomplete.
  */
 BFstatus bfFdmtExecute(BFfdmt         plan,
-                       BFarray const* in,
-                       BFarray const* out,
+                       BFarray const* iarray,
+                       BFarray const* oarray,
                        BFbool         negative_delays,
                        void*          exec_storage,
                        BFsize*        exec_storage_size);

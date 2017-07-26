@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -35,39 +34,41 @@ import ctypes
 import numpy as np
 
 try:
-	import simplejson as json
+    import simplejson as json
 except ImportError:
-	print "WARNING: Install simplejson for better performance"
-	import json
+    print "WARNING: Install simplejson for better performance"
+    import json
 
 class ProcLog(object):
-	def __init__(self, name):
-		self.obj = _get(_bf.ProcLogCreate(name=name), retarg=0)
-	def __del__(self):
-		if hasattr(self, 'obj') and bool(self.obj):
-			_bf.ProcLogDestroy(self.obj)
-	def update(self, contents):
-		if isinstance(contents, dict):
-			"""Updates (replaces) the contents of the log
-			contents: string or dict containing data to write to the log
-			"""
-			contents = '\n'.join(['%s : %s' % item
-			                      for item in contents.items()])
-		_check(_bf.ProcLogUpdate(self.obj, contents))
+    def __init__(self, name):
+        self.obj = _get(_bf.ProcLogCreate(name=name), retarg=0)
+    def __del__(self):
+        if hasattr(self, 'obj') and bool(self.obj):
+            _bf.ProcLogDestroy(self.obj)
+    def update(self, contents):
+        """Updates (replaces) the contents of the log
+        contents: string or dict containing data to write to the log
+        """
+        if contents is None:
+            raise ValueError("Contents cannot be None")
+        if isinstance(contents, dict):
+            contents = '\n'.join(['%s : %s' % item
+                                  for item in contents.items()])
+        _check(_bf.ProcLogUpdate(self.obj, contents))
 
 def _multi_convert(value):
-	"""
-	Function try and convert numerical values to numerical types.
-	"""
-	
-	try:
-		value = int(value, 10)
-	except ValueError:
-		try:
-			value = float(value)
-		except ValueError:
-			pass
-	return value
+    """
+    Function try and convert numerical values to numerical types.
+    """
+
+    try:
+        value = int(value, 10)
+    except ValueError:
+        try:
+            value = float(value)
+        except ValueError:
+            pass
+    return value
 
 def load_by_filename(filename):
 	"""

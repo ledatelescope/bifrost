@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -42,7 +41,7 @@ class FftBlock(TransformBlock):
     #         Should be able to do this using an input callback and padded
     #           output dims.
     def __init__(self, iring, axes, inverse=False, real_output=False,
-                 axis_labels=None,
+                 axis_labels=None, apply_fftshift=False,
                  *args, **kwargs):
         super(FftBlock, self).__init__(iring, *args, **kwargs)
         if not isinstance(axes, list) or isinstance(axes, tuple):
@@ -53,6 +52,7 @@ class FftBlock(TransformBlock):
         self.real_output = real_output
         self.inverse     = inverse
         self.axis_labels = axis_labels
+        self.apply_fftshift = apply_fftshift
         self.space       = self.irings[0].space
         self.fft         = Fft()
         self.plan_ishape   = None
@@ -70,16 +70,16 @@ class FftBlock(TransformBlock):
         # TODO: This is slightly hacky; it needs to emulate the type casting
         #         that Bifrost does internally for the FFT.
         itype = itype.as_floating_point()
-        
+
         # Get axis indices, allowing for lookup-by-label
         self.axes = [itensor['labels'].index(axis)
                      if isinstance(axis, basestring)
                      else axis
                      for axis in self.specified_axes]
-        
+
         axes = self.axes
         shape = [itensor['shape'][ax] for ax in axes]
-        
+
         otype = itype.as_real() if self.real_output else itype.as_complex()
         ohdr = deepcopy(ihdr)
         otensor = ohdr['_tensor']
@@ -93,7 +93,7 @@ class FftBlock(TransformBlock):
         frame_axis = itensor['shape'].index(-1)
         if frame_axis in axes:
             raise KeyError("Cannot transform frame axis; reshape the data stream first")
-        
+
         # Adjust output shape for real transforms
         if self.mode == 'r2c':
             otensor['shape'][axes[-1]] //= 2
@@ -103,7 +103,7 @@ class FftBlock(TransformBlock):
             otensor['shape'][axes[-1]]  *= 2
             shape[-1] -= 1
             shape[-1] *= 2
-        
+
         for i, (ax, length) in enumerate(zip(axes, shape)):
             if 'units' in otensor:
                 units = otensor['units'][ax]
@@ -111,7 +111,7 @@ class FftBlock(TransformBlock):
             if 'scales' in otensor:
                 otensor['scales'][ax][0] = 0 # TODO: Is this OK?
                 scale = otensor['scales'][ax][1]
-                otensor['scales'][ax][1] = 1. / (scale*length)
+                otensor['scales'][ax][1] = 1. / (scale * length)
             if 'labels' in otensor and self.axis_labels is not None:
                 otensor['labels'][ax] = self.axis_labels[i]
         return ohdr
@@ -124,7 +124,8 @@ class FftBlock(TransformBlock):
             idata.strides != self.plan_istrides or
             odata.strides != self.plan_ostrides):
             # (Re-)generate the FFT plan
-            self.fft.init(idata, odata, axes=self.axes)
+            self.fft.init(idata, odata, axes=self.axes,
+                          apply_fftshift=self.apply_fftshift)
             self.plan_ishape   = idata.shape
             self.plan_oshape   = odata.shape
             self.plan_istrides = idata.strides
@@ -136,6 +137,7 @@ class FftBlock(TransformBlock):
                                        inverse=self.inverse)
 
 def fft(iring, axes, inverse=False, real_output=False, axis_labels=None,
+        apply_fftshift=False,
         *args, **kwargs):
     """Apply a GPU FFT to the input ring data.
 
@@ -156,6 +158,10 @@ def fft(iring, axes, inverse=False, real_output=False, axis_labels=None,
         axis_labels (list): A list of strings specifying a new label to give
              each transformed axis. If None, the output labels are copied from
              the input labels.
+        apply_fftshift (bool): If True, the zero-frequency component is shifted
+             to the center of the spectrum. For forward (inverse) transforms,
+             this is equivalent to a positive (negative) cyclic shift of each
+             output (input) axis by ``floor(axis_length / 2)``.
         *args: Arguments to ``bifrost.pipeline.TransformBlock``.
         **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
 
@@ -168,4 +174,4 @@ def fft(iring, axes, inverse=False, real_output=False, axis_labels=None,
         FftBlock: A new block instance.
     """
     return FftBlock(iring, axes, inverse, real_output, axis_labels,
-                    *args, **kwargs)
+                    apply_fftshift, *args, **kwargs)

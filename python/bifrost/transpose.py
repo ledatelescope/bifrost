@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,10 +31,10 @@ from ndarray import asarray
 import ctypes
 
 def transpose(dst, src, axes=None):
-	if axes is None:
-		axes = reversed(range(len(dst.shape)))
-	dst_bf = asarray(dst).as_BFarray()
-	src_bf = asarray(src).as_BFarray()
-	array_type = ctypes.c_int*src.ndim
-	axes_array = array_type(*axes)
-	_check(_bf.Transpose(src_bf, dst_bf, axes_array))
+    if axes is None:
+        axes = reversed(range(len(dst.shape)))
+    dst_bf = asarray(dst).as_BFarray()
+    src_bf = asarray(src).as_BFarray()
+    array_type = ctypes.c_int * src.ndim
+    axes_array = array_type(*axes)
+    _check(_bf.Transpose(src_bf, dst_bf, axes_array))

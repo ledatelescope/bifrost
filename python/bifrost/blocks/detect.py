@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -53,8 +52,8 @@ class DetectBlock(TransformBlock):
         if 'labels' not in itensor.keys() and self.axis is None:
             raise TypeError("Polarization (pol) index must be labelled, or axis must be set manually")
         elif (self.axis is None and
-            self.mode != 'scalar' and
-            'pol' in itensor['labels']):
+              self.mode != 'scalar' and
+              'pol' in itensor['labels']):
             self.axis = itensor['labels'].index('pol')
         elif isinstance(self.axis, basestring):
             self.axis = itensor['labels'].index(self.axis)
@@ -63,12 +62,12 @@ class DetectBlock(TransformBlock):
         otensor = ohdr['_tensor']
         if self.axis is not None:
             self.npol = otensor['shape'][self.axis]
-            if self.npol not in [1,2]:
+            if self.npol not in [1, 2]:
                 raise ValueError("Axis must have length 1 or 2")
             if self.mode == 'stokes' and self.npol == 2:
                 otensor['shape'][self.axis] = 4
             if 'labels' in otensor:
-                otensor['labels'][self.axis] = 'pol'#self.mode # TODO: Check this
+                otensor['labels'][self.axis] = 'pol'
         else:
             self.npol = 1
         if self.mode == 'jones' and self.npol == 2:
@@ -81,14 +80,14 @@ class DetectBlock(TransformBlock):
         idata = ispan.data
         odata = ospan.data
         if self.npol == 1:
-            bf.map("b = Complex<b_type>(a).mag2()", a=idata, b=odata)
+            bf.map("b = Complex<b_type>(a).mag2()", {'a': idata, 'b': odata})
         else:
-            shape = idata.shape[:self.axis] + idata.shape[self.axis+1:]
-            inds = ['i%i'%i for i in xrange(idata.ndim)]
+            shape = idata.shape[:self.axis] + idata.shape[self.axis + 1:]
+            inds = ['i%i' % i for i in xrange(idata.ndim)]
             inds[self.axis] = '%i'
             inds_pol = ','.join(inds)
             inds_ = [inds_pol % i for i in xrange(4)]
-            inds = inds[:self.axis] + inds[self.axis+1:]
+            inds = inds[:self.axis] + inds[self.axis + 1:]
             if self.mode == 'jones':
                 func = """
                 b_type x = a(%s);
@@ -109,7 +108,8 @@ class DetectBlock(TransformBlock):
                 b(%s) = -2*xy.imag;
                 """ % (inds_[0], inds_[1],
                        inds_[0], inds_[1], inds_[2], inds_[3])
-            bf.map(func, *inds, shape=shape, a=ispan.data, b=ospan.data)
+            bf.map(func, shape=shape, axis_names=inds,
+                   data={'a': ispan.data, 'b': ospan.data})
 
 def detect(iring, mode, axis=None, *args, **kwargs):
     """Apply square-law detection to create polarization products.

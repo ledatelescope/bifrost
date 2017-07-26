@@ -14,11 +14,11 @@ from bifrost.blocks import CopyBlock, DetectBlock
 from scipy.fftpack import fft as scipy_fft
 
 if __name__ == "__main__":
-    
+
     # FFT Parameters
     window_len = 2**18
     n_window   = 32
-    
+
     # Setup pipeline
     filenames   = sorted(glob.glob('testdata/noisy_data*.bin'))
 
@@ -38,15 +38,15 @@ if __name__ == "__main__":
     for filename in filenames:
         try:
             print filename
-            
+
             # Load the input data, do a windowed FFT
             indata  = np.fromfile(filename, dtype='complex64')
             indata  = scipy_fft(indata.reshape(n_window, window_len), axis=1)**2
-            
+
             # Load the output data and reshape into windowed FFTs
             outdata = np.fromfile('%s.out' % filename, dtype='complex64')
             outdata = outdata.reshape(n_window, window_len)
-            
+
             assert np.allclose(indata, outdata, atol=0.1)
             print "    Input data and output data match."
         except AssertionError:

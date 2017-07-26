@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,27 +31,28 @@ import ctypes
 import numpy as np
 import socket
 
+
 class Address(object):
-	def __init__(self, address, port, family=socket.AF_UNSPEC):
-		self.obj = _get(_bf.AddressCreate(addr_string=address,
-		                                  port=port,
-		                                  family=family), retarg=0)
-	def __del__(self):
-		if hasattr(self, 'obj') and bool(self.obj):
-			_bf.AddressDestroy(self.obj)
-	@property
-	def family(self):
-		return _get(_bf.AddressGetFamily(self.obj))
-	@property
-	def port(self):
-		return _get(_bf.AddressGetPort(self.obj))
-	@property
-	def mtu(self):
-		return _get(_bf.AddressGetMTU(self.obj))
-	@property
-	def address(self):
-		buflen = 128
-		buf = ctypes.create_string_buffer(buflen)
-		return _get(_bf.AddressGetString(self.obj, buflen, buf))
-	def __str__(self):
-		return "%s:%i" % (self.address, self.port)
+    def __init__(self, address, port, family=socket.AF_UNSPEC):
+        self.obj = _get(_bf.AddressCreate(addr_string=address,
+                                          port=port,
+                                          family=family), retarg=0)
+    def __del__(self):
+        if hasattr(self, 'obj') and bool(self.obj):
+            _bf.AddressDestroy(self.obj)
+    @property
+    def family(self):
+        return _get(_bf.AddressGetFamily(self.obj))
+    @property
+    def port(self):
+        return _get(_bf.AddressGetPort(self.obj))
+    @property
+    def mtu(self):
+        return _get(_bf.AddressGetMTU(self.obj))
+    @property
+    def address(self):
+        buflen = 128
+        buf = ctypes.create_string_buffer(buflen)
+        return _get(_bf.AddressGetString(self.obj, buflen, buf))
+    def __str__(self):
+        return "%s:%i" % (self.address, self.port)
