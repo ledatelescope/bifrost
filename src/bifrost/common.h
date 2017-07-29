@@ -34,9 +34,6 @@
 #ifndef BF_COMMON_H_INCLUDE_GUARD_
 #define BF_COMMON_H_INCLUDE_GUARD_
 
-#include <stddef.h>
-#include <stdint.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,15 +43,15 @@ typedef int                BFbool;
 //typedef int                BFenum;
 typedef float              BFcomplex[2];
 typedef float              BFreal;
-typedef uint64_t           BFsize; // TODO: Check this on TK1 (32 bit)
-//typedef unsigned long      BFsize;
+//typedef uint64_t           BFsize; // TODO: Check this on TK1 (32 bit)
+typedef unsigned long      BFsize;
 //typedef size_t             BFsize;
-//typedef unsigned long long BFoffset;
-typedef uint64_t BFoffset;
+typedef unsigned long long BFoffset;
+//typedef uint64_t BFoffset;
 //typedef unsigned char      BFoffset; // HACK TESTING correct offset wrapping
 typedef   signed long long BFdelta;
 
-typedef enum {
+typedef enum BFstatus_ {
 	BF_STATUS_SUCCESS                                  = 0,
 	BF_STATUS_END_OF_DATA                              = 1,
 	BF_STATUS_INVALID_POINTER                          = 2,

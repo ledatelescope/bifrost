@@ -178,7 +178,7 @@ BFstatus bfRingSequenceGetHeader(BFsequence sequence, const void** hdr);
 BFstatus bfRingSequenceGetHeaderSize(BFsequence sequence, BFsize* size);
 BFstatus bfRingSequenceGetNRinglet(BFsequence sequence, BFsize* nringlet);
 
-typedef struct {
+typedef struct BFsequence_info_ {
 	BFring      ring;
 	const char* name;
 	BFoffset    time_tag;
@@ -216,7 +216,7 @@ BFstatus bfRingSpanGetStride(BFspan span, BFsize* val);
 BFstatus bfRingSpanGetOffset(BFspan span, BFsize* val);
 BFstatus bfRingSpanGetNRinglet(BFspan span, BFsize* val);
 
-typedef struct {
+typedef struct BFspan_info_ {
 	BFring      ring;
 	void*       data;
 	BFsize      size;
