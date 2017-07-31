@@ -13,7 +13,7 @@ $(BIFROST_PYTHON_VERSION_FILE): ../config.mk
 	@echo "__version__ = \"$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR).$(LIBBIFROST_PATCH)\"" > $@
 
 $(BIFROST_PYTHON_BINDINGS_FILE): $(INC_DIR)/bifrost/*.h
-	ctypesgen.py -l$(BIFROST_NAME) $^ -o $@
+	ctypesgen.py -l$(BIFROST_NAME) -I$(INC_DIR) $^ -o $@
 	# WAR for 'const char**' being generated as POINTER(POINTER(c_char)) instead of POINTER(c_char_p)
 	sed -i 's/POINTER(c_char)/c_char_p/g' $@
 	# WAR for a buggy WAR in ctypesgen that breaks type checking and auto-byref functionality
