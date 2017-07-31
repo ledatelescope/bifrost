@@ -40,12 +40,6 @@ cf32: 32+32-bit complex floating point
 
 from libbifrost import _bf
 import numpy as np
-GLOBAL_BF_DTYPE_TYPE_BITS = _bf.BF_DTYPE_TYPE_BITS
-GLOBAL_BF_DTYPE_COMPLEX_BIT = _bf.BF_DTYPE_COMPLEX_BIT
-GLOBAL_BF_DTYPE_FLOAT_TYPE = _bf.BF_DTYPE_FLOAT_TYPE
-GLOBAL_BF_DTYPE_UINT_TYPE = _bf.BF_DTYPE_UINT_TYPE
-GLOBAL_BF_DTYPE_INT_TYPE = _bf.BF_DTYPE_INT_TYPE
-GLOBAL_BFdtype = _bf.BFdtype
 
 # Custom dtypes to represent additional complex types
 # Note: These can be constructed using tuples
@@ -77,6 +71,30 @@ TYPEMAP = {
     'cf': {16: _bf.BF_DTYPE_CF16,  32: _bf.BF_DTYPE_CF32,
            64: _bf.BF_DTYPE_CF64, 128: _bf.BF_DTYPE_CF128}
 }
+KINDMAP = {
+    _bf.BF_DTYPE_INT_TYPE:   'i',
+    _bf.BF_DTYPE_UINT_TYPE:  'u',
+    _bf.BF_DTYPE_FLOAT_TYPE: 'f'
+}
+NUMPY_TYPEMAP = {
+    'i':  {  8: np.int8,  16: np.int16,
+             32: np.int32, 64: np.int64},
+    'u':  {  8: np.uint8,  16: np.uint16,
+             32: np.uint32, 64: np.uint64},
+    'f':  {16: np.float16,  32: np.float32,
+           64: np.float64, 128: np.float128},
+    # HACK: These are just types that match the storage size;
+    #         they should not be used for computation.
+    # HACK TESTING to support 'packed' arrays
+    #   (TODO: Do same for 'i' and 'u' if happy with this)
+    'ci': { 1: np.int8,  2: np.int8,
+            4: ci4,      8: ci8,
+            16: ci16,    32: ci32,
+            64: ci64},
+    # HACK: cf16 used as WAR for missing np.complex32
+    'cf': {16: cf16,           32: np.complex64,
+           64: np.complex128, 128: np.complex256}
+}
 
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
@@ -87,14 +105,11 @@ class DataType(object):
                     break
             self._kind =     t[:i]
             self._nbit = int(t[i:])
-        elif isinstance(t, GLOBAL_BFdtype): # Note: This is actually just a c_int
+        elif isinstance(t, _bf.BFdtype): # Note: This is actually just a c_int
             t = int(t)
             self._nbit = t & BF_DTYPE_NBIT_BITS
-            kindmap = {GLOBAL_BF_DTYPE_INT_TYPE:   'i',
-                       GLOBAL_BF_DTYPE_UINT_TYPE:  'u',
-                       GLOBAL_BF_DTYPE_FLOAT_TYPE: 'f'}
-            is_complex = bool(t & GLOBAL_BF_DTYPE_COMPLEX_BIT)
-            self._kind = kindmap[t & GLOBAL_BF_DTYPE_TYPE_BITS]
+            is_complex = bool(t & _bf.BF_DTYPE_COMPLEX_BIT)
+            self._kind = KINDMAP[t & _bf.BF_DTYPE_TYPE_BITS]
             if is_complex:
                 self._kind = 'c' + self._kind
         elif isinstance(t, DataType):
@@ -105,7 +120,7 @@ class DataType(object):
         else:
             t = np.dtype(t) # Raises TypeError if t is invalid
             self._nbit = t.itemsize * 8
-            if t.kind not in ['i', 'u', 'f', 'c', 'V', 'b']:
+            if t.kind not in set(['i', 'u', 'f', 'c', 'V', 'b']):
                 raise TypeError('Unsupported data type: %s' % str(t))
             self._kind = t.kind
             if t.kind == 'c':
@@ -130,26 +145,7 @@ class DataType(object):
     def as_BFdtype(self):
         return TYPEMAP[self._kind][self._nbit]
     def as_numpy_dtype(self):
-        typemap = {
-            'i':  {  8: np.int8,  16: np.int16,
-                    32: np.int32, 64: np.int64},
-            'u':  {  8: np.uint8,  16: np.uint16,
-                    32: np.uint32, 64: np.uint64},
-            'f':  {16: np.float16,  32: np.float32,
-                   64: np.float64, 128: np.float128},
-            # HACK: These are just types that match the storage size;
-            #         they should not be used for computation.
-            # HACK TESTING to support 'packed' arrays
-            #   (TODO: Do same for 'i' and 'u' if happy with this)
-            'ci': { 1: np.int8,  2: np.int8,
-                    4: ci4,      8: ci8,
-                   16: ci16,    32: ci32,
-                   64: ci64},
-            # HACK: cf16 used as WAR for missing np.complex32
-            'cf': {16: cf16,           32: np.complex64,
-                   64: np.complex128, 128: np.complex256}
-        }
-        return np.dtype(typemap[self._kind][self._nbit])
+        return np.dtype(NUMPY_TYPEMAP[self._kind][self._nbit])
     def __str__(self):
         return '%s%i' % (self._kind, self._nbit)
     @property

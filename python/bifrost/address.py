@@ -25,34 +25,33 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _string2space, _space2string
+from libbifrost import _bf, _check, _get, BifrostObject
 
 import ctypes
-import numpy as np
-import socket
+from socket import AF_UNSPEC
 
-
-class Address(object):
-    def __init__(self, address, port, family=socket.AF_UNSPEC):
-        self.obj = _get(_bf.AddressCreate(addr_string=address,
-                                          port=port,
-                                          family=family), retarg=0)
-    def __del__(self):
-        if hasattr(self, 'obj') and bool(self.obj):
-            _bf.AddressDestroy(self.obj)
+class Address(BifrostObject):
+    def __init__(self, address, port, family=None):
+        assert(isinstance(port, (int, long)))
+        if family is None:
+            family = AF_UNSPEC
+        BifrostObject.__init__(
+            self, _bf.bfAddressCreate, _bf.bfAddressDestroy,
+            address, port, family)
     @property
     def family(self):
-        return _get(_bf.AddressGetFamily(self.obj))
+        return _get(_bf.bfAddressGetFamily, self.obj)
     @property
     def port(self):
-        return _get(_bf.AddressGetPort(self.obj))
+        return _get(_bf.bfAddressGetPort, self.obj)
     @property
     def mtu(self):
-        return _get(_bf.AddressGetMTU(self.obj))
+        return _get(_bf.bfAddressGetMTU, self.obj)
     @property
     def address(self):
         buflen = 128
         buf = ctypes.create_string_buffer(buflen)
-        return _get(_bf.AddressGetString(self.obj, buflen, buf))
+        _check(_bf.bfAddressGetString(self.obj, buflen, buf))
+        return buf.value
     def __str__(self):
         return "%s:%i" % (self.address, self.port)

@@ -116,7 +116,7 @@ def map(func_string, data, axis_names=None, shape=None,
         arg_arrays.append(arg)
         args.append(arg.as_BFarray())
         arg_names.append(key)
-    _check(_bf.Map(ndim, _array(shape, dtype=ctypes.c_long),
-                   _array(axis_names),
-                   narg, _array(args), _array(arg_names),
-                   func_string, _array(block_shape), _array(block_axes)))
+    _check(_bf.bfMap(ndim, _array(shape, dtype=ctypes.c_long),
+                     _array(axis_names),
+                     narg, _array(args), _array(arg_names),
+                     func_string, _array(block_shape), _array(block_axes)))

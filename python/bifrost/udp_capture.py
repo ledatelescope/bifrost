@@ -25,37 +25,29 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _fast_get, _string2space, _space2string
+# **TODO: Write tests for this class
 
-import ctypes
-import numpy as np
+from libbifrost import _bf, _check, _get, BifrostObject
 
-class UDPCapture(object):
+class UDPCapture(BifrostObject):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
                  buffer_ntime, slot_ntime, sequence_callback, core=None):
-        self.obj = None
         if core is None:
             core = -1
-        self.obj = _get(_bf.UdpCaptureCreate(format=fmt,
-                                             fd=sock.fileno(),
-                                             ring=ring.obj,
-                                             nsrc=nsrc,
-                                             src0=src0,
-                                             max_payload_size=max_payload_size,
-                                             buffer_ntime=buffer_ntime,
-                                             slot_ntime=slot_ntime,
-                                             sequence_callback=sequence_callback,
-                                             core=core), retarg=0)
-    def __del__(self):
-        if hasattr(self, 'obj') and bool(self.obj):
-            _bf.UdpCaptureDestroy(self.obj)
+        BifrostObject.__init__(
+            self, _bf.bfUdpCaptureCreate, _bf.bfUdpCaptureDestroy,
+            fmt, sock.fileno(), ring.obj, nsrc, src0,
+            max_payload_size, buffer_ntime, slot_ntime,
+            sequence_callback, core)
     def __enter__(self):
         return self
     def __exit__(self, type, value, tb):
         self.end()
     def recv(self):
-        return _fast_get(_bf.UdpCaptureRecv, self.obj)
+        status = _bf.BFudpcapture_status()
+        _check(_bf.bfUdpCaptureRecv(self.obj, status))
+        return status
     def flush(self):
-        _check( _bf.UdpCaptureFlush(self.obj) )
+        _check(_bf.bfUdpCaptureFlush(self.obj))
     def end(self):
-        _check( _bf.UdpCaptureEnd(self.obj) )
+        _check(_bf.bfUdpCaptureEnd(self.obj))

@@ -25,15 +25,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get
+from libbifrost import _bf, _check, _get, BifrostObject
+import ctypes
 from ndarray import asarray
 
-class LinAlg(object):
+class LinAlg(BifrostObject):
     def __init__(self):
-        self.obj = _get(_bf.LinAlgCreate(), retarg=0)
-    def __del__(self):
-        if hasattr(self, 'obj') and bool(self.obj):
-            _bf.LinAlgDestroy(self.obj)
+        BifrostObject.__init__(self, _bf.bfLinAlgCreate, _bf.bfLinAlgDestroy)
     def matmul(self, alpha, a, b, beta, c):
         """Computes:
           c = alpha*a.b + beta*c
@@ -55,7 +53,10 @@ class LinAlg(object):
         a_array = asarray(a).as_BFarray() if a is not None else None
         b_array = asarray(b).as_BFarray() if b is not None else None
         c_array = asarray(c).as_BFarray()
-        _check(_bf.LinAlgMatMul(self.obj,
-                                alpha, a_array, b_array,
-                                beta, c_array))
+        _check(_bf.bfLinAlgMatMul(self.obj,
+                                  alpha,
+                                  a_array,
+                                  b_array,
+                                  beta,
+                                  c_array))
         return c

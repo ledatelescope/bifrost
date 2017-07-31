@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from libbifrost import _bf, _check, _get, _string2space
+import ctypes
 
 def space_accessible(space, from_spaces):
     if from_spaces == 'any': # TODO: This is a little bit hacky
@@ -42,15 +43,16 @@ def space_accessible(space, from_spaces):
         return False
 
 def raw_malloc(size, space):
-    ptr = _get(_bf.Malloc(size=size, space=_string2space(space)), retarg=0)
-    return ptr
+    ptr = ctypes.c_void_p()
+    _check(_bf.bfMalloc(ptr, size, _string2space(space)))
+    return ptr.value
 def raw_free(ptr, space='auto'):
-    _check(_bf.Free(ptr, _string2space(space)))
+    _check(_bf.bfFree(ptr, _string2space(space)))
 def raw_get_space(ptr):
-    return _get(_bf.GetSpace(ptr))
+    return _get(_bf.bfGetSpace, ptr)
 
 def alignment():
-    ret, _ = _bf.GetAlignment()
+    ret, _ = _bf.bfGetAlignment()
     return ret
 
 # **TODO: Deprecate below here!
@@ -66,9 +68,9 @@ def memcpy(dst, src):
     dst_space = _string2space(_get_space(dst))
     src_space = _string2space(_get_space(src))
     count = dst.nbytes
-    _check(_bf.Memcpy(dst.ctypes.data, dst_space,
-                      src.ctypes.data, src_space,
-                      count))
+    _check(_bf.bfMemcpy(dst.ctypes.data, dst_space,
+                        src.ctypes.data, src_space,
+                        count))
     return dst
 def memcpy2D(dst, src):
     assert(len(dst.shape) == 2)
@@ -77,18 +79,18 @@ def memcpy2D(dst, src):
     src_space = _string2space(_get_space(src))
     height, width = dst.shape
     width_bytes = width * dst.dtype.itemsize
-    _check(_bf.Memcpy2D(dst.ctypes.data, dst.strides[0], dst_space,
-                        src.ctypes.data, src.strides[0], src_space,
-                        width_bytes, height))
+    _check(_bf.bfMemcpy2D(dst.ctypes.data, dst.strides[0], dst_space,
+                          src.ctypes.data, src.strides[0], src_space,
+                          width_bytes, height))
 def memset(dst, val=0):
     assert(dst.flags['C_CONTIGUOUS'])
     space = _string2space(_get_space(dst))
     count = dst.nbytes
-    _check(_bf.Memset(dst.ctypes.data, space, val, count))
+    _check(_bf.bfMemset(dst.ctypes.data, space, val, count))
 def memset2D(dst, val=0):
     assert(len(dst.shape) == 2)
     space = _string2space(_get_space(dst))
     height, width = dst.shape
     width_bytes = width * dst.dtype.itemsize
-    _check(_bf.Memset2D(dst.ctypes.data, dst.strides[0], space,
-                        val, width_bytes, height))
+    _check(_bf.bfMemset2D(dst.ctypes.data, dst.strides[0], space,
+                          val, width_bytes, height))

@@ -44,25 +44,6 @@ cf32: 32+32-bit complex floating point
 from libbifrost import _bf
 import numpy as np
 
-GLOBAL_BF_DTYPE_CF128 = _bf.BF_DTYPE_CF128
-GLOBAL_BF_DTYPE_CF64 = _bf.BF_DTYPE_CF64
-GLOBAL_BF_DTYPE_CF32 = _bf.BF_DTYPE_CF32
-GLOBAL_BF_DTYPE_CF16 = _bf.BF_DTYPE_CF16
-GLOBAL_BF_DTYPE_CI32 = _bf.BF_DTYPE_CI32
-GLOBAL_BF_DTYPE_CI16 = _bf.BF_DTYPE_CI16
-GLOBAL_BF_DTYPE_CI8 = _bf.BF_DTYPE_CI8
-GLOBAL_BF_DTYPE_F128 = _bf.BF_DTYPE_F128
-GLOBAL_BF_DTYPE_F64 = _bf.BF_DTYPE_F64
-GLOBAL_BF_DTYPE_F32 = _bf.BF_DTYPE_F32
-GLOBAL_BF_DTYPE_F16 = _bf.BF_DTYPE_F16
-GLOBAL_BF_DTYPE_U32 = _bf.BF_DTYPE_U32
-GLOBAL_BF_DTYPE_U16 = _bf.BF_DTYPE_U16
-GLOBAL_BF_DTYPE_U8 = _bf.BF_DTYPE_U8
-GLOBAL_BF_DTYPE_I32 = _bf.BF_DTYPE_I32
-GLOBAL_BF_DTYPE_I16 = _bf.BF_DTYPE_I16
-GLOBAL_BF_DTYPE_I8 = _bf.BF_DTYPE_I8
-
-
 def split_name_nbit(dtype_str):
     """Splits a dtype string into (name, nbit)"""
     for i, char in enumerate(dtype_str):
@@ -85,23 +66,23 @@ def from_complex64(f, dtype):
     return f.view(np.float32).astype(real_type).view(dtype)
 
 def numpy2bifrost(dtype):
-    if   dtype == np.int8:       return GLOBAL_BF_DTYPE_I8
-    elif dtype == np.int16:      return GLOBAL_BF_DTYPE_I16
-    elif dtype == np.int32:      return GLOBAL_BF_DTYPE_I32
-    elif dtype == np.uint8:      return GLOBAL_BF_DTYPE_U8
-    elif dtype == np.uint16:     return GLOBAL_BF_DTYPE_U16
-    elif dtype == np.uint32:     return GLOBAL_BF_DTYPE_U32
-    elif dtype == np.float16:    return GLOBAL_BF_DTYPE_F16
-    elif dtype == np.float32:    return GLOBAL_BF_DTYPE_F32
-    elif dtype == np.float64:    return GLOBAL_BF_DTYPE_F64
-    elif dtype == np.float128:   return GLOBAL_BF_DTYPE_F128
-    elif dtype == ci8:           return GLOBAL_BF_DTYPE_CI8
-    elif dtype == ci16:          return GLOBAL_BF_DTYPE_CI16
-    elif dtype == ci32:          return GLOBAL_BF_DTYPE_CI32
-    elif dtype == cf16:          return GLOBAL_BF_DTYPE_CF16
-    elif dtype == np.complex64:  return GLOBAL_BF_DTYPE_CF32
-    elif dtype == np.complex128: return GLOBAL_BF_DTYPE_CF64
-    elif dtype == np.complex256: return GLOBAL_BF_DTYPE_CF128
+    if   dtype == np.int8:       return _bf.BF_DTYPE_I8
+    elif dtype == np.int16:      return _bf.BF_DTYPE_I16
+    elif dtype == np.int32:      return _bf.BF_DTYPE_I32
+    elif dtype == np.uint8:      return _bf.BF_DTYPE_U8
+    elif dtype == np.uint16:     return _bf.BF_DTYPE_U16
+    elif dtype == np.uint32:     return _bf.BF_DTYPE_U32
+    elif dtype == np.float16:    return _bf.BF_DTYPE_F16
+    elif dtype == np.float32:    return _bf.BF_DTYPE_F32
+    elif dtype == np.float64:    return _bf.BF_DTYPE_F64
+    elif dtype == np.float128:   return _bf.BF_DTYPE_F128
+    elif dtype == ci8:           return _bf.BF_DTYPE_CI8
+    elif dtype == ci16:          return _bf.BF_DTYPE_CI16
+    elif dtype == ci32:          return _bf.BF_DTYPE_CI32
+    elif dtype == cf16:          return _bf.BF_DTYPE_CF16
+    elif dtype == np.complex64:  return _bf.BF_DTYPE_CF32
+    elif dtype == np.complex128: return _bf.BF_DTYPE_CF64
+    elif dtype == np.complex256: return _bf.BF_DTYPE_CF128
     else: raise ValueError("Unsupported dtype: " + str(dtype))
 
 def name_nbit2numpy(name, nbit):
