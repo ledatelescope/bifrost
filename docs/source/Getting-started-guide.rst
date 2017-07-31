@@ -37,29 +37,11 @@ as follows:
 3. Check pip is working with ``pip list``, which will give the versions
    of pip and setuptools.
 
-numpy, matplotlib, contextlib2, simplejson, pint, graphviz
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+numpy, matplotlib, contextlib2, simplejson, pint, graphviz, ctypesgen
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you have already installed pip, this step should be as simple as
-``pip install --user numpy matplotlib contextlib2 simplejson pint graphviz``.
-
-`PyCLibrary (modified) <https://github.com/MatthieuDartiailh/pyclibrary>`__
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-PyCLibrary is a Python library that will parse C files and ease the
-interaction with ``ctypes``. The entire Bifrost front end is built with
-it. **Do not install the pip version, as it is out of date**. You need
-to get the source from
-`GitHub <https://github.com/MatthieuDartiailh/pyclibrary>`__, and
-install it manually:
-
-1. Download PyCLibrary by running
-   ``git clone https://github.com/MatthieuDartiailh/pyclibrary``
-2. Enter the PyCLibrary folder that was just created, and run
-   ``python setup.py install --user``.
-3. Check that PyCLibrary installed correctly by running ``python``, and
-   then trying ``import pyclibrary``. If this works, you are ready to
-   go.
+``pip install --user numpy matplotlib contextlib2 simplejson pint graphviz git+https://github.com/davidjamesca/ctypesgen.git@3d2d9803339503d2988382aa861b47a6a4872c32``.
 
 C++ dependencies
 ~~~~~~~~~~~~~~~~

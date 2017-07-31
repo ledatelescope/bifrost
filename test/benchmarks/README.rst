@@ -43,7 +43,7 @@ Here is a list of all current and future benchmark tests for Bifrost.
     #. Backend
         1. General ring operations
         #. General sequence operations
-        #. Latency of PyCLibrary calls
+        #. Latency of Python-wrapped calls
     #. :code:`compile_time.sh` - Bifrost compile time
 #. :code:`performance_vs_serial/` - Performance comparisons with Serial
     1. :code:`linear_fft_pipeline.py` - Linear repeated-FFT pipeline

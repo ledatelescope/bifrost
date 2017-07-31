@@ -6,6 +6,3 @@ This product includes software developed at NVIDIA Corporation.
 
 Bifrost includes source code from the int_fastdiv library (Copyright
 2014 Maxim Milakov) licensed under the Apache License Version 2.0.
-
-Bifrost uses the PyCLibrary library (Copyright 2010 Luke Campagnola,
-2015 Matthieu Dartiailh) licensed under the MIT License.

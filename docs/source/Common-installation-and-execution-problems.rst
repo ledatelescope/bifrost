@@ -12,16 +12,6 @@ timeout, and some blocks are not ending themselves. Quit the program (by
 ctrl-\\), and make sure every block in your pipeline is reading/writing
 to its rings as it should.
 
-ImportError: No module named pyclibrary
----------------------------------------
-
-You have not installed PyCLibrary, or you are using two different python
-installations (e.g., one installed via apt-get, and one installed from
-source in a local directory, or one in a virtual environment). Make sure
-you are using the same Python to install libraries as you are to run
-programs. Get PyCLibrary from
-`here <https://github.com/MatthieuDartiailh/pyclibrary>`__.
-
 OSError: ..../lib/libbifrost.so: undefined symbol: cudaFreeHost
 ---------------------------------------------------------------
 
@@ -33,9 +23,9 @@ still having trouble, raise an issue.
 OSError: Can't find library with name libbifrost.so
 ---------------------------------------------------
 
-This means that PyCLibrary can't find your Bifrost installation.
-Whatever library folders it searches for Bifrost, you do not have the
-libbifrost.so file there. To fix this, type
+This means that the bifrost Python wrapper can't find your Bifrost
+installation. Whatever library folders it searches for Bifrost, you
+do not have the libbifrost.so file there. To fix this, type
 
 ``echo $LD_LIBRARY_PATH``
 
@@ -47,7 +37,7 @@ problem. Perform
 
 where ``/my/bifrost/installation`` is the folder where you installed the
 Bifrost "lib" (in config.mk, this folder is given as
-``INSTALL_LIB_DIR``). This should add Bifrost to the PyCLibrary search
+``INSTALL_LIB_DIR``). This should add Bifrost to the wrapper's search
 path.
 
 OSError: libcudart.so.x.0: cannot open shared object file: No such file or directory
