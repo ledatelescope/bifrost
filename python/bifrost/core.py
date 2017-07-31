@@ -26,11 +26,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _retval
+from libbifrost import _bf
 
 def status_string(status):
-    return _retval(_bf.GetStatusString(status))
+    return _bf.bfGetStatusString(status)
 def debug_enabled():
-    return bool(_retval(_bf.GetDebugEnabled()))
+    return bool(_bf.bfGetDebugEnabled())
 def cuda_enabled():
-    return bool(_retval(_bf.GetCudaEnabled()))
+    return bool(_bf.bfGetCudaEnabled())

@@ -26,7 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _string2space, _space2string
+from libbifrost import _bf, _check, _get, BifrostObject
 
 import os
 import time
@@ -39,12 +39,10 @@ except ImportError:
     print "WARNING: Install simplejson for better performance"
     import json
 
-class ProcLog(object):
+class ProcLog(BifrostObject):
     def __init__(self, name):
-        self.obj = _get(_bf.ProcLogCreate(name=name), retarg=0)
-    def __del__(self):
-        if hasattr(self, 'obj') and bool(self.obj):
-            _bf.ProcLogDestroy(self.obj)
+        BifrostObject.__init__(
+            self, _bf.bfProcLogCreate, _bf.bfProcLogDestroy, name)
     def update(self, contents):
         """Updates (replaces) the contents of the log
         contents: string or dict containing data to write to the log
@@ -54,7 +52,7 @@ class ProcLog(object):
         if isinstance(contents, dict):
             contents = '\n'.join(['%s : %s' % item
                                   for item in contents.items()])
-        _check(_bf.ProcLogUpdate(self.obj, contents))
+        _check(_bf.bfProcLogUpdate(self.obj, contents))
 
 def _multi_convert(value):
     """

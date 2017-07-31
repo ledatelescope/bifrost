@@ -107,7 +107,7 @@ Once this is recompiled, open up iPython and try this:
     print a
 
 That is: your ``AddStuff`` function is available in python via some
-`pyclibrary <http://pyclibrary.readthedocs.io/en/latest/>`__ magic. You
+`ctypesgen <https://github.com/davidjamesca/ctypesgen>`__ magic. You
 can't just pass ``a`` and ``b`` by themselves, but you can send their
 ``as_BFarray()`` output.
 

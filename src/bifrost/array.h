@@ -112,10 +112,10 @@ typedef struct BFarray_ {
 	int      ndim;
 	long     shape[BF_MAX_DIMS];   // Elements
 	long     strides[BF_MAX_DIMS]; // Bytes
-	bool     immutable;
-	//char     big_endian; // TODO: Better to be 'native_endian' (or 'byteswap') instead?
-	bool     big_endian; // TODO: Better to be 'native_endian' (or 'byteswap') instead?
-	bool     conjugated;
+	BFbool   immutable;
+	//BFbool   big_endian; // TODO: Better to be 'native_endian' (or 'byteswap') instead?
+	BFbool   big_endian; // TODO: Better to be 'native_endian' (or 'byteswap') instead?
+	BFbool   conjugated;
 	// TODO: Consider this. It could potentially be used for alpha/beta
 	//         in MatMul, and also for fixed-point numerics.
 	//double scale;

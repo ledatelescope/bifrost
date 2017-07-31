@@ -25,16 +25,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _fast_call, _string2space, _check_fast
+from libbifrost import _bf, _check, _get, BifrostObject, _string2space
 from ndarray import asarray
 import ctypes
 
-class Fft(object):
+class Fft(BifrostObject):
     def __init__(self):
-        self.obj = _get(_bf.FftCreate(), retarg=0)
-    def __del__(self):
-        if hasattr(self, 'obj') and bool(self.obj):
-            _bf.FftDestroy(self.obj)
+        BifrostObject.__init__(self, _bf.bfFftCreate, _bf.bfFftDestroy)
     def init(self, iarray, oarray, axes=None, apply_fftshift=False):
         if isinstance(axes, int):
             axes = [axes]
@@ -42,20 +39,23 @@ class Fft(object):
         if axes is not None:
             axes_type = ctypes.c_int * ndim
             axes = axes_type(*axes)
-        self.workspace_size = _get(_bf.FftInit(
-            self.obj,
-            iarray=asarray(iarray).as_BFarray(),
-            oarray=asarray(oarray).as_BFarray(),
-            ndim=ndim, axes=axes, apply_fftshift=apply_fftshift))
+        self.workspace_size = _get(_bf.bfFftInit,
+                                   self.obj,
+                                   asarray(iarray).as_BFarray(),
+                                   asarray(oarray).as_BFarray(),
+                                   ndim,
+                                   axes,
+                                   apply_fftshift)
     def execute(self, iarray, oarray, inverse=False):
         return self.execute_workspace(iarray, oarray,
                                       workspace_ptr=None, workspace_size=0,
                                       inverse=inverse)
     def execute_workspace(self, iarray, oarray, workspace_ptr, workspace_size,
                           inverse=False):
-        _check_fast(_bf.FftExecute.func(self.obj,
-                   asarray(iarray).as_BFarray(),
-                   asarray(oarray).as_BFarray(),
-                   inverse,
-                   workspace_ptr, workspace_size))
+        _check(_bf.bfFftExecute(
+            self.obj,
+            asarray(iarray).as_BFarray(),
+            asarray(oarray).as_BFarray(),
+            inverse,
+            workspace_ptr, workspace_size))
         return oarray

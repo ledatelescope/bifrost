@@ -29,6 +29,8 @@
 #ifndef BF_ADDRESS_H_INCLUDE_GUARD_
 #define BF_ADDRESS_H_INCLUDE_GUARD_
 
+#include <bifrost/common.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -38,8 +38,6 @@
 
 #include <bifrost/common.h>
 
-#include <cstdarg> // For va_list
-
 #ifdef __cplusplus
 extern "C" {
 #endif
