@@ -34,7 +34,8 @@ class AddressTest(unittest.TestCase):
                          check_address=True, check_family=False):
         addr = bf.address.Address(address, port, family)
         self.assertEqual(addr.port, port)
-        self.assertEqual(addr.mtu, mtu)
+        self.assertGreater(addr.mtu, 0)
+        self.assertLessEqual(addr.mtu, mtu)
         if check_address:
             self.assertEqual(addr.address, address)
             self.assertEqual(str(addr), "%s:%i" % (address, port))
