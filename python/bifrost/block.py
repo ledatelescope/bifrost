@@ -316,8 +316,8 @@ class MultiTransformBlock(object):
                     self.rings[ring_name].resize(self.gulp_size[ring_name])
 
                 with nested(*[out_ring.begin_sequence(
-                        str(int(time.time() * 1000)),
-                        int(time.time() * 1000),
+                        str(int(time.time() * 1000000)),
+                        int(time.time() * 1000000),
                         header=json.dumps(self.header[ring_name]),
                         nringlet=1)
                               for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
