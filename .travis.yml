@@ -37,12 +37,11 @@ install:
     - sudo make -j NOCUDA=1
     - sudo make install
     - make docker-cpu
-
+    
 script:
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
     - cd test
     - sudo -E bash ./travis.sh
-    - docker run --rm ledatelescope/bifrost /bin/sh -c "cd /bifrost/test && sh ./travis.sh"
     - bash ./.travis_deploy_docs.sh
 
 env:
