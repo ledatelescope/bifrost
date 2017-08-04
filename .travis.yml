@@ -49,5 +49,6 @@ env:
         - COMMIT_AUTHOR_EMAIL: "travis@ledatelescope.github.io"
 
 after_success:
+    - cd test
     - coveralls
     - codecov
