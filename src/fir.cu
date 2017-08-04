@@ -70,10 +70,10 @@ __global__ void fir_kernel(int                   ncoeff,
 			for(p=0; p<2; p++) { 
 				tempO *= 0.0;
 				for(c=0; c<ncoeff; c++) {
-					t = t0 - c;
+					t = t0 - ncoeff + c + 1;
 					if( t < 0 ) {
 						// Need to seed using the initial state
-						tempI = state0[c*nstand*2 + s*2 + p];
+						tempI = state0[(ncoeff+t)*nstand*2 + s*2 + p];
 					} else {
 						// Fully inside the data
 						tempI = Complex64(d_in[t*nstand*2*2 + s*2*2 + p*2 + 0], \
@@ -83,12 +83,13 @@ __global__ void fir_kernel(int                   ncoeff,
 				}
 				d_out[t0/decim*nstand*2 + s*2 + p] = tempO;
 				
-				// TODO:  This doesn't deal with decimation properly
-				c = ncoeff - (ntime - t0);
-				if( c >= 0 && c < ncoeff ) {
-					// Seed the initial state of the next call
-					state1[c*nstand*2 + s*2 + p] = Complex64(d_in[t0*nstand*2*2 + s*2*2 + p*2 + 0], \
-					                                         d_in[t0*nstand*2*2 + s*2*2 + p*2 + 1]);
+				for(t=t0; t<t0+decim; t++) {
+					c = ncoeff - (ntime - t);
+					if( c >= 0 && c < ncoeff && t < ntime) {
+						// Seed the initial state of the next call
+						state1[c*nstand*2 + s*2 + p] = Complex64(d_in[t*nstand*2*2 + s*2*2 + p*2 + 0], \
+						                                         d_in[t*nstand*2*2 + s*2*2 + p*2 + 1]);
+					}
 				}
 			}
 		}
@@ -117,12 +118,14 @@ inline void launch_fir_kernel(int          ncoeff,
 	ntime *= decim;
 	
 	dim3 grid(first, secnd);
+	/*
 	cout << "  Block size is " << block.x << " by " << block.y << endl;
 	cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
 	cout << "  Maximum size is " << block.x*grid.x*grid.y << endl;
 	if( block.x*grid.x*grid.y >= ntime ) {
 		cout << "  -> Valid" << endl;
 	}
+	*/
 	
 	void* args[] = {&ncoeff,
 	                &decim,
@@ -381,9 +384,10 @@ BFstatus bfFIRExecute(BFfir          plan,
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
-	BF_ASSERT( in->shape[ in->ndim-3] == plan->ntime(),  BF_STATUS_INVALID_SHAPE);
-	BF_ASSERT( in->shape[ in->ndim-2] == plan->nstand(), BF_STATUS_INVALID_SHAPE);
-	BF_ASSERT( in->shape[ in->ndim-1] == 2,              BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT( in->shape[ in->ndim-3] == plan->ntime(),      BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT( in->shape[ in->ndim-2] == plan->nstand(),     BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT( in->shape[ in->ndim-1] == 2,                  BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT( in->shape[ in->ndim-3] %  plan->decim() == 0, BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT( out->shape[out->ndim-3] == in->shape[in->ndim-3]/plan->decim(), BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT( out->shape[out->ndim-2] == in->shape[in->ndim-2],               BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT( out->shape[out->ndim-1] == in->shape[in->ndim-1],               BF_STATUS_INVALID_SHAPE);
