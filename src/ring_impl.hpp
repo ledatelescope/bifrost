@@ -110,7 +110,8 @@ class BFring_impl {
 	BFsize         _nread_open;
 	BFsize         _nwrite_open;
 	BFsize         _nrealloc_pending;
-	
+
+	int            _core;    	
 	ProcLog        _size_log;
 	
 	std::queue<BFsequence_sptr>           _sequence_queue;
