@@ -101,7 +101,9 @@ A and B, create an outer product. A full example:
     c = bf.ndarray(np.zeros((5, 5)), space='cuda')
 
     # Compute outer product
-    bf.map("c(i,j) = a(i) * b(j)", axis_names=['i', 'j'], data={'c': c, 'a': a, 'b': b})
+    bf.map("c(i,j) = a(i) * b(j)",
+           axis_names=['i', 'j'],
+           data={'c': c, 'a': a, 'b': b})
     print c
 
     # ndarray([[ 1.,  0.,  1.,  0.,  1.],
@@ -110,8 +112,11 @@ A and B, create an outer product. A full example:
     #          [ 4.,  0.,  4.,  0.,  4.],
     #          [ 5.,  0.,  5.,  0.,  5.]])
 
-The first example of ``c = a + b`` could be written more explicitly as:
+The first example of ``c = a + b`` could also be written more explicitly as:
 
 .. code:: python
 
     bf.map("c(i) = a(i) + b(i)", axis_names=['i'], data={'c': c, 'a': a, 'b': b})
+
+Note, however, that implicit indexing should be preferred where possible, as
+explicit indexing may exhibit worse performance.
