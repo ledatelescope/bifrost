@@ -257,8 +257,8 @@ class SigprocSinkBlock(SinkBlock):
                 self.ofile = open(filename, 'wb')
                 sigproc.write_header(sigproc_hdr, self.ofile)
             elif ndim == 3:
-                if axnames[-3] != 'dispersion measure':
-                    raise ValueError("Expected first axis to be 'dispersion measure'")
+                if axnames[-3] != 'dispersion':
+                    raise ValueError("Expected first axis to be 'dispersion'")
                 ndm = shape[-3]
                 dm0 = scales[-3][0]
                 ddm = scales[-3][1]
