@@ -612,7 +612,7 @@ class BFudpcapture_impl {
 		_seq += _nseq_per_buf;
 	}
 	inline void begin_sequence() {
-		BFoffset    seq0 = _seq + _nseq_per_buf*_bufs.size();
+		BFoffset    seq0 = _seq;// + _nseq_per_buf*_bufs.size();
 		const void* hdr;
 		size_t      hdr_size;
 		BFoffset    time_tag;
