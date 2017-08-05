@@ -77,10 +77,16 @@ class SerializeTest(unittest.TestCase):
         self.basename = os.path.basename(self.fil_file)
         self.basepath = os.path.join(self.temp_path, self.basename)
         self.gulp_nframe = 101
-    def test_serialize_with_name_no_ringlets(self):
+    def run_test_serialize_with_name_no_ringlets(self, gulp_nframe_inc=0):
         with bf.Pipeline() as pipeline:
-            data = read_sigproc([self.fil_file], self.gulp_nframe)
-            data = serialize(data, self.temp_path)
+            data = read_sigproc([self.fil_file], self.gulp_nframe, core=0)
+            for i in xrange(5):
+                if gulp_nframe_inc != 0:
+                    data = copy(data,
+                                gulp_nframe=self.gulp_nframe+i*gulp_nframe_inc)
+                else:
+                    data = copy(data)
+            data = serialize(data, self.temp_path, core=0)
             with TemporaryDirectory(self.temp_path):
                 pipeline.run()
                 # Note: SerializeBlock uses os.path.basename if path is given
@@ -92,6 +98,10 @@ class SerializeTest(unittest.TestCase):
                 with open(datpath, 'rb') as f:
                     data = f.read()
                     self.assertEqual(data, self.data)
+    def test_serialize_with_name_no_ringlets(self):
+        self.run_test_serialize_with_name_no_ringlets()
+        self.run_test_serialize_with_name_no_ringlets(gulp_nframe_inc=1)
+        self.run_test_serialize_with_name_no_ringlets(gulp_nframe_inc=3)
     def test_serialize_with_time_tag_no_ringlets(self):
         with bf.Pipeline() as pipeline:
             data = read_sigproc([self.fil_file], self.gulp_nframe)
