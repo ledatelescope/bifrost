@@ -250,7 +250,9 @@ class ndarray(np.ndarray):
                                   obj.bf.native, obj.bf.conjugated)
         else:
             # Generate metadata from existing np.ndarray
-            space      = str(Space(raw_get_space(obj.ctypes.data)))
+            #*space      = str(Space(raw_get_space(obj.ctypes.data)))
+            # Note: Assumes that any existing np.ndarray is in system space
+            space      = 'system'
             #dtype      = str(DataType(obj.dtype))
             # **TODO: Decide on bf.dtype being DataType vs. string (and same for space)
             dtype      = DataType(obj.dtype)
