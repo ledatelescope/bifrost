@@ -43,6 +43,8 @@
 #include "ShapeIndexer.cuh"
 #include "ArrayIndexer.cuh"
 #include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
+#include <thrust/system/cuda/experimental/pinned_allocator.h>
 
 #include <cufft.h>
 #include <cufftXt.h>
@@ -61,6 +63,8 @@ class BFfft_impl {
 	bool             _using_load_callback;
 	thrust::device_vector<char> _dv_tmp_storage;
 	thrust::device_vector<CallbackData> _dv_callback_data;
+	typedef thrust::cuda::experimental::pinned_allocator<CallbackData> pinned_allocator_type;
+	thrust::host_vector<CallbackData, pinned_allocator_type> _hv_callback_data;
 	
 	BFstatus execute_impl(BFarray const* in,
 	                      BFarray const* out,
@@ -228,6 +232,7 @@ BFstatus BFfft_impl::init(BFarray const* in,
 	_axes.assign(axes, axes+rank);
 	_do_fftshift = do_fftshift;
 	_dv_callback_data.resize(1);
+	_hv_callback_data.resize(1);
 	CallbackData* callback_data = thrust::raw_pointer_cast(&_dv_callback_data[0]);
 	BF_CHECK( set_fft_load_callback(in->dtype, _nbit, _handle, _do_fftshift,
 	                                callback_data, &_using_load_callback) );
@@ -256,7 +261,12 @@ BFstatus BFfft_impl::execute_impl(BFarray const* in,
 	void* idata = in->data;
 	void* odata = out->data;
 	
-	CallbackData h_callback_data;
+	// TODO: This sync is needed to ensure that the previous h2d copy of
+	//         h_callback_data has finished before we overwrite it.
+	//         We could potentially use a CUDA event as a lighter-weight
+	//           solution.
+	cudaStreamSynchronize(g_cuda_stream);
+	CallbackData* h_callback_data = &_hv_callback_data[0];
 	// WAR for CUFFT insisting that pointer be aligned to sizeof(cufftComplex)
 	int alignment = (_nbit == 32 ?
 	                 sizeof(cufftComplex) :
@@ -266,26 +276,26 @@ BFstatus BFfft_impl::execute_impl(BFarray const* in,
 	//         so we really need to set the callback here instead. Not sure
 	//         how expensive it is to set the callback.
 	if( _using_load_callback ) {
-		h_callback_data.ptr_offset = (uintptr_t)idata % sizeof(cufftComplex);
-		*(char**)&idata -= h_callback_data.ptr_offset;
+		h_callback_data->ptr_offset = (uintptr_t)idata % sizeof(cufftComplex);
+		*(char**)&idata -= h_callback_data->ptr_offset;
 	}
 	
 	// Set callback data needed for applying fftshift
-	h_callback_data.inverse = _real_out || (!_real_in && inverse);
-	h_callback_data.do_fftshift = _do_fftshift;
-	h_callback_data.ndim = _axes.size();
-	for( int d=0; d<h_callback_data.ndim; ++d ) {
-		h_callback_data.shape[d]    = in->shape[_axes[d]];
+	h_callback_data->inverse = _real_out || (!_real_in && inverse);
+	h_callback_data->do_fftshift = _do_fftshift;
+	h_callback_data->ndim = _axes.size();
+	for( int d=0; d<h_callback_data->ndim; ++d ) {
+		h_callback_data->shape[d]    = in->shape[_axes[d]];
 		int itype_nbyte = BF_DTYPE_NBYTE(in->dtype);
-		h_callback_data.istrides[d] = in->strides[_axes[d]] / itype_nbyte;
-		h_callback_data.inembed[d]  =
+		h_callback_data->istrides[d] = in->strides[_axes[d]] / itype_nbyte;
+		h_callback_data->inembed[d]  =
 			(_axes[d] > 0 ?
 			 in->strides[_axes[d]-1] / in->strides[_axes[d]] :
 			 in->shape[_axes[d]]);
 	}
 	
 	CallbackData* d_callback_data = thrust::raw_pointer_cast(&_dv_callback_data[0]);
-	cudaMemcpyAsync(d_callback_data, &h_callback_data, sizeof(CallbackData),
+	cudaMemcpyAsync(d_callback_data, h_callback_data, sizeof(CallbackData),
 	                cudaMemcpyHostToDevice, g_cuda_stream);
 	
 	BF_ASSERT((uintptr_t)idata % alignment == 0, BF_STATUS_UNSUPPORTED_STRIDE);
