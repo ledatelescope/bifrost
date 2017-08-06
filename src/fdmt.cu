@@ -225,9 +225,11 @@ void launch_fdmt_exec_kernel(int          ntime,
 	                &d_out,
 	                &ostride,
 	                &obatchstride};
-	cudaLaunchKernel((void*)fdmt_exec_kernel<DType>,
-	                 grid, block,
-	                 &args[0], 0, stream);
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaLaunchKernel((void*)fdmt_exec_kernel<DType>,
+		                 grid, block,
+		                 &args[0], 0, stream),
+		BF_STATUS_INTERNAL_ERROR);
 }
 /*
 **** 4096
