@@ -293,6 +293,48 @@ inline void squeeze_contiguous_dims(BFarray const* in,
 	out->ndim = odim;
 }
 */
+inline void print_array(BFarray const* a, const char* name=0) {
+	std::cout << "Array<(";
+	if( name ) {
+		std::cout << "name=" << name << ", ";
+	}
+	std::cout << "shape=(";
+	for( int d=0; d<a->ndim; ++d ) {
+		std::cout << a->shape[d] << ",";
+	}
+	std::cout << "), strides=(";
+	for( int d=0; d<a->ndim; ++d ) {
+		std::cout << a->strides[d] << ",";
+	}
+	std::cout << ")>" << std::endl;
+}
+// Supports in == out
+inline void remove_dim(BFarray const* in,
+                       BFarray*       out,
+                       int            dim) {
+	::memcpy(out, in, sizeof(BFarray));
+	for( int d=dim; d<in->ndim; ++d ) {
+		out->shape[d]   = in->shape[d+1];
+		out->strides[d] = in->strides[d+1];
+	}
+	--(out->ndim);
+}
+// Supports in == out
+inline void split_dim(BFarray const* in,
+                      BFarray*       out,
+                      int            dim,
+                      int            n) {
+	::memcpy(out, in, sizeof(BFarray));
+	for( int d=in->ndim; d-->dim+1; ) {
+		out->shape[d+1]   = in->shape[d];
+		out->strides[d+1] = in->strides[d];
+	}
+	out->shape[dim+1]   = n;
+	out->shape[dim]     = in->shape[dim] / n;
+	out->strides[dim+1] = in->strides[dim];
+	out->strides[dim]   = in->strides[dim] * n;
+	++out->ndim;
+}
 // Merges together dimensions, keeping only those with the corresponding bit
 //   set in keep_mask.
 inline void flatten(BFarray const* in,

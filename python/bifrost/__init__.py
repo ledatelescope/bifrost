@@ -40,6 +40,7 @@ from map import map
 from pipeline import Pipeline, get_default_pipeline, block_scope
 import blocks
 from block_chainer import BlockChainer
+from reduce import reduce
 # import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
 # from transpose import transpose
 # from unpack import unpack

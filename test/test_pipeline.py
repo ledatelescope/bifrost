@@ -100,3 +100,23 @@ class PipelineTest(unittest.TestCase):
             pipeline.run()
             self.assertEqual(ref['odata'].dtype, 'float32')
             self.assertEqual(ref['odata'].shape, (1, 5, 17))
+    def test_reduce(self):
+        gulp_nframe = 128
+        nreduce_freq = 2
+        nreduce_time = 8
+        def check_sequence(seq):
+            tensor = seq.header['_tensor']
+            self.assertEqual(seq.header['gulp_nframe'], gulp_nframe // nreduce_time)
+            self.assertEqual(tensor['shape'],  [-1,1,2 // nreduce_freq])
+            self.assertEqual(tensor['dtype'],  'f32')
+            self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
+            self.assertEqual(tensor['units'],  ['s', None, 'MHz'])
+        def check_data(ispan, ospan):
+            pass
+        with bf.Pipeline() as pipeline:
+            data = read_sigproc([self.fil_file], gulp_nframe)
+            data = copy(data, space='cuda')
+            data = bf.blocks.reduce(data, 'freq', nreduce_freq)
+            data = bf.blocks.reduce(data, 'time', nreduce_time)
+            data = CallbackBlock(data, check_sequence, check_data)
+            pipeline.run()

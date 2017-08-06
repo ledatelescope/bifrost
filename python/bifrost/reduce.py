@@ -1,3 +1,4 @@
+
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -24,31 +25,21 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
+from libbifrost import _bf, _check
+from bifrost import asarray
 
-from .copy import copy, CopyBlock
-from .transpose import transpose, TransposeBlock
-from .reverse import reverse, ReverseBlock
-from .fft import fft, FftBlock
-from .fftshift import fftshift, FftShiftBlock
-from .fdmt import fdmt, FdmtBlock
-from .detect import detect, DetectBlock
-from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
-from .print_header import print_header, PrintHeaderBlock
-from .sigproc import read_sigproc, SigprocSourceBlock
-from .sigproc import write_sigproc, SigprocSinkBlock
-from .scrunch import scrunch, ScrunchBlock
-from .accumulate import accumulate, AccumulateBlock
-from .binary_io import BinaryFileReadBlock, BinaryFileWriteBlock
-from .binary_io import binary_read, binary_write
-from .unpack import unpack, UnpackBlock
-from .quantize import quantize, QuantizeBlock
-from .wav import read_wav, WavSourceBlock
-from .wav import write_wav, WavSinkBlock
-from .serialize import serialize, SerializeBlock
-from .reduce import reduce, ReduceBlock
+REDUCE_MAP = {
+    'sum':    _bf.BF_REDUCE_SUM,
+    'mean':   _bf.BF_REDUCE_MEAN,
+    'min':    _bf.BF_REDUCE_MIN,
+    'max':    _bf.BF_REDUCE_MAX,
+    'stderr': _bf.BF_REDUCE_STDERR
+}
 
-try: # Avoid error if portaudio library not installed
-    from .audio import read_audio, AudioSourceBlock
-except:
-    pass
+def reduce(idata, odata, op='sum'):
+    if op not in REDUCE_MAP:
+        raise ValueError("Invalid reduce op: " + str(op))
+    op = REDUCE_MAP[op]
+    _check(_bf.bfReduce(asarray(idata).as_BFarray(),
+                        asarray(odata).as_BFarray(),
+                        op))

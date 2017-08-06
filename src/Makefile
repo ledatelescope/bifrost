@@ -29,7 +29,8 @@ ifndef NOCUDA
   map.o \
   trace.o \
   linalg.o \
-  linalg_kernels.o
+  linalg_kernels.o \
+  reduce.o
 endif
 
 JIT_SOURCES ?= \
