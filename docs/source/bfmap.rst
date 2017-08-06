@@ -50,6 +50,8 @@ Getting deeper requires a look at the docstring:
                        in func_string.
           shape:       The shape of the computation. If None, the broadcast shape
                        of all data arrays is used.
+          func_name (str): Name of the function, for debugging purposes.
+          extra_code (str): Additional code to be included at global scope.
           block_shape: The 2D shape of the thread block (y,x) with which the kernel
                        is launched.
                        This is a performance tuning parameter.

@@ -49,7 +49,9 @@ extern "C" {
  *  \param narg        The number of BFarrays to operate on
  *  \param args        The BFarrays to operate on; an array of length \p narg
  *  \param arg_names   The names by which each BFarray can be referenced; an array of length \p narg
+ *  \param func_name   [optional] Name of the function, for debugging purposes
  *  \param func        The function to apply to the arrays; a string containing executable code
+ *  \param extra_code  [optional] A string containing executable code to be included at global scope
  *  \param block_shape The 2D shape of the thread block (y,x) with which the kernel is launched.
  *                       This is a performance tuning parameter.
  *                       If NULL, a heuristic is used to select the block shape.
@@ -83,7 +85,9 @@ BFstatus bfMap(int                  ndim,
                int                  narg,
                BFarray const*const* args,
                char const*const*    arg_names,
+               char const*          func_name,
                char const*          func,
+               char const*          extra_code,
                int const*           block_shape, // Must be array of length 2, or NULL
                int const*           block_axes); // Must be array of length 2, or NULL
 

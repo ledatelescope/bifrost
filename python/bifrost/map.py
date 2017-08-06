@@ -48,6 +48,7 @@ def _convert_to_array(arg):
     return bf.asarray(arg)
 
 def map(func_string, data, axis_names=None, shape=None,
+        func_name=None, extra_code=None,
         block_shape=None, block_axes=None):
     """Apply a function to a set of ndarrays.
 
@@ -59,6 +60,8 @@ def map(func_string, data, axis_names=None, shape=None,
                    in func_string.
       shape:       The shape of the computation. If None, the broadcast shape
                    of all data arrays is used.
+      func_name (str): Name of the function, for debugging purposes.
+      extra_code (str): Additional code to be included at global scope.
       block_shape: The 2D shape of the thread block (y,x) with which the kernel
                    is launched.
                    This is a performance tuning parameter.
@@ -119,4 +122,5 @@ def map(func_string, data, axis_names=None, shape=None,
     _check(_bf.bfMap(ndim, _array(shape, dtype=ctypes.c_long),
                      _array(axis_names),
                      narg, _array(args), _array(arg_names),
-                     func_string, _array(block_shape), _array(block_axes)))
+                     func_name, func_string, extra_code,
+                     _array(block_shape), _array(block_axes)))
