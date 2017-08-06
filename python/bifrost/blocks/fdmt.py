@@ -58,9 +58,11 @@ class FdmtBlock(TransformBlock):
     def on_sequence(self, iseq):
         ihdr = iseq.header
         itensor = ihdr['_tensor']
-        # TODO: Assert that axis labels match expected (and/or allow more flexibility in which axes are used)
+        labels = itensor['labels']
+        if labels[-1] != 'time' or labels[-2] != 'freq':
+            raise KeyError("Expected axes [..., 'freq', 'time'], got %s"
+                           % labels)
         nchan    = itensor['shape' ][-2]
-        npol     = itensor['shape' ][-3]
         f0_, df_ = itensor['scales'][-2]
         t0_, dt_ = itensor['scales'][-1]
         # Units must match self.kdm
@@ -78,12 +80,13 @@ class FdmtBlock(TransformBlock):
             self.max_delay = int(math.ceil(abs(rel_delay)))
         elif self.max_mode == 'delay':
             self.max_delay = self.max_value
-            max_dm = self.max_delay * dt / (self.kdm * (f0**-2 - (f0 + nchan * df)**-2))
+            fac = (f0**-2 - (f0 + nchan * df)**-2)
+            max_dm = self.max_delay * dt / (self.kdm * abs(fac))
         else:
             raise ValueError("Unknown max mode: %s" % self.max_mode)
-        self.dm_step = max_dm / self.max_delay
         if self.negative_delays:
-            self.dm_step *= -1
+            max_dm = -max_dm
+        self.dm_step = max_dm / self.max_delay
         self.fdmt.init(nchan, self.max_delay, f0, df, self.exponent, self.space)
         ohdr = deepcopy(ihdr)
         if 'refdm' in ihdr:
