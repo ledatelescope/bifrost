@@ -40,16 +40,20 @@ enum {
 	BF_MAX_DIMS = 8
 };
 typedef enum BFdtype_ {
-	BF_DTYPE_NBIT_BITS      = 0x00FF,
-	BF_DTYPE_TYPE_BITS      = 0x0F00,
+	BF_DTYPE_NBIT_BITS      = 0x0000FF,
+	BF_DTYPE_TYPE_BITS      = 0x000F00,
+	BF_DTYPE_VECTOR_BITS    = 0x0FF000, // Vector length is these bits + 1
+	BF_DTYPE_VECTOR_BIT0    = 12,
+	
+	//BF_DTYPE_SIGNED_BIT     = TODO
+	//BF_DTYPE_COMPLEX_BIT    = 0x1000,
+	BF_DTYPE_COMPLEX_BIT    = 0x100000,
 	
 	BF_DTYPE_INT_TYPE       = 0x0000,
 	BF_DTYPE_UINT_TYPE      = 0x0100, // TODO: Consider removing in favour of signed bit
 	BF_DTYPE_FLOAT_TYPE     = 0x0200,
 	BF_DTYPE_STRING_TYPE    = 0x0300, // TODO: Use this as fixed-length byte array of up to 255 bytes
-	
-	//BF_DTYPE_SIGNED_BIT     = TODO
-	BF_DTYPE_COMPLEX_BIT    = 0x1000,
+	BF_DTYPE_STORAGE_TYPE   = 0x0400, // For load/store (used in transpose)
 	
 	BF_DTYPE_I1    =  1 | BF_DTYPE_INT_TYPE,
 	BF_DTYPE_I2    =  2 | BF_DTYPE_INT_TYPE,

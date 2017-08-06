@@ -34,38 +34,13 @@
 #include <cassert>
 #include <cstring>
 
-/*
-const char* dtype2ctype_string(BFdtype dtype) {
-	switch( dtype ) {
-	case BF_DTYPE_I8:    return "signed char";
-	case BF_DTYPE_I16:   return "short";
-	case BF_DTYPE_I32:   return "int";
-	case BF_DTYPE_I64:   return "long long";
-	case BF_DTYPE_U8:    return "unsigned char";
-	case BF_DTYPE_U16:   return "unsigned short";
-	case BF_DTYPE_U32:   return "unsigned int";
-	case BF_DTYPE_U64:   return "unsigned long long";
-	case BF_DTYPE_F32:   return "float";
-	case BF_DTYPE_F64:   return "double";
-	case BF_DTYPE_F128:  return "long double";
-	case BF_DTYPE_CI8:   return "complex<signed char>";
-	case BF_DTYPE_CI16:  return "complex<short>";
-	case BF_DTYPE_CI32:  return "complex<int>";
-	case BF_DTYPE_CI64:  return "complex<long long>";
-	case BF_DTYPE_CF32:  return "complex<float>";
-	case BF_DTYPE_CF64:  return "complex<double>";
-	case BF_DTYPE_CF128: return "complex<long double>";
-	default: return 0;
-	}
-}
-*/
 // Reads array->(space,dtype,ndim,shape), sets array->strides and
 //   allocates array->data.
 BFstatus bfArrayMalloc(BFarray* array) {
 	BF_TRACE();
 	BF_ASSERT(array, BF_STATUS_INVALID_POINTER);
 	int d = array->ndim - 1;
-	array->strides[d] = get_dtype_nbyte(array->dtype);
+	array->strides[d] = BF_DTYPE_NBYTE(array->dtype);
 	for( ; d-->0; ) {
 		array->strides[d] = array->strides[d+1] * array->shape[d+1];
 	}

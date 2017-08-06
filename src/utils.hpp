@@ -38,12 +38,38 @@
 #include <algorithm>
 #include <stdexcept>
 #include <cstring> // For ::memcpy
+#include <cassert>
 
 #define BF_DTYPE_IS_COMPLEX(dtype) bool((dtype) & BF_DTYPE_COMPLEX_BIT)
+#define BF_DTYPE_VECTOR_LENGTH(dtype) \
+	((((dtype) & BF_DTYPE_VECTOR_BITS) >> BF_DTYPE_VECTOR_BIT0) + 1)
+#define BF_DTYPE_VECTOR_LENGTH_MAX \
+	((BF_DTYPE_VECTOR_BITS + 1) >> BF_DTYPE_VECTOR_BIT0)
+#define BF_DTYPE_SET_VECTOR_LENGTH(dtype, veclen) \
+	BFdtype((dtype & ~BF_DTYPE_VECTOR_BITS) | \
+	        ((veclen - 1) << BF_DTYPE_VECTOR_BIT0))
 // **TODO: Add support for string type that encodes up to 255 bytes
 #define BF_DTYPE_NBIT(dtype) \
-	(((dtype) & BF_DTYPE_NBIT_BITS) * (BF_DTYPE_IS_COMPLEX(dtype)+1))
+	(((dtype) & BF_DTYPE_NBIT_BITS) * \
+	 (BF_DTYPE_IS_COMPLEX(dtype)+1) * \
+	 (BF_DTYPE_VECTOR_LENGTH(dtype)))
 #define BF_DTYPE_NBYTE(dtype) (BF_DTYPE_NBIT(dtype)/8)
+
+inline BFdtype same_sized_storage_dtype(BFdtype dtype) {
+	int nbit = BF_DTYPE_NBIT(dtype);
+	return BFdtype(nbit | BF_DTYPE_STORAGE_TYPE);
+	/*
+	// Returns a vector type with the same size, for efficient load/store
+	int nbyte = BF_DTYPE_NBYTE(dtype);
+	int basetype;
+	if(      nbyte % 4 == 0 ) basetype = BF_DTYPE_U32;
+	else if( nbyte % 2 == 0 ) basetype = BF_DTYPE_U16;
+	else                      basetype = BF_DTYPE_U8;
+	int veclen = nbyte / BF_DTYPE_NBYTE(basetype);
+	assert(veclen <= BF_DTYPE_VECTOR_LENGTH_MAX);
+	return BF_DTYPE_SET_VECTOR_LENGTH(basetype, veclen);
+	*/
+}
 
 // TODO: Check that these wrap/overflow properly
 inline BFoffset round_up(BFoffset val, BFoffset mult) {
@@ -177,16 +203,6 @@ inline BFbool space_accessible_from(BFspace space, BFspace from) {
 #endif
 }
 
-inline int get_dtype_nbyte(BFdtype dtype) {
-	int  nbit    = dtype & BF_DTYPE_NBIT_BITS;
-	bool complex = dtype & BF_DTYPE_COMPLEX_BIT;
-	if( complex ) {
-		nbit *= 2;
-	}
-	//assert(nbit % 8 == 0);
-	return nbit / 8;
-}
-
 inline bool shapes_equal(const BFarray* a,
                          const BFarray* b) {
 	if( a->ndim != b->ndim ) {
@@ -216,7 +232,7 @@ inline bool is_contiguous(const BFarray* array) {
 	//if( array->ndim == 0 ) {
 	//	return true;
 	//}
-	BFsize logical_size = get_dtype_nbyte(array->dtype);
+	BFsize logical_size = BF_DTYPE_NBYTE(array->dtype);
 	for( int d=0; d<array->ndim; ++d ) {
 		logical_size *= array->shape[d];
 	}

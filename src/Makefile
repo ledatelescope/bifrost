@@ -34,6 +34,7 @@ endif
 
 JIT_SOURCES ?= \
   Complex.hpp.jit \
+  Vector.hpp.jit \
   IndexArray.cuh.jit \
   ArrayIndexer.cuh.jit \
   ShapeIndexer.cuh.jit \
