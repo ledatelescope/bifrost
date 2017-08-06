@@ -29,29 +29,32 @@ import unittest
 import numpy as np
 import bifrost as bf
 import bifrost.transpose
+from itertools import permutations
 
 class TransposeTest(unittest.TestCase):
-    def run_simple_test(self, axes, dtype):
-        idata = np.arange(43401).reshape((23,37,51)) % 251
-        iarray = bf.ndarray(idata, dtype=dtype, space='cuda')
+    def run_simple_test(self, axes, dtype, shape):
+        n = reduce(lambda a,b:a*b, shape)
+        idata = (np.arange(n).reshape(shape) % 251).astype(dtype)
+        odata_gold = idata.transpose(axes)
+        iarray = bf.ndarray(idata, space='cuda')
         oarray = bf.empty_like(iarray.transpose(axes))
         bf.transpose.transpose(oarray, iarray, axes)
-        np.testing.assert_equal(oarray.copy('system'),
-                                idata.transpose(axes))
+        oarray = oarray.copy('system')
+        np.testing.assert_array_equal(oarray, odata_gold)
+
     def run_simple_test_shmoo(self, dtype):
-        #self.run_simple_test([0,1,2], dtype) # TODO: Implement this in backend!
-        self.run_simple_test([0,2,1], dtype)
-        #self.run_simple_test([1,0,2], dtype) # TODO: Implement this in backend!
-        self.run_simple_test([1,2,0], dtype)
-        self.run_simple_test([2,0,1], dtype)
-        self.run_simple_test([2,1,0], dtype)
+        for perm in permutations(xrange(3)):
+            for shape in [(23,37,51),
+                          (100, 200, 2),
+                          (2, 200, 100)]:
+                self.run_simple_test(perm, dtype, shape)
     def test_1byte(self):
-        self.run_simple_test_shmoo('u8')
+        self.run_simple_test_shmoo(np.uint8)
     def test_2byte(self):
-        self.run_simple_test_shmoo('u16')
+        self.run_simple_test_shmoo(np.uint16)
     def test_4byte(self):
-        self.run_simple_test_shmoo('u32')
+        self.run_simple_test_shmoo(np.uint32)
     def test_8byte(self):
-        self.run_simple_test_shmoo('u64')
+        self.run_simple_test_shmoo(np.uint64)
     def test_16byte(self):
-        self.run_simple_test_shmoo('f128')
+        self.run_simple_test_shmoo(np.float128)

@@ -71,6 +71,26 @@ inline BFdtype same_sized_storage_dtype(BFdtype dtype) {
 	*/
 }
 
+// Note: Does not support in-place execution
+inline void invert_permutation(int ndim,
+                               int const* in,
+                               int*       out) {
+	for( int d=0; d<ndim; ++d ) {
+		out[in[d]] = d;
+	}
+}
+
+inline void merge_last_dim_into_dtype(BFarray const* in,
+                                      BFarray*       out) {
+	::memcpy(out, in, sizeof(BFarray));
+	int ndim = in->ndim;
+	int veclen = BF_DTYPE_VECTOR_LENGTH(in->dtype);
+	veclen *= in->shape[ndim-1];
+	assert(veclen <= BF_DTYPE_VECTOR_LENGTH_MAX);
+	out->dtype = BF_DTYPE_SET_VECTOR_LENGTH(out->dtype, veclen);
+	--(out->ndim);
+}
+
 // TODO: Check that these wrap/overflow properly
 inline BFoffset round_up(BFoffset val, BFoffset mult) {
 	return (val == 0 ?
