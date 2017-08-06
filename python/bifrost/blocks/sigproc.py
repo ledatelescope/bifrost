@@ -295,7 +295,10 @@ class SigprocSinkBlock(SinkBlock):
 
         else:
             raise ValueError("Axis labels do not correspond to a known data format: " +
-                             str(axnames))
+                             str(axnames) + "\nKnown formats are:" +
+                             "\n  [time, pol, freq]\n  [beam, time, pol]\n" +
+                             "  [time, pol]\n  [dispersion, time, pol]\n" +
+                             "  [pol, freq, phase]")
 
     def on_sequence_end(self, iseq):
         if hasattr(self, 'ofile'):
