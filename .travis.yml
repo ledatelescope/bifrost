@@ -37,11 +37,10 @@ install:
     - sudo make -j NOCUDA=1
     - sudo make install
     - make docker-cpu
-    
+
 script:
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
     - cd test && sudo -E bash ./travis.sh && cd ..
-    - bash ./.travis_deploy_docs.sh
 
 env:
     global:
@@ -49,6 +48,7 @@ env:
         - COMMIT_AUTHOR_EMAIL: "travis@ledatelescope.github.io"
 
 after_success:
+    - bash ./.travis_deploy_docs.sh
     - cd test
     - coveralls
     - codecov
