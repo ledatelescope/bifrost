@@ -71,21 +71,59 @@ def reverse_scale(block, axis):
         return hdr
     return block_view(block, header_transform)
 
-def expand_dims(block, axis, label, scale=None, units=None):
-    """Add an extra dimension to the frame
+def add_axis(block, axis, label=None, scale=None, units=None):
+    """Add an extra dimension to the frame at position 'axis'
 
-    As in, if the shape is [-1, 3, 2], then
+    E.g., if the shape is [-1, 3, 2], then
     selecting axis=1 would change the shape to be
-    [-1, 3, 1, 2].
+    [-1, 1, 3, 2].
+
+    Axis may be negative, or a string corresponding to an existing axis label,
+    in which case the new axis is inserted after the referenced axis.
     """
     def header_transform(hdr, axis=axis, label=label, scale=scale, units=units):
         tensor = hdr['_tensor']
         if isinstance(axis, basestring):
-            axis = tensor['labels'].index(axis)
+            axis = tensor['labels'].index(axis) + 1
+        if axis < 0:
+            axis += len(tensor['shape']) + 1
         tensor['shape'].insert(axis, 1)
-        tensor['labels'].insert(axis, label)
-        tensor['scales'].insert(axis, scale)
-        tensor['units'].insert(axis, units)
+        if 'labels' in tensor:
+            tensor['labels'].insert(axis, label)
+        if 'scales' in tensor:
+            tensor['scales'].insert(axis, scale)
+        if 'units' in tensor:
+            tensor['units'].insert(axis, units)
+        return hdr
+    return block_view(block, header_transform)
+
+def delete_axis(block, axis):
+    """Remove a unitary dimension from the frame
+
+    E.g., if the shape is [-1, 1, 3, 2], then
+    selecting axis=1 would change the shape to be
+    [-1, 3, 2].
+
+    Axis may be negative, or a string corresponding to an existing axis label.
+    """
+    def header_transform(hdr, axis=axis):
+        tensor = hdr['_tensor']
+        specified_axis = axis
+        if isinstance(axis, basestring):
+            specified_axis = "'%s'" % specified_axis
+            axis = tensor['labels'].index(axis)
+        if axis < 0:
+            axis += len(tensor['shape']) + 1
+        if tensor['shape'][axis] != 1:
+            raise ValueError("Cannot delete non-unitary axis %s with shape %i"
+                             % (specified_axis, tensor['shape'][axis]))
+        del tensor['shape'][axis]
+        if 'labels' in tensor:
+            del tensor['labels'][axis]
+        if 'scales' in tensor:
+            del tensor['scales'][axis]
+        if 'units' in tensor:
+            del tensor['units'][axis]
         return hdr
     return block_view(block, header_transform)
 

@@ -122,6 +122,10 @@ class PipelineTestCPU(unittest.TestCase):
                 data = bf.views.reinterpret_axis(data, 'chan', label='freq', scale=[433.968, -0.062], units='MHz')
                 data = bf.views.astype(data, 'i16')
                 data = bf.views.astype(data, 'u16')
+                data = bf.views.add_axis(data, -1, 'phony_axis', scale=(0,1), units="imaginary")
+                data = bf.views.delete_axis(data, 'phony_axis')
+                data = bf.views.add_axis(data, 0, 'phony_axis')
+                data = bf.views.delete_axis(data, 'phony_axis')
                 data = bf.views.custom(
                     data, lambda hdr: rename_sequence(hdr, hdr['name']))
             for i in xrange(20):
