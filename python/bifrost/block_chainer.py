@@ -56,6 +56,8 @@ class BlockChainer(object):
     @property
     def views(self):
         return _BlockChainerProxy(self, bifrost.views)
+    def print_header(self, *args, **kwargs):
+        return bifrost.blocks.print_header(self.last_block, *args, **kwargs)
     def custom(self, func):
         return self._get(func)
     def _get(self, func):
