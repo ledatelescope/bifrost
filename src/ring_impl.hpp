@@ -103,8 +103,6 @@ class BFring_impl {
 	int            _core;    	
 	ProcLog        _size_log;
 	
-	int _core;
-	
 	std::queue<BFsequence_sptr>           _sequence_queue;
 	std::map<std::string,BFsequence_sptr> _sequence_map;
 	std::map<BFoffset,BFsequence_sptr>    _sequence_time_tag_map;
