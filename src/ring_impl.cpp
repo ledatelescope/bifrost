@@ -121,7 +121,7 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	                 "span      : %llu\n"
 	                 "stride    : %llu\n"
 	                 "nringlet  : %llu\n", 
-	                 bfGetSpaceString(_space).c_str(), bfGetAlignment(), _span, _ghost_span, _stride, _nringlet);
+	                 bfGetSpaceString(_space), bfGetAlignment(), _span, _ghost_span, _stride, _nringlet);
 #endif
 }
 BFring_impl::~BFring_impl() {
