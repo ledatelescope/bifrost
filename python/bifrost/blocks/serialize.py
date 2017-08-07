@@ -43,7 +43,7 @@ class SerializeBlock(SinkBlock):
             path = ''
         self.path = path
         if max_file_size is None:
-            max_file_size = 2147483647
+            max_file_size = 1024**3
         self.max_file_size = max_file_size
     def _close_data_files(self):
         if hasattr(self, 'ofiles'):
@@ -54,11 +54,11 @@ class SerializeBlock(SinkBlock):
         self.bytes_written = 0
         if self.frame_axis == 0:
             # No ringlets, we can write all data to one file
-            filenames = [self.basename + '.%012i.bf.dat' % frame_offset]
+            filenames = [self.basename + '.bf.%012i.dat' % frame_offset]
         elif self.frame_axis == 1:
             # Ringlets, we must write each to a separate file
             ndigit    = len(str(self.nringlet-1))
-            filenames = [self.basename + ('.%012i.%0'+str(ndigit)+'i.bf.dat') %
+            filenames = [self.basename + ('.bf.%012i.%0'+str(ndigit)+'i.dat') %
                          (frame_offset, i)
                          for i in xrange(self.nringlet)]
         else:
@@ -118,10 +118,10 @@ def serialize(iring, path=None, max_file_size=None, *args, **kwargs):
         <name_or_time_tag>.bf.json
 
         # Single-ringlet data
-        <name_or_time_tag>.<frame_offset>.bf.dat
+        <name_or_time_tag>.bf.<frame_offset>.dat
 
         # Multi-ringlet data
-        <name_or_time_tag>.<frame_offset>.<ringlet>.bf.dat
+        <name_or_time_tag>.bf.<frame_offset>.<ringlet>.dat
 
     Args:
         iring (Ring or Block): Input data source.o

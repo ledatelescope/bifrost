@@ -91,7 +91,7 @@ class SerializeTest(unittest.TestCase):
                 pipeline.run()
                 # Note: SerializeBlock uses os.path.basename if path is given
                 hdrpath = self.basepath + '.bf.json'
-                datpath = self.basepath + '.' + '0' * 12 + '.bf.dat'
+                datpath = self.basepath + '.bf.' + '0' * 12 + '.dat'
                 self.assertTrue(os.path.exists(hdrpath))
                 self.assertTrue(os.path.exists(datpath))
                 self.assertEqual(os.path.getsize(datpath), self.data_size)
@@ -114,7 +114,7 @@ class SerializeTest(unittest.TestCase):
                 basepath = os.path.join(self.temp_path,
                                         '%020i' % self.time_tag)
                 hdrpath = basepath + '.bf.json'
-                datpath = basepath + '.' + '0' * 12 + '.bf.dat'
+                datpath = basepath + '.bf.' + '0' * 12 + '.dat'
                 self.assertTrue(os.path.exists(hdrpath))
                 self.assertTrue(os.path.exists(datpath))
                 self.assertEqual(os.path.getsize(datpath), self.data_size)
@@ -133,8 +133,8 @@ class SerializeTest(unittest.TestCase):
                 pipeline.run()
                 # Note: SerializeBlock uses os.path.basename if path is given
                 hdrpath  = self.basepath + '.bf.json'
-                datpath0 = self.basepath + '.' + '0' * 12 + '.0.bf.dat'
-                datpath1 = self.basepath + '.' + '0' * 12 + '.1.bf.dat'
+                datpath0 = self.basepath + '.bf.' + '0' * 12 + '.0.dat'
+                datpath1 = self.basepath + '.bf.' + '0' * 12 + '.1.dat'
                 self.assertTrue(os.path.exists(hdrpath))
                 self.assertTrue(os.path.exists(datpath0))
                 self.assertTrue(os.path.exists(datpath1))
