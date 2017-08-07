@@ -16,9 +16,9 @@ LIBBIFROST_OBJS = \
   udp_socket.o \
   udp_capture.o \
   udp_transmit.o \
+  proclog.o \
   unpack.o \
-  quantize.o \
-  proclog.o
+  quantize.o
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
@@ -32,6 +32,7 @@ ifndef NOCUDA
   linalg_kernels.o \
   reduce.o
 endif
+
 
 JIT_SOURCES ?= \
   Complex.hpp.jit \
@@ -104,6 +105,11 @@ endif
 ifndef NOCUDA
   CPPFLAGS  += -DBF_CUDA_ENABLED=1
   LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt
+  $(shell mv -f unpack.cpp unpack.cu 2>/dev/null)
+  $(shell mv -f quantize.cpp quantize.cu 2>/dev/null)
+else
+  $(shell mv -f unpack.cu unpack.cpp 2>/dev/null)
+  $(shell mv -f quantize.cu quantize.cpp 2>/dev/null)
 endif
 
 ifndef ANY_ARCH
