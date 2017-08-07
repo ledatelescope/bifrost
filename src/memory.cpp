@@ -75,22 +75,20 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 	return BF_STATUS_SUCCESS;
 }
 
-std::string bfGetSpaceString(BFspace space) {
+const char* bfGetSpaceString(BFspace space) {
 	// TODO: Is there a better way to do this that does not involve hard 
 	//       coding all of these values twice (one in memory.h for the 
 	//       enum, once here)?
 	
-	std::string value;
 	
 	switch( space ) {
-		case 0:	value = "auto";         break;
-		case 1:	value = "system";       break;
-		case 2:	value = "cuda";         break;
-		case 3:	value = "cuda_host";    break;
-		case 4:	value = "cuda_managed"; break;
-		default:	value = "unknown";
+		case 0:	 return "auto";
+		case 1:	 return "system";
+		case 2:	 return "cuda";
+		case 3:	 return "cuda_host";
+		case 4:	 return "cuda_managed";
+		default: return "unknown";
 	}
-	return value;
 }
 
 BFstatus bfMalloc(void** ptr, BFsize size, BFspace space) {
