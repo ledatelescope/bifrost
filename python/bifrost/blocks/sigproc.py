@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,286 +35,329 @@ from bifrost.units import convert_units
 from copy import deepcopy
 import os
 
-def get_with_default(obj, key, default=None):
-	return obj[key] if key in obj else default
+def _get_with_default(obj, key, default=None):
+    return obj[key] if key in obj else default
 
-def mjd2unix(mjd):
-	return (mjd - 40587) * 86400
+def _mjd2unix(mjd):
+    return (mjd - 40587) * 86400
 
-def unix2mjd(unix):
-	return unix / 86400. + 40587
+def _unix2mjd(unix):
+    return unix / 86400. + 40587
 
 class SigprocSourceBlock(SourceBlock):
-	def __init__(self, filenames, gulp_nframe, unpack=True, *args, **kwargs):
-		super(SigprocSourceBlock, self).__init__(filenames, gulp_nframe, *args, **kwargs)
-		self.unpack = unpack
-	def create_reader(self, sourcename):
-		return sigproc.SigprocFile(sourcename)
-	def on_sequence(self, ireader, sourcename):
-		ihdr = ireader.header
-		assert(ihdr['data_type'] in [1,  # filterbank
-		                             2,  # (dedispersed) time series
-		                             6]) # dedispersed subbands
-		for coord_frame in ['pulsarcentric', 'barycentric', 'topocentric']:
-			if coord_frame in ihdr and bool(ihdr[coord_frame]):
-				break
-		tstart_unix = mjd2unix(ihdr['tstart'])
-		nbit = ihdr['nbits']
-		if self.unpack:
-			nbit = max(nbit, 8)
-		ohdr = {
-			'_tensor': {
-				'dtype':  ['u','i'][ihdr['signed']] + str(nbit),
-				'shape':  [-1, ihdr['nifs'], ihdr['nchans']],
-				'labels': ['time', 'pol', 'freq'],
-				'scales': [(tstart_unix,ihdr['tsamp']),
-				           None,
-				           (ihdr['fch1'],ihdr['foff'])],
-				'units':  ['s', None, 'MHz']
-			},
-			'frame_rate': 1./ihdr['tsamp'], # TODO: Used for anything?
-			'source_name':   get_with_default(ihdr, 'source_name'),
-			'rawdatafile':   get_with_default(ihdr, 'rawdatafile'),
-			'az_start':      get_with_default(ihdr, 'az_start'),
-			'za_start':      get_with_default(ihdr, 'za_start'),
-			'raj':           get_with_default(ihdr, 'src_raj'),
-			'dej':           get_with_default(ihdr, 'src_dej'),
-			'refdm':         get_with_default(ihdr, 'refdm', 0.),
-			'refdm_units':   'pc cm^-3',
-			'telescope':     get_with_default(ihdr, 'telescope_id'),
-			'machine':       get_with_default(ihdr, 'machine_id'),
-			'ibeam':         get_with_default(ihdr, 'ibeam'),
-			'nbeams':        get_with_default(ihdr, 'nbeams'),
-			'coord_frame':   coord_frame,
-		}
-		# Convert ids to strings
-		ohdr['telescope'] = sigproc.id2telescope(ohdr['telescope'])
-		ohdr['machine']   = sigproc.id2machine(ohdr['machine'])
-		# Note: This gives 32 bits to the fractional part of a second,
-		#         corresponding to ~0.233ns resolution. The whole part
-		#         gets at least 31 bits, which will overflow in 2038.
-		time_tag  = int(round(tstart_unix * 2**32))
-		ohdr['time_tag'] = time_tag
-		ohdr['name']     = sourcename
-		return [ohdr]
-	def on_data(self, reader, ospans):
-		ospan = ospans[0]
-		#print "SigprocReadBlock::on_data", ospan.data.dtype
-		if self.unpack:
-			indata = reader.read(ospan.shape[0])
-			nframe = indata.shape[0]
-			#print indata.shape, indata.dtype, nframe
-			#print indata
-			ospan.data[:nframe] = indata
-			# TODO: This will break when frame size < 1 byte
-			#         Can't use frame_nbyte; must use something like frame_nbit
-			#           Gets tricky though because what array shape+dtype to use?
-			#             Would need to use an array class that supports dtypes
-			#               of any nbit, and deals with consequent indexing issues.
-			#           Admittedly, it is probably a rare case, because a detected
-			#             time series would typically have SNR warranting >= 8
-			#             bits.
-			#           Multiple pols could be included, but only if chan and pol
-			#             dims are merged together.
-			#print "NBYTE", nbyte
-			#assert(nbyte % reader.frame_nbyte == 0)
-			#nframe = nbyte // reader.frame_nbyte
-		else:
-			nbyte = reader.readinto(ospan.data)
-			if nbyte % ospan.frame_nbyte:
-				raise IOError("Input file is truncated")
-			nframe = nbyte // ospan.frame_nbyte
-		return [nframe]
+    def __init__(self, filenames, gulp_nframe, unpack=True, *args, **kwargs):
+        super(SigprocSourceBlock, self).__init__(filenames, gulp_nframe, *args, **kwargs)
+        self.unpack = unpack
+    def create_reader(self, sourcename):
+        return sigproc.SigprocFile(sourcename)
+    def on_sequence(self, ireader, sourcename):
+        ihdr = ireader.header
+        assert(ihdr['data_type'] in [1,  # filterbank
+                                     2,  # (dedispersed) time series
+                                     6]) # dedispersed subbands
+        for coord_frame in ['pulsarcentric', 'barycentric', 'topocentric']:
+            if coord_frame in ihdr and bool(ihdr[coord_frame]):
+                break
+        tstart_unix = _mjd2unix(ihdr['tstart'])
+        nbit = ihdr['nbits']
+        if self.unpack:
+            nbit = max(nbit, 8)
+        ohdr = {
+            '_tensor': {
+                'dtype':  ['u', 'i'][ihdr['signed']] + str(nbit),
+                'shape':  [-1, ihdr['nifs'], ihdr['nchans']],
+                'labels': ['time', 'pol', 'freq'],
+                'scales': [(tstart_unix, ihdr['tsamp']),
+                           None,
+                           (ihdr['fch1'], ihdr['foff'])],
+                'units':  ['s', None, 'MHz']
+            },
+            'frame_rate': 1. / ihdr['tsamp'], # TODO: Used for anything?
+            'source_name':   _get_with_default(ihdr, 'source_name'),
+            'rawdatafile':   _get_with_default(ihdr, 'rawdatafile'),
+            'az_start':      _get_with_default(ihdr, 'az_start'),
+            'za_start':      _get_with_default(ihdr, 'za_start'),
+            'raj':           _get_with_default(ihdr, 'src_raj'),
+            'dej':           _get_with_default(ihdr, 'src_dej'),
+            'refdm':         _get_with_default(ihdr, 'refdm', 0.),
+            'refdm_units':   'pc cm^-3',
+            'telescope':     _get_with_default(ihdr, 'telescope_id'),
+            'machine':       _get_with_default(ihdr, 'machine_id'),
+            'ibeam':         _get_with_default(ihdr, 'ibeam'),
+            'nbeams':        _get_with_default(ihdr, 'nbeams'),
+            'coord_frame':   coord_frame,
+        }
+        # Convert ids to strings
+        ohdr['telescope'] = sigproc.id2telescope(ohdr['telescope'])
+        ohdr['machine']   = sigproc.id2machine(ohdr['machine'])
+        # Note: This gives 32 bits to the fractional part of a second,
+        #         corresponding to ~0.233ns resolution. The whole part
+        #         gets at least 31 bits, which will overflow in 2038.
+        time_tag  = int(round(tstart_unix * 2**32))
+        ohdr['time_tag'] = time_tag
+        ohdr['name']     = sourcename
+        return [ohdr]
+    def on_data(self, reader, ospans):
+        ospan = ospans[0]
+        #print "SigprocReadBlock::on_data", ospan.data.dtype
+        if self.unpack:
+            indata = reader.read(ospan.shape[0])
+            nframe = indata.shape[0]
+            #print indata.shape, indata.dtype, nframe
+            #print indata
+            ospan.data[:nframe] = indata
+            # TODO: This will break when frame size < 1 byte
+            #         Can't use frame_nbyte; must use something like frame_nbit
+            #           Gets tricky though because what array shape+dtype to use?
+            #             Would need to use an array class that supports dtypes
+            #               of any nbit, and deals with consequent indexing issues.
+            #           Admittedly, it is probably a rare case, because a detected
+            #             time series would typically have SNR warranting >= 8
+            #             bits.
+            #           Multiple pols could be included, but only if chan and pol
+            #             dims are merged together.
+            #print "NBYTE", nbyte
+            #assert(nbyte % reader.frame_nbyte == 0)
+            #nframe = nbyte // reader.frame_nbyte
+        else:
+            nbyte = reader.readinto(ospan.data)
+            if nbyte % ospan.frame_nbyte:
+                raise IOError("Input file is truncated")
+            nframe = nbyte // ospan.frame_nbyte
+        return [nframe]
 
 def read_sigproc(filenames, gulp_nframe, unpack=True, *args, **kwargs):
-	return SigprocSourceBlock(filenames, gulp_nframe, unpack,
-	                          *args, **kwargs)
+    """Read SIGPROC data files.
 
-def copy_item_if_exists(dst, src, key, newkey=None):
-	if key in src:
-		if newkey is None:
-			newkey = key
-		dst[newkey] = src[key]
+    Capable of reading filterbank, time series, and dedispersed subband data.
+
+    Args:
+        filenames (list): List of input filenames.
+        gulp_nframe (int): No. frames to read at a time.
+        unpack (bool): If True, 1-4 bit data are unpacked to 8 bits.
+        *args: Arguments to ``bifrost.pipeline.SourceBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.SourceBlock``.
+
+    **Tensor semantics**::
+
+        Output: ['time', 'pol', 'freq'], dtype = u/i*, space = SYSTEM
+
+    Returns:
+        SigprocSourceBlock: A new block instance.
+    """
+    return SigprocSourceBlock(filenames, gulp_nframe, unpack,
+                              *args, **kwargs)
+
+def _copy_item_if_exists(dst, src, key, newkey=None):
+    if key in src:
+        if newkey is None:
+            newkey = key
+        dst[newkey] = src[key]
 
 class SigprocSinkBlock(SinkBlock):
-	"""Writes data as Sigproc files.
-	The Sigproc data type is inferred from sequence metadata, and is one of:
-	  Filterbank:    [time, pol, freq] (one file per sequence)
-	                 [beam, time, pol, freq] (one file per beam)
-	  Time series:   [time, pol], (one file per sequence)
-	                 [dispersion, time, pol] (one file per DM)
-	  Pulse profile: [pol, freq, phase] (one file per frame)
-	"""
-	def __init__(self, iring, path=None, *args, **kwargs):
-		super(SigprocSinkBlock, self).__init__(iring, *args, **kwargs)
-		if path is None:
-			path = ''
-		self.path = path
-	def on_sequence(self, iseq):
-		ihdr = iseq.header
-		itensor = ihdr['_tensor']
-		
-		axnames = tuple(itensor['labels'])
-		shape   = itensor['shape']
-		scales  = itensor['scales']
-		units   = itensor['units']
-		ndim    = len(shape)
-		dtype   = DataType(itensor['dtype'])
-		
-		sigproc_hdr = {}
-		copy_item_if_exists(sigproc_hdr, ihdr, 'source_name')
-		copy_item_if_exists(sigproc_hdr, ihdr, 'rawdatafile')
-		copy_item_if_exists(sigproc_hdr, ihdr, 'az_start')
-		copy_item_if_exists(sigproc_hdr, ihdr, 'za_start')
-		copy_item_if_exists(sigproc_hdr, ihdr, 'raj', 'src_raj')
-		copy_item_if_exists(sigproc_hdr, ihdr, 'dej', 'src_dej')
-		if 'telescope' in ihdr:
-			sigproc_hdr['telescope_id'] = sigproc.telescope2id(ihdr['telescope'])
-		if 'machine' in ihdr:
-			sigproc_hdr['machine_id'] = sigproc.machine2id(ihdr['machine'])
-		copy_item_if_exists(sigproc_hdr, ihdr, 'telescope_id')
-		copy_item_if_exists(sigproc_hdr, ihdr, 'machine_id')
-		copy_item_if_exists(sigproc_hdr, ihdr, 'ibeam')
-		copy_item_if_exists(sigproc_hdr, ihdr, 'nbeams')
-		sigproc_hdr['nbits'] = dtype.itemsize_bits
-		copy_item_if_exists(sigproc_hdr, ihdr, 'barycentric')
-		copy_item_if_exists(sigproc_hdr, ihdr, 'pulsarcentric')
-		if dtype.is_integer and dtype.is_signed:
-			sigproc_hdr['signed'] = True
-		if 'coord_frame' in ihdr:
-			coord_frame = ihdr['coord_frame']
-		sigproc_hdr['pulsarcentric'] = (coord_frame == 'pulsarcentric')
-		sigproc_hdr['barycentric']   = (coord_frame == 'barycentric')
-		
-		filename = os.path.join(self.path, ihdr['name'])
-		
-		if ndim >= 3 and axnames[-3:] == ('time', 'pol', 'freq'):
-			self.data_format = 'filterbank'
-			assert(dtype.is_real)
-			sigproc_hdr['data_type'] = 1
-			sigproc_hdr['nifs']   = shape[-2]
-			sigproc_hdr['nchans'] = shape[-1]
-			sigproc_hdr['tstart'] = unix2mjd(scales[-3][0])
-			sigproc_hdr['tsamp']  = convert_units(scales[-3][1], units[-3], 's')
-			sigproc_hdr['fch1']   = convert_units(scales[-1][0], units[-1], 'MHz')
-			sigproc_hdr['foff']   = convert_units(scales[-1][1], units[-1], 'MHz')
-			if 'refdm' in ihdr:
-				sigproc_hdr['refdm'] = convert_units(ihdr['refdm'],
-				                                     ihdr['refdm_units'],
-				                                     'pc cm^-3')
-			if ndim == 3:
-				filename += '.fil'
-				self.ofile = open(filename, 'wb')
-				sigproc.write_header(sigproc_hdr, self.ofile)
-			elif ndim == 4:
-				if axnames[-4] != 'beam':
-					raise ValueError("Expected first axis to be 'beam'")
-				nbeam = shape[-4]
-				sigproc_hdr['nbeams'] = nbeam
-				filenames = [filename + '.%06iof.%06i.fil' % (b+1, nbeam)
-				             for b in xrange(nbeam)]
-				self.ofiles = [open(fname, 'wb') for fname in filenames]
-				for b in xrange(nbeam):
-					sigproc_hdr['ibeam'] = b
-					sigproc.write_header(sigproc_hdr, self.ofiles[b])
-			else:
-				raise ValueError("Too many dimensions")
-			
-		elif ndim >= 2 and axnames[-2:] == ('time', 'pol'):
-			self.data_format = 'timeseries'
-			assert(dtype.is_real)
-			sigproc_hdr['data_type'] = 2
-			sigproc_hdr['nchans'] = 1
-			sigproc_hdr['nifs']   = shape[-2]
-			sigproc_hdr['tstart'] = unix2mjd(scales[-2][0])
-			sigproc_hdr['tsamp']  = convert_units(scales[-2][1], units[-2], 's')
-			if 'cfreq' in ihdr and 'bw' in ihdr:
-				sigproc_hdr['fch1'] = convert_units(ihdr['cfreq'],
-				                                    ihdr['cfreq_units'],
-				                                    'MHz')
-				sigproc_hdr['foff'] = convert_units(ihdr['bw'],
-				                                    ihdr['bw_units'],
-				                                    'MHz')
-			# TODO: Write ndim separate output files, each with its own refdm
-			if ndim == 2:
-				if 'refdm' in ihdr:
-					sigproc_hdr['refdm'] = convert_units(ihdr['refdm'],
-					                                     ihdr['refdm_units'],
-					                                     'pc cm^-3')
-				filename += '.tim'
-				self.ofile = open(filename, 'wb')
-				sigproc.write_header(sigproc_hdr, self.ofile)
-			elif ndim == 3:
-				if axnames[-3] != 'dispersion measure':
-					raise ValueError("Expected first axis to be 'dispersion measure'")
-				ndm = shape[-3]
-				dm0 = scales[-3][0]
-				ddm = scales[-3][1]
-				dms = [dm0+ddm*d for d in xrange(ndm)]
-				dms = [convert_units(dm, units[-3], 'pc cm^-3') for dm in dms]
-				filenames = [filename + '.%09.2f.tim' % dm for dm in dms]
-				self.ofiles = [open(fname, 'wb') for fname in filenames]
-				for d, dm in enumerate(dms):
-					sigproc_hdr['refdm'] = dm
-					sigproc.write_header(sigproc_hdr, self.ofiles[d])
-			else:
-				raise ValueError("Too many dimensions")
-			
-		elif ndim == 4 and axnames[-3:] == ('pol', 'freq', 'phase'):
-			self.data_format = 'pulseprofile'
-			assert(dtype.is_real)
-			sigproc_hdr['data_type'] = 2
-			sigproc_hdr['nifs']   = shape[-3]
-			sigproc_hdr['nchans'] = shape[-2]
-			sigproc_hdr['nbins']  = shape[-1]
-			sigproc_hdr['tstart'] = unix2mjd(scales[-4][0])
-			sigproc_hdr['tsamp']  = convert_units(scales[-4][1], units[-4], 's')
-			sigproc_hdr['fch1']   = convert_units(scales[-2][0], units[-2], 'MHz')
-			sigproc_hdr['foff']   = convert_units(scales[-2][1], units[-2], 'MHz')
-			if 'refdm' in ihdr:
-				sigproc_hdr['refdm'] = convert_units(ihdr['refdm'],
-				                                     ihdr['refdm_units'],
-				                                     'pc cm^-3')
-			copy_item_if_exists(sigproc_hdr, ihdr, 'npuls')
-			self.filename = filename
-			self.sigproc_hdr = sigproc_hdr
-			self.t0 = scales[-4][0]
-			self.dt = scales[-4][1]
-			
-		else:
-			raise ValueError("Axis labels do not correspond to a known data format: "+
-			                 str(axnames))
-		
-	def on_sequence_end(self, iseq):
-		if hasattr(self, 'ofile'):
-			self.ofile.close()
-		elif hasattr(self, 'ofiles'):
-			for ofile in self.ofiles:
-				ofile.close()
-	
-	def on_data(self, ispan):
-		idata = ispan.data
-		if self.data_format == 'filterbank':
-			if len(idata.shape) == 3:
-				idata.tofile(self.ofile)
-			else:
-				for b in xrange(idata.shape[0]):
-					idata[b].tofile(self.ofiles[b])
-		elif self.data_format == 'timeseries':
-			if len(idata.shape) == 2:
-				idata.tofile(self.ofile)
-			else:
-				for d in xrange(idata.shape[0]):
-					idata[d].tofile(self.ofiles[d])
-		elif self.data_format == 'pulseprofile':
-			time_unix = self.t0 + ispan.frame_offset * self.dt
-			filename = self.filename + '.%017.6f.tim' % time_unix
-			with open(filename, 'wb') as ofile:
-				self.sigproc_hdr['tstart'] += self.sigproc_hdr['tsamp']
-				sigproc.write_header(self.sigproc_hdr, ofile)
-				idata.tofile(ofile)
-		else:
-			raise ValueError("Internal error: Unknown data format!")
+    def __init__(self, iring, path=None, *args, **kwargs):
+        super(SigprocSinkBlock, self).__init__(iring, *args, **kwargs)
+        if path is None:
+            path = ''
+        self.path = path
+    def on_sequence(self, iseq):
+        ihdr = iseq.header
+        itensor = ihdr['_tensor']
+
+        axnames = tuple(itensor['labels'])
+        shape   = itensor['shape']
+        scales  = itensor['scales']
+        units   = itensor['units']
+        ndim    = len(shape)
+        dtype   = DataType(itensor['dtype'])
+
+        sigproc_hdr = {}
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'source_name')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'rawdatafile')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'az_start')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'za_start')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'raj', 'src_raj')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'dej', 'src_dej')
+        if 'telescope' in ihdr:
+            sigproc_hdr['telescope_id'] = sigproc.telescope2id(ihdr['telescope'])
+        if 'machine' in ihdr:
+            sigproc_hdr['machine_id'] = sigproc.machine2id(ihdr['machine'])
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'telescope_id')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'machine_id')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'ibeam')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'nbeams')
+        sigproc_hdr['nbits'] = dtype.itemsize_bits
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'barycentric')
+        _copy_item_if_exists(sigproc_hdr, ihdr, 'pulsarcentric')
+        if dtype.is_integer and dtype.is_signed:
+            sigproc_hdr['signed'] = True
+        if 'coord_frame' in ihdr:
+            coord_frame = ihdr['coord_frame']
+        else:
+            coord_frame = None
+        sigproc_hdr['pulsarcentric'] = (coord_frame == 'pulsarcentric')
+        sigproc_hdr['barycentric']   = (coord_frame == 'barycentric')
+
+        filename = os.path.join(self.path, ihdr['name'])
+
+        if ndim >= 3 and axnames[-3:] == ('time', 'pol', 'freq'):
+            self.data_format = 'filterbank'
+            assert(dtype.is_real)
+            sigproc_hdr['data_type'] = 1
+            sigproc_hdr['nifs']   = shape[-2]
+            sigproc_hdr['nchans'] = shape[-1]
+            sigproc_hdr['tstart'] = _unix2mjd(scales[-3][0])
+            sigproc_hdr['tsamp']  = convert_units(scales[-3][1], units[-3], 's')
+            sigproc_hdr['fch1']   = convert_units(scales[-1][0], units[-1], 'MHz')
+            sigproc_hdr['foff']   = convert_units(scales[-1][1], units[-1], 'MHz')
+            if 'refdm' in ihdr:
+                sigproc_hdr['refdm'] = convert_units(ihdr['refdm'],
+                                                     ihdr['refdm_units'],
+                                                     'pc cm^-3')
+            if ndim == 3:
+                filename += '.fil'
+                self.ofile = open(filename, 'wb')
+                sigproc.write_header(sigproc_hdr, self.ofile)
+            elif ndim == 4:
+                if axnames[-4] != 'beam':
+                    raise ValueError("Expected first axis to be 'beam'")
+                nbeam = shape[-4]
+                sigproc_hdr['nbeams'] = nbeam
+                filenames = [filename + '.%06iof.%06i.fil' % (b + 1, nbeam)
+                             for b in xrange(nbeam)]
+                self.ofiles = [open(fname, 'wb') for fname in filenames]
+                for b in xrange(nbeam):
+                    sigproc_hdr['ibeam'] = b
+                    sigproc.write_header(sigproc_hdr, self.ofiles[b])
+            else:
+                raise ValueError("Too many dimensions")
+
+        elif ndim >= 2 and axnames[-2:] == ('time', 'pol'):
+            self.data_format = 'timeseries'
+            assert(dtype.is_real)
+            sigproc_hdr['data_type'] = 2
+            sigproc_hdr['nchans'] = 1
+            sigproc_hdr['nifs']   = shape[-2]
+            sigproc_hdr['tstart'] = _unix2mjd(scales[-2][0])
+            sigproc_hdr['tsamp']  = convert_units(scales[-2][1], units[-2], 's')
+            if 'cfreq' in ihdr and 'bw' in ihdr:
+                sigproc_hdr['fch1'] = convert_units(ihdr['cfreq'],
+                                                    ihdr['cfreq_units'],
+                                                    'MHz')
+                sigproc_hdr['foff'] = convert_units(ihdr['bw'],
+                                                    ihdr['bw_units'],
+                                                    'MHz')
+            # TODO: Write ndim separate output files, each with its own refdm
+            if ndim == 2:
+                if 'refdm' in ihdr:
+                    sigproc_hdr['refdm'] = convert_units(ihdr['refdm'],
+                                                         ihdr['refdm_units'],
+                                                         'pc cm^-3')
+                filename += '.tim'
+                self.ofile = open(filename, 'wb')
+                sigproc.write_header(sigproc_hdr, self.ofile)
+            elif ndim == 3:
+                if axnames[-3] != 'dispersion':
+                    raise ValueError("Expected first axis to be 'dispersion'")
+                ndm = shape[-3]
+                dm0 = scales[-3][0]
+                ddm = scales[-3][1]
+                dms = [dm0 + ddm * d for d in xrange(ndm)]
+                dms = [convert_units(dm, units[-3], 'pc cm^-3') for dm in dms]
+                filenames = [filename + '.%09.2f.tim' % dm for dm in dms]
+                self.ofiles = [open(fname, 'wb') for fname in filenames]
+                for d, dm in enumerate(dms):
+                    sigproc_hdr['refdm'] = dm
+                    sigproc.write_header(sigproc_hdr, self.ofiles[d])
+            else:
+                raise ValueError("Too many dimensions")
+
+        elif ndim == 4 and axnames[-3:] == ('pol', 'freq', 'phase'):
+            self.data_format = 'pulseprofile'
+            assert(dtype.is_real)
+            sigproc_hdr['data_type'] = 2
+            sigproc_hdr['nifs']   = shape[-3]
+            sigproc_hdr['nchans'] = shape[-2]
+            sigproc_hdr['nbins']  = shape[-1]
+            sigproc_hdr['tstart'] = _unix2mjd(scales[-4][0])
+            sigproc_hdr['tsamp']  = convert_units(scales[-4][1], units[-4], 's')
+            sigproc_hdr['fch1']   = convert_units(scales[-2][0], units[-2], 'MHz')
+            sigproc_hdr['foff']   = convert_units(scales[-2][1], units[-2], 'MHz')
+            if 'refdm' in ihdr:
+                sigproc_hdr['refdm'] = convert_units(ihdr['refdm'],
+                                                     ihdr['refdm_units'],
+                                                     'pc cm^-3')
+            _copy_item_if_exists(sigproc_hdr, ihdr, 'npuls')
+            self.filename = filename
+            self.sigproc_hdr = sigproc_hdr
+            self.t0 = scales[-4][0]
+            self.dt = scales[-4][1]
+
+        else:
+            raise ValueError("Axis labels do not correspond to a known data format: " +
+                             str(axnames) + "\nKnown formats are:" +
+                             "\n  [time, pol, freq]\n  [beam, time, pol]\n" +
+                             "  [time, pol]\n  [dispersion, time, pol]\n" +
+                             "  [pol, freq, phase]")
+
+    def on_sequence_end(self, iseq):
+        if hasattr(self, 'ofile'):
+            self.ofile.close()
+        elif hasattr(self, 'ofiles'):
+            for ofile in self.ofiles:
+                ofile.close()
+
+    def on_data(self, ispan):
+        idata = ispan.data
+        if self.data_format == 'filterbank':
+            if len(idata.shape) == 3:
+                idata.tofile(self.ofile)
+            else:
+                for b in xrange(idata.shape[0]):
+                    idata[b].tofile(self.ofiles[b])
+        elif self.data_format == 'timeseries':
+            if len(idata.shape) == 2:
+                idata.tofile(self.ofile)
+            else:
+                for d in xrange(idata.shape[0]):
+                    idata[d].tofile(self.ofiles[d])
+        elif self.data_format == 'pulseprofile':
+            time_unix = self.t0 + ispan.frame_offset * self.dt
+            filename = self.filename + '.%017.6f.tim' % time_unix
+            with open(filename, 'wb') as ofile:
+                self.sigproc_hdr['tstart'] += self.sigproc_hdr['tsamp']
+                sigproc.write_header(self.sigproc_hdr, ofile)
+                idata.tofile(ofile)
+        else:
+            raise ValueError("Internal error: Unknown data format!")
 
 def write_sigproc(iring, path=None, *args, **kwargs):
-	return SigprocSinkBlock(iring, path, *args, **kwargs)
+    """Write data as Sigproc files.
+
+    Args:
+        iring (Ring or Block): Input data source.
+        path (str): Path specifying where to write output files.
+        *args: Arguments to ``bifrost.pipeline.SinkBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.SinkBlock``.
+
+    **Tensor semantics**::
+
+        Input:  [time, pol, freq], dtype = any, space = SYSTEM
+        Output: Filterbank, one file per sequence
+
+        Input:  [beam, time, pol, freq], dtype = any, space = SYSTEM
+        Output: Filterbank, one file per beam
+
+        Input:  [time, pol], dtype = any, space = SYSTEM
+        Output: Time series, one file per sequence
+
+        Input:  [dispersion, time, pol], dtype = any, space = SYSTEM
+        Output: Time series, one file per dispersion measure trial
+
+        Input:  [pol, freq, phase], dtype = any, space = SYSTEM
+        Output: Pulse profile, one file per frame
+
+    Returns:
+        SigprocSinkBlock: A new block instance.
+    """
+    return SigprocSinkBlock(iring, path, *args, **kwargs)

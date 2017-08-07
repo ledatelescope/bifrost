@@ -29,15 +29,15 @@
 from libbifrost import _bf, _check, _get, _array
 
 def get_core():
-	return _get(_bf.AffinityGetCore())
+    return _get(_bf.bfAffinityGetCore)
 def set_core(core):
-	_check(_bf.AffinitySetCore(core))
+    _check(_bf.bfAffinitySetCore(core))
 def set_openmp_cores(cores):
-	# PYCLIBRARY ISSUE
-	# TODO: Would be really nice to be able to directly pass
-	#         a list here instead of needing to specify _array+type.
-	#         Should be able to do it safely for any const* argument
-	#         Note that the base type of the pointer type could be
-	#           derived via a reverse lookup table.
-	#           E.g., Inverse of POINTER(c_int)-->LP_c_int
-	_check(_bf.AffinitySetOpenMPCores(len(cores), _array(cores, 'int')))
+    # PYCLIBRARY ISSUE
+    # TODO: Would be really nice to be able to directly pass
+    #         a list here instead of needing to specify _array+type.
+    #         Should be able to do it safely for any const* argument
+    #         Note that the base type of the pointer type could be
+    #           derived via a reverse lookup table.
+    #           E.g., Inverse of POINTER(c_int)-->LP_c_int
+    _check(_bf.bfAffinitySetOpenMPCores(len(cores), _array(cores, 'int')))

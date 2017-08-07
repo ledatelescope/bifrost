@@ -45,7 +45,7 @@ extern "C" {
   #define BF_ALIGNMENT 4096//512
 #endif
 
-typedef enum {
+typedef enum BFspace_ {
 	BF_SPACE_AUTO         = 0,
 	BF_SPACE_SYSTEM       = 1, // aligned_alloc
 	BF_SPACE_CUDA         = 2, // cudaMalloc

@@ -53,6 +53,10 @@
 #include <bifrost/cuda.h>
 #include "cuda.hpp"
 
+#if BF_NUMA_ENABLED
+#include <numa.h>
+#endif
+
 // This implements a lock with the condition that no reads or writes
 //   can be open while it is held.
 class RingReallocLock {
@@ -87,7 +91,7 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	  _tail(0), _head(0), _reserve_head(0),
 	  _ghost_dirty(false),
 	  _writing_begun(false), _writing_ended(false), _eod(0),
-	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0), 
+	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0),
 	  _core(-1), _size_log(std::string("rings/")+name) {
 
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
@@ -170,7 +174,14 @@ void BFring_impl::resize(BFsize contiguous_span,
 	//std::cout << "Allocating " << new_nbyte << std::endl;
 	BF_ASSERT_EXCEPTION(bfMalloc((void**)&new_buf, new_nbyte, _space) == BF_STATUS_SUCCESS,
 	                    BF_STATUS_MEM_ALLOC_FAILED);
-	
+#if BF_NUMA_ENABLED
+	if( _core != -1 ) {
+		BF_ASSERT_EXCEPTION(numa_available() != -1, BF_STATUS_UNSUPPORTED);
+		int node = numa_node_of_cpu(_core);
+		BF_ASSERT_EXCEPTION(node != -1, BF_STATUS_INVALID_ARGUMENT);
+		numa_tonode_memory(new_buf, new_nbyte, node);
+	}
+#endif
 	if( _buf ) {
 		// Must move existing data and delete old buf
 		if( _buf_offset(_tail) < _buf_offset(_head) ) {
@@ -312,24 +323,10 @@ BFsequence_sptr BFring_impl::begin_sequence(const char* name,
 	lock_guard_type lock(_mutex);
 	//unique_lock_type lock(_mutex);
 	BF_ASSERT_EXCEPTION(nringlet <= _nringlet,  BF_STATUS_INVALID_ARGUMENT);
-	// Cannot have any writes still open
-	// TODO: Removed this since allowing writes independent of sequences
-	//BF_ASSERT_EXCEPTION(_head == _reserve_head, BF_STATUS_INVALID_STATE);
 	// Cannot have the previous sequence still open
 	BF_ASSERT_EXCEPTION(_sequence_queue.empty() ||
 	                    _sequence_queue.back()->is_finished(),
 	                    BF_STATUS_INVALID_STATE);
-	////_head         = round_up(_head, bfGetAlignment());
-	//// Note: We force sequences to always begin on a multiple of the
-	////         max contiguous span size.
-	////         ACTUALLY, this complicates the packet-capture use-case
-	////           and doesn't really contribute anything significant.
-	////           It also adds a wait that is otherwise unnecessary
-	////             and wastes space.
-	//_head         = round_up(_head, _ghost_span);
-	//_reserve_head = _head;
-	//this->_pull_tail(lock); // Must be called after updating _reserve_head
-	//BFoffset seq_begin = _reserve_head;
 	BFoffset seq_begin = _head + offset_from_head;
 	// Cannot have existing sequence with same name
 	BF_ASSERT_EXCEPTION(_sequence_map.count(name)==0,              BF_STATUS_INVALID_ARGUMENT);
@@ -338,7 +335,6 @@ BFsequence_sptr BFring_impl::begin_sequence(const char* name,
 	                                             header, nringlet, seq_begin));
 	if( _sequence_queue.size() ) {
 		_sequence_queue.back()->set_next(sequence);
-		//_sequence_condition.notify_all();
 	}
 	_sequence_queue.push(sequence);
 	_sequence_condition.notify_all();
@@ -350,44 +346,22 @@ BFsequence_sptr BFring_impl::begin_sequence(const char* name,
 	}
 	return sequence;
 }
-void BFring_impl::open_sequence(BFsequence_sptr sequence,
-                                BFbool          guarantee,
-                                BFoffset*       guarantee_begin) {
-	lock_guard_type lock(_mutex);
-	// Check that the sequence is still within the ring
-	BF_ASSERT_EXCEPTION(!sequence->is_finished() ||
-	                    BFoffset(_head - sequence->end()) <= BFoffset(_head - _tail),
-	                    BF_STATUS_INVALID_ARGUMENT);
-	if( guarantee ) {
-		if( BFoffset(_head - sequence->begin()) > BFoffset(_head - _tail) ) {
-			// Sequence starts before tail
-			*guarantee_begin = _tail;
-		}
-		else {
-			*guarantee_begin = sequence->begin();
-		}
-		//_guarantees.insert(*guarantee_begin);
-		this->_add_guarantee(*guarantee_begin);
-	}
-}
-void BFring_impl::close_sequence(BFsequence_sptr sequence,
-                                 BFbool          guarantee,
-                                 BFoffset        guarantee_begin) {
-	lock_guard_type lock(_mutex);
-	if( guarantee ) {
-		this->_remove_guarantee(guarantee_begin);
-		//auto iter = _guarantees.find(guarantee_begin);
-		//BF_ASSERT_EXCEPTION(iter != _guarantees.end(), BF_STATUS_INTERNAL_ERROR);
-		//_guarantees.erase(iter);
-	}
-}
-BFsequence_sptr BFring_impl::get_sequence(const char* name) {
-	lock_guard_type lock(_mutex);
+
+BFsequence_sptr BFring_impl::_get_sequence_by_name(const char* name) {
 	BF_ASSERT_EXCEPTION(_sequence_map.count(name), BF_STATUS_INVALID_ARGUMENT);
 	return _sequence_map.find(name)->second;
 }
-BFsequence_sptr BFring_impl::get_sequence_at(BFoffset time_tag) {
-	lock_guard_type lock(_mutex);
+BFsequence_sptr BFring_impl::open_sequence_by_name(const char* name,
+                                                   bool with_guarantee,
+                                                   std::unique_ptr<Guarantee>& guarantee) {
+	unique_lock_type lock(_mutex);
+	BFsequence_sptr sequence = this->_get_sequence_by_name(name);
+	guarantee = new_guarantee(
+		this, this->_get_start_of_sequence_within_ring(sequence));
+	return sequence;
+}
+
+BFsequence_sptr BFring_impl::_get_sequence_at(BFoffset time_tag) {
 	// Note: This function only works if time_tag resides within the buffer
 	//         (or in its overwritten history) at the time of the call.
 	//         There is no way for the function to know if a time_tag
@@ -404,29 +378,103 @@ BFsequence_sptr BFring_impl::get_sequence_at(BFoffset time_tag) {
 	                    BF_STATUS_INVALID_ARGUMENT);
 	return (--iter)->second;
 }
-BFsequence_sptr BFring_impl::get_latest_sequence() {
+BFsequence_sptr BFring_impl::open_sequence_at(BFoffset time_tag,
+                                              bool with_guarantee,
+                                              std::unique_ptr<Guarantee>& guarantee) {
 	unique_lock_type lock(_mutex);
-	// Wait until a sequence has been opened or writing has ended
-	_sequence_condition.wait(lock, [&]() {
-			return !_sequence_queue.empty() || _writing_ended;
-		});
-	BF_ASSERT_EXCEPTION(!(_sequence_queue.empty() && !_writing_ended), BF_STATUS_INVALID_STATE);
-	BF_ASSERT_EXCEPTION(!(_sequence_queue.empty() &&  _writing_ended), BF_STATUS_END_OF_DATA);
-	//BF_ASSERT_EXCEPTION(!_writing_ended, BF_STATUS_END_OF_DATA);
-	//BF_ASSERT_EXCEPTION(!_sequence_queue.empty(), BF_STATUS_INVALID_STATE);
-	return _sequence_queue.back();
+	BFsequence_sptr sequence = this->_get_sequence_at(time_tag);
+	guarantee = new_guarantee(
+		this, this->_get_start_of_sequence_within_ring(sequence));
+	return sequence;
 }
-BFsequence_sptr BFring_impl::get_earliest_sequence() {
-	unique_lock_type lock(_mutex);
+bool BFring_impl::_sequence_still_within_ring(BFsequence_sptr sequence) const {
+	return (!sequence->is_finished() ||
+	        BFoffset(_head - sequence->end()) <= BFoffset(_head - _tail));
+}
+
+BFsequence_sptr BFring_impl::_get_earliest_or_latest_sequence(unique_lock_type& lock, bool latest) const {
 	// Wait until a sequence has been opened or writing has ended
 	_sequence_condition.wait(lock, [&]() {
 			return !_sequence_queue.empty() || _writing_ended;
 		});
 	BF_ASSERT_EXCEPTION(!(_sequence_queue.empty() && !_writing_ended), BF_STATUS_INVALID_STATE);
 	BF_ASSERT_EXCEPTION(!(_sequence_queue.empty() &&  _writing_ended), BF_STATUS_END_OF_DATA);
-	//BF_ASSERT_EXCEPTION(!_writing_ended, BF_STATUS_END_OF_DATA);
-	//BF_ASSERT_EXCEPTION(!_sequence_queue.empty(), BF_STATUS_INVALID_STATE);
-	return _sequence_queue.front();
+	BFsequence_sptr sequence = (latest ?
+	                            _sequence_queue.back() :
+	                            _sequence_queue.front());
+	// Check that the sequence is still within the ring
+	BF_ASSERT_EXCEPTION(this->_sequence_still_within_ring(sequence),
+	                    BF_STATUS_INVALID_ARGUMENT);
+	return sequence;
+}
+
+BFoffset BFring_impl::_get_start_of_sequence_within_ring(BFsequence_sptr sequence) const {
+	if( BFoffset(_head - sequence->begin()) > BFoffset(_head - _tail) ) {
+		// Sequence starts before tail
+		return _tail;
+	} else {
+		return sequence->begin();
+	}
+}
+
+BFsequence_sptr BFring_impl::_get_next_sequence(BFsequence_sptr sequence,
+                                                unique_lock_type& lock) const {
+	// Wait until the next sequence has been opened or writing has ended
+	_sequence_condition.wait(lock, [&]() {
+			return ((bool)sequence->_next) || _writing_ended;
+		});
+	BF_ASSERT_EXCEPTION(sequence->_next, BF_STATUS_END_OF_DATA);
+	return sequence->_next;
+}
+
+BFsequence_sptr BFring_impl::open_earliest_or_latest_sequence(bool with_guarantee,
+                                                              std::unique_ptr<Guarantee>& guarantee,
+                                                              bool latest) {
+	// Note: Guarantee uses locks, so must be kept outside the lock scope here
+	std::unique_ptr<Guarantee> scoped_guarantee;
+	if( with_guarantee ) {
+		// Ensure a guarantee is held while waiting for sequence to exist
+		scoped_guarantee = new_guarantee(this, _tail);
+	}
+	unique_lock_type lock(_mutex);
+	BFsequence_sptr sequence = this->_get_earliest_or_latest_sequence(lock, latest);
+	if( scoped_guarantee ) {
+		// Move guarantee to start of sequence
+		scoped_guarantee->move_nolock(
+			this->_get_start_of_sequence_within_ring(sequence));
+	}
+	// Transfer ownership to the caller
+	guarantee = std::move(scoped_guarantee);
+	return sequence;
+}
+
+void BFring_impl::increment_sequence_to_next(BFsequence_sptr& sequence,
+                                             std::unique_ptr<Guarantee>& guarantee) {
+	// Take ownership of the guarantee (if it exists)
+	// Note: Guarantee uses locks, so must be kept outside the lock scope here
+	std::unique_ptr<Guarantee> scoped_guarantee = std::move(guarantee);
+	unique_lock_type lock(_mutex);
+	//BFsequence_sptr next_sequence = this->_get_next_sequence(sequence, lock);
+	sequence = this->_get_next_sequence(sequence, lock);
+	if( scoped_guarantee ) {
+		// Move the guarantee to the start of the new sequence
+		scoped_guarantee->move_nolock(
+			this->_get_start_of_sequence_within_ring(sequence));
+	}
+	// Return ownership of the guarantee
+	guarantee = std::move(scoped_guarantee);
+}
+
+void BFring_impl::finish_sequence(BFsequence_sptr sequence,
+                                  BFoffset offset_from_head) {
+	lock_guard_type lock(_mutex);
+	// Must have the sequence still open
+	BF_ASSERT_EXCEPTION(!_sequence_queue.empty() &&
+	                    !_sequence_queue.back()->is_finished(),
+	                    BF_STATUS_INVALID_STATE);
+	// This marks the sequence as finished
+	sequence->_end = _head + offset_from_head;
+	_read_condition.notify_all();
 }
 
 BFsequence_impl::BFsequence_impl(BFring      ring,
@@ -441,42 +489,17 @@ BFsequence_impl::BFsequence_impl(BFring      ring,
 	  _end(BF_SEQUENCE_OPEN),
 	  _header((const char*)header,
 	          (const char*)header+header_size),
-	  //_header(new header_type((const char*)header,
-	  //                        (const char*)header+header_size)),
 	  _next(nullptr) {
-	//std::cout << "BEGIN SEQUENCE: " << _begin << std::endl;
-	  }
-void BFsequence_impl::finish(BFoffset offset_from_head) {
-	BFring_impl::lock_guard_type lock(_ring->_mutex);
-	// Cannot have any writes still open
-	// TODO: Changed this since allowing writes independent of sequences
-	//BF_ASSERT_EXCEPTION(_ring->_head == _ring->_reserve_head, BF_STATUS_INVALID_STATE);
-	// Must have the sequence still open
-	BF_ASSERT_EXCEPTION(!_ring->_sequence_queue.empty() &&
-	                    !_ring->_sequence_queue.back()->is_finished(),
-	                    BF_STATUS_INVALID_STATE);
-	_end = _ring->_head + offset_from_head;
-	_ring->_read_condition.notify_all();
-	//std::cout << "END SEQUENCE: " << _end << std::endl;
 }
+
 void BFsequence_impl::set_next(BFsequence_sptr next) {
 	_next = next;
 }
-BFsequence_sptr BFsequence_impl::get_next() const {
-	BFring_impl::unique_lock_type lock(_ring->_mutex);
-	// Wait until the next sequence has been opened or writing has ended
-	_ring->_sequence_condition.wait(lock, [&]() {
-			return ((bool)_next) || _ring->_writing_ended;
-		});
-	BF_ASSERT_EXCEPTION(_next, BF_STATUS_END_OF_DATA);
-	return _next;
-}
-
 void BFring_impl::_pull_tail(unique_lock_type& lock) {
 	// This waits until all guarantees have caught up to the new valid
 	//   buffer region defined by _reserve_head, and then pulls the tail
 	//   along to ensure it is within a distance of _span from _reserve_head.
-	// This must be done whenever _reserve_head is updated.
+	// This must be done whenever _reserve_head is increased.
 	
 	// Note: By using _span, this correctly handles ring resizes that occur
 	//         while waiting on the condition.
@@ -492,7 +515,7 @@ void BFring_impl::_pull_tail(unique_lock_type& lock) {
 	BFoffset cur_span = _reserve_head - _tail;
 	if( cur_span > _span ) {
 		// Pull the tail
-		 _tail += cur_span - _span;
+		_tail += cur_span - _span;
 		// Delete old sequences
 		while( !_sequence_queue.empty() &&
 		       //_sequence_queue.front()->_end != BFsequence_impl::BF_SEQUENCE_OPEN &&
@@ -514,18 +537,9 @@ void BFring_impl::_pull_tail(unique_lock_type& lock) {
 void BFring_impl::reserve_span(BFsize size, BFoffset* begin, void** data) {
 	unique_lock_type lock(_mutex);
 	BF_ASSERT_EXCEPTION(size <= _ghost_span, BF_STATUS_INVALID_ARGUMENT);
-	
 	*begin = _reserve_head;
 	_reserve_head += size;
-	this->_pull_tail(lock); // Must be called after updating _reserve_head
-	/*
-	_write_condition.wait(lock, [&]() {
-			return ((_guarantees.empty() ||
-			         //_guarantees.begin()->first >= _tail) &&
-			         BFoffset(_head - _get_earliest_guarantee()) <= BFoffset(_head - _tail)) &&
-			        _nrealloc_pending == 0);
-		});
-	*/
+	this->_pull_tail(lock); // Must be called whenever _reserve_head is increased
 	++_nwrite_open;
 	*data = _buf_pointer(*begin);
 }
@@ -576,15 +590,11 @@ void BFring_impl::commit_span(BFoffset begin, BFsize reserve_size, BFsize commit
 	_read_condition.notify_all();
 	--_nwrite_open;
 	_realloc_condition.notify_all();
-	//std::cout << "(2) begin, head, rhead: " << begin << ", " << _head << ", " << _reserve_head << std::endl;
 }
 
-BFwspan_impl::BFwspan_impl(//BFwsequence sequence,
-                           BFring      ring,
+BFwspan_impl::BFwspan_impl(BFring      ring,
                            BFsize      size)
-	: //BFspan_impl(sequence->sequence(), size),
-	  BFspan_impl(ring, size),
-	//_sequence(sequence),
+	: BFspan_impl(ring, size),
 	  _begin(0),
 	  _commit_size(size), _data(nullptr) {
 	this->ring()->reserve_span(size, &_begin, &_data);
@@ -616,16 +626,23 @@ void BFring_impl::acquire_span(BFrsequence rsequence,
 	BFoffset requested_begin = sequence->begin() + offset;
 	BFoffset requested_end   = requested_begin + *size_;
 	
-	if( rsequence->guaranteed() ) {
-		BFoffset guarantee_begin = rsequence->guarantee_begin();
-		if( BFdelta(requested_begin - guarantee_begin) > BFdelta(0) ) {
-			// Move the guarantee forward to the beginning of this span
-			// Note: This is (only) important when reading starts in the middle
-			//         of a sequence (e.g., a triggered dump); otherwise the
-			//         guarantee is probably already here.
-			this->_remove_guarantee(guarantee_begin);
-			this->_add_guarantee(requested_begin);
-			rsequence->set_guarantee_begin(requested_begin);
+	// TODO: If this function fails, should the guarantee be left where it was?
+	//         This would be straightforward to implement using a scoped
+	//           guarantee.
+	
+	if( rsequence->guarantee() ) {
+		BFoffset guarantee_begin = rsequence->guarantee()->offset();
+		BFdelta distance_from_guarantee = BFdelta(requested_begin -
+		                                          guarantee_begin);
+		bool acquire_is_within_guarantee = (distance_from_guarantee >= 0);
+		// Note: We enforce this because it (probably) never makes sense to
+		//         try to acquire a span outside the guarantee.
+		BF_ASSERT_EXCEPTION(acquire_is_within_guarantee,
+		                    BF_STATUS_INVALID_ARGUMENT);
+		if( distance_from_guarantee > 0 ) {
+			// Move the guarantee forward to the beginning of this span to
+			//   allow writers to make progress.
+			rsequence->guarantee()->move_nolock(requested_begin);
 		}
 	}
 	
@@ -666,15 +683,6 @@ void BFring_impl::release_span(BFrsequence sequence,
                                BFoffset    begin,
                                BFsize      size) {
 	unique_lock_type lock(_mutex);
-	
-	if( sequence->guaranteed() ) {
-		// Move the guarantee to the end of this span
-		this->_remove_guarantee(sequence->guarantee_begin());
-		BFoffset new_begin = begin + size;
-		this->_add_guarantee(new_begin);
-		sequence->set_guarantee_begin(new_begin);
-	}
-	
 	--_nread_open;
 	_realloc_condition.notify_all();
 }

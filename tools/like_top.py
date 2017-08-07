@@ -55,7 +55,7 @@ Usage: %s [OPTIONS]
 Options:
 -h, --help                  Display this help information
 """ % (os.path.basename(__file__), os.path.basename(__file__))
-    
+
     if exitCode is not None:
         sys.exit(exitCode)
     else:
@@ -66,7 +66,7 @@ def parseOptions(args):
     config = {}
     # Command line flags - default values
     config['args'] = []
-    
+
     # Read in and process the command line flags
     try:
         opts, args = getopt.getopt(args, "h", ["help",])
@@ -74,17 +74,16 @@ def parseOptions(args):
         # Print help information and exit:
         print str(err) # will print something like "option -a not recognized"
         usage(exitCode=2)
-        
     # Work through opts
     for opt, value in opts:
         if opt in ('-h', '--help'):
             usage(exitCode=0)
         else:
             assert False
-            
+
     # Add in arguments
     config['args'] = args
-    
+
     # Return configuration
     return config
 
@@ -94,22 +93,22 @@ def _getLoadAverage():
     Query the /proc/loadavg interface to get the 1, 5, and 10 minutes load 
     averages.  The contents of this file is returned as a dictionary.
     """
-    
+
     data = {'1min':0.0, '5min':0.0, '10min':0.0, 'procTotal':0, 'procRunning':0, 'lastPID':0}
-    
+
     with open('/proc/loadavg', 'r') as fh:
         line = fh.read()
-        
+
         fields = line.split(None, 4)
         procs = fields[3].split('/', 1)
-        
+
         data['1min'] = float(fields[0])
         data['5min'] = float(fields[1])
         data['10min'] = float(fields[2])
-        
+
         data['procRunning'] = procs[0]
         data['procTotal'] = procs[1]
-        
+
         data['lastPID'] = fields[4]
     return data
 
@@ -120,20 +119,20 @@ def _getProcessorUsage():
     Read in the /proc/stat file to return a dictionary of the load on each \
     CPU.  This dictionary also includes an 'avg' entry that gives the average
     across all CPUs.
-    
+
     NOTE::  In order for this to work a global variable of _CPU_STATE is
            needed to get the CPU usage change between calls.
-           
+
     NOTE::  Many of these details could be avoided by using something like the
           Python 'psutil' module.
     """
-    
+
     data = {'avg': {'user':0.0, 'nice':0.0, 'sys':0.0, 'idle':0.0, 'wait':0.0, 'irq':0.0, 'sirq':0.0, 'steal':0.0, 'total':0.0}}
-    
+
     with open('/proc/stat', 'r') as fh:
         lines = fh.read()
         fh.close()
-        
+
         for line in lines.split('\n'):
             if line[:3] == 'cpu':
                 fields = line.split(None, 10)
@@ -160,9 +159,9 @@ def _getProcessorUsage():
                     st -= _CPU_STATE[cid]['st']
                 except KeyError:
                     _CPU_STATE[cid] = {'us':us, 'ni':ni, 'sy':sy, 'id':id, 'wa':wa, 'hi':hi, 'si':si, 'st':st}
-                    
+
                 t = us+ni+sy+id+wa+hi+si+st
-                
+
                 data[cid] = {'user':us/t, 'nice':ni/t, 'sys':sy/t, 'idle':id/t, 
                            'wait':wa/t, 'irq':hi/t, 'sirq':si/t, 'steal':st/t, 
                            'total':(us+ni+sy)/t}
@@ -175,19 +174,19 @@ def _getMemoryAndSwapUsage():
     """
     Read in the /proc/meminfo and return a dictionary of the memory and swap 
     usage for all processes.
-    
+
     NOTE::  Many of these details could be avoided by using something like the
           Python 'psutil' module.
     """
-    
+
     data = {'memTotal':0, 'memUsed':0, 'memFree':0, 
            'swapTotal':0, 'swapUsed':0, 'swapFree':0, 
            'buffers':0, 'cached':0}
-    
+
     with open('/proc/meminfo', 'r') as fh:
         lines = fh.read()
         fh.close()
-        
+
         for line in lines.split('\n'):
             fields = line.split(None, 2)
             if fields[0] == 'MemTotal:':
@@ -214,9 +213,8 @@ def _getCommandLine(pid):
     the process.  Return an empty string if the PID doesn't have an entry in
     /proc.
     """
-    
+
     cmd = ''
-    
     try:
         with open('/proc/%i/cmdline' % pid, 'r') as fh:
             cmd = fh.read()
@@ -232,7 +230,7 @@ def _addLine(screen, y, x, string, *args):
     Helper function for curses to add a line, clear the line to the end of 
     the screen, and update the line number counter.
     """
-    
+
     screen.addstr(y, x, string, *args)
     screen.clrtoeol()
     return y + 1
@@ -243,60 +241,86 @@ _REDRAW_INTERVAL_SEC = 0.2
 
 def main(args):
     config = parseOptions(args)
-    
+
     hostname = socket.gethostname()
-    
+
     scr = curses.initscr()
     curses.noecho()
     curses.cbreak()
     scr.keypad(1)
     scr.nodelay(1)
     size = scr.getmaxyx()
-    
+
     std = curses.A_NORMAL
     rev = curses.A_REVERSE
-    
+
     poll_interval = 1.0
     tLastPoll = 0.0
-    
+    sort_key = 'process'
+    sort_rev = True
+
     try:
         while True:
             t = time.time()
-            
+
             ## Interact with the user
             c = scr.getch()
             curses.flushinp()
             if c == ord('q'):
                 break
-                
+            elif c == ord('i'):
+                new_key = 'pid'
+            elif c == ord('b'):
+                new_key = 'name'
+            elif c == ord('c'):
+                new_key = 'core'
+            elif c == ord('t'):
+                new_key = 'total'
+            elif c == ord('a'):
+                new_key = 'acquire'
+            elif c == ord('p'):
+                new_key = 'process'
+            elif c == ord('r'):
+                new_key = 'reserve'
+
+            try:
+                if sort_key == new_key:
+                    sort_rev = not sort_rev
+                else:
+                    sort_key = new_key
+                    sort_rev = True
+                del new_key
+            except NameError:
+                pass
+
             ## Do we need to poll the system again?
             if t-tLastPoll > poll_interval:
                 ## Load in the various bits form /proc that we need
                 load = _getLoadAverage()
                 cpu  = _getProcessorUsage()
                 mem  = _getMemoryAndSwapUsage()
-                
+
                 ## Find all running processes
                 pidDirs = glob.glob(os.path.join(BIFROST_STATS_BASE_DIR, '*'))
                 pidDirs.sort()
-                
+
                 ## Load the data
                 blockList = {}
                 for pidDir in pidDirs:
                     pid = int(os.path.basename(pidDir), 10)
                     contents = load_by_pid(pid)
-                    
+
                     cmd = _getCommandLine(pid)
                     if cmd == '':
                         continue
-                        
+
                     for block in contents.keys():
                         try:
                             log = contents[block]['bind']
                             cr = log['core0']
                         except KeyError:
                             continue
-                            
+
                         try:
                             log = contents[block]['perf']
                             ac = max([0.0, log['acquire_time']])
@@ -304,15 +328,15 @@ def main(args):
                             re = max([0.0, log['reserve_time']])
                         except KeyError:
                             ac, pr, re = 0.0, 0.0, 0.0
-                            
-                        blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re}
-                        
+
+                        blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re, 'total':ac+pr+re}
+
                 ## Sort
-                order = sorted(blockList, key=lambda x: blockList[x]['process'], reverse=True)
-                
+                order = sorted(blockList, key=lambda x: blockList[x][sort_key], reverse=sort_rev)
+
                 ## Mark
                 tLastPoll = time.time()
-                
+
             ## Display
             k = 0
             ### General - load average
@@ -346,7 +370,7 @@ def main(args):
                     c = '%5.1f' % c
                 except KeyError:
                     c = '%5s' % ' '
-                output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'][:15], d['core'], c, d['acquire']+d['process']+d['reserve'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
+                output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'][:15], d['core'], c, d['total'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
                 k = _addLine(scr, k, 0, output, std)
                 if k >= size[0] - 1:
                     break
@@ -354,20 +378,20 @@ def main(args):
             scr.clrtobot()
             ### Refresh
             scr.refresh()
-            
+
             ## Sleep
             time.sleep(_REDRAW_INTERVAL_SEC)
-            
+
     except KeyboardInterrupt:
         pass
-        
+
     except Exception as error:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         fileObject = StringIO.StringIO()
         traceback.print_tb(exc_traceback, file=fileObject)
         tbString = fileObject.getvalue()
         fileObject.close()
-        
+
     # Save the window contents
     contents = ''
     y,x = scr.getmaxyx()
@@ -377,7 +401,7 @@ def main(args):
             c = d&0xFF
             a = (d>>8)&0xFF
             contents += chr(c)
-            
+
     # Tear down curses
     scr.keypad(0)
     curses.echo()

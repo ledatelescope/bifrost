@@ -64,11 +64,21 @@ const char* bfGetStatusString(BFstatus status) {
 #undef BF_STATUS_STRING_CASE
 }
 
+static thread_local bool g_debug_enabled = true;
+
 BFbool bfGetDebugEnabled() {
-#ifdef BF_DEBUG
-	return BF_DEBUG;
+#if BF_DEBUG
+	return g_debug_enabled;
 #else
 	return false;
+#endif
+}
+BFstatus bfSetDebugEnabled(BFbool b) {
+#if !BF_DEBUG
+	return BF_STATUS_INVALID_STATE;
+#else
+	g_debug_enabled = b;
+	return BF_STATUS_SUCCESS;
 #endif
 }
 BFbool bfGetCudaEnabled() {

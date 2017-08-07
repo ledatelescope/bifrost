@@ -27,11 +27,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// TODO: This code is a bit of a mess in some areas; consider tidying/refactoring
-//         E.g., the abundant use of friend is probably a bad thing
-
-// WARNING: Must recompile ring.cpp after modifying this file due to inlines!
-
 #pragma once
 
 #include <bifrost/ring.h>
@@ -48,29 +43,23 @@
 #include <set>
 #include <memory>
 
+#ifndef BF_NUMA_ENABLED
+#define BF_NUMA_ENABLED 0
+#endif
+
 class BFsequence_impl;
 class BFspan_impl;
 class BFrspan_impl;
 class BFwspan_impl;
 class RingReallocLock;
+class Guarantee;
 typedef std::shared_ptr<BFsequence_impl> BFsequence_sptr;
-/*
-struct BFsequence_sptr : public std::shared_ptr<BFsequence_impl> {
-private:
-	typedef std::shared_ptr<BFsequence_impl> super_type;
-public:
-	BFsequence_sptr() : super_type() {}
-	template<typename Y>
-	BFsequence_sptr(Y* ptr) : super_type(ptr) {}
-};
-*/
+
 class BFring_impl {
-	friend class BFsequence_impl;
 	friend class BFrsequence_impl;
-	friend class BFspan_impl;
-	friend class BFrspan_impl;
-	friend class BFwspan_impl;
+	friend class BFwsequence_impl;
 	friend class RingReallocLock;
+	friend class Guarantee;
 	
 	std::string    _name;
 	BFspace        _space;
@@ -96,16 +85,16 @@ class BFring_impl {
 	BFoffset _eod;
 	
 	typedef std::mutex                   mutex_type;
-	typedef std::lock_guard<std::mutex>  lock_guard_type;
-	typedef std::unique_lock<std::mutex> unique_lock_type;
+	typedef std::lock_guard<mutex_type>  lock_guard_type;
+	typedef std::unique_lock<mutex_type> unique_lock_type;
 	typedef std::condition_variable      condition_type;
 	typedef RingReallocLock              realloc_lock_type;
-	mutex_type     _mutex;
+	mutable mutex_type     _mutex;
 	condition_type _read_condition;
 	condition_type _write_condition;
 	condition_type _write_close_condition;
 	condition_type _realloc_condition;
-	condition_type _sequence_condition;
+	mutable condition_type _sequence_condition;
 	
 	BFsize         _nread_open;
 	BFsize         _nwrite_open;
@@ -114,17 +103,16 @@ class BFring_impl {
 	int            _core;    	
 	ProcLog        _size_log;
 	
+	int _core;
+	
 	std::queue<BFsequence_sptr>           _sequence_queue;
 	std::map<std::string,BFsequence_sptr> _sequence_map;
 	std::map<BFoffset,BFsequence_sptr>    _sequence_time_tag_map;
-	//typedef std::pair<BFoffset,BFsize>          guarantee_value_type;
-	//typedef BFoffset guarantee_value_type;
-	//typedef std::multiset<guarantee_value_type> guarantee_set;
+	
 	typedef std::map<BFoffset,BFsize> guarantee_set; // offset-->count
 	guarantee_set _guarantees;
 	
-	BFoffset _wrap_offset(BFoffset offset) const;
-	//BFoffset _advance_offset(BFoffset offset, BFdelta amount) const;
+	//BFoffset _wrap_offset(BFoffset offset) const;
 	BFoffset _buf_offset( BFoffset offset) const;
 	pointer  _buf_pointer(BFoffset offset) const;
 	void _ghost_write(BFoffset offset, BFsize size);
@@ -154,12 +142,29 @@ class BFring_impl {
 	inline BFoffset _get_earliest_guarantee() {
 		return _guarantees.begin()->first;
 	}
-	void open_sequence(BFsequence_sptr sequence,
-	                   BFbool          guarantee,
-	                   BFoffset*       guarantee_begin);
-	void close_sequence(BFsequence_sptr sequence,
-	                    BFbool          guarantee,
-	                    BFoffset        guarantee_begin);
+
+	
+	bool _sequence_still_within_ring(BFsequence_sptr sequence) const;
+	BFoffset _get_start_of_sequence_within_ring(BFsequence_sptr sequence) const;
+	BFsequence_sptr _get_earliest_or_latest_sequence(unique_lock_type& lock, bool latest) const;
+	BFsequence_sptr open_earliest_or_latest_sequence(bool with_guarantee,
+	                                                 std::unique_ptr<Guarantee>& guarantee,
+	                                                 bool latest);
+	BFsequence_sptr _get_next_sequence(BFsequence_sptr sequence,
+	                                   unique_lock_type& lock) const;
+	void increment_sequence_to_next(BFsequence_sptr& sequence,
+	                                std::unique_ptr<Guarantee>& guarantee);
+	BFsequence_sptr _get_sequence_by_name(const char* name);
+	BFsequence_sptr open_sequence_by_name(const char* name,
+	                                      bool with_guarantee,
+	                                      std::unique_ptr<Guarantee>& guarantee);
+	BFsequence_sptr _get_sequence_at(BFoffset time_tag);
+	BFsequence_sptr open_sequence_at(BFoffset time_tag,
+	                                 bool with_guarantee,
+	                                 std::unique_ptr<Guarantee>& guarantee);
+	void finish_sequence(BFsequence_sptr sequence,
+	                     BFoffset offset_from_head);
+	
 	// No copy or move
 	BFring_impl(BFring_impl const& )            = delete;
 	BFring_impl& operator=(BFring_impl const& ) = delete;
@@ -174,7 +179,8 @@ public:
 	            BFsize max_ringlets);
 	inline const char* name() const { return _name.c_str(); }
 	inline BFspace space()    const { return _space; }
-	//inline BFsize nringlet() const { return _nringlet; }
+	inline void set_core(int core)  { _core = core; }
+	inline int      core()    const { return _core; }
 	inline void   lock()   { _mutex.lock(); }
 	inline void   unlock() { _mutex.unlock(); }
 	inline void*  locked_data()            const { return _buf; }
@@ -189,21 +195,29 @@ public:
 	void end_writing();
 	inline bool writing_ended() { return _writing_ended; }
 	
+	inline BFoffset current_tail_offset() const {
+		lock_guard_type lock(_mutex);
+		return _tail;
+	}
+	inline BFsize current_stride() const {
+		lock_guard_type lock(_mutex);
+		return _stride;
+	}
+	inline BFsize current_nringlet() const {
+		lock_guard_type lock(_mutex);
+		return _nringlet;
+	}
+	
 	BFsequence_sptr begin_sequence(const char* name,
 	                               BFoffset    time_tag,
 	                               BFsize      header_size,
 	                               const void* header,
 	                               BFsize      nringlet,
 	                               BFoffset    offset_from_head=0);
-	BFsequence_sptr get_sequence(const char* name);
-	BFsequence_sptr get_sequence_at(BFoffset time_tag);
-	BFsequence_sptr get_latest_sequence();
-	BFsequence_sptr get_earliest_sequence();
 	
 	void reserve_span(BFsize size, BFoffset* begin, void** data);
 	void commit_span(BFoffset begin, BFsize reserve_size, BFsize commit_size);
 	
-	//void acquire_span(BFoffset offset, BFsize* size, BFbool guarantee);
 	void acquire_span(BFrsequence sequence,
 	                  BFoffset    offset,
 	                  BFsize*     size,
@@ -214,39 +228,38 @@ public:
 	                  BFsize      size);
 };
 
-/*
-  TODO: Sequence reference/lifetime management
-          typedef std::shared_ptr<BFsequence_impl>* BFsequence;
-    SequenceBegin:
-      *sequence = new BFsequence_impl();
-      ring->
-    SequenceEnd:
-      mark sequence as finished
-    SequenceOpen:
-      fail if sequence not found (possibly due to it falling off the tail)
-      seq.get_ref();
-    SequenceClose:
-      seq.release_ref();
-    sequence falls off tail:
-      remove seq refs from ring
-      seq.release_ref();
- */
-
-/*
-wseq:
-  begin
-  end
-rseq:
-  open
-  close
-  next
-*/
+// A scoped guarantee object
+class Guarantee {
+	BFring   _ring;
+	BFoffset _offset;
+	void create()  { _ring->_add_guarantee(_offset); }
+	void destroy() { _ring->_remove_guarantee(_offset); }
+public:
+	Guarantee(Guarantee const& ) = delete;
+	Guarantee& operator=(Guarantee const& ) = delete;
+	Guarantee(BFring ring, BFoffset offset)
+		: _ring(ring), _offset(offset) {
+		BFring_impl::lock_guard_type lock(_ring->_mutex);
+		this->create();
+	}
+	~Guarantee() {
+		BFring_impl::lock_guard_type lock(_ring->_mutex);
+		this->destroy();
+	}
+	void move_nolock(BFoffset offset) {
+		this->destroy();
+		_offset = offset;
+		this->create();
+	}
+	BFoffset offset() const { return _offset; }
+};
+inline std::unique_ptr<Guarantee> new_guarantee(BFring ring, BFoffset offset) {
+	// TODO: Use std::make_unique here (requires C++14)
+	return std::unique_ptr<Guarantee>(new Guarantee(ring, offset));
+}
 
 class BFsequence_impl {
 	friend class BFring_impl;
-	friend class BFspan_impl;
-	friend class BFrspan_impl;
-	friend class BFwspan_impl;
 	enum { BF_SEQUENCE_OPEN = (BFoffset)-1 };
 	BFring            _ring;
 	std::string       _name;
@@ -255,16 +268,9 @@ class BFsequence_impl {
 	BFoffset          _begin;
 	BFoffset          _end;
 	typedef std::vector<char> header_type;
-	header_type _header;
-	//std::shared_ptr<header_type> _header;
-	//BFsequence_sptr   _next;
+	header_type       _header;
 	BFsequence_sptr   _next;
 	BFsize            _readrefcount;
-	// No copy or move
-	//BFsequence_impl(BFsequence_impl const& )            = delete;
-	//BFsequence_impl& operator=(BFsequence_impl const& ) = delete;
-	//BFsequence_impl(BFsequence_impl&& )                 = delete;
-	//BFsequence_impl& operator=(BFsequence_impl&& )      = delete;
 public:
 	BFsequence_impl(BFring      ring,
 	                const char* name,
@@ -275,7 +281,6 @@ public:
 	                BFoffset    begin);
 	void               finish(BFoffset offset_from_head=0);
 	void               close();
-	BFsequence_sptr    get_next() const;
 	void               set_next(BFsequence_sptr next);
 	inline bool        is_finished() const { return _end != BF_SEQUENCE_OPEN; }
 	inline BFring      ring()              { return _ring; }
@@ -289,26 +294,11 @@ public:
 };
 
 class BFsequence_wrapper {
-	friend class BFwspan_impl;
-	friend class BFrspan_impl;
-	friend class BFring_impl;
-	//protected:
-	// TODO: Should be shared_ptr<BFsequence_impl>?
-	//typedef BFsequence pointer;
-private:
-	BFsequence_sptr _sequence;
-	// TODO: This class is actually copy-assignable
-	//BFsequence_wrapper(BFsequence_wrapper const& )            = delete;
-	//BFsequence_wrapper& operator=(BFsequence_wrapper const& ) = delete;
-	//BFsequence_wrapper(BFsequence_wrapper&& )                 = delete;
-	//BFsequence_wrapper& operator=(BFsequence_wrapper&& )      = delete;
 protected:
-	BFsequence_sptr sequence() const { return _sequence; }
-	inline void reset_sequence(BFsequence_sptr sequence) {
-		_sequence = sequence;
-	}
+	BFsequence_sptr _sequence;
 public:
 	inline BFsequence_wrapper(BFsequence_sptr sequence) : _sequence(sequence) {}
+	inline BFsequence_sptr sequence() const { return _sequence; }
 	inline bool        is_finished() const { return _sequence->is_finished(); }
 	inline BFring      ring()              { return _sequence->ring(); }
 	inline const char* name()        const { return _sequence->name(); }
@@ -318,6 +308,7 @@ public:
 	inline BFsize      nringlet()    const { return _sequence->nringlet(); }
 	inline BFoffset    begin()       const { return _sequence->begin(); }
 };
+
 class BFwsequence_impl : public BFsequence_wrapper {
 	BFoffset _end_offset_from_head;
 	BFwsequence_impl(BFwsequence_impl const& )            = delete;
@@ -338,96 +329,57 @@ public:
 		                                          offset_from_head)),
 		  _end_offset_from_head(0) {}
 	~BFwsequence_impl() {
-		this->sequence()->finish(_end_offset_from_head);
+		this->ring()->finish_sequence(_sequence, _end_offset_from_head);
 	}
 	void set_end_offset_from_head(BFoffset end_offset_from_head) {
 		_end_offset_from_head = end_offset_from_head;
 	}
 };
+
 class BFrsequence_impl : public BFsequence_wrapper {
-	friend class BFring_impl;
-	BFbool   _guaranteed;
-	BFoffset _guarantee_begin;
-	BFbool   _is_open;
-	void set_guarantee_begin(BFoffset b) { _guarantee_begin = b; }
-	//BFrsequence_impl(BFrsequence_impl const& )            = delete;
-	BFrsequence_impl& operator=(BFrsequence_impl const& ) = delete;
-	BFrsequence_impl(BFrsequence_impl&& )                 = delete;
-	BFrsequence_impl& operator=(BFrsequence_impl&& )      = delete;
-	inline void open() {
-		if( _is_open ) {
-			throw BFexception(BF_STATUS_INTERNAL_ERROR);
-		}
-		_is_open = true;
-		this->sequence()->ring()->open_sequence(this->sequence(),
-		                                        _guaranteed,
-		                                        &_guarantee_begin);
-	}
-	inline void close() {
-		if( !_is_open ) {
-			throw BFexception(BF_STATUS_INTERNAL_ERROR);
-		}
-		_is_open = false;
-		this->sequence()->ring()->close_sequence(this->sequence(), _guaranteed, _guarantee_begin);
-	}
-	inline BFsequence_sptr get_next() {
-		// Blocks until _next is set
-		return this->sequence()->get_next();
-	}
+	std::unique_ptr<Guarantee> _guarantee;
 public:
-	inline BFrsequence_impl(BFsequence_sptr sequence, BFbool guarantee)
-		: BFsequence_wrapper(sequence), _guaranteed(guarantee), _is_open(false) {
-		//this->sequence()->ring()->open_sequence(sequence,
-		//                                      _guaranteed, &_guarantee_begin);
-		this->open();
-		/*
-		// ***TODO: Replace this with inserting the guarantee inside open_*_sequence
-		//            The guarantee must go at max(sequence_begin, ring->_tail)
-		if( _guaranteed ) {
-			//guarantee_iter =
-			// TODO: Is it actually important to include size in guarantee keys?
-			BFsize size=0;
-			this->sequence()->ring()->_guarantees.insert(std::make_pair(sequence->begin(), size));
-		}
-		*/
+	// TODO: See if can make these function bodies a bit more concise
+	static BFrsequence_impl earliest_or_latest(BFring ring, bool with_guarantee, bool latest) {
+		std::unique_ptr<Guarantee> guarantee;
+		BFsequence_sptr sequence =
+			ring->open_earliest_or_latest_sequence(with_guarantee, guarantee, latest);
+		return BFrsequence_impl(sequence, guarantee);
 	}
+	static BFrsequence_impl by_name(BFring ring, const char* name, bool with_guarantee) {
+		std::unique_ptr<Guarantee> guarantee;
+		BFsequence_sptr sequence =
+			ring->open_sequence_by_name(name, with_guarantee, guarantee);
+		return BFrsequence_impl(sequence, guarantee);
+	}
+	static BFrsequence_impl at(BFring ring, BFoffset time_tag, bool with_guarantee) {
+		std::unique_ptr<Guarantee> guarantee;
+		BFsequence_sptr sequence =
+			ring->open_sequence_at(time_tag, with_guarantee, guarantee);
+		return BFrsequence_impl(sequence, guarantee);
+	}
+	inline BFrsequence_impl(BFsequence_sptr sequence,
+	                        std::unique_ptr<Guarantee>& guarantee)
+		: BFsequence_wrapper(sequence), _guarantee(std::move(guarantee)) {}
+	
+	inline void increment_to_next() {
+		_sequence->ring()->increment_sequence_to_next(_sequence, _guarantee);
+	}
+	inline std::unique_ptr<Guarantee>&       guarantee()       { return _guarantee; }
+	inline std::unique_ptr<Guarantee> const& guarantee() const { return _guarantee; }
+	/*
+	  // TODO: This is needed for bfRingSequenceOpenSame, but it's not clear
+	  //         that that API is really needed. Also need to delete
+	  //         assignment and move constructors if this is implemented.
 	// Copy constructor points to same underlying BFsequence_impl object, but
 	//   creates its own guarantee.
-	inline BFrsequence_impl(BFrsequence_impl const& other)
+	BFrsequence_impl(BFrsequence_impl const& other)
 		: BFsequence_wrapper(other.sequence()),
-		  _guaranteed(other._guaranteed),
-		  _guarantee_begin(other._guarantee_begin), _is_open(false) {
-		//this->sequence()->ring()->open_sequence(this->sequence(),
-		//                                        _guaranteed, &_guarantee_begin);
-		this->open();
-		//if( _guaranteed ) {
-		//	BFsize size=0;
-		//	this->sequence()->ring()->_guarantees.insert(std::make_pair(this->sequence()->begin(), size));
-		//}
-	}
-	inline ~BFrsequence_impl() {
-		if( _is_open ) {
-			this->close();
-		}
-		//if( _guaranteed ) {
-		//	BFsize size = 0;
-		//	this->sequence()->ring()->_guarantees.erase(this->sequence()->ring()->_guarantees.find(std::make_pair(this->sequence()->begin(), size)));
-		//}
-	}
-	inline void increment_to_next() {
-		// TODO: Is it possible/necessary for this to be atomic?
-		//         Only relevant when no rspans are opened (which is a pathological case)?
-		this->close();
-		this->reset_sequence(this->get_next());
-		this->open();
-	}
-	inline BFbool   guaranteed()      const { return _guaranteed; }
-	inline BFoffset guarantee_begin() const { return _guarantee_begin; }
+		  _guarantee(new Guarantee(*other._guarantee)) {}
+	*/
 };
 
 class BFspan_impl {
-	//BFsequence _sequence;
-	//BFsequence_sptr _sequence;
 	BFring     _ring;
 	BFsize     _size;
 	// No copy or move
@@ -439,35 +391,20 @@ protected:
 	// WAR for awkwardness in subclass constructors
 	void set_base_size(BFsize size) { _size = size; }
 public:
-	BFspan_impl(//BFsequence_sptr sequence,
-	            BFring ring,
+	BFspan_impl(BFring ring,
 	            BFsize size)
-	//BFspan_impl(BFring ring, BFsize size)
-		: //_sequence(sequence),
-		  //_ring(sequence->ring()),
-		  _ring(ring),
+		: _ring(ring),
 		  _size(size) {}
 	virtual ~BFspan_impl() {}
-	//inline BFsequence sequence() const { return _sequence; }
 	inline BFring     ring()     const { return _ring; }
 	inline BFsize     size()     const { return _size; }
-	// Note: This is only safe to read while a span is open (preventing resize)
-	inline BFsize     stride()   const {
-		BFring_impl::lock_guard_type lock(_ring->_mutex);
-		return _ring->_stride;
-	}
-	inline BFsize     nringlet() const {
-		BFring_impl::lock_guard_type lock(_ring->_mutex);
-		return _ring->_nringlet;
-	}
-	//inline BFsequence_sptr sequence() const { return _sequence; }
-	//virtual BFsequence_sptr sequence() const = 0;
-	virtual void*           data()     const = 0;
-	virtual BFoffset        offset()   const = 0;
+	// Note: These two are only safe to read while a span is open (preventing resize)
+	inline BFsize     stride()   const { return _ring->current_stride(); }
+	inline BFsize     nringlet() const { return _ring->current_nringlet(); }
+	virtual void*     data()     const = 0;
+	virtual BFoffset  offset()   const = 0;
 };
 class BFwspan_impl : public BFspan_impl {
-	//BFsequence_sptr _sequence;
-	//BFwsequence     _sequence;
 	BFoffset        _begin;
 	BFsize          _commit_size;
 	void*           _data;
@@ -477,28 +414,21 @@ class BFwspan_impl : public BFspan_impl {
 	BFwspan_impl(BFwspan_impl&& )                 = delete;
 	BFwspan_impl& operator=(BFwspan_impl&& )      = delete;
 public:
-	BFwspan_impl(//BFwsequence sequence,
-	             BFring      ring,
+	BFwspan_impl(BFring      ring,
 	             BFsize      size);
 	~BFwspan_impl();
 	BFwspan_impl* commit(BFsize size);
-	//inline virtual BFsequence_sptr sequence() const { return _sequence; }
 	inline virtual void*           data()     const { return _data; }
 	// Note: This is the offset relative to the beginning of the ring,
 	//         as wspans aren't firmly associated with a sequence.
 	// TODO: This is likely to be confusing compared to BFrspan_impl::offset
+	//         Can't easily change the name though because it's a shared API
 	inline virtual BFoffset        offset()   const { return _begin; }
 };
 class BFrspan_impl : public BFspan_impl {
-	//BFsequence_sptr _sequence;
 	BFrsequence     _sequence;
 	BFoffset        _begin;
 	void*           _data;
-	//BFbool          _guaranteed;
-	//void _open_at(BFoffset offset, BFsize size, BFbool guarantee,
-	//              BFring_impl::unique_lock_type& lock);
-	////void _open();
-	//void _close();
 	// No copy or move
 	BFrspan_impl(BFrspan_impl const& )            = delete;
 	BFrspan_impl& operator=(BFrspan_impl const& ) = delete;
@@ -509,9 +439,16 @@ public:
 	             BFoffset    offset,
 	             BFsize      size);
 	~BFrspan_impl();
-	//void advance(BFdelta delta, BFsize size, BFbool guarantee);
-	//inline virtual BFsequence_sptr sequence() const { return _sequence; }
-	inline virtual void*           data()     const { return _data; }
+	inline BFsize size_overwritten() const {
+		if( _sequence->guarantee() ) {
+			return 0;
+		}
+		BFoffset tail = this->ring()->current_tail_offset();
+		return std::max(std::min(BFdelta(tail - _begin),
+		                         BFdelta(this->size())),
+		                BFdelta(0));
+	}
+	inline virtual void*    data()     const { return _data; }
 	// Note: This is the offset relative to the beginning of the sequence
-	inline virtual BFoffset        offset()   const { return _begin - _sequence->begin(); }
+	inline virtual BFoffset offset()   const { return _begin - _sequence->begin(); }
 };

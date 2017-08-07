@@ -49,7 +49,7 @@ Usage: %s [OPTIONS]
 Options:
 -h, --help                  Display this help information
 """ % (os.path.basename(__file__), os.path.basename(__file__))
-    
+
     if exitCode is not None:
         sys.exit(exitCode)
     else:
@@ -60,7 +60,7 @@ def parseOptions(args):
     config = {}
     # Command line flags - default values
     config['args'] = []
-    
+
     # Read in and process the command line flags
     try:
         opts, args = getopt.getopt(args, "h", ["help",])
@@ -68,17 +68,17 @@ def parseOptions(args):
         # Print help information and exit:
         print str(err) # will print something like "option -a not recognized"
         usage(exitCode=2)
-        
+
     # Work through opts
     for opt, value in opts:
         if opt in ('-h', '--help'):
             usage(exitCode=0)
         else:
             assert False
-            
+
     # Add in arguments
     config['args'] = args
-    
+
     # Return configuration
     return config
 
@@ -93,14 +93,14 @@ def _getProcessDetails(pid):
       * the process elapsed time, and
       * the number of threads.
     These are returned as a dictionary.
-    
+
     NOTE::  Using 'ps' to get this is slightly easier than directly querying 
           /proc, altough that method might be preferred.
-          
+
     NOTE::  Many of these details could be avoided by using something like the
           Python 'psutil' module.
     """
-    
+
     data = {'user':'', 'cpu':0.0, 'mem':0.0, 'etime':'00:00', 'threads':0}
     try:
         output = subprocess.check_output('ps o user,pcpu,pmem,etime,nlwp %i' % pid, shell=True)
@@ -122,9 +122,9 @@ def _getCommandLine(pid):
     the process.  Return an empty string if the PID doesn't have an entry in
     /proc.
     """
-    
+
     cmd = ''
-    
+
     try:
         with open('/proc/%i/cmdline' % pid, 'r') as fh:
             cmd = fh.read()
@@ -160,20 +160,20 @@ def _getBestSize(value):
 
 def main(args):
     config = parseOptions(args)
-    
+
     pidDirs = glob.glob(os.path.join(BIFROST_STATS_BASE_DIR, '*'))
     pidDirs.sort()
-    
+
     for pidDir in pidDirs:
         pid = int(os.path.basename(pidDir), 10)
-        contents = load_by_pid(pid, include_rings=True)
-        
+        contents = load_by_pid(pid)
+
         details = _getProcessDetails(pid)
         cmd = _getCommandLine(pid)
-        
+
         if cmd == '' and details['user'] == '':
             continue
-            
+
         print "PID: %i" % pid
         print "  Command: %s" % cmd
         print "  User: %s" % details['user']
