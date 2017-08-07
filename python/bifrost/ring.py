@@ -29,16 +29,24 @@
 
 from libbifrost import _bf, _check, _get, _string2space, _space2string
 #from GPUArray import GPUArray
+from DataType import DataType
 from ndarray import ndarray
 
 import ctypes
+import string
 import numpy as np
 from uuid import uuid4
+
+def _slugify(name):
+	valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+	valid_chars = frozenset(valid_chars)
+	return ''.join([c for c in name if c in valid_chars])
 
 class Ring(object):
 	def __init__(self, space='system', name=None):
 		if name is None:
 			name = str(uuid4())
+		name = _slugify(name)
 		space = _string2space(space)
 		#self.obj = None
 		self.obj = _get(_bf.RingCreate(name=name, space=space), retarg=0)
@@ -277,8 +285,8 @@ class SpanBase(object):
 	@property
 	def data(self):
 		return self.data_view()
-	def data_view(self, dtype=np.uint8, shape=-1):
-		itemsize = dtype().itemsize
+	def data_view(self, dtype=np.uint8, shape=-1, native=None):
+		itemsize = DataType(dtype).itemsize
 		assert( self.size   % itemsize == 0 )
 		assert( self.stride % itemsize == 0 )
 		data_ptr = self._data_ptr
@@ -315,7 +323,7 @@ class SpanBase(object):
 		
 		data_array = ndarray(shape=_shape, strides=strides,
 		                     buffer=data_ptr, dtype=dtype,
-		                     space=space)
+		                     native=native, space=space)
 		
 		# Note: This is a non-standard attribute
 		#data_array.flags['SPACE'] = space

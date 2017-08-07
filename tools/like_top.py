@@ -35,7 +35,13 @@ import time
 import curses
 import getopt
 import socket
+import traceback
+try:
+	import cStringIO as StringIO
+except ImportError:
+	import StringIO
 
+os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
 
 
@@ -252,6 +258,8 @@ def main(args):
 	
 	poll_interval = 1.0
 	tLastPoll = 0.0
+	sort_key = 'process'
+	sort_rev = True
 	
 	try:
 		while True:
@@ -262,6 +270,30 @@ def main(args):
 			curses.flushinp()
 			if c == ord('q'):
 				break
+			elif c == ord('i'):
+				new_key = 'pid'
+			elif c == ord('b'):
+				new_key = 'name'
+			elif c == ord('c'):
+				new_key = 'core'
+			elif c == ord('t'):
+				new_key = 'total'
+			elif c == ord('a'):
+				new_key = 'acquire'
+			elif c == ord('p'):
+				new_key = 'process'
+			elif c == ord('r'):
+				new_key = 'reserve'
+				
+			try:
+				if sort_key == new_key:
+					sort_rev = not sort_rev
+				else:
+					sort_key = new_key
+					sort_rev = True
+				del new_key
+			except NameError:
+				pass
 				
 			## Do we need to poll the system again?
 			if t-tLastPoll > poll_interval:
@@ -299,10 +331,10 @@ def main(args):
 						except KeyError:
 							ac, pr, re = 0.0, 0.0, 0.0
 							
-						blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re}
+						blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re, 'total':ac+pr+re}
 						
 				## Sort
-				order = sorted(blockList, key=lambda x: blockList[x]['process'], reverse=True)
+				order = sorted(blockList, key=lambda x: blockList[x][sort_key], reverse=sort_rev)
 				
 				## Mark
 				tLastPoll = time.time()
@@ -340,7 +372,7 @@ def main(args):
 					c = '%5.1f' % c
 				except KeyError:
 					c = '%5s' % ' '
-				output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'][:15], d['core'], c, d['acquire']+d['process']+d['reserve'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
+				output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'][:15], d['core'], c, d['total'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
 				k = _addLine(scr, k, 0, output, std)
 				if k >= size[0] - 1:
 					break
@@ -355,10 +387,38 @@ def main(args):
 	except KeyboardInterrupt:
 		pass
 		
-	curses.nocbreak()
+	except Exception as error:
+		exc_type, exc_value, exc_traceback = sys.exc_info()
+		fileObject = StringIO.StringIO()
+		traceback.print_tb(exc_traceback, file=fileObject)
+		tbString = fileObject.getvalue()
+		fileObject.close()
+		
+	# Save the window contents
+	contents = ''
+	y,x = scr.getmaxyx()
+	for i in xrange(y-1):
+		for j in xrange(x):
+			d = scr.inch(i,j)
+			c = d&0xFF
+			a = (d>>8)&0xFF
+			contents += chr(c)
+			
+	# Tear down curses
 	scr.keypad(0)
 	curses.echo()
+	curses.nocbreak()
 	curses.endwin()
+	
+	# Final reporting
+	try:
+		## Error
+		print "%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), traceback.tb_lineno(exc_traceback))
+		for line in tbString.split('\n'):
+			print line
+	except NameError:
+		## Last window contents sans attributes
+		print contents
 
 
 if __name__ == "__main__":

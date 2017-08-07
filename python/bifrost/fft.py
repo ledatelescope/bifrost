@@ -36,7 +36,7 @@ class Fft(object):
 	def __del__(self):
 		if hasattr(self, 'obj') and bool(self.obj):
 			_bf.FftDestroy(self.obj)
-	def init(self, iarray, oarray, axes=None):
+	def init(self, iarray, oarray, axes=None, apply_fftshift=False):
 		if isinstance(axes, int):
 			axes = [axes]
 		ndim = len(axes)
@@ -47,7 +47,7 @@ class Fft(object):
 			self.obj,
 			iarray=asarray(iarray).as_BFarray(),
 			oarray=asarray(oarray).as_BFarray(),
-			ndim=ndim, axes=axes))
+			ndim=ndim, axes=axes, apply_fftshift=apply_fftshift))
 	def execute(self, iarray, oarray, inverse=False):
 		return self.execute_workspace(iarray, oarray,
 		                              workspace_ptr=None, workspace_size=0,

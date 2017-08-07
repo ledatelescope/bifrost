@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
@@ -138,7 +139,6 @@ class ndarray(np.ndarray):
 				# Allow conjugated to be redefined
 				if conjugated is not None:
 					obj.bf.conjugated = conjugated
-					obj._update_BFarray()
 			else:
 				if not isinstance(base, np.ndarray):
 					# Convert base to np.ndarray
@@ -223,7 +223,6 @@ class ndarray(np.ndarray):
 			obj = np.ndarray.__new__(cls, shape, dtype_np,
 			                         data_buffer, offset, strides)
 			obj.bf = BFArrayInfo(space, dtype, native, conjugated, ownbuffer)
-			obj._update_BFarray()
 		return obj
 	def __array_finalize__(self, obj):
 		if obj is None:
@@ -243,18 +242,14 @@ class ndarray(np.ndarray):
 			native     = obj.dtype.isnative
 			conjugated = False
 			self.bf = BFArrayInfo(space, dtype, native, conjugated)
-		self._update_BFarray()
 	def __del__(self):
 		if hasattr(self, 'bf') and self.bf.ownbuffer:
 			raw_free(self.bf.ownbuffer, self.bf.space)
-	def _update_BFarray(self):
-		# (Re-)cache the BFarray structure
-		# Note: This must be called after any updates to self.bf.*
-		self._BFarray = None
-		self._BFarray = self.as_BFarray()
 	def as_BFarray(self):
-		if self._BFarray is not None:
-			return self._BFarray
+		# ***TODO: The caching here is broken because of shape, strides and ctypes.data
+		#            How to fix?
+		#*if self._BFarray is not None:
+		#*	return self._BFarray
 		a = _bf.BFarray()
 		a.data      = self.ctypes.data
 		a.space     = Space(self.bf.space).as_BFspace()
@@ -292,7 +287,6 @@ class ndarray(np.ndarray):
 			dtype_np = np.dtype(dtype_bf.as_numpy_dtype())
 			v = super(ndarray, self).view(dtype_np)
 			v.bf.dtype = dtype_bf
-			v._update_BFarray()
 			return v
 	#def astype(self, dtype):
 	#	dtype_bf = DataType(dtype)
@@ -315,7 +309,6 @@ class ndarray(np.ndarray):
 	def byteswap(self, inplace=False):
 		if inplace:
 			self.bf.native = not self.bf.native
-			self._update_BFarray()
 			return super(ndarray, self).byteswap(True)
 		else:
 			return ndarray(self).byteswap(True)

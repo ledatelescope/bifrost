@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,17 +26,23 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import threading
+import time
+import signal
+from copy import copy
+from collections import defaultdict
+from contextlib2 import ExitStack
+import traceback
+
 import bifrost as bf
 from bifrost.ring2 import Ring, ring_view
 from temp_storage import TempStorage
 from bifrost.proclog import ProcLog
 
-from collections import defaultdict
-from contextlib2 import ExitStack
-import threading
-import time
-from copy import copy
-import signal
+# Note: This must be called before any devices are initialized. It's also
+#          almost always desirable when running pipelines, so we do it here at
+#          module import time to make things easy.
+bf.device.set_devices_no_spin_cpu()
 
 def izip(*iterables):
 	while True:
@@ -237,6 +242,19 @@ def get_ring(block_or_ring):
 		return block_or_ring
 
 def block_view(block, header_transform):
+	"""View a block with modified output headers
+	
+	Use this function to adjust the output headers of a ring
+	on-the-fly, effectively producing a new 'view' of the block.
+	
+	Args:
+	    block (Block): Input block.
+	    header_transform (function): A function f(hdr) -> new_hdr.
+	
+	Returns:
+	    A new block that acts as the old block but modifies its sequence
+	    headers on-the-fly.
+	"""
 	new_block = copy(block)
 	new_block.orings = [ring_view(oring, header_transform)
 	                    for oring in new_block.orings]
@@ -266,12 +284,13 @@ class Block(BlockScope):
 		self.orings = [] # Update this in subclass constructors
 		self.shutdown_event = threading.Event()
 		self.bind_proclog = ProcLog(self.name+"/bind")
-		self.in_proclog = ProgLog(self.name+"/in")
+		self.in_proclog = ProcLog(self.name+"/in")
 		
 		rnames = {'nring': len(self.irings)}
 		for i,r in enumerate(self.irings):
 			rnames['ring%i' % i] = r.name
-		self.in_proclog.update(rnames) 
+		self.in_proclog.update(rnames)
+		self.init_trace = ''.join(traceback.format_stack()[:-1])
 		
 	def shutdown(self):
 		self.shutdown_event.set()
@@ -282,14 +301,19 @@ class Block(BlockScope):
 		core = self.core
 		if core is not None:
 			bf.affinity.set_core(core if isinstance(core, int) else core[0])
-		self.bind_proclog.update({'ncore': 1, 
-							 'core0': bf.affinity.get_core()})
+		self.bind_proclog.update({'ncore': 1,
+		                          'core0': bf.affinity.get_core()})
 		if self.gpu is not None:
 			bf.device.set_device(self.gpu)
 		self.cache_scope_hierarchy()
 		with ExitStack() as oring_stack:
 			active_orings = self.begin_writing(oring_stack, self.orings)
-			self.main(active_orings)
+			try:
+				self.main(active_orings)
+			except Exception:
+				print "From block instantiated here:"
+				print self.init_trace
+				raise
 	def num_outputs(self):
 		# TODO: This is a little hacky
 		return len(self.orings)
@@ -414,7 +438,7 @@ class MultiTransformBlock(Block):
 		rnames = {'nring': len(self.orings)}
 		for i,r in enumerate(self.orings):
 			rnames['ring%i' % i] = r.name
-		self.out_proclog.update(rnames)                       
+		self.out_proclog.update(rnames)
 		
 	def main(self, orings):
 		for iseqs in izip(*[iring.read(guarantee=self.guarantee)

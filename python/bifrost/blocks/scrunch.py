@@ -35,30 +35,49 @@ from bifrost.pipeline import TransformBlock
 from copy import deepcopy
 
 class ScrunchBlock(TransformBlock):
-	def __init__(self, iring, factor, *args, **kwargs):
-		super(ScrunchBlock, self).__init__(iring, *args, **kwargs)
-		assert(type(factor) == int)
-		self.factor = factor
-	def define_valid_input_spaces(self):
-		"""Return set of valid spaces (or 'any') for each input"""
-		return ('system',)
-	def define_output_nframes(self, input_nframe):
-		"""Return output nframe for each output, given input_nframes.
-		"""
-		if input_nframe % self.factor != 0:
-			raise ValueError("Scrunch factor does not divide gulp size")
-		return input_nframe // self.factor
-	def on_sequence(self, iseq):
-		ohdr = deepcopy(iseq.header)
-		ohdr['_tensor']['scales'][0][1] *= self.factor
-		return ohdr
-	def on_data(self, ispan, ospan):
-		in_nframe = ispan.nframe
-		out_nframe = in_nframe // self.factor
-		idata = ispan.data
-		odata = ospan.data
-		odata[...] = idata.reshape((out_nframe,self.factor)+idata.shape[1:]).mean(axis=1, dtype=odata.dtype)
-		return out_nframe
+    def __init__(self, iring, factor, *args, **kwargs):
+        super(ScrunchBlock, self).__init__(iring, *args, **kwargs)
+        assert(type(factor) == int)
+        self.factor = factor
+    def define_valid_input_spaces(self):
+        """Return set of valid spaces (or 'any') for each input"""
+        return ('system',)
+    def define_output_nframes(self, input_nframe):
+        """Return output nframe for each output, given input_nframes.
+        """
+        if input_nframe % self.factor != 0:
+            raise ValueError("Scrunch factor does not divide gulp size")
+        return input_nframe // self.factor
+    def on_sequence(self, iseq):
+        ohdr = deepcopy(iseq.header)
+        ohdr['_tensor']['scales'][0][1] *= self.factor
+        return ohdr
+    def on_data(self, ispan, ospan):
+        in_nframe = ispan.nframe
+        out_nframe = in_nframe // self.factor
+        idata = ispan.data
+        odata = ospan.data
+        odata[...] = idata.reshape((out_nframe,self.factor)+idata.shape[1:]).mean(axis=1, dtype=odata.dtype)
+        return out_nframe
 
 def scrunch(iring, factor, *args, **kwargs):
-	return ScrunchBlock(iring, factor, *args, **kwargs)
+    """Average `factor` incoming frames into one output frame.
+
+    This works on system memory. 
+
+    Attributes
+    ----------
+    iring : Block
+        A derivative of a Block object.
+    factor : int
+        The number of input frames to accumulate.
+    *args
+        Arguments to `bifrost.pipeline.TransformBlock`.
+    **kwargs
+        Keyword Arguments to `bifrost.pipeline.TransformBlock`.
+
+    Returns
+    -------
+    `ScrunchBlock`
+    """
+    return ScrunchBlock(iring, factor, *args, **kwargs)

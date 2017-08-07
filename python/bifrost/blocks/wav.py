@@ -36,141 +36,177 @@ import struct
 import os
 
 def wav_read_chunk_desc(f):
-	id_, size, fmt = struct.unpack('<4sI4s', f.read(12))
-	return id_, size, fmt
+    id_, size, fmt = struct.unpack('<4sI4s', f.read(12))
+    return id_, size, fmt
 def wav_read_subchunk_desc(f):
-	id_, size = struct.unpack('<4sI', f.read(8))
-	return id_, size
+    id_, size = struct.unpack('<4sI', f.read(8))
+    return id_, size
 def wav_read_subchunk_fmt(f, size):
-	assert(size >= 16)
-	packed = f.read(16)
-	f.seek(size - 16, 1)
-	keys = ('audio_fmt','nchan','sample_rate','byte_rate','block_align','nbit')
-	vals = struct.unpack('<HHIIHH', packed)
-	info = {k:v for k,v in zip(keys,vals)}
-	return info
+    assert(size >= 16)
+    packed = f.read(16)
+    f.seek(size - 16, 1)
+    keys = ('audio_fmt','nchan','sample_rate','byte_rate','block_align','nbit')
+    vals = struct.unpack('<HHIIHH', packed)
+    info = {k:v for k,v in zip(keys,vals)}
+    return info
 def wav_read_header(f):
-	# **TODO: Some files actually have extra subchunks _after_ the data as well
-	#           This is rather annoying :/
-	chunk_id, chunk_size, chunk_fmt = wav_read_chunk_desc(f)
-	assert(chunk_id  == 'RIFF')
-	assert(chunk_fmt == 'WAVE')
-	hdr = None
-	subchunk_id, subchunk_size = wav_read_subchunk_desc(f)
-	while subchunk_id != 'data':
-		if subchunk_id == 'fmt ':
-			hdr = wav_read_subchunk_fmt(f, subchunk_size)
-		else:
-			f.seek(subchunk_size, 1) # Ignore any other subchunks
-		subchunk_id, subchunk_size = wav_read_subchunk_desc(f)
-	return hdr
+    # **TODO: Some files actually have extra subchunks _after_ the data as well
+    #           This is rather annoying :/
+    chunk_id, chunk_size, chunk_fmt = wav_read_chunk_desc(f)
+    assert(chunk_id  == 'RIFF')
+    assert(chunk_fmt == 'WAVE')
+    hdr = None
+    subchunk_id, subchunk_size = wav_read_subchunk_desc(f)
+    while subchunk_id != 'data':
+        if subchunk_id == 'fmt ':
+            hdr = wav_read_subchunk_fmt(f, subchunk_size)
+        else:
+            f.seek(subchunk_size, 1) # Ignore any other subchunks
+        subchunk_id, subchunk_size = wav_read_subchunk_desc(f)
+    return hdr
 def wav_write_header(f, hdr, chunk_size=0, data_size=0):
-	# Note: chunk_size = file size - 8
-	f.write(struct.pack('<4sI4s4sIHHIIHH4sI',
-	                    'RIFF', chunk_size, 'WAVE',
-	                    'fmt ', 16,
-	                    hdr['audio_fmt'], hdr['nchan'], hdr['sample_rate'],
-	                    hdr['byte_rate'], hdr['block_align'], hdr['nbit'],
-	                    'data', data_size))
+    # Note: chunk_size = file size - 8
+    f.write(struct.pack('<4sI4s4sIHHIIHH4sI',
+                        'RIFF', chunk_size, 'WAVE',
+                        'fmt ', 16,
+                        hdr['audio_fmt'], hdr['nchan'], hdr['sample_rate'],
+                        hdr['byte_rate'], hdr['block_align'], hdr['nbit'],
+                        'data', data_size))
 
 class WavSourceBlock(SourceBlock):
-	def create_reader(self, sourcename):
-		return open(sourcename, 'rb')
-	def on_sequence(self, reader, sourcename):
-		hdr = wav_read_header(reader)
-		ohdr = {
-			'_tensor': {
-				'dtype':  'u8' if hdr['nbit'] == 8 else 'i'+str(hdr['nbit']),
-				'shape':  [-1, hdr['nchan']],
-				'labels': ['time', 'channel'], # TODO: 'channel' vs. 'polarisation'?
-				'scales': [(0, 1./hdr['sample_rate']),
-				           None],
-				'units':  ['s', None]
-			},
-			'frame_rate':   hdr['sample_rate'],
-			'name': sourcename
-		}
-		return [ohdr]
-	
-	def on_data(self, reader, ospans):
-		ospan = ospans[0]
-		nbyte = reader.readinto(ospan.data)
-		if nbyte % ospan.frame_nbyte:
-			raise IOError("Input file is truncated")
-		nframe = nbyte // ospan.frame_nbyte
-		return [nframe]
+    def create_reader(self, sourcename):
+        return open(sourcename, 'rb')
+    def on_sequence(self, reader, sourcename):
+        hdr = wav_read_header(reader)
+        ohdr = {
+            '_tensor': {
+                'dtype':  'u8' if hdr['nbit'] == 8 else 'i'+str(hdr['nbit']),
+                'shape':  [-1, hdr['nchan']],
+                'labels': ['time', 'pol'],
+                'scales': [(0, 1./hdr['sample_rate']),
+                           None],
+                'units':  ['s', None]
+            },
+            'frame_rate':   hdr['sample_rate'],
+            'name': sourcename
+        }
+        return [ohdr]
+
+    def on_data(self, reader, ospans):
+        ospan = ospans[0]
+        nbyte = reader.readinto(ospan.data)
+        if nbyte % ospan.frame_nbyte:
+            raise IOError("Input file is truncated")
+        # HACK TESTING avoid incomplete final gulp that messes up split_axis
+        if nbyte < ospan.data.nbytes:
+            return [0]
+        nframe = nbyte // ospan.frame_nbyte
+        return [nframe]
 
 def read_wav(sourcefiles, gulp_nframe, *args, **kwargs):
-	return WavSourceBlock(sourcefiles, gulp_nframe, *args, **kwargs)
+    """Read Wave files (.wav).
+
+    Args:
+        sourcefiles (list): List of input filenames.
+        gulp_nframe (int): No. frames to read at a time.
+        *args: Arguments to ``bifrost.pipeline.SourceBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.SourceBlock``.
+
+    **Tensor semantics**::
+
+        Output: ['time', 'pol'], dtype = u8 or i*, space = SYSTEM
+
+    Returns:
+        WavSourceBlock: A new block instance.
+
+    """
+    return WavSourceBlock(sourcefiles, gulp_nframe, *args, **kwargs)
 
 class WavSinkBlock(SinkBlock):
-	def __init__(self, iring, path=None, *args, **kwargs):
-		"""Writes data as .wav files.
-		       [time, chan] => one file per sequence
-		[batch, time, chan] => one file per batch element
-		Note: The chunk_size and data_size entries in the output header are
-		  written as zero values because they are not known a-priori in a
-		  streaming setting. VLC still plays the files just fine, but any
-		  subchunks that appear after the data will be misinterpreted as data.
-		"""
-		super(WavSinkBlock, self).__init__(iring, *args, **kwargs)
-		if path is None:
-			path = ''
-		self.path = path
-	def on_sequence(self, iseq):
-		ihdr = iseq.header
-		itensor = ihdr['_tensor']
-		
-		axnames = tuple(itensor['labels'])
-		shape   = itensor['shape']
-		scales  = itensor['scales']
-		units   = itensor['units']
-		ndim    = len(shape)
-		dtype   = DataType(itensor['dtype'])
-		
-		nchan = shape[-1]
-		sample_time = convert_units(scales[-2][1], units[-2], 's')
-		sample_rate = int(round(1./sample_time))
-		frame_nbyte = nchan*dtype.itemsize
-		ohdr = {
-			'audio_fmt':   1, # 1 => PCM (linear quantization, uncompressed)
-			'nchan':       nchan,
-			'sample_rate': sample_rate,
-			'byte_rate':   sample_rate * frame_nbyte,
-			'block_align': frame_nbyte,
-			'nbit':        dtype.itemsize_bits
-		}
-		filename = os.path.join(self.path, ihdr['name'])
-		
-		if ndim == 2 and axnames[-2] == 'time':
-			self.ofile = open(filename+'.wav', 'wb')
-			wav_write_header(self.ofile, ohdr)
-		elif ndim == 3 and axnames[-2] == 'time':
-			nfile = shape[-3]
-			filenames = [filename + '.%09i.tim' % i for i in xrange(nfile)]
-			self.ofiles = [open(fname+'.wav', 'wb') for fname in filenames]
-			for ofile in self.ofiles:
-				wav_write_header(ofile, ohdr)
-		else:
-			raise ValueError("Incompatible axes: " + str(axnames))
-	
-	def on_sequence_end(self, iseq):
-		if hasattr(self, 'ofile'):
-			self.ofile.close()
-		elif hasattr(self, 'ofiles'):
-			for ofile in self.ofiles:
-				ofile.close()
-	
-	def on_data(self, ispan):
-		idata = ispan.data
-		if idata.ndim == 2:
-			idata.tofile(self.ofile)
-		elif idata.ndim == 3:
-			for b, ofile in enumerate(self.ofiles):
-				idata[b].tofile(ofile)
-		else:
-			raise ValueError("Internal error: Unknown data format!")
+    def __init__(self, iring, path=None, *args, **kwargs):
+        super(WavSinkBlock, self).__init__(iring, *args, **kwargs)
+        if path is None:
+            path = ''
+        self.path = path
+    def on_sequence(self, iseq):
+        ihdr = iseq.header
+        itensor = ihdr['_tensor']
+
+        axnames = tuple(itensor['labels'])
+        shape   = itensor['shape']
+        scales  = itensor['scales']
+        units   = itensor['units']
+        ndim    = len(shape)
+        dtype   = DataType(itensor['dtype'])
+
+        nchan = shape[-1]
+        sample_time = convert_units(scales[-2][1], units[-2], 's')
+        sample_rate = int(round(1./sample_time))
+        frame_nbyte = nchan*dtype.itemsize
+        ohdr = {
+            'audio_fmt':   1, # 1 => PCM (linear quantization, uncompressed)
+            'nchan':       nchan,
+            'sample_rate': sample_rate,
+            'byte_rate':   sample_rate * frame_nbyte,
+            'block_align': frame_nbyte,
+            'nbit':        dtype.itemsize_bits
+        }
+        filename = os.path.join(self.path, ihdr['name'])
+
+        if ndim == 2 and axnames[-2] == 'time':
+            self.ofile = open(filename+'.wav', 'wb')
+            wav_write_header(self.ofile, ohdr)
+        elif ndim == 3 and axnames[-2] == 'time':
+            nfile = shape[-3]
+            filenames = [filename + '.%09i.tim' % i for i in xrange(nfile)]
+            self.ofiles = [open(fname+'.wav', 'wb') for fname in filenames]
+            for ofile in self.ofiles:
+                wav_write_header(ofile, ohdr)
+        else:
+            raise ValueError("Incompatible axes: " + str(axnames))
+
+    def on_sequence_end(self, iseq):
+        if hasattr(self, 'ofile'):
+            self.ofile.close()
+        elif hasattr(self, 'ofiles'):
+            for ofile in self.ofiles:
+                ofile.close()
+
+    def on_data(self, ispan):
+        idata = ispan.data
+        if idata.ndim == 2:
+            idata.tofile(self.ofile)
+        elif idata.ndim == 3:
+            for b, ofile in enumerate(self.ofiles):
+                idata[b].tofile(ofile)
+        else:
+            raise ValueError("Internal error: Unknown data format!")
 
 def write_wav(iring, path=None, *args, **kwargs):
-	return WavSinkBlock(iring, path, *args, **kwargs)
+    """Write data as Wave files (.wav).
+
+    Args:
+        iring (Ring or Block): Input data source.
+        path (str): Path specifying where to write output files.
+        *args: Arguments to ``bifrost.pipeline.TransformBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
+
+    **Tensor semantics**::
+
+        Input: [time, pol], dtype = u8 or i*, space = SYSTEM
+        Output: Wave file, one file per sequence
+
+        Input: [batch, time, pol], dtype = u8 or i*, space = SYSTEM
+        Output: Wave file, one file per batch element
+
+    Returns:
+        WavSinkBlock: A new block instance.
+
+    Note:
+        The chunk_size and data_size entries in the output wav header are
+        written as zero values because they are not known a-priori in a
+        streaming setting. VLC still plays the files just fine, but any
+        subchunks that appear after the data will be misinterpreted as data.
+    """
+    return WavSinkBlock(iring, path, *args, **kwargs)
 

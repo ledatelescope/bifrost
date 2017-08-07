@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
@@ -35,6 +36,7 @@ from ndarray import ndarray
 from copy import copy, deepcopy
 
 import ctypes
+import string
 import numpy as np
 
 try:
@@ -42,6 +44,11 @@ try:
 except ImportError:
 	print "WARNING: Install simplejson for better performance"
 	import json
+
+def _slugify(name):
+	valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+	valid_chars = frozenset(valid_chars)
+	return ''.join([c for c in name if c in valid_chars])
 
 # TODO: Should probably move this elsewhere (e.g., utils)
 def split_shape(shape):
@@ -75,6 +82,7 @@ class Ring(object):
 		if name is None:
 			name = 'ring_%i' % Ring.instance_count
 			Ring.instance_count += 1
+		name = _slugify(name)
 		self.obj = _get(_bf.RingCreate(name=name, space=_string2space(self.space)), retarg=0)
 		self.owner = owner
 		self.header_transform = None

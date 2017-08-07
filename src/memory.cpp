@@ -75,6 +75,24 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 	return BF_STATUS_SUCCESS;
 }
 
+std::string bfGetSpaceString(BFspace space) {
+	// TODO: Is there a better way to do this that does not involve hard 
+	//       coding all of these values twice (one in memory.h for the 
+	//       enum, once here)?
+	
+	std::string value;
+	
+	switch( space ) {
+		case 0:	value = "auto";         break;
+		case 1:	value = "system";       break;
+		case 2:	value = "cuda";         break;
+		case 3:	value = "cuda_host";    break;
+		case 4:	value = "cuda_managed"; break;
+		default:	value = "unknown";
+	}
+	return value;
+}
+
 BFstatus bfMalloc(void** ptr, BFsize size, BFspace space) {
 	//printf("bfMalloc(%p, %lu, %i)\n", ptr, size, space);
 	void* data;

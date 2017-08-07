@@ -46,57 +46,92 @@ class TestFFT(unittest.TestCase):
 	def setUp(self):
 		np.random.seed(1234)
 		self.shape1D = (16777216,)
-		self.shape2D = (4096, 4096)
-		self.shape3D = (256,256,256)
+		self.shape2D = (2048, 2048)
+		self.shape3D = (128,128,128)
 		#self.shape1D = (131072,)
 		#self.shape2D = (1024,1024)
 		#self.shape3D = (64,64,64)
 		#self.shape4D = (64,64,64,64)
 		self.shape4D = (32,32,32,32)
-	def run_test_c2c_impl(self, shape, axes, inverse=False):
+		# Note: Last dim must be even to avoid output alignment error
+		self.shape4D_odd = (33,31,65,16)
+	def run_test_c2c_impl(self, shape, axes, inverse=False, fftshift=False):
 		shape = list(shape)
 		shape[-1] *= 2 # For complex
 		known_data = np.random.uniform(size=shape).astype(np.float32).view(np.complex64)
 		idata = bf.ndarray(known_data, space='cuda')
 		odata = bf.empty_like(idata)
 		fft = Fft()
-		fft.init(idata, odata, axes=axes)
+		fft.init(idata, odata, axes=axes, apply_fftshift=fftshift)
 		fft.execute(idata, odata, inverse)
 		if inverse:
+			if fftshift:
+				known_data = np.fft.ifftshift(known_data, axes=axes)
 			# Note: Numpy applies normalization while CUFFT does not
 			norm = reduce(lambda a,b: a*b, [known_data.shape[d] for d in axes])
 			known_result = gold_ifftn(known_data, axes=axes) * norm
 		else:
 			known_result = gold_fftn(known_data, axes=axes)
+			if fftshift:
+				known_result = np.fft.fftshift(known_result, axes=axes)
+		x = (np.abs(odata.copy('system') - known_result) / known_result > RTOL).astype(np.int32)
+		a = odata.copy('system')
+		b = known_result
 		np.testing.assert_allclose(odata.copy('system'), known_result, RTOL, ATOL)
-	def run_test_r2c(self, shape, axes):
-		known_data = np.random.uniform(size=shape).astype(np.float32)
+	def run_test_r2c_dtype(self, shape, axes, dtype=np.float32, scale=1., misalign=0):
+		known_data = np.random.uniform(size=shape).astype(np.float32)*2-1
+		known_data = (known_data*scale).astype(dtype)
+		
+		# Force misaligned data
+		padded_shape = shape[:-1] + (shape[-1] + misalign,)
+		known_data = np.resize(known_data, padded_shape)
 		idata = bf.ndarray(known_data, space='cuda')
+		known_data = known_data[...,misalign:]
+		idata = idata[...,misalign:]
+		
 		oshape = list(shape)
 		oshape[axes[-1]] = shape[axes[-1]] // 2 + 1
 		odata = bf.ndarray(shape=oshape, dtype='cf32', space='cuda')
 		fft = Fft()
 		fft.init(idata, odata, axes=axes)
 		fft.execute(idata, odata)
-		known_result = gold_rfftn(known_data, axes=axes)
+		known_result = gold_rfftn(known_data.astype(np.float32) / scale, axes=axes)
 		np.testing.assert_allclose(odata.copy('system'), known_result, RTOL, ATOL)
-	def run_test_c2r(self, shape, axes):
+	def run_test_r2c(self, shape, axes, dtype=np.float32):
+		self.run_test_r2c_dtype(shape, axes, np.float32)
+		# Note: Misalignment is not currently supported for fp32
+		#self.run_test_r2c_dtype(shape, axes, np.float32, misalign=1)
+		#self.run_test_r2c_dtype(shape, axes, np.float16) # TODO: fp16 support
+		for misalign in xrange(4):
+			self.run_test_r2c_dtype(shape, axes, np.int16, (1<<15)-1, misalign=misalign)
+		for misalign in xrange(8):
+			self.run_test_r2c_dtype(shape, axes, np.int8,  (1<<7 )-1, misalign=misalign)
+	def run_test_c2r_impl(self, shape, axes, fftshift=False):
 		ishape = list(shape)
+		oshape = list(shape)
 		ishape[axes[-1]] = shape[axes[-1]] // 2 + 1
+		oshape[axes[-1]] = (ishape[axes[-1]] - 1) * 2
 		ishape[-1] *= 2 # For complex
 		known_data = np.random.uniform(size=ishape).astype(np.float32).view(np.complex64)
 		idata = bf.ndarray(known_data, space='cuda')
-		odata = bf.ndarray(shape=shape, dtype='f32', space='cuda')
+		odata = bf.ndarray(shape=oshape, dtype='f32', space='cuda')
 		fft = Fft()
-		fft.init(idata, odata, axes=axes)
+		fft.init(idata, odata, axes=axes, apply_fftshift=fftshift)
 		fft.execute(idata, odata)
 		# Note: Numpy applies normalization while CUFFT does not
 		norm = reduce(lambda a,b: a*b, [shape[d] for d in axes])
+		if fftshift:
+			known_data = np.fft.ifftshift(known_data, axes=axes)
 		known_result = gold_irfftn(known_data, axes=axes) * norm
 		np.testing.assert_allclose(odata.copy('system'), known_result, RTOL, ATOL)
 	def run_test_c2c(self, shape, axes):
 		self.run_test_c2c_impl(shape, axes)
 		self.run_test_c2c_impl(shape, axes, inverse=True)
+		self.run_test_c2c_impl(shape, axes, fftshift=True)
+		self.run_test_c2c_impl(shape, axes, inverse=True, fftshift=True)
+	def run_test_c2r(self, shape, axes):
+		self.run_test_c2r_impl(shape, axes)
+		self.run_test_c2r_impl(shape, axes, fftshift=True)
 	
 	def test_1D(self):
 		self.run_test_c2c(self.shape1D, [0])
@@ -123,6 +158,7 @@ class TestFFT(unittest.TestCase):
 		self.run_test_c2c(self.shape4D, [0,1])
 	def test_2D_in_4D_dims02(self):
 		self.run_test_c2c(self.shape4D, [0,2])
+		self.run_test_c2c(self.shape4D_odd, [0,2])
 	def test_2D_in_4D_dims03(self):
 		self.run_test_c2c(self.shape4D, [0,3])
 	def test_2D_in_4D_dims12(self):
@@ -168,6 +204,7 @@ class TestFFT(unittest.TestCase):
 		self.run_test_r2c(self.shape4D, [0,1])
 	def test_r2c_2D_in_4D_dims02(self):
 		self.run_test_r2c(self.shape4D, [0,2])
+		self.run_test_r2c(self.shape4D_odd, [0,2])
 	def test_r2c_2D_in_4D_dims03(self):
 		self.run_test_r2c(self.shape4D, [0,3])
 	def test_r2c_2D_in_4D_dims12(self):
@@ -181,6 +218,7 @@ class TestFFT(unittest.TestCase):
 		self.run_test_c2r(self.shape4D, [0,1])
 	def test_c2r_2D_in_4D_dims02(self):
 		self.run_test_c2r(self.shape4D, [0,2])
+		self.run_test_c2r(self.shape4D_odd, [0,2])
 	def test_c2r_2D_in_4D_dims03(self):
 		self.run_test_c2r(self.shape4D, [0,3])
 	def test_c2r_2D_in_4D_dims12(self):

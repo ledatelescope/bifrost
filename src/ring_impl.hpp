@@ -36,6 +36,7 @@
 
 #include <bifrost/ring.h>
 #include "assert.hpp"
+#include "proclog.hpp"
 
 #include <stdexcept>
 #include <vector>
@@ -46,6 +47,10 @@
 #include <queue>
 #include <set>
 #include <memory>
+
+#ifndef BF_NUMA_ENABLED
+#define BF_NUMA_ENABLED 0
+#endif
 
 class BFsequence_impl;
 class BFspan_impl;
@@ -95,8 +100,8 @@ class BFring_impl {
 	BFoffset _eod;
 	
 	typedef std::mutex                   mutex_type;
-	typedef std::lock_guard<std::mutex>  lock_guard_type;
-	typedef std::unique_lock<std::mutex> unique_lock_type;
+	typedef std::lock_guard<mutex_type>  lock_guard_type;
+	typedef std::unique_lock<mutex_type> unique_lock_type;
 	typedef std::condition_variable      condition_type;
 	typedef RingReallocLock              realloc_lock_type;
 	mutex_type     _mutex;
@@ -109,6 +114,9 @@ class BFring_impl {
 	BFsize         _nread_open;
 	BFsize         _nwrite_open;
 	BFsize         _nrealloc_pending;
+	
+	int _core;
+	ProcLog        _size_log;
 	
 	std::queue<BFsequence_sptr>           _sequence_queue;
 	std::map<std::string,BFsequence_sptr> _sequence_map;
@@ -170,6 +178,8 @@ public:
 	            BFsize max_ringlets);
 	inline const char* name() const { return _name.c_str(); }
 	inline BFspace space()    const { return _space; }
+	inline void set_core(int core)  { _core = core; }
+	inline int      core()    const { return _core; }
 	//inline BFsize nringlet() const { return _nringlet; }
 	inline void   lock()   { _mutex.lock(); }
 	inline void   unlock() { _mutex.unlock(); }
@@ -373,19 +383,7 @@ class BFrsequence_impl : public BFsequence_wrapper {
 public:
 	inline BFrsequence_impl(BFsequence_sptr sequence, BFbool guarantee)
 		: BFsequence_wrapper(sequence), _guaranteed(guarantee), _is_open(false) {
-		//this->sequence()->ring()->open_sequence(sequence,
-		//                                      _guaranteed, &_guarantee_begin);
 		this->open();
-		/*
-		// ***TODO: Replace this with inserting the guarantee inside open_*_sequence
-		//            The guarantee must go at max(sequence_begin, ring->_tail)
-		if( _guaranteed ) {
-			//guarantee_iter =
-			// TODO: Is it actually important to include size in guarantee keys?
-			BFsize size=0;
-			this->sequence()->ring()->_guarantees.insert(std::make_pair(sequence->begin(), size));
-		}
-		*/
 	}
 	// Copy constructor points to same underlying BFsequence_impl object, but
 	//   creates its own guarantee.
@@ -393,29 +391,28 @@ public:
 		: BFsequence_wrapper(other.sequence()),
 		  _guaranteed(other._guaranteed),
 		  _guarantee_begin(other._guarantee_begin), _is_open(false) {
-		//this->sequence()->ring()->open_sequence(this->sequence(),
-		//                                        _guaranteed, &_guarantee_begin);
 		this->open();
-		//if( _guaranteed ) {
-		//	BFsize size=0;
-		//	this->sequence()->ring()->_guarantees.insert(std::make_pair(this->sequence()->begin(), size));
-		//}
 	}
 	inline ~BFrsequence_impl() {
 		if( _is_open ) {
 			this->close();
 		}
-		//if( _guaranteed ) {
-		//	BFsize size = 0;
-		//	this->sequence()->ring()->_guarantees.erase(this->sequence()->ring()->_guarantees.find(std::make_pair(this->sequence()->begin(), size)));
-		//}
 	}
 	inline void increment_to_next() {
-		// TODO: Is it possible/necessary for this to be atomic?
-		//         Only relevant when no rspans are opened (which is a pathological case)?
-		this->close();
+		// Note: The get_next() and open() calls need to be 'atomic' wrt
+		//         the guarantee; i.e., the guarantee must persist across them.
+		//         This is achieved by only removing the old guarantee once
+		//           the new guarantee (added by this->open()) is in place.
+		//           This code could probably be cleaned/refactored.
+		BF_ASSERT_EXCEPTION(this->_is_open, BF_STATUS_INTERNAL_ERROR);
+		BFoffset old_guarantee_begin = _guarantee_begin;
+		_is_open = false;
 		this->reset_sequence(this->get_next());
 		this->open();
+		// TODO: This call is overkill (and confusing) and should be refactored
+		//         All it does is: if( _guaranteed ) { remove guarantee };
+		//           The first arg isn't even used!
+		this->sequence()->ring()->close_sequence(this->sequence(), _guaranteed, old_guarantee_begin);
 	}
 	inline BFbool   guaranteed()      const { return _guaranteed; }
 	inline BFoffset guarantee_begin() const { return _guarantee_begin; }

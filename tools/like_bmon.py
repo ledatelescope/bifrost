@@ -35,8 +35,14 @@ import time
 import curses
 import getopt
 import socket
+import traceback
 from datetime import datetime
+try:
+	import cStringIO as StringIO
+except ImportError:
+	import StringIO
 
+os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
 
 
@@ -327,6 +333,10 @@ def main(args):
 				## Clear
 				act = None
 				
+			## For sel to be valid - this takes care of any changes between when 
+			## we get what to select and when we polled the bifrost logs
+			sel = min([nPID-1, sel])
+			
 			## Display
 			k = 0
 			### General - selected
@@ -349,7 +359,7 @@ def main(args):
 				curr = stats[o]
 				if o == order[sel]:
 					act = curr
-				
+					
 				drateR, prateR = curr['rx']['drate'], curr['rx']['prate']
 				drateR, drateuR = _setUnits(drateR)
 				
@@ -405,10 +415,24 @@ def main(args):
 	except KeyboardInterrupt:
 		pass
 		
-	curses.nocbreak()
+	except Exception as error:
+		exc_type, exc_value, exc_traceback = sys.exc_info()
+		fileObject = StringIO.StringIO()
+		traceback.print_tb(exc_traceback, file=fileObject)
+		tbString = fileObject.getvalue()
+		fileObject.close()
+		
 	scr.keypad(0)
 	curses.echo()
+	curses.nocbreak()
 	curses.endwin()
+	
+	try:
+		print "%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), traceback.tb_lineno(exc_traceback))
+		for line in tbString.split('\n'):
+			print line
+	except NameError:
+		pass
 
 
 if __name__ == "__main__":

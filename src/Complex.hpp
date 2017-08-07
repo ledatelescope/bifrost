@@ -34,6 +34,9 @@
 using std::atan2;
 #endif // __CUDACC_RTC__
 
+#define PI_DOUBLE ((double) 3.1415926535898)
+#define PI_FLOAT  ((float) 3.1415926535898)
+
 // Storage-only formats
 template<typename Real, class Enable=void>
 struct Complex;
@@ -131,13 +134,49 @@ Complex<T, typename Complex_detail::enable_if<Complex_detail::is_floating_point<
 	inline __host__ __device__ operator typename Complex_detail::cuda_vector2_type<T>::type() const { return make_float2(x,y); }
 #endif
 	inline __host__ __device__ Complex& assign(real_type x_, real_type y_) { x = x_; y = y_; return *this; }
-	inline __host__ __device__ Complex& operator+=(Complex c) { x += c.x; y += c.y; return *this; }
-	inline __host__ __device__ Complex& operator-=(Complex c) { x -= c.x; y -= c.y; return *this; }
-	inline __host__ __device__ Complex& operator*=(Complex c) {
+	inline __host__ __device__ Complex& operator=(Complex32 c)  {
+		x  = (real_type) c.x;
+		y  = (real_type) c.y;
+		return *this;
+	}
+	inline __host__ __device__ Complex& operator=(Complex64 c)  {
+		x  = (real_type) c.x;
+		y  = (real_type) c.y;
+		return *this;
+	}
+	inline __host__ __device__ Complex& operator+=(Complex32 c) {
+		x += (real_type) c.x;
+		y += (real_type) c.y;
+		return *this;
+	}
+	inline __host__ __device__ Complex& operator+=(Complex64 c) {
+		x += (real_type) c.x;
+		y += (real_type) c.y;
+		return *this;
+	}
+	inline __host__ __device__ Complex& operator-=(Complex32 c) {
+		x -= (real_type) c.x;
+		y -= (real_type) c.y;
+		return *this;
+	}
+	inline __host__ __device__ Complex& operator-=(Complex64 c) {
+		x -= (real_type) c.x;
+		y -= (real_type) c.y;
+		return *this;
+	}
+	inline __host__ __device__ Complex& operator*=(Complex32 c) {
 		Complex tmp;
-		tmp.x  = x*c.x;
+		tmp.x  = (real_type) x*c.x;
 		tmp.x -= y*c.y;
-		tmp.y  = y*c.x;
+		tmp.y  = (real_type) y*c.x;
+		tmp.y += x*c.y;
+		return *this = tmp;
+	}
+	inline __host__ __device__ Complex& operator*=(Complex64 c) {
+		Complex tmp;
+		tmp.x  = (real_type) x*c.x;
+		tmp.x -= y*c.y;
+		tmp.y  = (real_type) y*c.x;
 		tmp.y += x*c.y;
 		return *this = tmp;
 	}
@@ -179,6 +218,8 @@ Complex<T, typename Complex_detail::enable_if<Complex_detail::is_floating_point<
 		return y/x <= tol;
 	}
 };
+
+
 
 #define DEFINE_BINARY_OPERATOR(op) \
 template<typename T> \

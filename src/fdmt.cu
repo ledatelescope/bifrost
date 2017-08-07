@@ -42,6 +42,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <complex>
 
 // HACK TESTING
 #include <iostream>
@@ -285,12 +286,18 @@ private:
 	}
 	FType rel_delay(FType flo, FType fhi, FType fmin, FType fmax) {
 		FType g = _exponent;
+		// Note: We use complex math in order to support negative frequencies
+		//         (the result is real regardless).
+		std::complex<FType> c_flo=flo, c_fhi=fhi, c_fmin=fmin, c_fmax=fmax;
+		std::complex<FType> numer = std::pow(c_flo,  g) - std::pow(c_fhi,  g);
+		std::complex<FType> denom = std::pow(c_fmin, g) - std::pow(c_fmax, g);
 		FType eps = std::numeric_limits<FType>::epsilon();
-		FType denom = ::pow(fmin,g) - ::pow(fmax,g);
-		if( ::abs(denom) < eps ) {
-			denom = ::copysign(eps, denom);
+		if( std::norm(denom) < eps*eps ) {
+			denom *= eps / std::abs(denom);
 		}
-		return (::pow(flo,g) - ::pow(fhi,g)) / denom;
+		std::complex<FType> result = numer / denom;
+		assert(std::abs(result.imag()) <= eps);
+		return result.real();
 	}
 	FType rel_delay(FType flo, FType fhi) {
 		FType fmin = cfreq(0);
