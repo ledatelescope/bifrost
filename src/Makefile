@@ -30,7 +30,6 @@ ifndef NOCUDA
   trace.o \
   linalg.o \
   beamformer.o \
-  fir.o \
   #correlate.o \
   blas.o \
   transform.o
