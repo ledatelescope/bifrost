@@ -102,7 +102,7 @@ class FdmtBlock(TransformBlock):
         # Add some new metadata
         ohdr['max_dm']       = max_dm
         ohdr['max_dm_units'] = self.dm_units
-        ohdr['cfreq']        = 0.5 * (f0_ + (nchan - 1) * df_)
+        ohdr['cfreq']        = f0_ + 0.5 * (nchan - 1) * df_
         ohdr['cfreq_units']  = itensor['units'][-2]
         ohdr['bw']           = nchan * df_
         ohdr['bw_units']     = itensor['units'][-2]

@@ -77,11 +77,14 @@ class PipelineTest(unittest.TestCase):
         gulp_nframe = 101
         # TODO: Check handling of multiple pols (not currently supported?)
         def check_sequence(seq):
-            tensor = seq.header['_tensor']
+            hdr = seq.header
+            tensor = hdr['_tensor']
             self.assertEqual(tensor['shape'],  [1,5,-1])
             self.assertEqual(tensor['dtype'],  'f32')
             self.assertEqual(tensor['labels'], ['pol', 'dispersion', 'time'])
             self.assertEqual(tensor['units'],  [None, 'pc cm^-3', 's'])
+            self.assertEqual(hdr['cfreq_units'], 'MHz')
+            self.assertEqual(hdr['cfreq'], 433.937)
         def check_data(ispan, ospan):
             # Note: nframe = gulp_nframe + max_delay
             #self.assertLessEqual(ispan.nframe, gulp_nframe)
