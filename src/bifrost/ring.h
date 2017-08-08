@@ -91,6 +91,20 @@ BFstatus bfRingResize(BFring ring,
 BFstatus bfRingGetName(BFring ring, const char** name);
 BFstatus bfRingGetSpace(BFring ring, BFspace* space);
 
+/*! \p bfRingSetAffinity causes subsequent ring memory allocations to be bound
+ *       to the NUMA node of the specified CPU core.
+ * \param core Index of a CPU core on the desired NUMA node. A value of -1
+ *          disabled NUMA affinity for subsequent memory allocations.
+ */
+BFstatus bfRingSetAffinity(BFring ring, int  core);
+/*! \p bfRingGetAffinity returns the CPU core specified by a prior call to
+ *     \p bfRingSetAffinity.
+ * \param core Pointer to variable in which the CPU core index will be written.
+ *        If \p bfRingSetAffinity has not been called, the variable will be
+ *        set to a value of -1.
+ */
+BFstatus bfRingGetAffinity(BFring ring, int* core);
+
 //BFsize   bfRingGetNRinglet(BFring ring);
 // TODO: BFsize bfRingGetSizeBytes
 // TODO: Method that returns tail,head,reserve_head plus all sequences' begin,end
@@ -114,6 +128,9 @@ BFstatus bfRingEndWriting(BFring ring);
 BFstatus bfRingWritingEnded(BFring ring, BFbool* writing_ended);
 
 // Sequence write
+// Note: \p name must either be unique among sequences, or be an empty string
+// Note: \p time_tag should either be monotonically increasing with each
+//         sequence, or be BFoffset(-1).
 BFstatus bfRingSequenceBegin(BFwsequence* sequence,
                              BFring       ring,
                              const char*  name,
@@ -150,7 +167,7 @@ BFstatus bfRingSequenceOpenEarliest(BFrsequence* sequence,
 //BFstatus bfRingSequenceOpenNext(BFrsequence* sequence, BFrsequence previous);
 //BFstatus bfRingSequenceNext(BFrsequence* sequence);
 BFstatus bfRingSequenceNext(BFrsequence sequence);
-BFstatus bfRingSequenceOpenSame(BFrsequence* sequence, BFrsequence existing);
+//BFstatus bfRingSequenceOpenSame(BFrsequence* sequence, BFrsequence existing);
 BFstatus bfRingSequenceClose(BFrsequence sequence);
 
 // Sequence common
@@ -161,7 +178,7 @@ BFstatus bfRingSequenceGetHeader(BFsequence sequence, const void** hdr);
 BFstatus bfRingSequenceGetHeaderSize(BFsequence sequence, BFsize* size);
 BFstatus bfRingSequenceGetNRinglet(BFsequence sequence, BFsize* nringlet);
 
-typedef struct {
+typedef struct BFsequence_info_ {
 	BFring      ring;
 	const char* name;
 	BFoffset    time_tag;
@@ -186,10 +203,9 @@ BFstatus bfRingSpanAcquire(BFrspan*    span,
                            BFsize      size);
 BFstatus bfRingSpanRelease(BFrspan span);
 
-//BFstatus bfRingSpanClose(BFrspan span);
-BFstatus bfRingSpanStillValid(BFrspan  span,
-                              BFoffset offset,
-                              BFbool*  valid); // true if span not overwritten beyond offset
+// Returns in *val the number of bytes in the span that have been overwritten
+//   at the time of the call (always zero for guaranteed sequences).
+BFstatus bfRingSpanGetSizeOverwritten(BFrspan span, BFsize* val);
 //BFbool bfRingSpanGood(BFrspan span); // true if span opened successfully
 //BFstatus bfRingSpanGetSequence(BFspan span, BFrsequence* sequence);
 // Any span
@@ -200,7 +216,7 @@ BFstatus bfRingSpanGetStride(BFspan span, BFsize* val);
 BFstatus bfRingSpanGetOffset(BFspan span, BFsize* val);
 BFstatus bfRingSpanGetNRinglet(BFspan span, BFsize* val);
 
-typedef struct {
+typedef struct BFspan_info_ {
 	BFring      ring;
 	void*       data;
 	BFsize      size;

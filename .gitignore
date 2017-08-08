@@ -1,7 +1,9 @@
 doc
 version.py
+*_generated.py
 .log*.txt
 test/data/
+*.bin
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -12,6 +14,7 @@ __pycache__/
 *.o*
 *.lo
 *.la
+*.a
 
 # Backup files
 *~
@@ -72,6 +75,25 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+docs/build/
+docs/doxygen/
+#(These are generated files)
+docs/source/bifrost.blocks.rst
+docs/source/bifrost.rst
+docs/source/bifrost.views.rst
+docs/source/class/
+docs/source/classlist.rst
+docs/source/file/
+docs/source/filelist.rst
+docs/source/namespace/
+docs/source/namespacelist.rst
+docs/source/struct/
+docs/source/structlist.rst
+
 
 # PyBuilder
 target/
+
+# Benchmarking files
+test/benchmarks/development_vs_gpuspec/with_bifrost/
+test/benchmarks/development_vs_gpuspec/without_bifrost/

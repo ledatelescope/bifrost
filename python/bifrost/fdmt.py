@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,42 +25,46 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _fast_call, _string2space
+from libbifrost import _bf, _check, _get, BifrostObject, _string2space
 from ndarray import asarray
 
 import ctypes
 import numpy as np
 
-class Fdmt(object):
-	def __init__(self):
-		self.obj = _get(_bf.FdmtCreate(), retarg=0)
-	def __del__(self):
-		if hasattr(self, 'obj') and bool(self.obj):
-			_bf.FdmtDestroy(self.obj)
-	def init(self, nchan, max_delay, f0, df, exponent=-2.0, space='cuda'):
-		space = _string2space(space)
-		psize = None
-		_check( _bf.FdmtInit(self.obj, nchan, max_delay, f0, df, exponent, space, 0, psize) )
-	def execute(self, idata, odata, negative_delays=False):
-		# TODO: Work out how to integrate CUDA stream
-		psize = None
-		_check( _bf.FdmtExecute(self.obj,
-		                        asarray(idata).as_BFarray(),
-		                        asarray(odata).as_BFarray(),
-		                        negative_delays,
-		                        0, psize) )
-		return odata
-	def get_workspace_size(self, idata, odata):
-		return _get( _bf.FdmtExecute(self.obj,
-		                             asarray(idata).as_BFarray(),
-		                             asarray(odata).as_BFarray(),
-		                        False, 0) )
-	def execute_workspace(self, idata, odata, workspace_ptr, workspace_size,
-	                      negative_delays=False):
-		size = _bf.BFsize(workspace_size)
-		_fast_call(_bf.FdmtExecute, self.obj,
-		                        asarray(idata).as_BFarray(),
-		                        asarray(odata).as_BFarray(),
-		                        negative_delays,
-		                        workspace_ptr, ctypes.pointer(size))
-		return odata
+class Fdmt(BifrostObject):
+    def __init__(self):
+        BifrostObject.__init__(self, _bf.bfFdmtCreate, _bf.bfFdmtDestroy)
+    def init(self, nchan, max_delay, f0, df, exponent=-2.0, space='cuda'):
+        space = _string2space(space)
+        psize = None
+        _check(_bf.bfFdmtInit(self.obj, nchan, max_delay, f0, df,
+                              exponent, space, 0, psize))
+    def execute(self, idata, odata, negative_delays=False):
+        # TODO: Work out how to integrate CUDA stream
+        psize = None
+        _check( _bf.bfFdmtExecute(
+            self.obj,
+            asarray(idata).as_BFarray(),
+            asarray(odata).as_BFarray(),
+            negative_delays,
+            None,
+            psize) )
+        return odata
+    def get_workspace_size(self, idata, odata):
+        return _get(_bf.bfFdmtExecute,
+                    self.obj,
+                    asarray(idata).as_BFarray(),
+                    asarray(odata).as_BFarray(),
+                    False,
+                    None)
+    def execute_workspace(self, idata, odata, workspace_ptr, workspace_size,
+                          negative_delays=False):
+        size = _bf.BFsize(workspace_size)
+        _check(_bf.bfFdmtExecute(
+            self.obj,
+            asarray(idata).as_BFarray(),
+            asarray(odata).as_BFarray(),
+            negative_delays,
+            workspace_ptr,
+            size))
+        return odata

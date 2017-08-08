@@ -36,8 +36,8 @@ extern "C" {
 
 typedef struct BFudptransmit_impl* BFudptransmit;
 
-typedef enum {
-	BF_TRANSMIT_CONTINUED, 
+typedef enum BFudptransmit_status_ {
+	BF_TRANSMIT_CONTINUED,
 	BF_TRANSMIT_INTERRUPTED,
 	BF_TRANSMIT_ERROR
 } BFudptransmit_status;

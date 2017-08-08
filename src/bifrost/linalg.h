@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,7 +45,7 @@ typedef struct BFlinalg_impl* BFlinalg;
 BFstatus bfLinAlgCreate(BFlinalg* handle_ptr);
 BFstatus bfLinAlgDestroy(BFlinalg handle);
 
-// Computes c = a.b or a.a^H if b is NULL
+// Computes c = a.b, or a.a^H or b^H.b if either a or b are NULL
 BFstatus bfLinAlgMatMul(BFlinalg       handle,
                         double         alpha,
                         BFarray const* a,   // [...,i,j]

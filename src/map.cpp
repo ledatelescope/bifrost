@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,6 +49,7 @@ bfMap(3, c.shape, {"dm", "t"},
 #include "assert.hpp"
 #include "array_utils.hpp"
 #include "ObjectCache.hpp"
+#include "EnvVars.hpp"
 
 #include <cuda.h>
 #include <nvrtc.h>
@@ -61,6 +61,8 @@ bfMap(3, c.shape, {"dm", "t"},
 #include "ShapeIndexer.cuh.jit"
 #include "Complex.hpp"
 #include "Complex.hpp.jit"
+#include "Vector.hpp"
+#include "Vector.hpp.jit"
 #include "int_fastdiv.h.jit"
 
 #include <vector>
@@ -101,19 +103,26 @@ BFstatus bifrost_status(nvrtcResult status) {
 
 BFstatus build_map_kernel(int*                 external_ndim,
                           long*                external_shape,
+                          long                 block_x_axis,
+                          long                 block_y_axis,
                           char const*const*    axis_names,
                           int                  narg,
                           BFarray const*const* args,
                           char const*const*    arg_names,
+                          char const*          func_name,
                           char const*          func,
-                          bool basic_indexing_only,
-                          std::string* ptx_string) {
+                          char const*          extra_code,
+                          bool                 basic_indexing_only,
+                          std::string*         ptx_string,
+                          std::string*         kernel_name_ptr) {
 	// Make local copies of ndim and shape to avoid corrupting external copies
 	//   until we know that this function has succeeded.
 	// TODO: This is not very elegant
 	int ndim = *external_ndim;
 	long shape[BF_MAX_DIMS];
 	::memcpy(shape, external_shape, ndim*sizeof(*shape));
+	long y_size = 1;
+	long x_size = 1;
 	
 	std::vector<BFarray>  mutable_arrays;
 	std::vector<BFarray*> mutable_array_ptrs;
@@ -134,17 +143,38 @@ BFstatus build_map_kernel(int*                 external_ndim,
 			flatten(args[a], mutable_array_ptrs[a], keep_dims_mask);
 		}
 		args = &mutable_array_ptrs[0];
+	} else {
+		// TODO: This code is duplicated in the main bfMap function below
+		if( ndim >= 2 ) {
+			y_size = shape[block_y_axis];
+			shape[block_y_axis] = 1;
+		}
+		if( ndim >= 1 ) {
+			x_size = shape[block_x_axis];
+			shape[block_x_axis] = 1;
+		}
 	}
+	
+	std::string kernel_name;
+	if( func_name ) {
+		kernel_name = func_name;
+		kernel_name += "_";
+	}
+	kernel_name += "map_kernel";
 	std::stringstream code;
 	code << "#include \"Complex.hpp\"" << endl;
+	code << "#include \"Vector.hpp\"" << endl;
 	code << "#include \"ArrayIndexer.cuh\"" << endl;
 	code << "#include \"ShapeIndexer.cuh\"" << endl;
+	if( extra_code ) {
+		code << "\n" << extra_code << "\n" << endl;
+	}
 	code << "extern \"C\"\n";
 	code << "__global__\n";
-	code << "void map_kernel(";
+	code << "void " << kernel_name << "(";
 	for( int a=0; a<narg; ++a ) {
-		const char* ctype_string = dtype2ctype_string(args[a]->dtype);
-		BF_ASSERT(ctype_string, BF_STATUS_INVALID_ARGUMENT);
+		std::string ctype_string = dtype2ctype_string(args[a]->dtype);
+		BF_ASSERT(ctype_string.size(), BF_STATUS_INVALID_ARGUMENT);
 		if( args[a]->ndim     == 1 &&
 		    args[a]->shape[0] == 1 &&
 		    args[a]->immutable &&
@@ -172,7 +202,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	code << "> _Shape;\n";
 	code << "  typedef StaticShapeIndexer<_Shape> _ShapeIndexer;\n";
 	for( int a=0; a<narg; ++a ) {
-		const char* ctype_string = dtype2ctype_string(args[a]->dtype);
+		std::string ctype_string = dtype2ctype_string(args[a]->dtype);
 		code << "  typedef StaticIndexArray<int,";
 		for( int d=0; d<args[a]->ndim; ++d ) {
 			code << args[a]->shape[d] << (d!=args[a]->ndim-1 ? "," : "");
@@ -191,10 +221,50 @@ BFstatus build_map_kernel(int*                 external_ndim,
 		     << ",_Strides_"       << arg_names[a]
 		     << "> _ArrayIndexer_" << arg_names[a] << ";\n";
 	}
-	code <<
-		"  int _i0 = threadIdx.x + blockIdx.x*blockDim.x;\n"
-		"  for( int _i=_i0; _i<_ShapeIndexer::SIZE; _i+=blockDim.x*gridDim.x ) {\n"
-		"    auto const& _  = _ShapeIndexer::lift(_i);\n";
+	// Add a _shape array for the user to use if needed
+	code << "  const int _shape[NDIM] = {";
+	for( int d=0; d<ndim; ++d ) {
+		if( d == block_x_axis && !basic_indexing_only ) {
+			code << x_size;
+		} else if( d == block_y_axis && !basic_indexing_only ) {
+			code << y_size;
+		} else {
+			code << shape[d];
+		}
+		if( d != ndim-1 ) {
+			code << ", ";
+		}
+	}
+	code << "}; (void)_shape[0];\n"; // Note: Prevents unused variable warning
+	if( basic_indexing_only ) {
+		code <<
+			"  int _x0 = threadIdx.x + blockIdx.x*blockDim.x;\n"
+			"  for( int _x=_x0; _x<_ShapeIndexer::SIZE; _x+=blockDim.x*gridDim.x ) {\n"
+			"    auto const& _  = _ShapeIndexer::lift(_x);\n";
+	} else {
+		code <<
+			"  int _x0 = threadIdx.x + blockIdx.x*blockDim.x;\n";
+		if( y_size > 1 ) {
+			code << "  int _y0 = threadIdx.y + blockIdx.y*blockDim.y;\n";
+		}
+		code <<
+			"  int _z0 = blockIdx.z;\n"
+			"  for( int _z=_z0; _z<_ShapeIndexer::SIZE; _z+=gridDim.z ) {\n";
+			// TODO: Condition this out if y_size == 1
+		if( y_size > 1 ) {
+			code << "  for( int _y=_y0; _y<" << y_size << "; _y+=blockDim.y*gridDim.y ) {\n";
+		}
+		code <<
+			"  for( int _x=_x0; _x<" << x_size << "; _x+=blockDim.x*gridDim.x ) {\n"
+			"    auto _composite_index  = _ShapeIndexer::lift(_z);\n"
+			"    _composite_index[" << block_x_axis << "] = _x;\n";
+		if( y_size > 1 ) {
+			code <<
+				"    _composite_index[" << block_y_axis << "] = _y;\n";
+		}
+		// Create the composite index variable for use by the user
+		code << "    auto const& _  = _composite_index;\n";
+	}
 	for( int a=0; a<narg; ++a ) {
 		if( args[a]->ndim     == 1 &&
 		    args[a]->shape[0] == 1 &&
@@ -203,7 +273,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 			// pass
 		} else {
 			// TODO: De-dupe this with the one above
-			const char* ctype_string = dtype2ctype_string(args[a]->dtype);
+			std::string ctype_string = dtype2ctype_string(args[a]->dtype);
 			if( basic_indexing_only ) {
 				// Here we define the variable as a plain reference
 				code << "    _ArrayIndexer_" << arg_names[a] << " "
@@ -217,7 +287,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 			code << "    typedef " << ctype_string << " " << arg_names[a] << "_type;\n";
 		}
 	}
-	
+	// Create named axis variables
 	if( axis_names ) {
 		for( int d=0; d<ndim; ++d ) {
 			BF_ASSERT(axis_names[d][0] != '_', BF_STATUS_INVALID_ARGUMENT);
@@ -225,12 +295,19 @@ BFstatus build_map_kernel(int*                 external_ndim,
 		}
 	}
 	code << "    " << func << ";\n";
-	code << "  }\n";
-	code << "}\n";
+	code << "  }\n"; // End _x loop
+	if( !basic_indexing_only ) {
+		if( y_size > 1 ) {
+			code << "  }\n"; // End _y loop
+		}
+		code << "  }\n"; // End _z loop
+	}
+	code << "}\n"; // End kernel
 	
-	const char* program_name = "bfMap";
+	const char* program_name = func_name ? func_name : "bfMap";
 	const char* header_codes[] = {
 		Complex_hpp,
+		Vector_hpp,
 		ArrayIndexer_cuh,
 		ShapeIndexer_cuh,
 		IndexArray_cuh,
@@ -238,19 +315,13 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	};
 	const char* header_names[] = {
 		"Complex.hpp",
+		"Vector.hpp",
 		"ArrayIndexer.cuh",
 		"ShapeIndexer.cuh",
 		"IndexArray.cuh",
 		"int_fastdiv.h" // TODO: Don't actually need this, it's just an unused depdency of ShapeIndexer.cuh; try to remove it
 	};
 	size_t nheader = sizeof(header_codes) / sizeof(const char*);
-	
-#if BF_DEBUG_RTC
-		int i = 1;
-		for( std::string line; std::getline(code, line); ++i ) {
-			cout << std::setfill(' ') << std::setw(3) << i << " " << line << endl;
-		}
-#endif
 	
 	nvrtcProgram program;
 	BF_CHECK_NVRTC( nvrtcCreateProgram(&program,
@@ -276,7 +347,8 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	size_t logsize;
 	// Note: Includes the trailing NULL
 	BF_CHECK_NVRTC( nvrtcGetProgramLogSize(program, &logsize) );
-	if( logsize > 1 && !basic_indexing_only ) {
+	if( (logsize > 1 || EnvVars::get("BF_PRINT_MAP_KERNELS", "0") != "0") &&
+	     !basic_indexing_only ) {
 		std::vector<char> log(logsize, 0);
 		BF_CHECK_NVRTC( nvrtcGetProgramLog(program, &log[0]) );
 		int i = 1;
@@ -301,12 +373,19 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	char* ptx = &vptx[0];
 	BF_CHECK_NVRTC( nvrtcGetPTX(program, &ptx[0]) );
 	BF_CHECK_NVRTC( nvrtcDestroyProgram(&program) );
-#if BF_DEBUG_RTC
-	std::cout << ptx << std::endl;
+#if BF_DEBUG
+	if( EnvVars::get("BF_PRINT_MAP_KERNELS_PTX", "0") != "0" ) {
+		std::cout << ptx << std::endl;
+	}
 #endif
 	*ptx_string = ptx;
-	*external_ndim = ndim;
-	::memcpy(external_shape, shape, ndim*sizeof(*shape));
+	*kernel_name_ptr = kernel_name;
+	// TODO: Can't do this, because this function may be cached
+	//         **Clean this up!
+	//*external_ndim = ndim;
+	//*external_y_size = y_size;
+	//*external_x_size = x_size;
+	//::memcpy(external_shape, shape, ndim*sizeof(*shape));
 	return BF_STATUS_SUCCESS;
 }
 
@@ -316,8 +395,13 @@ BFstatus bfMap(int                  ndim,
                int                  narg,
                BFarray const*const* args,
                char const*const*    arg_names,
-               char const*          func) {
-	thread_local static ObjectCache<std::string,CUDAKernel>
+               char const*          func_name,
+               char const*          func,
+               char const*          extra_code,
+               int  const           block_shape[2],
+               int  const           block_axes[2]) {
+	// Map containing compiled kernels and basic_indexing_only flag
+	thread_local static ObjectCache<std::string,std::pair<CUDAKernel,bool> >
 		kernel_cache(BF_MAP_KERNEL_CACHE_SIZE);
 	BF_ASSERT(ndim >= 0,           BF_STATUS_INVALID_ARGUMENT);
 	//BF_ASSERT(!ndim || shape,      BF_STATUS_INVALID_POINTER);
@@ -329,6 +413,13 @@ BFstatus bfMap(int                  ndim,
 	//if( ndim == 0 ) {
 	//	return BF_STATUS_SUCCESS;
 	//}
+	// TODO: Could derive these from a heuristic that looks at the fastest-changing input/output dims
+	const int block_axes_default[] = {ndim-2, ndim-1};
+	bool force_advanced_indexing = (shape || block_axes);
+	if( !block_axes ) {
+		block_axes = block_axes_default;
+	}
+	
 	long mutable_shape[BF_MAX_DIMS];
 	if( !shape ) {
 		BF_ASSERT(broadcast_shapes(narg, args, mutable_shape, &ndim),
@@ -337,6 +428,12 @@ BFstatus bfMap(int                  ndim,
 		::memcpy(mutable_shape, shape, ndim*sizeof(*shape));
 	}
 	shape = mutable_shape;
+	
+	int block_x_axis = block_axes[1];
+	int block_y_axis = block_axes[0];
+	// Support negative indexing
+	block_x_axis = (block_x_axis < 0) ? ndim + block_x_axis : block_x_axis;
+	block_y_axis = (block_y_axis < 0) ? ndim + block_y_axis : block_y_axis;
 	
 	std::stringstream cache_key_ss;
 	cache_key_ss << ndim << ",";
@@ -347,40 +444,73 @@ BFstatus bfMap(int                  ndim,
 	}
 	for( int a=0; a<narg; ++a ) {
 		cache_key_ss << arg_names[a] << ","
-		          << args[a]->dtype << ","
-		          << args[a]->immutable << ","
-		          << args[a]->space << ","
-		          << args[a]->ndim << ",";
+		             << args[a]->dtype << ","
+		             << args[a]->immutable << ","
+		             << args[a]->space << ","
+		             << args[a]->ndim << ",";
 		for( int d=0; d<args[a]->ndim; ++d ) {
 			cache_key_ss << args[a]->shape[d] << ",";
 			cache_key_ss << args[a]->strides[d] << ",";
 		}
 	}
-	cache_key_ss << func;
+	cache_key_ss << force_advanced_indexing << ",";
+	cache_key_ss << block_x_axis << ",";
+	cache_key_ss << block_y_axis << ",";
+	cache_key_ss << func << ",";
+	if( extra_code ) {
+		cache_key_ss << extra_code;
+	}
 	std::string cache_key = cache_key_ss.str();
 	
 	if( !kernel_cache.contains(cache_key) ) {
 		std::string ptx;
+		std::string kernel_name;
 		// First we try with basic_indexing_only = true
-		if( build_map_kernel(&ndim, mutable_shape, axis_names, narg,
-		                     args, arg_names, func,
-		                     true, &ptx) != BF_STATUS_SUCCESS ) {
+		bool basic_indexing_only = true;
+		if( force_advanced_indexing ||
+		    build_map_kernel(&ndim, mutable_shape,
+		                     block_x_axis, block_y_axis,
+		                     axis_names, narg,
+		                     args, arg_names,
+		                     func_name, func, extra_code,
+		                     basic_indexing_only,
+		                     &ptx, &kernel_name) != BF_STATUS_SUCCESS ) {
 			// Then we fall back to basic_indexing_only = false
-			BF_CHECK(build_map_kernel(&ndim, mutable_shape, axis_names, narg,
-			                          args, arg_names, func,
-			                          false, &ptx));
+			basic_indexing_only = false;
+			BF_CHECK(build_map_kernel(&ndim, mutable_shape,
+			                          block_x_axis, block_y_axis,
+			                          axis_names, narg,
+			                          args, arg_names,
+			                          func_name, func, extra_code,
+			                          basic_indexing_only,
+			                          &ptx, &kernel_name));
 		}
-		CUDAKernel kernel("map_kernel", ptx.c_str());
-		kernel_cache.insert(cache_key, kernel);
+		CUDAKernel kernel;
+		BF_TRY(kernel.set(kernel_name.c_str(), ptx.c_str()));
+		kernel_cache.insert(cache_key,
+		                    std::make_pair(kernel, basic_indexing_only));
 		//std::cout << "INSERTING INTO CACHE" << std::endl;
 	} else {
 		//std::cout << "FOUND IN CACHE" << std::endl;
 	}
-	CUDAKernel& kernel = kernel_cache.get(cache_key);
+	auto& cache_entry = kernel_cache.get(cache_key);
+	CUDAKernel& kernel = cache_entry.first;
+	bool basic_indexing_only = cache_entry.second;
+	
+	int x_size = 1, y_size = 1;
+	if( !basic_indexing_only ) {
+		if( ndim >= 2 ) {
+			y_size = shape[block_y_axis];
+			mutable_shape[block_y_axis] = 1;
+		}
+		if( ndim >= 1 ) {
+			x_size = shape[block_x_axis];
+			mutable_shape[block_x_axis] = 1;
+		}
+	}
 	
 	std::vector<void*> kernel_args;
 	kernel_args.reserve(narg);
-	
 	for( int a=0; a<narg; ++a ) {
 		if( args[a]->ndim     == 1 &&
 		    args[a]->shape[0] == 1 &&
@@ -398,8 +528,24 @@ BFstatus bfMap(int                  ndim,
 	}
 	
 	long nelement = shape_size(ndim, shape);
-	dim3 block(256);
-	dim3 grid(std::min((nelement-1)/block.x+1, 65535l));
+	const int block_shape_default[] = {16, 32};
+	if( !block_shape ) {
+		block_shape = block_shape_default;
+	}
+	dim3 block, grid;
+	if( basic_indexing_only || ndim < 2 ) {
+		block = dim3(block_shape[1]*block_shape[0]);
+	} else {
+		block = dim3(block_shape[1], block_shape[0]);
+	}
+	if( basic_indexing_only ) {
+		grid = dim3(std::min((nelement-1)/block.x+1, 65535l));
+	} else {
+		grid = dim3(std::min((x_size-1)/block.x+1, 65535u),
+		            std::min((y_size-1)/block.y+1, 65535u),
+		            std::min(nelement, 65535l));
+	}
+	
 	BF_ASSERT(kernel.launch(grid, block,
 	                        0, g_cuda_stream,
 	                        kernel_args) == CUDA_SUCCESS,

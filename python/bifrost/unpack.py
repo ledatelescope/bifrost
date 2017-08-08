@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,13 +25,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _fast_call, _get
+from libbifrost import _bf, _check, _get
+import ctypes
 from ndarray import asarray
 
 def unpack(src, dst, align_msb=False):
-	src_bf = asarray(src).as_BFarray()
-	dst_bf = asarray(dst).as_BFarray()
-	_fast_call(_bf.Unpack, src_bf,
-	                  dst_bf,
-	                  align_msb)
-	return dst
+    src_bf = asarray(src).as_BFarray()
+    dst_bf = asarray(dst).as_BFarray()
+    _check(_bf.bfUnpack(src_bf, dst_bf, align_msb))
+    return dst

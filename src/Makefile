@@ -29,15 +29,14 @@ ifndef NOCUDA
   map.o \
   trace.o \
   linalg.o \
-  fir.o \
-  #correlate.o \
-  blas.o \
-  transform.o
-  #apsynth.o
+  linalg_kernels.o \
+  reduce.o \
+  fir.o
 endif
 
 JIT_SOURCES ?= \
   Complex.hpp.jit \
+  Vector.hpp.jit \
   IndexArray.cuh.jit \
   ArrayIndexer.cuh.jit \
   ShapeIndexer.cuh.jit \
@@ -45,8 +44,19 @@ JIT_SOURCES ?= \
 
 MAKEFILES = ../config.mk ../user.mk Makefile
 
-NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS), \
-  -gencode arch=compute_$(arch),\"code=sm_$(arch),compute_$(arch)\")
+ifndef NOCUDA
+# All CUDA archs supported by this version of nvcc
+GPU_ARCHS_SUPPORTED := $(shell $(NVCC) -h | grep -Po "compute_[0-9]{2}" | cut -d_ -f2 | sort | uniq)
+# Intersection of user-specified archs and supported archs
+GPU_ARCHS_VALID     := $(shell echo $(GPU_ARCHS) $(GPU_ARCHS_SUPPORTED) | xargs -n1 | sort | uniq -d | xargs)
+# Latest valid arch
+GPU_ARCH_LATEST     := $(shell echo $(GPU_ARCHS_VALID) | rev | cut -d' ' -f1 | rev)
+
+# This creates SASS for all valid requested archs, and PTX for the latest one
+NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS_VALID), \
+  -gencode arch=compute_$(arch),\"code=sm_$(arch)\") \
+  -gencode arch=compute_$(GPU_ARCH_LATEST),\"code=compute_$(GPU_ARCH_LATEST)\"
+endif
 
 CXXFLAGS  += -std=c++11 -fPIC -fopenmp
 NVCCFLAGS += -std=c++11 -Xcompiler "-fPIC" $(NVCC_GENCODE)
@@ -66,12 +76,20 @@ ifdef TRACE
   CPPFLAGS   += -DBF_TRACE_ENABLED=1
 endif
 
+ifdef NUMA
+  # Requires libnuma-dev to be installed
+  LIB        += -lnuma
+  CPPFLAGS   += -DBF_NUMA_ENABLED=1
+endif
+
 ifdef HWLOC
+  # Requires libhwloc-dev to be installed
   LIB        += -lhwloc
   CPPFLAGS   += -DBF_HWLOC_ENABLED=1
 endif
 
 ifdef VMA
+  # Requires Mellanox libvma to be installed
   LIB        += -lvma
   CPPFLAGS   += -DBF_VMA_ENABLED=1
 endif
@@ -86,7 +104,7 @@ endif
 
 ifndef NOCUDA
   CPPFLAGS  += -DBF_CUDA_ENABLED=1
-  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -lcufft_static -lculibos -lnvToolsExt
+  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt
 endif
 
 ifndef ANY_ARCH
@@ -110,10 +128,10 @@ $(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
 	$(CLEAR_LINE)
 	@echo -n "Generating $(LIBBIFROST_VERSION_FILE)\r"
 	ctags --version | grep -q "Exuberant" || {\
-      echo "*************************************" && \
-      echo "ERROR: Please install exuberant-ctags" && \
-      echo "*************************************" && \
-      false; }
+	  echo "*************************************" && \
+	  echo "ERROR: Please install exuberant-ctags" && \
+	  echo "*************************************" && \
+	  false; }
 	echo "VERS_$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) {" > $@
 	echo "  global:" >> $@
 	ctags -x --c-kinds=p $^ | awk '{print "    " $$1 ";"}' >> $@
@@ -122,13 +140,29 @@ $(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
 	echo "};"        >> $@
 
 ifndef NOCUDA
-fft_kernels.o: fft_kernels.cu fft_kernels.h
+# TODO: Need to deal with 32/64 detection here
+LIBCUFFT_STATIC = $(CUDA_LIBDIR64)/libcufft_static.a
+# All PTX archs included in the lib (typically only one)
+CUFFT_PTX_ARCHS := $(shell cuobjdump --list-ptx $(LIBCUFFT_STATIC) | grep -Po "sm_[0-9]{2}" | cut -d_ -f2 | sort | uniq)
+# Latest PTX arch included in the lib
+CUFFT_PTX_LATEST_ARCH := $(shell echo $(CUFFT_PTX_ARCHS) | rev | cut -d' ' -f1 | rev)
+CUFFT_STATIC_GENCODE = -gencode arch=compute_$(CUFFT_PTX_LATEST_ARCH),\"code=compute_$(CUFFT_PTX_LATEST_ARCH)\"
+libcufft_static_pruned.a: $(LIBCUFFT_STATIC) Makefile
+	# We prune out all archs except those to be included in libbifrost *and*
+	#   the latest PTX arch included in libcufft_static.
+	#   E.g., We may have GPU_ARCHS="35 61" but libcufft_static might only
+	#     include sm_60 and compute_60, so we need to keep compute_60 in order
+	#     to support sm_61.
+	nvprune -o $@ $(NVCC_GENCODE) $(CUFFT_STATIC_GENCODE) $<
+fft_kernels.o: fft_kernels.cu fft_kernels.h Makefile
 	# Note: This needs to be compiled with "-dc" to make CUFFT callbacks work
-	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" $(TARGET_ARCH) -dc $(OUTPUT_OPTION) $<
-_cuda_device_link.o: fft_kernels.o
+	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" -dc $(OUTPUT_OPTION) $<
+_cuda_device_link.o: Makefile fft_kernels.o libcufft_static_pruned.a
 	$(CLEAR_LINE)
 	@echo -n "Linking _cuda_device_link.o\r"
-	$(NVCC) -dlink -o $@ $(NVCCFLAGS) fft_kernels.o -lcufft_static
+	# TODO: "nvcc -dlink ..." does not error or warn when a -lblah is not found
+	@ls ./libcufft_static_pruned.a > /dev/null
+	$(NVCC) -dlink -o $@ $(NVCCFLAGS) fft_kernels.o -L. -lcufft_static_pruned
 CUDA_DEVICE_LINK_OBJ = _cuda_device_link.o
 else
 CUDA_DEVICE_LINK_OBJ =

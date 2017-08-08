@@ -7,17 +7,13 @@ INC_DIR = src
 SRC_DIR = src
 
 BIFROST_PYTHON_DIR = python
-BIFROST_PYTHON_VERSION_FILE = $(BIFROST_PYTHON_DIR)/bifrost/version.py
 
-all: libbifrost $(BIFROST_PYTHON_VERSION_FILE) python
+all: libbifrost python
 .PHONY: all
 
 libbifrost:
 	$(MAKE) -C $(SRC_DIR) all
 .PHONY: libbifrost
-
-$(BIFROST_PYTHON_VERSION_FILE): config.mk
-	@echo "__version__ = \"$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR).$(LIBBIFROST_PATCH)\"" > $@
 
 test:
 	#$(MAKE) -C $(SRC_DIR) test
@@ -26,7 +22,6 @@ test:
 clean:
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) clean || true
 	$(MAKE) -C $(SRC_DIR) clean
-	rm -f $(BIFROST_PYTHON_VERSION_FILE)
 .PHONY: clean
 install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) install
@@ -42,7 +37,7 @@ doc: $(INC_DIR)/bifrost/*.h Doxyfile
 	$(DOXYGEN) Doxyfile
 .PHONY: doc
 
-python:
+python: libbifrost
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) build
 .PHONY: python
 
@@ -51,6 +46,13 @@ IMAGE_NAME ?= ledatelescope/bifrost
 docker:
 	docker build --pull -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile.gpu -t $(IMAGE_NAME) .
 .PHONY: docker
+
+#GPU Docker prereq build
+# (To be used for testing new builds rapidly)
+IMAGE_NAME ?= ledatelescope/bifrost
+docker_prereq:
+	docker build --pull -t $(IMAGE_NAME)_prereq:$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile_prereq.gpu -t $(IMAGE_NAME)_prereq .
+.PHONY: docker_prereq
 
 #CPU-only Docker build
 IMAGE_NAME ?= ledatelescope/bifrost

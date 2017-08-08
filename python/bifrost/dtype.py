@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -43,101 +42,101 @@ cf32: 32+32-bit complex floating point
 """
 
 from libbifrost import _bf
-
 import numpy as np
 
 def split_name_nbit(dtype_str):
-	"""Splits a dtype string into (name, nbit)"""
-	for i,char in enumerate(dtype_str):
-		if char.isdigit():
-			break
-	name =     dtype_str[:i]
-	nbit = int(dtype_str[i:])
-	return name, nbit
+    """Splits a dtype string into (name, nbit)"""
+    for i, char in enumerate(dtype_str):
+        if char.isdigit():
+            break
+    name =     dtype_str[:i]
+    nbit = int(dtype_str[i:])
+    return name, nbit
 
 # Custom dtypes to represent additional complex types
-ci8  = np.dtype([('re',np.int8),    ('im',np.int8)])
-ci16 = np.dtype([('re',np.int16),   ('im',np.int16)])
-ci32 = np.dtype([('re',np.int32),   ('im',np.int32)])
-cf16 = np.dtype([('re',np.float16), ('im',np.float16)])
+ci8  = np.dtype([('re', np.int8),    ('im', np.int8)])
+ci16 = np.dtype([('re', np.int16),   ('im', np.int16)])
+ci32 = np.dtype([('re', np.int32),   ('im', np.int32)])
+cf16 = np.dtype([('re', np.float16), ('im', np.float16)])
 def to_complex64(q):
-	real_type = q.dtype['re']
-	return q.view(real_type).astype(np.float32).view(np.complex64)
+    real_type = q.dtype['re']
+    return q.view(real_type).astype(np.float32).view(np.complex64)
 def from_complex64(f, dtype):
-	real_type = dtype['re']
-	return f.view(np.float32).astype(real_type).view(dtype)
+    real_type = dtype['re']
+    return f.view(np.float32).astype(real_type).view(dtype)
 
 def numpy2bifrost(dtype):
-	if   dtype == np.int8:       return _bf.BF_DTYPE_I8
-	elif dtype == np.int16:      return _bf.BF_DTYPE_I16
-	elif dtype == np.int32:      return _bf.BF_DTYPE_I32
-	elif dtype == np.uint8:      return _bf.BF_DTYPE_U8
-	elif dtype == np.uint16:     return _bf.BF_DTYPE_U16
-	elif dtype == np.uint32:     return _bf.BF_DTYPE_U32
-	elif dtype == np.float16:    return _bf.BF_DTYPE_F16
-	elif dtype == np.float32:    return _bf.BF_DTYPE_F32
-	elif dtype == np.float64:    return _bf.BF_DTYPE_F64
-	elif dtype == np.float128:   return _bf.BF_DTYPE_F128
-	elif dtype == ci8:           return _bf.BF_DTYPE_CI8
-	elif dtype == ci16:          return _bf.BF_DTYPE_CI16
-	elif dtype == ci32:          return _bf.BF_DTYPE_CI32
-	elif dtype == cf16:          return _bf.BF_DTYPE_CF16
-	elif dtype == np.complex64:  return _bf.BF_DTYPE_CF32
-	elif dtype == np.complex128: return _bf.BF_DTYPE_CF64
-	elif dtype == np.complex256: return _bf.BF_DTYPE_CF128
-	else: raise ValueError("Unsupported dtype: " + str(dtype))
+    if   dtype == np.int8:       return _bf.BF_DTYPE_I8
+    elif dtype == np.int16:      return _bf.BF_DTYPE_I16
+    elif dtype == np.int32:      return _bf.BF_DTYPE_I32
+    elif dtype == np.uint8:      return _bf.BF_DTYPE_U8
+    elif dtype == np.uint16:     return _bf.BF_DTYPE_U16
+    elif dtype == np.uint32:     return _bf.BF_DTYPE_U32
+    elif dtype == np.float16:    return _bf.BF_DTYPE_F16
+    elif dtype == np.float32:    return _bf.BF_DTYPE_F32
+    elif dtype == np.float64:    return _bf.BF_DTYPE_F64
+    elif dtype == np.float128:   return _bf.BF_DTYPE_F128
+    elif dtype == ci8:           return _bf.BF_DTYPE_CI8
+    elif dtype == ci16:          return _bf.BF_DTYPE_CI16
+    elif dtype == ci32:          return _bf.BF_DTYPE_CI32
+    elif dtype == cf16:          return _bf.BF_DTYPE_CF16
+    elif dtype == np.complex64:  return _bf.BF_DTYPE_CF32
+    elif dtype == np.complex128: return _bf.BF_DTYPE_CF64
+    elif dtype == np.complex256: return _bf.BF_DTYPE_CF128
+    else: raise ValueError("Unsupported dtype: " + str(dtype))
 
 def name_nbit2numpy(name, nbit):
-	if   name == 'i':
-		if   nbit == 8:   return np.int8
-		elif nbit == 16:  return np.int16
-		elif nbit == 32:  return np.int32
-		elif nbit == 64:  return np.int64
-		else: raise TypeError("Invalid signed integer type size: %i" % nbit)
-	elif name == 'u':
-		if   nbit == 8:   return np.uint8
-		elif nbit == 16:  return np.uint16
-		elif nbit == 32:  return np.uint32
-		elif nbit == 64:  return np.uint64
-		else: raise TypeError("Invalid unsigned integer type size: %i" % nbit)
-	elif name == 'f':
-		if   nbit == 16:  return np.float16
-		elif nbit == 32:  return np.float32
-		elif nbit == 64:  return np.float64
-		elif nbit == 128: return np.float128
-		else: raise TypeError("Invalid floating-point type size: %i" % nbit)
-	elif name == 'ci':
-		if   nbit == 8:   return ci8
-		elif nbit == 16:  return ci16
-		elif nbit == 32:  return ci32
-	#elif name in set(['ci', 'cu']):
-		## Note: This gives integer types in place of proper complex types
-		#return name_nbit2numpy(name[1:], nbit*2)
-	elif name == 'cf':
-		if   nbit == 16:  return cf16
-		elif nbit == 32:  return np.complex64
-		elif nbit == 64:  return np.complex128
-		elif nbit == 128: return np.complex256
-		else: raise TypeError("Invalid complex floating-point type size: %i" % nbit)
-	else:
-		raise TypeError("Invalid type name: " + name)
+    if   name == 'i':
+        if   nbit == 8:   return np.int8
+        elif nbit == 16:  return np.int16
+        elif nbit == 32:  return np.int32
+        elif nbit == 64:  return np.int64
+        else: raise TypeError("Invalid signed integer type size: %i" % nbit)
+    elif name == 'u':
+        if   nbit == 8:   return np.uint8
+        elif nbit == 16:  return np.uint16
+        elif nbit == 32:  return np.uint32
+        elif nbit == 64:  return np.uint64
+        else: raise TypeError("Invalid unsigned integer type size: %i" % nbit)
+    elif name == 'f':
+        if   nbit == 16:  return np.float16
+        elif nbit == 32:  return np.float32
+        elif nbit == 64:  return np.float64
+        elif nbit == 128: return np.float128
+        else: raise TypeError("Invalid floating-point type size: %i" % nbit)
+    elif name == 'ci':
+        if   nbit == 8:   return ci8
+        elif nbit == 16:  return ci16
+        elif nbit == 32:  return ci32
+    # elif name in set(['ci', 'cu']):
+        # Note: This gives integer types in place of proper complex types
+        # return name_nbit2numpy(name[1:], nbit*2)
+    elif name == 'cf':
+        if   nbit == 16:  return cf16
+        elif nbit == 32:  return np.complex64
+        elif nbit == 64:  return np.complex128
+        elif nbit == 128: return np.complex256
+        else: raise TypeError("Invalid complex floating-point type size: %i" %
+                              nbit)
+    else:
+        raise TypeError("Invalid type name: " + name)
 def string2numpy(dtype_str):
-	return name_nbit2numpy(*split_name_nbit(dtype_str))
+    return name_nbit2numpy(*split_name_nbit(dtype_str))
 
 def numpy2string(dtype):
-	if   dtype == np.int8:       return 'i8'
-	elif dtype == np.int16:      return 'i16'
-	elif dtype == np.int32:      return 'i32'
-	elif dtype == np.int64:      return 'i64'
-	elif dtype == np.uint8:      return 'u8'
-	elif dtype == np.uint16:     return 'u16'
-	elif dtype == np.uint32:     return 'u32'
-	elif dtype == np.uint64:     return 'u64'
-	elif dtype == np.float16:    return 'f16'
-	elif dtype == np.float32:    return 'f32'
-	elif dtype == np.float64:    return 'f64'
-	elif dtype == np.float128:   return 'f128'
-	elif dtype == np.complex64:  return 'cf32'
-	elif dtype == np.complex128: return 'cf64'
-	elif dtype == np.complex256: return 'cf128'
-	else: raise TypeError("Unsupported dtype: " + str(dtype))
+    if   dtype == np.int8:       return 'i8'
+    elif dtype == np.int16:      return 'i16'
+    elif dtype == np.int32:      return 'i32'
+    elif dtype == np.int64:      return 'i64'
+    elif dtype == np.uint8:      return 'u8'
+    elif dtype == np.uint16:     return 'u16'
+    elif dtype == np.uint32:     return 'u32'
+    elif dtype == np.uint64:     return 'u64'
+    elif dtype == np.float16:    return 'f16'
+    elif dtype == np.float32:    return 'f32'
+    elif dtype == np.float64:    return 'f64'
+    elif dtype == np.float128:   return 'f128'
+    elif dtype == np.complex64:  return 'cf32'
+    elif dtype == np.complex128: return 'cf64'
+    elif dtype == np.complex256: return 'cf128'
+    else: raise TypeError("Unsupported dtype: " + str(dtype))

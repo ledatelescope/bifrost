@@ -1,5 +1,4 @@
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -54,7 +53,8 @@ class TestTestingBlock(unittest.TestCase):
     def setUp(self):
         """Initiate blocks list with write asciiBlock"""
         self.blocks = []
-        self.blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), [0], []))
+        self.blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3 * 4),
+                            [0], []))
     def test_simple_dump(self):
         """Input some numbers, and ensure they are written to a file"""
         self.blocks.append((TestingBlock([1, 2, 3]), [], [0]))
@@ -64,11 +64,12 @@ class TestTestingBlock(unittest.TestCase):
     def test_multi_dimensional_input(self):
         """Input a 2 dimensional list, and have this printed"""
         test_array = [[1, 2], [3, 4]]
-        self.blocks[0] = (WriteAsciiBlock('.log.txt', gulp_size=4*4), [0], [])
+        self.blocks[0] = (WriteAsciiBlock('.log.txt', gulp_size=4 * 4),
+                          [0], [])
         self.blocks.append((TestingBlock(test_array), [], [0]))
         self.blocks.append((WriteHeaderBlock('.log2.txt'), [0], []))
         Pipeline(self.blocks).main()
-        header = eval(open('.log2.txt').read()) #pylint:disable=eval-used
+        header = eval(open('.log2.txt').read()) # pylint:disable=eval-used
         dumped_numbers = np.loadtxt('.log.txt').reshape(header['shape'])
         np.testing.assert_almost_equal(dumped_numbers, test_array)
 class TestCopyBlock(unittest.TestCase):
@@ -98,7 +99,7 @@ class TestCopyBlock(unittest.TestCase):
         logfile = '.log.txt'
         for i in range(10):
             self.blocks.append(
-                (CopyBlock(), [i], [i+1]))
+                (CopyBlock(), [i], [i + 1]))
         self.blocks.append((WriteAsciiBlock(logfile), [10], []))
         Pipeline(self.blocks).main()
         test_byte = open(logfile, 'r').read(1)
@@ -192,7 +193,7 @@ class TestFoldBlock(unittest.TestCase):
         histogram = self.dump_ring_and_read()
         self.assertTrue(np.min(histogram) > 1e-10)
         self.assertGreater(
-            np.max(histogram)/np.average(histogram), 5)
+            np.max(histogram) / np.average(histogram), 5)
     def test_many_channels(self):
         """See if many channels work with folding"""
         self.blocks[0] = (
@@ -204,7 +205,7 @@ class TestFoldBlock(unittest.TestCase):
         histogram = self.dump_ring_and_read()
         self.assertTrue(np.min(histogram) > 1e-10)
         self.assertGreater(
-            np.max(histogram)/np.min(histogram), 3)
+            np.max(histogram) / np.min(histogram), 3)
     def test_high_dispersion(self):
         """Test folding on a file with high DM"""
         self.blocks[0] = (
@@ -217,7 +218,7 @@ class TestFoldBlock(unittest.TestCase):
         histogram = self.dump_ring_and_read()
         self.assertTrue(np.min(histogram) > 1e-10)
         self.assertGreater(
-            np.max(histogram)/np.min(histogram), 3)
+            np.max(histogram) / np.min(histogram), 3)
         #TODO: Test to break bfmemcpy2D for lack of float32 functionality?
 class TestKurtosisBlock(unittest.TestCase):
     """This tests functionality of the KurtosisBlock."""
@@ -247,7 +248,7 @@ class TestFFTBlock(unittest.TestCase):
             SigprocReadBlock(
                 './data/1chan8bitNoDM.fil'),
             [], [0]))
-        self.blocks.append((FFTBlock(gulp_size=4096*8*8*8), [0], [1]))
+        self.blocks.append((FFTBlock(gulp_size=4096 * 8 * 8 * 8), [0], [1]))
         self.blocks.append((WriteAsciiBlock(self.logfile), [1], []))
     def test_throughput(self):
         """Test that any data is being put through"""
@@ -260,11 +261,11 @@ class TestFFTBlock(unittest.TestCase):
         number_fftd = len(open(self.logfile, 'r').read().split('\n'))
         number_fftd = np.loadtxt(self.logfile).size
         open(self.logfile, 'w').close()
-        ## Run pipeline again with simple copy
+        # Run pipeline again with simple copy
         self.blocks[1] = (CopyBlock(), [0], [1])
         Pipeline(self.blocks).main()
         number_copied = np.loadtxt(self.logfile).size
-        self.assertAlmostEqual(number_fftd, 2*number_copied)
+        self.assertAlmostEqual(number_fftd, 2 * number_copied)
     @unittest.skip("Inexplicably flaky test")
     def test_data_sizes(self):
         """Test that different number of bits give correct throughput size"""
@@ -274,7 +275,7 @@ class TestFFTBlock(unittest.TestCase):
                 continue
             self.blocks[0] = (
                 SigprocReadBlock(
-                    './data/2chan'+ str(nbit) + 'bitNoDM.fil'),
+                    './data/2chan' + str(nbit) + 'bitNoDM.fil'),
                 [], [0])
             open(self.logfile, 'w').close()
             Pipeline(self.blocks).main()
@@ -286,7 +287,7 @@ class TestFFTBlock(unittest.TestCase):
             number_copied = np.loadtxt(self.logfile).size
             self.assertEqual(number_fftd, number_copied)
             # Go back to FFT
-            self.blocks[1] = (FFTBlock(gulp_size=4096*8*8*8), [0], [1])
+            self.blocks[1] = (FFTBlock(gulp_size=4096 * 8 * 8 * 8), [0], [1])
     def test_fft_result(self):
         """Make sure that fft matches what it should!"""
         open(self.logfile, 'w').close()
@@ -306,7 +307,7 @@ class TestIFFTBlock(unittest.TestCase):
         self.blocks = []
         test_array = [1, 2, 3]
         self.blocks.append((TestingBlock(test_array), [], [0]))
-        self.blocks.append((IFFTBlock(gulp_size=3*4), [0], [1]))
+        self.blocks.append((IFFTBlock(gulp_size=3 * 4), [0], [1]))
         self.blocks.append((WriteAsciiBlock(self.logfile), [1], []))
         open(self.logfile, 'w').close()
         Pipeline(self.blocks).main()
@@ -322,8 +323,8 @@ class TestIFFTBlock(unittest.TestCase):
             SigprocReadBlock(
                 './data/1chan8bitNoDM.fil'),
             [], [0]))
-        self.blocks.append((FFTBlock(gulp_size=4096*8*8*8*8), [0], [1]))
-        self.blocks.append((IFFTBlock(gulp_size=4096*8*8*8*8), [1], [2]))
+        self.blocks.append((FFTBlock(gulp_size=4096 * 8 * 8 * 8 * 8), [0], [1]))
+        self.blocks.append((IFFTBlock(gulp_size=4096 * 8 * 8 * 8 * 8), [1], [2]))
         self.blocks.append((WriteAsciiBlock(self.logfile), [2], []))
         open(self.logfile, 'w').close()
         Pipeline(self.blocks).main()
@@ -341,7 +342,7 @@ class TestPipeline(unittest.TestCase):
         """Name the rings instead of numerating them"""
         blocks = []
         blocks.append((TestingBlock([1, 2, 3]), [], ['ring1']))
-        blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), ['ring1'], []))
+        blocks.append((WriteAsciiBlock('.log.txt', gulp_size=3 * 4), ['ring1'], []))
         open('.log.txt', 'w').close()
         Pipeline(blocks).main()
         result = np.loadtxt('.log.txt').astype(np.float32)
@@ -352,7 +353,7 @@ class TestPipeline(unittest.TestCase):
         block_set_two = []
         ring1 = Ring()
         block_set_one.append((TestingBlock([1, 2, 3]), [], [ring1]))
-        block_set_two.append((WriteAsciiBlock('.log.txt', gulp_size=3*4), [ring1], []))
+        block_set_two.append((WriteAsciiBlock('.log.txt', gulp_size=3 * 4), [ring1], []))
         open('.log.txt', 'w').close()
         Pipeline(block_set_one).main() # The ring should communicate between the pipelines
         Pipeline(block_set_two).main()
@@ -371,16 +372,16 @@ class TestMultiTransformBlock(unittest.TestCase):
         blocks.append([TestingBlock([1, 2]), [], [4]])
         blocks.append([
             MultiAddBlock(),
-            {'in_1': 0, 'in_2':1, 'out_sum': 'first_sum'}])
+            {'in_1': 0, 'in_2': 1, 'out_sum': 'first_sum'}])
         blocks.append([
             MultiAddBlock(),
-            {'in_1': 2, 'in_2':3, 'out_sum': 'second_sum'}])
+            {'in_1': 2, 'in_2': 3, 'out_sum': 'second_sum'}])
         blocks.append([
             MultiAddBlock(),
-            {'in_1': 'first_sum', 'in_2':'second_sum', 'out_sum': 'third_sum'}])
+            {'in_1': 'first_sum', 'in_2': 'second_sum', 'out_sum': 'third_sum'}])
         blocks.append([
             MultiAddBlock(),
-            {'in_1': 'third_sum', 'in_2':4, 'out_sum': my_ring}])
+            {'in_1': 'third_sum', 'in_2': 4, 'out_sum': my_ring}])
         def assert_result_of_addition(array):
             """Make sure that the above arrays add up to what we expect"""
             np.testing.assert_almost_equal(array, [18, 14])
@@ -392,13 +393,13 @@ class TestMultiTransformBlock(unittest.TestCase):
         blocks.append([TestingBlock([1, 2]), [], [0]])
         blocks.append([
             MultiAddBlock(),
-            {'in_2':0, 'out_sum': 1}])
+            {'in_2': 0, 'out_sum': 1}])
         blocks.append([WriteAsciiBlock('.log.txt'), [1], []])
         with self.assertRaises(AssertionError):
             Pipeline(blocks).main()
         blocks[1] = [
             MultiAddBlock(),
-            {'bad_ring_name':0, 'in_2':0, 'out_sum': 1}]
+            {'bad_ring_name': 0, 'in_2': 0, 'out_sum': 1}]
         with self.assertRaises(AssertionError):
             Pipeline(blocks).main()
     def test_multiple_sequences(self):
@@ -407,12 +408,12 @@ class TestMultiTransformBlock(unittest.TestCase):
         def generate_different_arrays():
             """Yield four different groups of two arrays"""
             dtypes = ['float32', 'float64', 'complex64', 'int8']
-            shapes = [(4,), (4, 5), (4, 5, 6), (2,)*8]
+            shapes = [(4,), (4, 5), (4, 5, 6), (2,) * 8]
             for array_index in range(4):
                 yield np.ones(
                     shape=shapes[array_index],
                     dtype=dtypes[array_index])
-                yield 2*np.ones(
+                yield 2 * np.ones(
                     shape=shapes[array_index],
                     dtype=dtypes[array_index])
 
@@ -435,7 +436,7 @@ class TestMultiTransformBlock(unittest.TestCase):
 
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 8)
-    
+
     def test_two_sequences(self):
         """Make sure multiple sequences only triggered for different headers"""
 
@@ -473,7 +474,7 @@ class TestMultiTransformBlock(unittest.TestCase):
                     self.all_sequence_starts.append(int(span_gen.next().data[0]))
             self.i += 1
             return array
-                
+
         self.monitor_block = NumpyBlock(monitor_block_sequences)
         blocks = [
             (NumpySourceBlock(generate_two_different_arrays), {'out_1': 0}),
@@ -490,7 +491,7 @@ class TestSplitterBlock(unittest.TestCase):
         """Try to split up a single array in half, and dump to file"""
         blocks = []
         blocks.append([TestingBlock([1, 2]), [], [0]])
-        blocks.append([SplitterBlock([[0], [1]]), {'in': 0, 'out_1':1, 'out_2':2}])
+        blocks.append([SplitterBlock([[0], [1]]), {'in': 0, 'out_1': 1, 'out_2': 2}])
         blocks.append([WriteAsciiBlock('.log1.txt', gulp_size=4), [1], []])
         blocks.append([WriteAsciiBlock('.log2.txt', gulp_size=4), [2], []])
         Pipeline(blocks).main()
@@ -498,7 +499,7 @@ class TestSplitterBlock(unittest.TestCase):
         second_log = np.loadtxt('.log2.txt')
         self.assertEqual(first_log.size, 1)
         self.assertEqual(second_log.size, 1)
-        np.testing.assert_almost_equal(first_log+1, second_log)
+        np.testing.assert_almost_equal(first_log + 1, second_log)
 class TestNumpyBlock(unittest.TestCase):
     """Tests for a block which can call arbitrary functions that work on numpy arrays.
         This should include the many numpy, scipy and astropy functions.
@@ -542,7 +543,7 @@ class TestNumpyBlock(unittest.TestCase):
         def first_half(array):
             """Only return the first half of the input vector"""
             array = np.array(array)
-            return array[:int(array.size/2)]
+            return array[:int(array.size / 2)]
         self.blocks.append([
             NumpyBlock(function=first_half),
             {'in_1': 0, 'out_1': 1}])
@@ -575,12 +576,12 @@ class TestNumpyBlock(unittest.TestCase):
         for index in range(number_inputs):
             self.blocks.append([
                 NumpyBlock(function=np.copy),
-                {'in_1': 0, 'out_1': index+2}])
-            connections['in_'+str(index+2)] = index+2
+                {'in_1': 0, 'out_1': index + 2}])
+            connections['in_' + str(index + 2)] = index + 2
         self.blocks.append([
-            NumpyBlock(function=dstack_handler, inputs=len(connections)-1),
+            NumpyBlock(function=dstack_handler, inputs=len(connections) - 1),
             connections])
-        self.expected_result = np.dstack((self.test_array,)*(len(connections)-1)).ravel()
+        self.expected_result = np.dstack((self.test_array,) * (len(connections) - 1)).ravel()
     def test_two_outputs(self):
         """Test that two output rings work by copying input data to both"""
         def double(array):
@@ -604,9 +605,9 @@ class TestNumpyBlock(unittest.TestCase):
             #Simple 1 to 1 copy block
             self.blocks.append([
                 NumpyBlock(function=np.copy),
-                {'in_1': 0, 'out_1': index+2}])
-            connections['in_'+str(index+1)] = index+2
-            connections['out_'+str(index+1)] = index+2+number_rings
+                {'in_1': 0, 'out_1': index + 2}])
+            connections['in_' + str(index + 1)] = index + 2
+            connections['out_' + str(index + 1)] = index + 2 + number_rings
         #Copy all inputs to all outputs
         self.blocks.append([
             NumpyBlock(function=identity, inputs=number_rings, outputs=number_rings),
@@ -614,13 +615,13 @@ class TestNumpyBlock(unittest.TestCase):
         second_connections = {}
         for key in connections:
             if key[:3] == 'out':
-                second_connections['in'+key[3:]] = int(connections[key])
+                second_connections['in' + key[3:]] = int(connections[key])
         second_connections['out_1'] = 1
         #Stack N input rings into 1 output ring
         self.blocks.append([
             NumpyBlock(function=dstack_handler, inputs=number_rings, outputs=1),
             second_connections])
-        self.expected_result = np.dstack((self.test_array,)*(len(second_connections)-1)).ravel()
+        self.expected_result = np.dstack((self.test_array,) * (len(second_connections) - 1)).ravel()
     def test_zero_outputs(self):
         """Test zero outputs on NumpyBlock. Nothing should be sent through self.function at init"""
         def assert_something(array):
@@ -694,7 +695,7 @@ class TestNumpySourceBlock(unittest.TestCase):
         def generate_many_arrays():
             """Put out 10x10 numpy arrays"""
             for _ in range(10):
-                yield (np.array([1, 2, 3, 4]).astype(np.float32),)*10
+                yield (np.array([1, 2, 3, 4]).astype(np.float32),) * 10
         def assert_expectation(*args):
             """Assert the arrays are as expected"""
             assert len(args) == 10
@@ -704,10 +705,10 @@ class TestNumpySourceBlock(unittest.TestCase):
         blocks = []
         blocks.append((
             NumpySourceBlock(generate_many_arrays, outputs=10),
-            {'out_%d'%(i+1):i for i in range(10)}))
+            {'out_%d' % (i + 1): i for i in range(10)}))
         blocks.append((
             NumpyBlock(assert_expectation, inputs=10, outputs=0),
-            {'in_%d'%(i+1):i for i in range(10)}))
+            {'in_%d' % (i + 1): i for i in range(10)}))
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 10)
     def test_different_types(self):
@@ -718,7 +719,7 @@ class TestNumpySourceBlock(unittest.TestCase):
             for array_type in ['float32', 'float64', 'int8', 'uint8']:
                 numpy_type = np.dtype(array_type).type
                 arrays.append(np.array([1, 2, 3, 4]).astype(numpy_type))
-            arrays.append(np.array([1+10j]))
+            arrays.append(np.array([1 + 10j]))
             yield arrays
         def assert_expectation(*args):
             """Assert the arrays are as expected"""
@@ -727,14 +728,14 @@ class TestNumpySourceBlock(unittest.TestCase):
             for index, array_type in enumerate(['float32', 'float64', 'int8', 'uint8']):
                 self.assertTrue(str(args[index].dtype) == array_type)
                 np.testing.assert_almost_equal(args[index], [1, 2, 3, 4])
-            np.testing.assert_almost_equal(args[-1], np.array([1+10j]))
+            np.testing.assert_almost_equal(args[-1], np.array([1 + 10j]))
         blocks = []
         blocks.append((
             NumpySourceBlock(generate_different_type_arrays, outputs=5),
-            {'out_%d'%(i+1):i for i in range(5)}))
+            {'out_%d' % (i + 1): i for i in range(5)}))
         blocks.append((
             NumpyBlock(assert_expectation, inputs=5, outputs=0),
-            {'in_%d'%(i+1):i for i in range(5)}))
+            {'in_%d' % (i + 1): i for i in range(5)}))
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 1)
     def test_header_output(self):

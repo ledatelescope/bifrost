@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +30,7 @@
 
 #include <bifrost/common.h>
 #include <bifrost/array.h>
+#include "int_fastdiv.h"
 
 #include <cufft.h>
 #include <cufftXt.h>
@@ -97,9 +97,19 @@ inline BFstatus bifrost_status(cufftResult status) {
 
 struct CallbackData {
 	int ptr_offset;
+	int ndim;
+	// Note: These array sizes must be at least the max supported FFT rank
+	int shape[3];
+	bool inverse;
+	bool do_fftshift;
+	int_fastdiv istrides[3]; // Note: Elements, not bytes
+	int_fastdiv inembed[3];  // Note: Elements, not bytes
+	void* data;
 };
 
 BFstatus set_fft_load_callback(BFdtype       dtype,
                                int           nbit,
                                cufftHandle   handle,
-                               CallbackData* callback_data);
+                               bool          do_fftshift,
+                               CallbackData* callback_data,
+                               bool*         using_callback);

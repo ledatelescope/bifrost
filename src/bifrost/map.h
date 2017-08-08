@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,13 +43,24 @@ extern "C" {
 /*! \p bfMap applies a user-defined indexing and transformation function to a
  *     set of arrays.
  *
- *  \param ndim       The number of dimensions of the computation
- *  \param shape      The shape of the computation; an array of length \p ndim
- *  \param axis_names The name by which each dimension can be referenced; an array of length \p ndim, or NULL
- *  \param narg       The number of BFarrays to operate on
- *  \param args       The BFarrays to operate on; an array of length \p narg
- *  \param arg_names  The names by which each BFarray can be referenced; an array of length \p narg
- *  \param func       The function to apply to the arrays; a string containing executable code
+ *  \param ndim        The number of dimensions of the computation
+ *  \param shape       The shape of the computation; an array of length \p ndim
+ *  \param axis_names  The name by which each dimension can be referenced; an array of length \p ndim, or NULL
+ *  \param narg        The number of BFarrays to operate on
+ *  \param args        The BFarrays to operate on; an array of length \p narg
+ *  \param arg_names   The names by which each BFarray can be referenced; an array of length \p narg
+ *  \param func_name   [optional] Name of the function, for debugging purposes
+ *  \param func        The function to apply to the arrays; a string containing executable code
+ *  \param extra_code  [optional] A string containing executable code to be included at global scope
+ *  \param block_shape The 2D shape of the thread block (y,x) with which the kernel is launched.
+ *                       This is a performance tuning parameter.
+ *                       If NULL, a heuristic is used to select the block shape.
+ *                       Changes to this parameter do _not_ require re-compilation of the kernel.
+ *  \param block_axes  The 2 computation axes to which the thread block (y,x) is mapped.
+ *                        This is a performance tuning parameter.
+ *                        If NULL, a heuristic is used to select the block axes.
+ *                        Values may be negative for reverse indexing.
+ *                        Changes to this parameter _do_ require re-compilation of the kernel.
  *  \return One of the following error codes: \n
  *  \p BF_STATUS_SUCCESS, \p BF_STATUS_INVALID_SPACE,
  *  \p BF_STATUS_INVALID_POINTER, \p BF_STATUS_INVALID_STRIDE,
@@ -60,7 +70,7 @@ extern "C" {
  *        as CUDA device code. Examples:\n
  *        \code{.cpp} "c(i,j,k) = a(i,k) + b" // Using axis_names = {"i", "j", "k"}\endcode
  *        \code{.cpp} "z(_) = x(_) * y(_ - y.shape()/2)"    // Using the built-in index array "_"\endcode
- *        \code{.cpp} "out(i) = in((i + shift) % in.shape(0))" // Using the shape of an array
+ *        \code{.cpp} "out(i) = in((i + shift) % in.shape(0))" // Using the shape of an array\endcode
  *        Broadcasting, negative indexing, and complex math are also supported.
  *  \note Any BFarrays that are immutable, have shape=[1] and are accessible
  *        from system memory are treated as scalars, and must be accessed as,
@@ -75,7 +85,11 @@ BFstatus bfMap(int                  ndim,
                int                  narg,
                BFarray const*const* args,
                char const*const*    arg_names,
-               char const*          func);
+               char const*          func_name,
+               char const*          func,
+               char const*          extra_code,
+               int const*           block_shape, // Must be array of length 2, or NULL
+               int const*           block_axes); // Must be array of length 2, or NULL
 
 #ifdef __cplusplus
 } // extern "C"

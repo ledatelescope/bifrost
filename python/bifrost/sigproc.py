@@ -1,6 +1,5 @@
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -105,7 +104,7 @@ _TELESCOPES = defaultdict(lambda: 'unknown',
                            2:  'Ooty',
                            3:  'Nancay',
                            4:  'Parkes',
-                           5:  'Jodrell',#'Lovell',
+                           5:  'Jodrell', # 'Lovell',
                            6:  'GBT',
                            7:  'GMRT',
                            8:  'Effelsberg',
@@ -237,9 +236,9 @@ def pack(data, nbit):
         raise ValueError("unpack: nbit must divide into 8")
     if data.dtype not in (np.uint8, np.int8):
         raise TypeError("unpack: dtype must be 8-bit")
-    outdata = np.zeros(data.size/(8/nbit)).astype('uint8')
-    for index in range(1, 8/nbit):
-        outdata += data[index::8/nbit]/(2**nbit)**index
+    outdata = np.zeros(data.size / (8 / nbit)).astype('uint8')
+    for index in range(1, 8 / nbit):
+        outdata += data[index::8 / nbit] / (2**nbit)**index
     return outdata
 
 def _write_data(data, nbit, file_object):
@@ -262,18 +261,18 @@ def unpack(data, nbit):
         return data
     elif nbit == 4:
         # Note: This technique assumes LSB-first ordering
-        tmpdata = data.astype(np.int16)#np.empty(upshape, dtype=np.int16)
+        tmpdata = data.astype(np.int16)
         tmpdata = (tmpdata | (tmpdata <<  8)) & 0x0F0F
         tmpdata = tmpdata << 4 # Shift into high bits to avoid needing to sign extend
         updata = tmpdata
     elif nbit == 2:
-        tmpdata = data.astype(np.int32)#np.empty(upshape, dtype=np.int16)
+        tmpdata = data.astype(np.int32)
         tmpdata = (tmpdata | (tmpdata << 16)) & 0x000F000F
         tmpdata = (tmpdata | (tmpdata <<  8)) & 0x03030303
         tmpdata = tmpdata << 6 # Shift into high bits to avoid needing to sign extend
         updata = tmpdata
     elif nbit == 1:
-        tmpdata = data.astype(np.int64)#np.empty(upshape, dtype=np.int16)
+        tmpdata = data.astype(np.int64)
         tmpdata = (tmpdata | (tmpdata << 32)) & 0x0000000F0000000F
         tmpdata = (tmpdata | (tmpdata << 16)) & 0x0003000300030003
         tmpdata = (tmpdata | (tmpdata <<  8)) & 0x0101010101010101
@@ -339,15 +338,15 @@ class SigprocFile(SigprocSettings):
         curpos = self.file_object.tell()
         self.file_object.seek(0, 2) # Seek to end of file
         frame_bits = self.header['nifs'] * self.header['nchans'] * self.header['nbits']
-        nframe = (self.file_object.tell() - curpos)*8 / frame_bits
+        nframe = (self.file_object.tell() - curpos) * 8 // frame_bits
         return nframe
     def get_nframe(self):
         """calculate the number of frames from the data"""
-        if self.data.size%self.nifs != 0:
+        if self.data.size % self.nifs != 0:
             raise ValueError
-        elif self.data.size/self.nifs%self.nchans != 0:
+        elif self.data.size // self.nifs % self.nchans != 0:
             raise ValueError
-        nframe = self.data.size/self.nifs/self.nchans
+        nframe = self.data.size // self.nifs // self.nchans
         return nframe
     def read_header(self):
         """reads in a header from the file and sets local settings"""
@@ -358,21 +357,21 @@ class SigprocFile(SigprocSettings):
         nframe = self._find_nframe_from_file()
         seek_to_data(self.file_object)
         read_start = 0
-        end_read = nframe*self.nifs*self.nchans
+        end_read = nframe * self.nifs * self.nchans
         if start is not None:
             if start < 0:
-                read_start = (nframe+start)*self.nifs*self.nchans
+                read_start = (nframe + start) * self.nifs * self.nchans
             elif start >= 0:
-                read_start = start*self.nifs*self.nchans
+                read_start = start * self.nifs * self.nchans
         if end is not None:
             if end < 0:
-                end_read = (nframe+end)*self.nifs*self.nchans
+                end_read = (nframe + end) * self.nifs * self.nchans
             elif end >= 0:
-                end_read = end*self.nifs*self.nchans
+                end_read = end * self.nifs * self.nchans
         self.file_object.seek(read_start, os.SEEK_CUR)
-        nbytes_to_read = end_read-read_start
+        nbytes_to_read = end_read - read_start
         data = np.fromfile(self.file_object, count=nbytes_to_read, dtype=self.dtype)
-        nframe = data.size/self.nifs/self.nchans
+        nframe = data.size // self.nifs // self.nchans
         data = data.reshape((nframe, self.nifs, self.nchans))
         if self.nbits < 8:
             data = unpack(data, self.nbits)
@@ -385,7 +384,7 @@ class SigprocFile(SigprocSettings):
         _write_data(self.data, self.nbits, file_object)
     def append_data(self, input_data):
         """append data to local data and file"""
-        input_frames = input_data.size/self.nifs/self.nchans
+        input_frames = input_data.size // self.nifs // self.nchans
         input_shape = (input_frames, self.nifs, self.nchans)
         input_data = np.reshape(input_data.flatten(), input_shape)
         if any(character in self.mode for character in 'w+a'):
