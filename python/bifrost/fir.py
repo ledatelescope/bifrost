@@ -34,27 +34,27 @@ import ctypes
 import numpy as np
 
 class FIR(object):
-	def __init__(self):
-		self.obj = _get(_bf.FIRCreate(), retarg=0)
-	def __del__(self):
-		if hasattr(self, 'obj') and bool(self.obj):
-			_bf.FIRDestroy(self.obj)
-		try:
-			del self._prots
-		except AttributeError:
-			pass
-	def init(self, ncoeff, decim, ntime, nstand, space='cuda'):
-		space = _string2space(space)
-		psize = None
-		_check( _bf.FIRInit(self.obj, ncoeff, decim, ntime, nstand, space, 0, psize) )
-	def set_coeffs(self, coeffs):
-		_check( _bf.FIRSetCoeffs(self.obj, 
-		                         asarray(coeffs).as_BFarray()) )
-	def reset_state(self):
-		_check( _bf.FIRResetState(self.obj) )
-	def execute(self, idata, odata):
-		# TODO: Work out how to integrate CUDA stream
-		_check( _bf.FIRExecute(self.obj,
-		                        asarray(idata).as_BFarray(),
-		                        asarray(odata).as_BFarray()) )
-		return odata
+    def __init__(self):
+        self.obj = _get(_bf.FIRCreate(), retarg=0)
+    def __del__(self):
+        if hasattr(self, 'obj') and bool(self.obj):
+            _bf.FIRDestroy(self.obj)
+        try:
+            del self._prots
+        except AttributeError:
+            pass
+    def init(self, ncoeff, decim, ntime, nstand, space='cuda'):
+        space = _string2space(space)
+        psize = None
+        _check( _bf.FIRInit(self.obj, ncoeff, decim, ntime, nstand, space, 0, psize) )
+    def set_coeffs(self, coeffs):
+        _check( _bf.FIRSetCoeffs(self.obj, 
+                                 asarray(coeffs).as_BFarray()) )
+    def reset_state(self):
+        _check( _bf.FIRResetState(self.obj) )
+    def execute(self, idata, odata):
+        # TODO: Work out how to integrate CUDA stream
+        _check( _bf.FIRExecute(self.obj,
+                                asarray(idata).as_BFarray(),
+                                asarray(odata).as_BFarray()) )
+        return odata
