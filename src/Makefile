@@ -29,6 +29,7 @@ ifndef NOCUDA
   map.o \
   trace.o \
   linalg.o \
+  fir.o \
   #correlate.o \
   blas.o \
   transform.o
