@@ -3,7 +3,7 @@ sudo: required
 language: python
 
 python:
-    - "2.7"
+    - 2.7
     # PyPy versions
     - pypy-5.4.1
 
@@ -25,11 +25,10 @@ addons:
 jobs:
     include:
         - stage: build docker image
-        - script:
-            - make docker-cpu
+          script: make docker-cpu
         - stage: deploy
-            python: "2.7"
-            script: bash ./.travis_deploy_docs.sh
+          python: 2.7
+          script: bash ./.travis_deploy_docs.sh
 
 
 install:
