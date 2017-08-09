@@ -62,7 +62,7 @@ ifndef NOCUDA
 else
 	@echo -n "Building CUDA as CPU-only C++ source file $<\r"
 	@$(DEPBUILD.cc) $< > /dev/null
-        $(COMPILE.ccnv) $(OUTPUT_OPTION) $<
+	$(COMPILE.ccnv) $(OUTPUT_OPTION) $<
 endif
 	@$(POSTCOMPILE)
 
