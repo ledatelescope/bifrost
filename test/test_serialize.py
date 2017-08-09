@@ -25,6 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# TODO: Add tests for data streams spanning multiple files
+
 import unittest
 import bifrost as bf
 
@@ -59,6 +61,10 @@ def get_sigproc_file_size(filename):
     file_size = os.path.getsize(filename)
     data_size = file_size - hdr_size
     return hdr_size, data_size
+
+def rename_sequence(hdr, name):
+    hdr['name'] = name
+    return hdr
 
 def rename_sequence(hdr, name):
     hdr['name'] = name
@@ -135,6 +141,52 @@ class SerializeTest(unittest.TestCase):
                 hdrpath  = self.basepath + '.bf.json'
                 datpath0 = self.basepath + '.bf.' + '0' * 12 + '.0.dat'
                 datpath1 = self.basepath + '.bf.' + '0' * 12 + '.1.dat'
+                self.assertTrue(os.path.exists(hdrpath))
+                self.assertTrue(os.path.exists(datpath0))
+                self.assertTrue(os.path.exists(datpath1))
+                self.assertEqual(os.path.getsize(datpath0),
+                                 self.data_size // 2)
+                self.assertEqual(os.path.getsize(datpath1),
+                                 self.data_size // 2)
+    def test_deserialize_no_ringlets(self):
+        with TemporaryDirectory(self.temp_path):
+            with bf.Pipeline() as pipeline:
+                data = read_sigproc([self.fil_file], self.gulp_nframe)
+                serialize(data, self.temp_path)
+                pipeline.run()
+                datpath = self.basepath + '.bf.' + '0' * 12 + '.dat'
+            with bf.Pipeline() as pipeline:
+                data = deserialize([self.basepath + '.bf'], self.gulp_nframe)
+                # Note: Must rename the sequence to avoid overwriting the input
+                #         file.
+                data = bf.views.custom(
+                    data, lambda hdr: rename_sequence(hdr, hdr['name'] + '.2'))
+                serialize(data, self.temp_path)
+                pipeline.run()
+                datpath = self.basepath + '.2.bf.' + '0' * 12 + '.dat'
+                with open(datpath, 'rb') as f:
+                    data = f.read()
+                    self.assertEqual(len(data), len(self.data))
+                    self.assertEqual(data, self.data)
+    def test_deserialize_with_ringlets(self):
+        with TemporaryDirectory(self.temp_path):
+            with bf.Pipeline() as pipeline:
+                data = read_sigproc([self.fil_file], self.gulp_nframe)
+                data = transpose(data, ['freq', 'time', 'pol'])
+                serialize(data, self.temp_path)
+                pipeline.run()
+                datpath = self.basepath + '.bf.' + '0' * 12 + '.dat'
+            with bf.Pipeline() as pipeline:
+                data = deserialize([self.basepath + '.bf'], self.gulp_nframe)
+                # Note: Must rename the sequence to avoid overwriting the input
+                #         file.
+                data = bf.views.custom(
+                    data, lambda hdr: rename_sequence(hdr, hdr['name'] + '.2'))
+                serialize(data, self.temp_path)
+                pipeline.run()
+                hdrpath  = self.basepath + '.2.bf.json'
+                datpath0 = self.basepath + '.2.bf.' + '0' * 12 + '.0.dat'
+                datpath1 = self.basepath + '.2.bf.' + '0' * 12 + '.1.dat'
                 self.assertTrue(os.path.exists(hdrpath))
                 self.assertTrue(os.path.exists(datpath0))
                 self.assertTrue(os.path.exists(datpath1))

@@ -45,7 +45,7 @@ from .unpack import unpack, UnpackBlock
 from .quantize import quantize, QuantizeBlock
 from .wav import read_wav, WavSourceBlock
 from .wav import write_wav, WavSinkBlock
-from .serialize import serialize, SerializeBlock
+from .serialize import serialize, SerializeBlock, deserialize, DeserializeBlock
 from .reduce import reduce, ReduceBlock
 
 try: # Avoid error if portaudio library not installed

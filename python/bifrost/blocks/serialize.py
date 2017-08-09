@@ -27,13 +27,140 @@
 
 from __future__ import absolute_import
 
-from bifrost.pipeline import SinkBlock
+from bifrost.pipeline import SinkBlock, SourceBlock
 import os
 try:
     import simplejson as json
 except ImportError:
     print "WARNING: Install simplejson for better performance"
     import json
+import glob
+
+def _parse_bifrost_filename(fname):
+    inds = fname[fname.find('.bf.') + 4:].split('.')[:-1]
+    inds = [int(i) for i in inds]
+    frame0, ringlet_inds = inds[0], inds[1:]
+    return frame0, ringlet_inds
+
+class BifrostReader(object):
+    def __init__(self, basename):
+        assert(basename.endswith('.bf'))
+        hdr_filename = basename + '.json'
+        with open(hdr_filename, 'r') as hdr_file:
+            self.header = json.load(hdr_file)
+        data_filenames = glob.glob(basename + '.*.dat')
+        inds = [_parse_bifrost_filename(fname) for fname in data_filenames]
+        frame0s, ringlet_inds = zip(*inds)
+        nringlets = [max(r) + 1 for r in zip(*ringlet_inds)]
+        # TODO: Support multiple ringlet axes (needed in SerializeBlock too)
+        assert(len(nringlets) <= 1)
+        self.nringlet = nringlets[0] if len(nringlets) else 0
+        if self.nringlet > 0:
+            ringlet_inds = [inds[0] for inds in ringlet_inds]
+            self.ringlet_files = []
+            for ringlet in xrange(self.nringlet):
+                ringlet_filenames = [f for f, r in zip(data_filenames, ringlet_inds)
+                                     if r == ringlet]
+                ringlet_filenames.sort()
+                ringlet_files = [open(f, 'rb') for f in ringlet_filenames]
+                self.ringlet_files.append(ringlet_files)
+            self.nfile = len(self.ringlet_files[0])
+            if not all([len(files) == self.nfile for files in self.ringlet_files]):
+                raise IOError("Number of files in each ringlet does not match")
+        else:
+            data_filenames.sort()
+            self.files = [open(f, 'rb') for f in data_filenames]
+            self.nfile = len(self.files)
+        self.cur_file = 0
+    def __enter__(self):
+        return self
+    def __exit__(self, type, value, tb):
+        if self.nringlet > 0:
+            for ringlet in self.ringlet_files:
+                for f in ringlet:
+                    f.close()
+        else:
+            for f in self.files:
+                f.close()
+    def readinto(self, buf, frame_nbyte):
+        if self.cur_file == self.nfile:
+            return 0
+        nframe_read = 0
+        if self.nringlet > 0:
+            # First dimension of buf is ringlets
+            bufs = buf
+            nbyte_reads = [ringlet_file[self.cur_file].readinto(buf)
+                           for ringlet_file, buf in zip(self.ringlet_files, bufs)]
+            nbyte_read = min(nbyte_reads)
+        else:
+            nbyte_read = self.files[self.cur_file].readinto(buf)
+        if nbyte_read % frame_nbyte != 0:
+            raise IOError("Unexpected end of file")
+        nframe_read += nbyte_read // frame_nbyte
+        while nbyte_read < buf.nbytes:
+            self.cur_file += 1
+            if self.cur_file == self.nfile:
+                break
+            if self.nringlet > 0:
+                nbyte_reads = [ringlet_file[self.cur_file].readinto(buf)
+                               for ringlet_file, buf in zip(self.ringlet_files, bufs)]
+                nbyte_read = min(nbyte_reads)
+            else:
+                nbyte_read = self.files[self.cur_file].readinto(buf)
+            if nbyte_read % frame_nbyte != 0:
+                raise IOError("Unexpected end of file")
+            nframe_read += nbyte_read // frame_nbyte
+        return nframe_read
+
+class DeserializeBlock(SourceBlock):
+    def __init__(self, filenames, gulp_nframe, *args, **kwargs):
+        super(DeserializeBlock, self).__init__(filenames, gulp_nframe, *args, **kwargs)
+    def create_reader(self, sourcename):
+        return BifrostReader(sourcename)
+    def on_sequence(self, ireader, sourcename):
+        hdr = ireader.header
+        return [ireader.header]
+    def on_data(self, reader, ospans):
+        ospan = ospans[0]
+        return [reader.readinto(ospan.data, ospan.frame_nbyte)]
+
+def deserialize(filenames, gulp_nframe, *args, **kwargs):
+    """Deserializes a data stream from a set of files using a simple data format
+
+    Sequence headers are read as JSON files, and sequence data are read
+    directly as binary from separate files.
+
+    The actual header and data files must have the following general form::
+
+        # Header
+        <filename>.json
+
+        # Single-ringlet data
+        <filename>.<frame_offset>.dat
+
+        # Multi-ringlet data
+        <filename>.<frame_offset>.<ringlet>.dat
+
+    See also: ``serialize``
+
+    Args:
+        filenames (list): List of input filenames (each ending with '.bf')
+        gulp_nframe (int): No. frames to read at a time.
+        *args: Arguments to ``bifrost.pipeline.SourceBlock``.
+        **kwargs: Keyword Arguments to ``bifrost.pipeline.SourceBlock``.
+
+    **Tensor semantics**::
+
+        Input:  One data file per sequence
+        Output: [frame, ...], dtype = any, space = SYSTEM
+
+        Input:  One data file per ringlet
+        Output: [ringlet, frame, ...], dtype = any, space = SYSTEM
+
+    Returns:
+        DeserializeBlock: A new block instance.
+    """
+    return DeserializeBlock(filenames, gulp_nframe, *args, **kwargs)
 
 # **TODO: Write a DeserializeBlock that does the inverse of this
 class SerializeBlock(SinkBlock):
