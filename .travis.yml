@@ -24,14 +24,14 @@ addons:
 
 jobs:
     include:
-        - stage: build docker image
-          script: make docker-cpu
-        - stage: deploy
+        - stage: docker and deploy docs
           python: 2.7
-          script: bash ./.travis_deploy_docs.sh
+          script:
+            - make docker-cpu
+            - docker run --rm ledatelescope/bifrost /bin/sh -c "cd /bifrost/test && sh ./travis.sh"
+            - bash ./.travis_deploy_docs.sh
 
-
-install:
+script:
     - sudo pip --no-cache-dir install \
         setuptools \
         numpy \
@@ -45,8 +45,6 @@ install:
         codecov
     - sudo make -j NOCUDA=1
     - sudo make install
-
-script:
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
     - cd test && sudo -E bash ./travis.sh && cd ..
 
