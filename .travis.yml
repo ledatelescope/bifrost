@@ -28,7 +28,6 @@ jobs:
           python: 2.7
           script:
             - make docker-cpu
-            - docker run --rm ledatelescope/bifrost /bin/sh -c "cd /bifrost/test && sh ./travis.sh"
             - bash ./.travis_deploy_docs.sh
 
 script:
