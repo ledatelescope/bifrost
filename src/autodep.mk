@@ -14,6 +14,7 @@ DEPBUILD.c   = $(CC)  -x c   $(DEPFLAGS) $(CFLAGS)    $(CPPFLAGS) -E
 DEPBUILD.cc  = $(CXX) -x c++ $(DEPFLAGS) $(CXXFLAGS)  $(CPPFLAGS) -E
 COMPILE.c    = $(CC)   $(CFLAGS)    $(CPPFLAGS) $(GCCFLAGS) $(TARGET_ARCH) -c
 COMPILE.cc   = $(CXX)  $(CXXFLAGS)  $(CPPFLAGS) $(GCCFLAGS) $(TARGET_ARCH) -c
+COMPILE.ccnv = $(CXX)  -x c++ $(CXXFLAGS)  $(CPPFLAGS) $(GCCFLAGS) $(TARGET_ARCH) -c
 COMPILE.nvcc = $(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" $(TARGET_ARCH) -c
 POSTCOMPILE = mv -f $(DEPDIR)/$*.Td $(DEPDIR)/$*.d
 
@@ -54,9 +55,15 @@ CLEAR_LINE = tput el && echo -n "\033[2K" || true # Clears the current line
 %.o : %.cu
 %.o : %.cu $(DEPDIR)/%.d
 	@$(CLEAR_LINE)
+ifndef NOCUDA
 	@echo -n "Building CUDA source file $<\r"
 	@$(DEPBUILD.cc) $< > /dev/null
 	$(COMPILE.nvcc) $(OUTPUT_OPTION) $<
+else
+	@echo -n "Building CUDA as CPU-only C++ source file $<\r"
+	@$(DEPBUILD.cc) $< > /dev/null
+        $(COMPILE.ccnv) $(OUTPUT_OPTION) $<
+endif
 	@$(POSTCOMPILE)
 
 $(DEPDIR)/%.d: ;
