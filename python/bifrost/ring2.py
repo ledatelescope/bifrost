@@ -76,7 +76,7 @@ def ring_view(ring, header_transform):
 
 class Ring(BifrostObject):
     instance_count = 0
-    def __init__(self, space='system', name=None, owner=None):
+    def __init__(self, space='system', name=None, owner=None, core=None):
         # If this is non-None, then the object is wrapping a base Ring instance
         self.base = None
         self.space = space
@@ -86,6 +86,12 @@ class Ring(BifrostObject):
         name = _slugify(name)
         BifrostObject.__init__(self, _bf.bfRingCreate, _bf.bfRingDestroy,
                                name, _string2space(self.space))
+        if core is not None:
+            try:
+                _check( _bf.bfRingSetAffinity(self.obj, 
+                                              core) )
+            except RuntimeError:
+                pass
         self.owner = owner
         self.header_transform = None
     def __del__(self):
@@ -103,6 +109,12 @@ class Ring(BifrostObject):
     @property
     def name(self):
         return _get(_bf.bfRingGetName, self.obj)
+    @property
+    def space(self):
+        return _space2string(_get(_bf.bfRingGetSpace, self.obj))
+    @property
+    def core(self):
+        return _get(_bf.bfRingGetAffinity, self.obj)
     def begin_writing(self):
         return RingWriter(self)
     def _begin_writing(self):

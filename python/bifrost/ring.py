@@ -43,7 +43,7 @@ def _slugify(name):
     return ''.join([c for c in name if c in valid_chars])
 
 class Ring(BifrostObject):
-    def __init__(self, space='system', name=None):
+    def __init__(self, space='system', name=None, core=None):
         if name is None:
             name = str(uuid4())
         name = _slugify(name)
@@ -52,6 +52,12 @@ class Ring(BifrostObject):
         #self.obj = _get(_bf.bfRingCreate(name=name, space=space), retarg=0)
         BifrostObject.__init__(
             self, _bf.bfRingCreate, _bf.bfRingDestroy, name, space)
+        if core is not None:
+            try:
+                _check( _bf.bfRingSetAffinity(self.obj, 
+                                              core) )
+            except RuntimeError:
+                pass
     def resize(self, contiguous_span, total_span=None, nringlet=1,
                buffer_factor=4):
         if total_span is None:
@@ -66,6 +72,9 @@ class Ring(BifrostObject):
     @property
     def space(self):
         return _space2string(_get(_bf.bfRingGetSpace, self.obj))
+    @property
+    def core(self):
+        return _get(_bf.bfRingGetAffinity, self.obj)
     #def begin_sequence(self, name, header="", nringlet=1):
     #    return Sequence(ring=self, name=name, header=header, nringlet=nringlet)
     #def end_sequence(self, sequence):
