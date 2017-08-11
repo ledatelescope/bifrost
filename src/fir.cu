@@ -265,7 +265,7 @@ public:
 		
 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 		
-#define LAUNCH_BEAMFORMER_KERNEL(IterType,OterType) \
+#define LAUNCH_FIR_KERNEL(IterType,OterType) \
 		launch_fir_kernel(_ncoeff, _decim, _ntime, _nstand, \
 		                  _coeffs, _state0, _state1, \
 		                  (IterType)in->data, (OterType)out->data, \
@@ -274,49 +274,49 @@ public:
 		switch( in->dtype ) {
 			case BF_DTYPE_CI8:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_BEAMFORMER_KERNEL(int8_t*, Complex32*);  break;
-					case BF_DTYPE_CF64: LAUNCH_BEAMFORMER_KERNEL(int8_t*, Complex64*);  break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int8_t*, Complex32*);  break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int8_t*, Complex64*);  break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				};
 				break;
 			case BF_DTYPE_CI16:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_BEAMFORMER_KERNEL(int16_t*, Complex32*); break;
-					case BF_DTYPE_CF64: LAUNCH_BEAMFORMER_KERNEL(int16_t*, Complex64*); break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int16_t*, Complex32*); break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int16_t*, Complex64*); break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				}
 				break;
 			case BF_DTYPE_CI32:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_BEAMFORMER_KERNEL(int32_t*, Complex32*); break;
-					case BF_DTYPE_CF64: LAUNCH_BEAMFORMER_KERNEL(int32_t*, Complex64*); break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int32_t*, Complex32*); break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int32_t*, Complex64*); break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				}
 				break;
 			case BF_DTYPE_CI64:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_BEAMFORMER_KERNEL(int64_t*, Complex32*); break;
-					case BF_DTYPE_CF64: LAUNCH_BEAMFORMER_KERNEL(int64_t*, Complex64*); break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int64_t*, Complex32*); break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int64_t*, Complex64*); break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				}
 				break;
 			case BF_DTYPE_CF32:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_BEAMFORMER_KERNEL(float*, Complex32*);   break;
-					case BF_DTYPE_CF64: LAUNCH_BEAMFORMER_KERNEL(float*, Complex64*);   break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(float*, Complex32*);   break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(float*, Complex64*);   break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				}
 				break;
 			case BF_DTYPE_CF64:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_BEAMFORMER_KERNEL(double*, Complex32*);  break;
-					case BF_DTYPE_CF64: LAUNCH_BEAMFORMER_KERNEL(double*, Complex64*);  break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(double*, Complex32*);  break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(double*, Complex64*);  break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				}
 				break;
 			default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 		}
-#undef LAUNCH_BEAMFORMER_KERNEL
+#undef LAUNCH_FIR_KERNEL
 		
 		BF_CHECK_CUDA_EXCEPTION( cudaMemcpyAsync(_state0,
 		                                         _state1,
