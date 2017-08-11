@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,6 +41,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <complex>
 
 // HACK TESTING
 #include <iostream>
@@ -53,17 +53,20 @@ template<typename InType, typename OutType>
 __global__
 void fdmt_init_kernel(int                         ntime,
                       int                         nchan,
+                      int                         nbatch,
                       bool                        reverse_band,
                       bool                        reverse_time,
                       int     const* __restrict__ d_offsets,
                       InType  /*const* __restrict__*/ d_in,
                       int                         istride,
+                      int                         ibatchstride,
                       OutType*       __restrict__ d_out,
-                      int                         ostride) {
+                      int                         ostride,
+                      int                         obatchstride) {
 	int t0 = threadIdx.x + blockIdx.x*blockDim.x;
 	int c0 = threadIdx.y + blockIdx.y*blockDim.y;
-	//int b0 = blockIdx.z;
-	//for( int b=b0; b<nbatch; b+=gridDim.z ) {
+	int b0 = blockIdx.z;
+	for( int b=b0; b<nbatch; b+=gridDim.z ) {
 	for( int c=c0; c<nchan; c+=blockDim.y*gridDim.y ) {
 		int offset = d_offsets[c];
 		int ndelay = d_offsets[c+1] - offset;
@@ -75,18 +78,17 @@ void fdmt_init_kernel(int                         ntime,
 				if( t >= d ) {
 					int c_ = reverse_band ? nchan-1 - c : c;
 					int t_ = reverse_time ? ntime-1 - t : t;
-					tmp += d_in[(t_-d) + istride*c_];// + ibstride*b];
+					tmp += d_in[(t_-d) + istride*c_ + ibatchstride*b];
 					// TODO: Check effect of not-/using sqrt
 					//         The final paper has no sqrt (i.e., computation is just the mean)
 					//outval = tmp * rsqrtf(d+1);
 					outval = tmp * (1.f/(d+1));
 				}
-				d_out[t + ostride*(offset+d)] = outval;
-				//d_out[t + ostride*(offset+d) + obstride*b] = outval;
+				d_out[t + ostride*(offset+d) + obatchstride*b] = outval;
 			}
 		}
 	}
-	//}
+	}
 }
 
 // Note: Can be tuned over block shape
@@ -94,16 +96,21 @@ template<typename DType>
 __global__
 void fdmt_exec_kernel(int                       ntime,
                       int                       nrow,
+                      int                       nbatch,
                       bool                      is_final_step,
                       bool                      reverse_time,
                       int   const* __restrict__ d_delays,
                       int2  const* __restrict__ d_srcrows,
                       DType const* __restrict__ d_in,
                       int                       istride,
+                      int                       ibatchstride,
                       DType*       __restrict__ d_out,
-                      int                       ostride) {
+                      int                       ostride,
+                      int                       obatchstride) {
 	int t0 = threadIdx.x + blockIdx.x*blockDim.x;
 	int r0 = threadIdx.y + blockIdx.y*blockDim.y;
+	int b0 = blockIdx.z;
+	for( int b=b0; b<nbatch; b+=gridDim.z ) {
 	for( int r=r0; r<nrow; r+=blockDim.y*gridDim.y ) {
 		int delay   = d_delays[r];
 		int srcrow0 = d_srcrows[r].x;
@@ -136,13 +143,14 @@ void fdmt_exec_kernel(int                       ntime,
 			//if( t == 0 ) {// && r == 1 ) {
 			//	printf("istride = %i, srcrow0 = %i, srcrow1 = %i, d_in = %p\n", istride, srcrow0, srcrow1, d_in);
 			//}
-			DType outval = (srcrow0 != -1) ? d_in[ t        + istride*srcrow0] : 0;
+			DType outval = (srcrow0 != -1) ? d_in[ t        + istride*srcrow0 + ibatchstride*b] : 0;
 			if( t >= delay ) {
-				outval  += (srcrow1 != -1) ? d_in[(t-delay) + istride*srcrow1] : 0;
+				outval  += (srcrow1 != -1) ? d_in[(t-delay) + istride*srcrow1 + ibatchstride*b] : 0;
 			}
 			int t_ = (is_final_step && reverse_time) ? ntime-1 - t : t;
-			d_out[t_ + ostride*r] = outval;
+			d_out[t_ + ostride*r + obatchstride*b] = outval;
 		}
+	}
 	}
 }
 
@@ -150,72 +158,78 @@ template<typename InType, typename OutType>
 inline
 void launch_fdmt_init_kernel(int            ntime,
                              int            nchan,
+                             int            nbatch,
                              bool           reverse_band,
                              bool           reverse_time,
                              //int     const* d_ndelays,
                              int     const* d_offsets,
                              InType  /*const**/ d_in,
                              int            istride,
+                             int            ibatchstride,
                              OutType*       d_out,
                              int            ostride,
+                             int            obatchstride,
                              cudaStream_t   stream=0) {
 	dim3 block(256, 1); // TODO: Tune this
 	dim3 grid(std::min((ntime-1)/block.x+1, 65535u),
 	          std::min((nchan-1)/block.y+1, 65535u));
-	//fdmt_init_kernel<<<grid,block,0,stream>>>(ntime,nchan,
-	//                                          //d_ndelays,
-	//                                          d_offsets,
-	//                                          d_in,istride,
-	//                                          d_out,ostride);
 	void* args[] = {&ntime,
 	                &nchan,
+	                &nbatch,
 	                &reverse_band,
 	                &reverse_time,
 	                &d_offsets,
 	                &d_in,
 	                &istride,
+	                &ibatchstride,
 	                &d_out,
-	                &ostride};
-	cudaLaunchKernel((void*)fdmt_init_kernel<InType,OutType>,
-	                 grid, block,
-	                 &args[0], 0, stream);
+	                &ostride,
+	                &obatchstride};
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaLaunchKernel((void*)fdmt_init_kernel<InType,OutType>,
+		                 grid, block,
+		                 &args[0], 0, stream),
+		BF_STATUS_INTERNAL_ERROR);
 }
 
 template<typename DType>
 inline
 void launch_fdmt_exec_kernel(int          ntime,
                              int          nrow,
+                             int          nbatch,
                              bool         is_final_step,
                              bool         reverse_time,
                              int   const* d_delays,
                              int2  const* d_srcrows,
                              DType const* d_in,
                              int          istride,
+                             int          ibatchstride,
                              DType*       d_out,
                              int          ostride,
+                             int          obatchstride,
                              cudaStream_t stream=0) {
 	//cout << "LAUNCH " << d_in << ", " << d_out << endl;
 	dim3 block(256, 1); // TODO: Tune this
 	dim3 grid(std::min((ntime-1)/block.x+1, 65535u),
 	          std::min((nrow -1)/block.y+1, 65535u));
-	//fdmt_exec_kernel<<<grid,block,0,stream>>>(ntime,nrow,
-	//                                          d_delays,d_srcrows,
-	//                                          d_in,istride,
-	//                                          d_out,ostride);
 	void* args[] = {&ntime,
 	                &nrow,
+	                &nbatch,
 	                &is_final_step,
 	                &reverse_time,
 	                &d_delays,
 	                &d_srcrows,
 	                &d_in,
 	                &istride,
+	                &ibatchstride,
 	                &d_out,
-	                &ostride};
-	//cudaLaunchKernel((void*)static_cast<void(*)(int, int, const int*, const int2*, const DType*, int, DType*, int)>(fdmt_exec_kernel<DType>),
-	cudaLaunchKernel((void*)fdmt_exec_kernel<DType>,
-	                 grid, block,
-	                 &args[0], 0, stream);
+	                &ostride,
+	                &obatchstride};
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaLaunchKernel((void*)fdmt_exec_kernel<DType>,
+		                 grid, block,
+		                 &args[0], 0, stream),
+		BF_STATUS_INTERNAL_ERROR);
 }
 /*
 **** 4096
@@ -264,6 +278,7 @@ private:
 	IType _nrow_max;
 	IType _plan_stride;
 	IType _buffer_stride;
+	IType _batch_stride;
 	std::vector<IType>                   _offsets;
 	std::vector<std::vector<IndexPair> > _step_srcrows;
 	std::vector<std::vector<IType> >     _step_delays;
@@ -285,12 +300,22 @@ private:
 	}
 	FType rel_delay(FType flo, FType fhi, FType fmin, FType fmax) {
 		FType g = _exponent;
+		// Note: We use complex math in order to support negative frequencies
+		//         (the result is real regardless).
+		std::complex<FType> c_flo=flo, c_fhi=fhi, c_fmin=fmin, c_fmax=fmax;
+		std::complex<FType> numer = std::pow(c_flo,  g) - std::pow(c_fhi,  g);
+		std::complex<FType> denom = std::pow(c_fmin, g) - std::pow(c_fmax, g);
 		FType eps = std::numeric_limits<FType>::epsilon();
-		FType denom = ::pow(fmin,g) - ::pow(fmax,g);
-		if( ::abs(denom) < eps ) {
-			denom = ::copysign(eps, denom);
+		if( std::norm(denom) < eps*eps ) {
+			// Note: The only time I've seen this fail is when nchan==1
+			BF_ASSERT_EXCEPTION(std::norm(numer) < eps*eps,
+			                    BF_STATUS_INTERNAL_ERROR);
+			return 0;
 		}
-		return (::pow(flo,g) - ::pow(fhi,g)) / denom;
+		std::complex<FType> result = numer / denom;
+		BF_ASSERT_EXCEPTION(std::abs(result.imag()) <= eps,
+		                    BF_STATUS_INTERNAL_ERROR);
+		return result.real();
 	}
 	FType rel_delay(FType flo, FType fhi) {
 		FType fmin = cfreq(0);
@@ -562,7 +587,8 @@ public:
 		                         BF_STATUS_DEVICE_ERROR );
 		return true;
 	}
-	bool init_exec_storage(void* storage_ptr, BFsize* storage_size, size_t ntime) {
+	bool init_exec_storage(void* storage_ptr, BFsize* storage_size,
+	                       size_t ntime, size_t nbatch) {
 		BF_TRACE();
 		enum {
 			ALIGNMENT_BYTES = 512,
@@ -572,10 +598,11 @@ public:
 		//std::cout << "ntime = " << ntime << std::endl;
 		//std::cout << "_nrow_max = " << _nrow_max << std::endl;
 		_buffer_stride = round_up(ntime, ALIGNMENT_ELMTS);
+		_batch_stride  = _nrow_max*_buffer_stride;
 		//std::cout << "_buffer_stride = " << _buffer_stride << std::endl;
 		// TODO: Check if truly safe to allocate smaller buffer_b
-		workspace.reserve(_nrow_max*_buffer_stride, &_d_buffer_a);
-		workspace.reserve(_nrow_max*_buffer_stride, &_d_buffer_b);
+		workspace.reserve(nbatch*_batch_stride, &_d_buffer_a);
+		workspace.reserve(nbatch*_batch_stride, &_d_buffer_b);
 		if( storage_size ) {
 			if( !storage_ptr ) {
 				//cout << "++++ returning storage size" << endl;
@@ -602,30 +629,48 @@ public:
 	void execute(BFarray const* in,
 	             BFarray const* out,
 	             size_t         ntime,
+	             size_t         nbatch,
 	             bool           negative_delays) {
 		BF_TRACE();
 		BF_TRACE_STREAM(_stream);
-		//cout << "out dtype = " << out->dtype << endl;
 		BF_ASSERT_EXCEPTION(out->dtype == BF_DTYPE_F32, BF_STATUS_UNSUPPORTED_DTYPE);
 		BF_ASSERT_EXCEPTION(   out->strides[in->ndim-1] == 4, BF_STATUS_UNSUPPORTED_STRIDE);
+		int ndim = in->ndim;
 		DType* d_ibuf = _d_buffer_b;
 		DType* d_obuf = _d_buffer_a;
-		//std::cout << "_d_buffer_a = " << _d_buffer_a << std::endl;
-		//std::cout << "_d_buffer_b = " << _d_buffer_b << std::endl;
-		//BF_ASSERT_EXCEPTION(/*abs*/(in->strides[in->ndim-1]) == 1, BF_STATUS_UNSUPPORTED_STRIDE);
+		BF_ASSERT_EXCEPTION(in->strides[ndim-2] % in->strides[ndim-1] == 0,
+		                    BF_STATUS_UNSUPPORTED_STRIDE);
+		BF_ASSERT_EXCEPTION(out->strides[ndim-2] % out->strides[ndim-1] == 0,
+		                    BF_STATUS_UNSUPPORTED_STRIDE);
+		size_t istride =  in->strides[ndim-2] /  in->strides[ndim-1];
+		size_t ostride = out->strides[ndim-2] / out->strides[ndim-1];
 		BF_ASSERT_EXCEPTION( in->strides[in->ndim-2] > 0, BF_STATUS_UNSUPPORTED_STRIDE);
 		BF_ASSERT_EXCEPTION(out->strides[in->ndim-2] > 0, BF_STATUS_UNSUPPORTED_STRIDE);
+		
+		size_t ibatchstride = 0;
+		size_t obatchstride = 0;
+		if( in->ndim == 3 ) {
+			BF_ASSERT_EXCEPTION(in->strides[ndim-3] % in->strides[ndim-1] == 0,
+			                    BF_STATUS_UNSUPPORTED_STRIDE);
+			BF_ASSERT_EXCEPTION(out->strides[ndim-3] % out->strides[ndim-1] == 0,
+			                    BF_STATUS_UNSUPPORTED_STRIDE);
+			ibatchstride =  in->strides[ndim-3] /  in->strides[ndim-1];
+			obatchstride = out->strides[ndim-3] / out->strides[ndim-1];
+		}
+		
+		BF_ASSERT_EXCEPTION(in->strides[ndim-1] == BF_DTYPE_NBYTE(in->dtype),
+		                    BF_STATUS_UNSUPPORTED_STRIDE);
+		
 		//bool reverse_time = (in->strides[in->ndim-1] < 0);
 		bool reverse_time = negative_delays;
 		
 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 #define LAUNCH_FDMT_INIT_KERNEL(IterType) \
-		BF_ASSERT_EXCEPTION(/*abs*/(in->strides[in->ndim-1]) == sizeof(value_type<IterType>::type), BF_STATUS_UNSUPPORTED_STRIDE); \
-		launch_fdmt_init_kernel(ntime, _nchan, _reverse_band, reverse_time, \
+		launch_fdmt_init_kernel(ntime, _nchan, nbatch, \
+		                        _reverse_band, reverse_time, \
 		                        _d_offsets, \
-		                        (IterType)in->data, \
-		                        in->strides[in->ndim-2]/sizeof(value_type<IterType>::type), /* TODO: Check this*/ \
-		                        d_obuf, _buffer_stride, \
+		                        (IterType)in->data, istride, ibatchstride, \
+		                        d_obuf, _buffer_stride, _batch_stride, \
 		                        _stream)
 		
 		switch( in->dtype ) {
@@ -634,20 +679,21 @@ public:
 			//case BF_DTYPE_I1:  LAUNCH_FDMT_INIT_KERNEL(NbitReader<1>); break;
 			//case BF_DTYPE_I2:  LAUNCH_FDMT_INIT_KERNEL(NbitReader<2>); break;
 			//case BF_DTYPE_I4:  LAUNCH_FDMT_INIT_KERNEL(NbitReader<4>); break;
-		case BF_DTYPE_I8:  LAUNCH_FDMT_INIT_KERNEL(int8_t*);  break;
-		case BF_DTYPE_I16: LAUNCH_FDMT_INIT_KERNEL(int16_t*); break;
-		case BF_DTYPE_I32: LAUNCH_FDMT_INIT_KERNEL(int32_t*); break;
-		case BF_DTYPE_U8:  LAUNCH_FDMT_INIT_KERNEL(uint8_t*);  break;
-		case BF_DTYPE_U16: LAUNCH_FDMT_INIT_KERNEL(uint16_t*); break;
-		case BF_DTYPE_U32: LAUNCH_FDMT_INIT_KERNEL(uint32_t*); break;
-		case BF_DTYPE_F32: LAUNCH_FDMT_INIT_KERNEL(float*);   break;
+		case BF_DTYPE_I8:  LAUNCH_FDMT_INIT_KERNEL(const int8_t*);   break;
+		case BF_DTYPE_I16: LAUNCH_FDMT_INIT_KERNEL(const int16_t*);  break;
+		case BF_DTYPE_I32: LAUNCH_FDMT_INIT_KERNEL(const int32_t*);  break;
+		case BF_DTYPE_U8:  LAUNCH_FDMT_INIT_KERNEL(const uint8_t*);  break;
+		case BF_DTYPE_U16: LAUNCH_FDMT_INIT_KERNEL(const uint16_t*); break;
+		case BF_DTYPE_U32: LAUNCH_FDMT_INIT_KERNEL(const uint32_t*); break;
+		case BF_DTYPE_F32: LAUNCH_FDMT_INIT_KERNEL(const float*);    break;
 		default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 		}
 #undef LAUNCH_FDMT_INIT_KERNEL
 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 		std::swap(d_ibuf, d_obuf);
 		
-		size_t ostride = _buffer_stride;
+		size_t ostride_cur      = _buffer_stride;
+		size_t obatchstride_cur = _batch_stride;
 		IType nstep = _step_delays.size();
 		for( int step=1; step<nstep; ++step ) {
 			//cout << "STEP " << step << endl;
@@ -655,23 +701,20 @@ public:
 			//cout << "nrow " << nrow << endl;
 			if( step == nstep-1 ) {
 				d_obuf  = (DType*)out->data;
-				ostride = out->strides[out->ndim-2]/sizeof(DType); // TODO: Check this
+				ostride_cur = ostride;
 				// HACK TESTING diagonal reindexing to align output with TOA at highest freq
-				ostride += reverse_time ? +1 : -1;
+				ostride_cur += reverse_time ? +1 : -1;
+				obatchstride_cur = obatchstride;
 			}
-			//cudaDeviceSynchronize(); // HACK TESTING
-			launch_fdmt_exec_kernel(ntime, nrow, (step==nstep-1), reverse_time,
+			launch_fdmt_exec_kernel(ntime, nrow, nbatch, (step==nstep-1), reverse_time,
 			                        _d_step_delays  + step*_plan_stride,
 			                        _d_step_srcrows + step*_plan_stride,
-			                        d_ibuf, _buffer_stride,
-			                        d_obuf, ostride,
+			                        d_ibuf, _buffer_stride, _batch_stride,
+			                        d_obuf, ostride_cur, obatchstride_cur,
 			                        _stream);
-			//cudaDeviceSynchronize(); // HACK TESTING
-			//BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 			std::swap(d_ibuf, d_obuf);
 		}
 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
-		//cudaDeviceSynchronize(); // HACK TESTING
 	}
 	void set_stream(cudaStream_t stream) {
 		_stream = stream;
@@ -699,6 +742,8 @@ BFstatus bfFdmtInit(BFfdmt  plan,
                     BFsize* plan_storage_size) {
 	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
+	// TODO: Is there any sensible/natural way to handle nchan==1?
+	BF_ASSERT(nchan > 1, BF_STATUS_INVALID_ARGUMENT);
 	BF_ASSERT(space_accessible_from(space, BF_SPACE_CUDA),
 	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_TRY(plan->init(nchan, max_delay, f0, df, exponent));
@@ -721,20 +766,44 @@ BFstatus bfFdmtExecute(BFfdmt         plan,
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
+	BF_ASSERT(in->ndim == out->ndim, BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT( in->shape[ in->ndim-2] == plan->nchan(),     BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT(out->shape[out->ndim-2] == plan->max_delay(), BF_STATUS_INVALID_SHAPE);
 	BF_ASSERT(  in->shape[in->ndim-1] == out->shape[out->ndim-1], BF_STATUS_INVALID_SHAPE);
 	// TODO: BF_ASSERT(...);
-	size_t ntime = in->shape[in->ndim-1];
+	int ndim = in->ndim;
+	size_t ntime  = in->shape[in->ndim-1];
+	size_t nbatch = 1;
+	BFarray out_flattened, in_flattened;
+	// Handle batch dims
+	if( ndim > 2 ) {
+		// Keep the last 3 dims but attempt to flatten all others
+		unsigned long keep_dims_mask = 0x7 << (ndim-3);
+		keep_dims_mask |= padded_dims_mask(out);
+		keep_dims_mask |= padded_dims_mask(in);
+		flatten(out, &out_flattened, keep_dims_mask);
+		flatten(in,   &in_flattened, keep_dims_mask);
+		out = &out_flattened;
+		in  =  &in_flattened;
+		BF_ASSERT(in_flattened.ndim == out_flattened.ndim,
+		          BF_STATUS_INTERNAL_ERROR);
+		// TODO: Use streams to support multiple non-contiguous batch dims
+		//         (Like in linalg.cu)
+		BF_ASSERT(in_flattened.ndim == 3, BF_STATUS_UNSUPPORTED_SHAPE);
+		BF_ASSERT_EXCEPTION(in_flattened.shape[0] == out_flattened.shape[0],
+		                    BF_STATUS_INVALID_SHAPE);
+		nbatch = in->shape[0];
+	}
 	bool ready;
-	BF_TRY(ready = plan->init_exec_storage(exec_storage, exec_storage_size, ntime));
+	BF_TRY(ready = plan->init_exec_storage(exec_storage, exec_storage_size,
+	                                       ntime, nbatch));
 	if( !ready ) {
 		// Just requesting exec_storage_size, not ready to execute yet
 		return BF_STATUS_SUCCESS;
 	}
-	BF_ASSERT(space_accessible_from( in->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
-	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
-	BF_TRY_RETURN(plan->execute(in, out, ntime, negative_delays));
+	BF_ASSERT(space_accessible_from( in->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
+	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
+	BF_TRY_RETURN(plan->execute(in, out, ntime, nbatch, negative_delays));
 }
 
 BFstatus bfFdmtDestroy(BFfdmt plan) {

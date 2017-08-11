@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,6 +44,7 @@ BFstatus bfFftInit(BFfft          plan,
                    BFarray const* oarray,
                    int            ndim,
                    int     const* axes,
+                   BFbool         apply_fftshift,
                    size_t*        tmp_storage_size);
 // in, out = complex, complex => [i]fft
 // in, out = real, complex    => rfft

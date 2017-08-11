@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +32,9 @@
 
 #include <cublas_v2.h>
 
-const char* _cublasGetErrorString(cublasStatus_t status) {
+#include <bifrost/array.h>
+
+inline const char* _cublasGetErrorString(cublasStatus_t status) {
 	switch(status) {
 	case CUBLAS_STATUS_SUCCESS:          return "CUBLAS_STATUS_SUCCESS";
 	case CUBLAS_STATUS_NOT_INITIALIZED:  return "CUBLAS_STATUS_NOT_INITIALIZED";
@@ -49,7 +50,7 @@ const char* _cublasGetErrorString(cublasStatus_t status) {
 	}
 }
 
-BFstatus bifrost_status(cublasStatus_t status) {
+inline BFstatus bifrost_status(cublasStatus_t status) {
 	switch(status) {
 	case CUBLAS_STATUS_SUCCESS:          return BF_STATUS_SUCCESS;
 	case CUBLAS_STATUS_NOT_INITIALIZED:  return BF_STATUS_DEVICE_ERROR;
@@ -84,3 +85,36 @@ BFstatus bifrost_status(cublasStatus_t status) {
 		BF_ASSERT(cublas_ret == CUBLAS_STATUS_SUCCESS, \
 		          bifrost_status(cublas_ret)); \
 	} while(0)
+
+void bf_cherk_N(int N, int K, int nbatch,
+                float alpha,
+                void const* A_ptr,
+                BFdtype A_type,
+                int A_stride,
+                int A_batchstride,
+                float beta,
+                void* C_ptr,
+                BFdtype C_type,
+                int C_stride,
+                int C_batchstride,
+                cudaStream_t stream);
+
+void bf_cgemm_TN_smallM(int M,
+                        int N,
+                        int K,
+                        int nbatch,
+                        float alpha,
+                        void const* d_A,
+                        BFdtype A_type,
+                        int A_stride,
+                        int A_batchstride,
+                        void const* d_B,
+                        BFdtype B_type,
+                        int B_stride,
+                        int B_batchstride,
+                        float beta,
+                        void*       d_C,
+                        BFdtype C_type,
+                        int C_stride,
+                        int C_batchstride,
+                        cudaStream_t stream);

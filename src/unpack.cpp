@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -300,10 +299,10 @@ BFstatus bfUnpack(BFarray const* in,
 			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint16_t);
 			break;
 		}
-		default: BF_FAIL("Supported bfQuantize input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
+		default: BF_FAIL("Supported bfUnpack input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 		}
 	} else {
-		BF_FAIL("Supported bfQuantize output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
+		BF_FAIL("Supported bfUnpack output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 #undef CALL_FOREACH_SIMPLE_CPU_UNPACK
 	return BF_STATUS_SUCCESS;

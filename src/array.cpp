@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,38 +34,13 @@
 #include <cassert>
 #include <cstring>
 
-/*
-const char* dtype2ctype_string(BFdtype dtype) {
-	switch( dtype ) {
-	case BF_DTYPE_I8:    return "signed char";
-	case BF_DTYPE_I16:   return "short";
-	case BF_DTYPE_I32:   return "int";
-	case BF_DTYPE_I64:   return "long long";
-	case BF_DTYPE_U8:    return "unsigned char";
-	case BF_DTYPE_U16:   return "unsigned short";
-	case BF_DTYPE_U32:   return "unsigned int";
-	case BF_DTYPE_U64:   return "unsigned long long";
-	case BF_DTYPE_F32:   return "float";
-	case BF_DTYPE_F64:   return "double";
-	case BF_DTYPE_F128:  return "long double";
-	case BF_DTYPE_CI8:   return "complex<signed char>";
-	case BF_DTYPE_CI16:  return "complex<short>";
-	case BF_DTYPE_CI32:  return "complex<int>";
-	case BF_DTYPE_CI64:  return "complex<long long>";
-	case BF_DTYPE_CF32:  return "complex<float>";
-	case BF_DTYPE_CF64:  return "complex<double>";
-	case BF_DTYPE_CF128: return "complex<long double>";
-	default: return 0;
-	}
-}
-*/
 // Reads array->(space,dtype,ndim,shape), sets array->strides and
 //   allocates array->data.
 BFstatus bfArrayMalloc(BFarray* array) {
 	BF_TRACE();
 	BF_ASSERT(array, BF_STATUS_INVALID_POINTER);
 	int d = array->ndim - 1;
-	array->strides[d] = get_dtype_nbyte(array->dtype);
+	array->strides[d] = BF_DTYPE_NBYTE(array->dtype);
 	for( ; d-->0; ) {
 		array->strides[d] = array->strides[d+1] * array->shape[d+1];
 	}
@@ -109,7 +83,14 @@ BFstatus bfArrayCopy(const BFarray* dst,
 		                src->data, src->space,
 		                size_bytes);
 	} else if( ndim == 1 || ndim == 2 ) {
+		// Note: ndim == 1 here means a 1D array with a stride between elements
 		long itemsize_bytes = BF_DTYPE_NBYTE(src->dtype);
+		// Note: bfMemcpy2D doesn't support strides on the inner dimension, so
+		//         we can't support transposed or fast-strided 2D arrays here.
+		BF_ASSERT(!(ndim == 2 && dst->strides[1] != itemsize_bytes),
+		          BF_STATUS_UNSUPPORTED_STRIDE);
+		BF_ASSERT(!(ndim == 2 && src->strides[1] != itemsize_bytes),
+		          BF_STATUS_UNSUPPORTED_STRIDE);
 		long width_bytes = (ndim == 2 ? shape[1] : 1) * itemsize_bytes;
 		return bfMemcpy2D(dst->data, dst->strides[0], dst->space,
 		                  src->data, src->strides[0], src->space,
@@ -137,7 +118,12 @@ BFstatus bfArrayMemset(const BFarray* dst,
 		return bfMemset(dst->data, dst->space,
 		                value, size_bytes);
 	} else if( ndim == 1 || ndim == 2 ) {
+		// Note: ndim == 1 here means a 1D array with a stride between elements
 		long itemsize_bytes = BF_DTYPE_NBYTE(dst->dtype);
+		// Note: bfMemset2D doesn't support strides on the inner dimension, so
+		//         we can't support transposed or fast-strided 2D arrays here.
+		BF_ASSERT(!(ndim == 2 && dst->strides[1] != itemsize_bytes),
+		          BF_STATUS_UNSUPPORTED_STRIDE);
 		long width_bytes = (ndim == 2 ? shape[1] : 1) * itemsize_bytes;
 		return bfMemset2D(dst->data, dst->strides[0], dst->space,
 		                  value, width_bytes, shape[0]);

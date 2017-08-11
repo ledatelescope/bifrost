@@ -80,7 +80,7 @@ int main() {
 
 namespace cuda {
 
-void check_error(cudaError_t ret) {
+inline void check_error(cudaError_t ret) {
 	if( ret != cudaSuccess ) {
 		throw std::runtime_error(cudaGetErrorString(ret));
 	}
@@ -169,22 +169,27 @@ public:
 		: super_type(priority, flags) {}
 	inline ~scoped_stream() { this->synchronize(); }
 };
-// This version automatically makes a parent stream wait for it on destruction
+// This version automatically syncs with a parent stream on construct/destruct
 class child_stream : public cuda::stream {
 	typedef cuda::stream super_type;
 	cudaStream_t _parent;
+	void sync_streams(cudaStream_t dependent, cudaStream_t dependee) {
+		// Record event in dependee and make dependent wait for it
+		cudaEvent_t event;
+		check_error(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
+		check_error(cudaEventRecord(event, dependee));
+		check_error(cudaStreamWaitEvent(dependent, event, 0));
+		check_error(cudaEventDestroy(event));
+	}
 public:
 	inline explicit child_stream(cudaStream_t parent,
 	                             int          priority=0,
 	                             unsigned     flags=cudaStreamNonBlocking)
-		: super_type(priority, flags), _parent(parent) {}
+		: super_type(priority, flags), _parent(parent) {
+		sync_streams(*this, _parent);
+	}
 	inline ~child_stream() {
-		// Record event in this stream and make parent wait for it
-		cudaEvent_t event;
-		check_error(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
-		check_error(cudaEventRecord(event, *this));
-		check_error(cudaStreamWaitEvent(_parent, event, 0));
-		check_error(cudaEventDestroy(event));
+		sync_streams(_parent, *this);
 	}
 };
 

@@ -48,17 +48,24 @@ using std::cout;
 using std::endl;
 #if defined(BF_DEBUG) && BF_DEBUG
 	#define BF_REPORT_ERROR(err) do { \
+		if( bfGetDebugEnabled() ) { \
 			std::cerr << __FILE__ << ":" << __LINE__ \
 			          << " error " << err << ": " \
 			          << bfGetStatusString(err) << std::endl; \
+		} \
 		} while(0)
-	#define BF_DEBUG_PRINT(x) \
-		std::cout << __FILE__ << ":" << __LINE__ \
-		<< " " #x << " = " << (x) << std::endl
+	#define BF_DEBUG_PRINT(x) do { \
+		if( bfGetDebugEnabled() ) { \
+			std::cout << __FILE__ << ":" << __LINE__ \
+			          << " " #x << " = " << (x) << std::endl; \
+		} \
+		} while(0)
 	#define BF_REPORT_PREDFAIL(pred) do { \
+		if( bfGetDebugEnabled() ) { \
 			std::cerr << __FILE__ << ":" << __LINE__ \
 			          << " Condition failed: " \
 			          << #pred << std::endl; \
+		} \
 		} while(0)
 #else
 	#define BF_REPORT_ERROR(err)
@@ -137,3 +144,17 @@ using std::endl;
 	} \
 } while(0)
 
+class NoDebugScope {
+	bool _enabled_before;
+	NoDebugScope(NoDebugScope const&) = delete;
+	NoDebugScope& operator=(NoDebugScope const&) = delete;
+public:
+	NoDebugScope() : _enabled_before(bfGetDebugEnabled()) {
+		bfSetDebugEnabled(false);
+	}
+	~NoDebugScope() {
+		bfSetDebugEnabled(_enabled_before);
+	}
+};
+// Disables debug-printing in the current scope
+#define BF_DISABLE_DEBUG() NoDebugScope _bf_no_debug_scope;
