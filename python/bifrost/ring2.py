@@ -110,9 +110,6 @@ class Ring(BifrostObject):
     def name(self):
         return _get(_bf.bfRingGetName, self.obj)
     @property
-    def space(self):
-        return _space2string(_get(_bf.bfRingGetSpace, self.obj))
-    @property
     def core(self):
         return _get(_bf.bfRingGetAffinity, self.obj)
     def begin_writing(self):
