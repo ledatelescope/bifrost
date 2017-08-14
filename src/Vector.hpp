@@ -43,6 +43,9 @@ template<typename T, int N>
 class __attribute__((aligned( LARGEST_POW2_FACTOR(sizeof(T)*N) ))) Vector {
 	T _v[N];
  public:
+	typedef T value_type;
+	template<typename... U>
+	Vector(U... u) : _v{u...} {}
 	__host__ __device__
 	inline constexpr T const& operator[](int i) const {
 		return _v[i];
