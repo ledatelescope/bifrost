@@ -107,23 +107,20 @@ class FdmtBlock(TransformBlock):
         ohdr['bw']           = nchan * df_
         ohdr['bw_units']     = itensor['units'][-2]
         gulp_nframe = self.gulp_nframe or ihdr['gulp_nframe']
-        return ohdr, slice(0, gulp_nframe + self.max_delay, gulp_nframe)
+        return ohdr
+    def define_input_overlap_nframe(self, iseq):
+        """Return no. input frames that should overlap between successive spans.
+        """
+        return self.max_delay
     def on_data(self, ispan, ospan):
         if ispan.nframe <= self.max_delay:
             # Cannot fully process any frames
             return 0
-
         size = self.fdmt.get_workspace_size(ispan.data, ospan.data)
         with self.get_temp_storage(self.space).allocate(size) as temp_storage:
             self.fdmt.execute_workspace(ispan.data, ospan.data,
                                         temp_storage.ptr, temp_storage.size,
                                         negative_delays=self.negative_delays)
-        return ispan.nframe - self.max_delay
-        # ***TODO: Need to tell downstream blocks the *stride*, not the
-        #            reserve size, because the stride is what determines
-        #            how much output this block generates each gulp.
-        #            HOWEVER, still can't fuse on the input side without
-        #              deadlocking. Not sure if there's any way around this.
 
 def fdmt(iring, max_dm=None, max_delay=None, max_diagonal=None,
          exponent=-2.0, negative_delays=False,

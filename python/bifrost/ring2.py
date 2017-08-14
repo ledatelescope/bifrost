@@ -123,9 +123,10 @@ class RingWriter(object):
         return self
     def __exit__(self, type, value, tb):
         self.ring.end_writing()
-    def begin_sequence(self, header, buf_nframe):
+    def begin_sequence(self, header, gulp_nframe, buf_nframe):
         return WriteSequence(ring=self.ring,
                              header=header,
+                             gulp_nframe=gulp_nframe,
                              buf_nframe=buf_nframe)
 
 class SequenceBase(object):
@@ -193,14 +194,13 @@ class SequenceBase(object):
         return self._header
 
 class WriteSequence(SequenceBase):
-    def __init__(self, ring, header, buf_nframe):
+    def __init__(self, ring, header, gulp_nframe, buf_nframe):
         SequenceBase.__init__(self, ring)
         self._header = header
         # This allows passing DataType instances instead of string types
         header['_tensor']['dtype'] = str(header['_tensor']['dtype'])
         header_str = json.dumps(header)
         header_size = len(header_str)
-        gulp_nframe = header['gulp_nframe']
         tensor = self.tensor
         # **TODO: Consider moving this into bfRingSequenceBegin
         self.ring.resize(gulp_nframe * tensor['frame_nbyte'],
@@ -336,6 +336,15 @@ class SpanBase(object):
         return self._sequence.tensor['frame_nbyte']
     @property
     def frame_offset(self):
+        
+        # ***TODO: I think _info.offset could potentially not be a multiple
+        #            of frame_nbyte, because it's set to _tail when data are
+        #            skipped (this should be tested with a pipeline that uses
+        #            varying gulp_nframe). If this is the case, then we should
+        #            round up to a multiple of frame_nbyte.
+        #            However, this should only be done for ReadSpans, as
+        #              WriteSpans should always be aligned with a frame.
+        
         # **TODO: Change back-end to use long instead of uint64_t
         byte_offset = int(self._info.offset)
         assert(byte_offset % self.frame_nbyte == 0)
@@ -414,6 +423,7 @@ class WriteSpan(SpanBase):
         # TODO: Why do exceptions here not show up properly?
         #raise ValueError("SHOW ME THE ERROR")
     def commit(self, nframe):
+        assert(nframe <= self.nframe)
         self.commit_nframe = nframe
     def __enter__(self):
         return self
