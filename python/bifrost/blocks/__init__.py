@@ -52,3 +52,8 @@ try: # Avoid error if portaudio library not installed
     from .audio import read_audio, AudioSourceBlock
 except:
     pass
+
+try: # Avoid error if psrdada library not installed
+    from .psrdada import read_psrdada_buffer, PsrDadaSourceBlock
+except:
+    pass
