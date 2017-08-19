@@ -20,7 +20,7 @@ all: build
 $(BIFROST_PYTHON_VERSION_FILE): ../config.mk
 	@echo "__version__ = \"$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR).$(LIBBIFROST_PATCH)\"" > $@
 
-define run-ctypesgen =
+define run_ctypesgen =
 	ctypesgen.py -l$1 -I$2 $^ -o $@
 	# WAR for 'const char**' being generated as POINTER(POINTER(c_char)) instead of POINTER(c_char_p)
 	sed -i 's/POINTER(c_char)/c_char_p/g' $@
@@ -34,17 +34,17 @@ define run-ctypesgen =
 endef
 
 ifeq "$(wildcard $(PSRDADA_HEADERS))" ""
-$(PSRDADA_PYTHON_BINDINGS_FILE):
-else
+PSRDADA_PYTHON_BINDINGS_FILE =
+endif
+
 $(PSRDADA_PYTHON_BINDINGS_FILE): $(PSRDADA_HEADERS)
-	$(call run-ctypesgen,psrdada,$(PSRHOME)/include)
+	$(call run_ctypesgen,psrdada,$(PSRHOME)/include)
 	# WAR for psrdada API using char* instead of void* for buffer pointers, which
 	#   otherwise get inadvertently converted to Python strings.
 	sed -i 's/c_char_p/POINTER(c_char)/g' $@
-endif
 
 $(BIFROST_PYTHON_BINDINGS_FILE): $(INC_DIR)/bifrost/*.h
-	$(call run-ctypesgen,$(BIFROST_NAME),$(INC_DIR))
+	$(call run_ctypesgen,$(BIFROST_NAME),$(INC_DIR))
 
 build: bifrost/*.py Makefile $(BIFROST_PYTHON_VERSION_FILE) $(BIFROST_PYTHON_BINDINGS_FILE) $(PSRDADA_PYTHON_BINDINGS_FILE)
 	python setup.py build $(PYBUILDFLAGS)
@@ -60,3 +60,6 @@ clean:
 	rm -f $(BIFROST_PYTHON_BINDINGS_FILE)
 	rm -f $(PSRDADA_PYTHON_BINDINGS_FILE)
 .PHONY: clean
+
+uninstall:
+	pip uninstall bifrost

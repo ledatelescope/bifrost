@@ -31,6 +31,7 @@ uninstall:
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ)
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN)
 	rm -rf $(INSTALL_INC_DIR)/bifrost/
+	$(MAKE) -C $(BIFROST_PYTHON_DIR) uninstall
 .PHONY: uninstall
 
 doc: $(INC_DIR)/bifrost/*.h Doxyfile

@@ -49,7 +49,7 @@ except IOError:
     print "*************************************************************************"
     raise
 
-setup(name='Bifrost',
+setup(name='bifrost',
       version=__version__,
       description='Pipeline processing framework',
       author='Ben Barsdell',
