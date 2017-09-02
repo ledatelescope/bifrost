@@ -124,12 +124,12 @@ def correlate(iring, nframe_per_integration, *args, **kwargs):
     References:
 
         This block is backed by a fast GPU kernel based on the one in the xGPU
-        library; see [1]_ [2]_.
+        library; see [2]_.
 
-        .. [1] M. A. Clark, P. C. La Plante, and L. J. Greenhill,
+        .. [2] M. A. Clark, P. C. La Plante, and L. J. Greenhill,
                "Accelerating Radio Astronomy Cross-Correlation with Graphics
                Processing units", [arXiv:1107.4264 [astro-ph]].
 
-        .. [2] https://github.com/GPU-correlators/xGPU
+        https://github.com/GPU-correlators/xGPU
     """
     return CorrelateBlock(iring, nframe_per_integration, *args, **kwargs)
