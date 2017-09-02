@@ -6,7 +6,7 @@
 
 A stream processing framework for high-throughput applications.
 
-### [![Paper](https://img.shields.io/badge/arXiv-1708.00720-red.svg)](https://arxiv.org/abs/1708.00720)
+### [![Paper](https://img.shields.io/badge/arXiv-1708.00720-blue.svg)](https://arxiv.org/abs/1708.00720)
 
 ### [Bifrost Documentation](http://ledatelescope.github.io/bifrost/)
 ### [Bifrost Roadmap](ROADMAP.md)
