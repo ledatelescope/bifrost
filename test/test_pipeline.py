@@ -26,11 +26,49 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import unittest
+import numpy as np
 import bifrost as bf
+from bifrost.DataType import DataType
 
 from bifrost.blocks import *
+from bifrost.pipeline import SourceBlock, SinkBlock
 
-class CallbackBlock(CopyBlock):
+RTOL = 1e-4
+ATOL = 1e-5
+
+class DictReader(object):
+    def __init__(self, dict_):
+        self.dict = dict_
+    def __enter__(self):
+        return self.dict
+    def __exit__(self, type, value, tb):
+        pass
+
+class CorrelateTestInputBlock(SourceBlock):
+    def create_reader(self, idict):
+        return DictReader(idict)
+    def on_sequence(self, idict, _):
+        ohdr = {
+            '_tensor': {
+                'dtype':  'ci8',
+                'shape':  [-1, idict['nchan'], idict['nstation'], idict['npol']],
+                'labels': ['time', 'freq', 'station', 'pol'],
+                'scales': [(0, 1./idict['chan_bw']), (idict['cfreq'], idict['chan_bw']), None, None],
+                'units':  ['s', 'Hz', None, None]
+            }
+        }
+        self.nframe = idict['ntime']
+        return [ohdr]
+    def on_data(self, reader, ospans):
+        ospan = ospans[0]
+        odata = ospan.data
+        i = np.arange(odata.shape[-2] * odata.shape[-1] * 2) % 255 - 127
+        odata.view(np.int8)[...] = i.reshape((odata.shape[-2], odata.shape[-1]*2))
+        nframe = min(ospan.nframe, self.nframe)
+        self.nframe -= nframe
+        return [nframe]
+
+class CallbackBlock(SinkBlock):
     """Testing-only block which calls user-defined
         functions on sequence and on data"""
     def __init__(self, iring, seq_callback, data_callback, data_ref=None,
@@ -41,15 +79,13 @@ class CallbackBlock(CopyBlock):
         self.data_ref = data_ref
     def on_sequence(self, iseq):
         self.seq_callback(iseq)
-        return super(CallbackBlock, self).on_sequence(iseq)
-    def on_data(self, ispan, ospan):
-        self.data_callback(ispan, ospan)
+    def on_data(self, ispan):
+        self.data_callback(ispan)
         if self.data_ref is not None:
             # Note: This can be used to check data from outside the pipeline,
             #         which is useful when exceptions inside blocks prevent
             #         downstream callback blocks from ever executing.
-            self.data_ref['odata'] = ospan.data.copy()
-        return super(CallbackBlock, self).on_data(ispan, ospan)
+            self.data_ref['idata'] = ispan.data.copy()
 
 class PipelineTest(unittest.TestCase):
     def setUp(self):
@@ -60,7 +96,7 @@ class PipelineTest(unittest.TestCase):
     def test_cuda_copy(self):
         def check_sequence(seq):
             pass
-        def check_data(ispan, ospan):
+        def check_data(ispan):
             pass
         gulp_nframe = 101
         with bf.Pipeline() as pipeline:
@@ -69,10 +105,10 @@ class PipelineTest(unittest.TestCase):
                 data = copy(data, space='cuda')
                 data = copy(data, space='cuda_host')
             ref = {}
-            data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
+            CallbackBlock(data, check_sequence, check_data, data_ref=ref)
             pipeline.run()
-            self.assertEqual(ref['odata'].dtype, 'uint16')
-            self.assertEqual(ref['odata'].shape, (29, 1, 2))
+            self.assertEqual(ref['idata'].dtype, 'uint16')
+            self.assertEqual(ref['idata'].shape, (29, 1, 2))
     def test_fdmt(self):
         gulp_nframe = 101
         # TODO: Check handling of multiple pols (not currently supported?)
@@ -85,25 +121,22 @@ class PipelineTest(unittest.TestCase):
             self.assertEqual(tensor['units'],  [None, 'pc cm^-3', 's'])
             self.assertEqual(hdr['cfreq_units'], 'MHz')
             self.assertEqual(hdr['cfreq'], 433.937)
-        def check_data(ispan, ospan):
+        def check_data(ispan):
             # Note: nframe = gulp_nframe + max_delay
-            #self.assertLessEqual(ispan.nframe, gulp_nframe)
-            self.assertEqual(    ospan.nframe, ispan.nframe)
             self.assertEqual(ispan.data.shape, (1,5,ispan.nframe))
-            self.assertEqual(ospan.data.shape, (1,5,ospan.nframe))
         with bf.Pipeline() as pipeline:
             data = read_sigproc([self.fil_file], gulp_nframe)
             data = copy(data, space='cuda')
             data = transpose(data, ['pol', 'freq', 'time'])
             data = fdmt(data, max_dm=30.)
             ref = {}
-            data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
+            CallbackBlock(data, check_sequence, check_data, data_ref=ref)
             data = transpose(data, ['time', 'pol', 'dispersion'])
             data = copy(data, space='cuda_host')
             pipeline.run()
-            self.assertEqual(ref['odata'].dtype, 'float32')
-            #self.assertEqual(ref['odata'].shape, (1, 5, 17))
-            self.assertEqual(ref['odata'].shape, (1, 5, 24)) # TODO: Need to check this against an absolute somehow
+            self.assertEqual(ref['idata'].dtype, 'float32')
+            #self.assertEqual(ref['idata'].shape, (1, 5, 17))
+            self.assertEqual(ref['idata'].shape, (1, 5, 24)) # TODO: Need to check this against an absolute somehow
     def test_reduce(self):
         gulp_nframe = 128
         nreduce_freq = 2
@@ -115,12 +148,75 @@ class PipelineTest(unittest.TestCase):
             self.assertEqual(tensor['dtype'],  'f32')
             self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
             self.assertEqual(tensor['units'],  ['s', None, 'MHz'])
-        def check_data(ispan, ospan):
+        def check_data(ispan):
             pass
         with bf.Pipeline() as pipeline:
             data = read_sigproc([self.fil_file], gulp_nframe)
             data = copy(data, space='cuda')
             data = bf.blocks.reduce(data, 'freq', nreduce_freq)
             data = bf.blocks.reduce(data, 'time', nreduce_time)
-            data = CallbackBlock(data, check_sequence, check_data)
+            CallbackBlock(data, check_sequence, check_data)
             pipeline.run()
+    def test_correlate(self):
+        gulp_nframe  = 100
+        nreduce_time = 1000
+        metadata = {
+            'ntime':  10000,
+            'nchan':    128,
+            'nstation':  60,
+            'npol':       2,
+            'chan_bw': 25e3,
+            'cfreq':   50e6
+        }
+        def check_sequence(seq):
+            tensor = seq.header['_tensor']
+            self.assertEqual(seq.header['gulp_nframe'], 1)
+            self.assertEqual(tensor['shape'],  [-1,metadata['nchan'],metadata['nstation'],metadata['npol'],metadata['nstation'],metadata['npol']])
+            self.assertEqual(tensor['dtype'],  'cf32')
+            self.assertEqual(tensor['labels'], ['time', 'freq', 'station_i', 'pol_i', 'station_j', 'pol_j'])
+            self.assertEqual(tensor['scales'], [[0, nreduce_time / metadata['chan_bw']], [metadata['cfreq'], metadata['chan_bw']], None, None, None, None])
+            self.assertEqual(tensor['units'],  ['s', 'Hz', None, None, None, None])
+        def check_data(ispan):
+            pass
+        with bf.Pipeline() as pipeline:
+            data = CorrelateTestInputBlock([metadata], gulp_nframe=gulp_nframe)
+            data = copy(data, space='cuda')
+            data = bf.blocks.correlate(data, nreduce_time)
+            ref = {}
+            CallbackBlock(data, check_sequence, check_data, data_ref=ref)
+            pipeline.run()
+
+        # Now we check the results
+        # Note: This must match the values in CorrelateTestInputBlock (TODO: Refactor/clean this)
+        i = np.arange(metadata['nstation'] * metadata['npol'] * 2) % 255 - 127
+        input_data = np.empty((metadata['nchan'], metadata['nstation'] * metadata['npol']), dtype=np.complex64)
+        input_data[...].real = i[0::2]
+        input_data[...].imag = i[1::2]
+        expected_data = nreduce_time * input_data[:,:,None].conj() * input_data[:,None,:]
+        triu = np.triu_indices(metadata['nstation'] * metadata['npol'], 1)
+        expected_data[..., triu[0], triu[1]] = 0
+        expected_data = expected_data.reshape((1,
+                                               metadata['nchan'],
+                                               metadata['nstation'],
+                                               metadata['npol'],
+                                               metadata['nstation'],
+                                               metadata['npol']))
+        idata = ref['idata']
+        idata = idata.copy('system')
+        idata = idata.reshape(1, metadata['nchan'],
+                              metadata['nstation']*metadata['npol'],
+                              metadata['nstation']*metadata['npol'])
+        # TODO: Assignment to the upper triangle of a Bifrost ndarray is
+        #         not working! This is a WAR to use plain numpy instead.
+        idata = np.array(idata)
+        # Note: This is necessary because the upper triangle is left
+        #         untouched by the kernel and ends up containing old
+        #         data from the ring.
+        idata[..., triu[0], triu[1]] = 0
+        idata = idata.reshape((1,
+                               metadata['nchan'],
+                               metadata['nstation'],
+                               metadata['npol'],
+                               metadata['nstation'],
+                               metadata['npol']))
+        np.testing.assert_allclose(idata, expected_data, RTOL, ATOL)
