@@ -11,77 +11,87 @@ A stream processing framework for high-throughput applications.
 ### [Bifrost Documentation](http://ledatelescope.github.io/bifrost/)
 ### [Bifrost Roadmap](ROADMAP.md)
 
-## Your first pipeline
+## A simple pipeline
 
-Example pipelines can be found in the `testbench/` directory. For example, here's a snippet  
-that reads data from a binary file, copies it to the GPU, runs an FFT, then writes the
-output back to disk:
-
-```python
-
-# Get a list of binary data files
-filenames   = glob.glob('testdata/*.bin')
-
-# Setup pipeline
-b_read      = BinaryFileReadBlock(filenames, window_len, 1, 'cf32', core=0)
-b_copy      = CopyBlock(b_read, space='cuda', core=1, gpu=0)
-b_fft       = FftBlock(b_copy, axes=1, core=2, gpu=0)
-b_out       = CopyBlock(b_fft, space='system', core=3)
-b_write     = BinaryFileWriteBlock(b_out, core=4)
-
-# Run pipeline
-pipeline = bfp.get_default_pipeline()
-print pipeline.dot_graph()
-pipeline.run()
-```
-
-And here's an example that reads a WAV audio file, generates a spectrum, and writes the output to a filterbank file:
+Here's a snippet that reads Sigproc filterbank files, applies a
+Fast Dispersion Measure Transform (FDMT) on the GPU, and writes
+the results to a set of dedispersed time series files:
 
 ```python
 import bifrost as bf
+import sys
 
-data = bf.blocks.read_wav(['file1.wav', 'file2.wav'], gulp_nframe=4096)
-data = bf.blocks.copy(data, space='cuda')
-data = bf.views.split_axis(data, 'time', 256, label='fine_time')
-data = bf.blocks.fft(data, axes='fine_time', axis_labels='freq')
-data = bf.blocks.detect(data, mode='jones')
-data = bf.blocks.accumulate(data, 2)
-data = bf.blocks.transpose(data, ['time', 'pol', 'freq'])
-data = bf.blocks.copy(data, space='cuda_host')
-data = bf.blocks.quantize(data, 'i8')
+filenames = sys.argv[1:]
+
+print "Building pipeline"
+data = bf.blocks.read_sigproc(filenames, gulp_nframe=128)
+data = bf.blocks.copy(data, 'cuda')
+data = bf.blocks.transpose(data, ['pol', 'freq', 'time'])
+data = bf.blocks.fdmt(data, max_dm=100.)
+data = bf.blocks.copy(data, 'cuda_host')
 bf.blocks.write_sigproc(data)
 
-pipeline = bf.get_default_pipeline()
-pipeline.shutdown_on_signals()
-pipeline.run()
+print "Running pipeline"
+bf.get_default_pipeline().run()
+print "All done"
 ```
 
-<!---
-Should put an image of this pipeline here.
--->
+## A more complex pipeline
+
+Below is a longer snippet that demonstrates some additional features
+of Bifrost pipelines, including the BlockChainer tool, block scopes,
+CPU and GPU binding, data views, and dot graph output. This example
+generates high-resolution spectra from Guppi Raw data:
+
+```python
+import bifrost as bf
+import sys
+
+filenames = sys.argv[1:]
+f_avg = 4
+n_int = 8
+
+print "Building pipeline"
+bc = bf.BlockChainer()
+bc.blocks.read_guppi_raw(filenames, core=0)
+bc.blocks.copy(space='cuda', core=1)
+with bf.block_scope(fuse=True, gpu=0):
+    bc.blocks.transpose(['time', 'pol', 'freq', 'fine_time'])
+    bc.blocks.fft(axes='fine_time', axis_labels='fine_freq', apply_fftshift=True)
+    bc.blocks.detect('stokes')
+    bc.views.merge_axes('freq', 'fine_freq')
+    bc.blocks.reduce('freq', f_avg)
+    bc.blocks.accumulate(n_int)
+bc.blocks.copy(space='cuda_host', core=2)
+bc.blocks.write_sigproc(core=3)
+
+pipeline = bf.get_default_pipeline()
+print pipeline.dot_graph()
+print "Running pipeline"
+pipeline.shutdown_on_signals()
+pipeline.run()
+print "All done"
+```
+
 ## Feature overview
 
  - Designed for sustained high-throughput stream processing
- - Python and C++ APIs wrap fast C++/CUDA backend
+ - Python API wraps fast C++/CUDA backend
+ - Fast and flexible ring buffer specifically designed for processing continuous data streams
  - Native support for both system (CPU) and CUDA (GPU) memory spaces and computation
- - Main modules
-   - Ring buffer: Flexible and thread safe, supports CPU and GPU memory spaces
-   - Transpose: Arbitrary transpose function for ND arrays
- - Experimental modules
-   - UDP: Fast data capture with memory reordering and unpacking
-   - Radio astronomy: High-performance signal processing operations
+ - Fast kernels for transposition, dedispersion, correlation, beamforming and more
+ - bfMap: JIT-compiled ND array transformations
+ - Fast UDP data capture
+ - A growing library of ready-to-use pipeline 'blocks'
+ - Rich metadata enables seamless interoperability between blocks
 
 ## Installation
 
-### C library
-
-Install dependencies:
+### C dependencies
 
     $ sudo apt-get install exuberant-ctags
 
-### Python interface
-
-Install dependencies:
+### Python dependencies
 
  * numpy
  * contextlib2
@@ -125,6 +135,12 @@ For CPU-only builds:
 
     $ make docker-cpu
     $ docker run --rm -it ledatelescope/bifrost
+
+### Running tests
+
+To run all CPU and GPU tests:
+
+    $ make test
 
 ## Documentation
 
