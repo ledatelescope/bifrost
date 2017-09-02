@@ -350,9 +350,9 @@ inline __host__ __device__ JonesVec_<R,true> operator*(R const& r, JonesVec_<R,t
 template<typename R>
 inline __host__ __device__ JonesVec_<R,true> operator*(JonesVec_<R,true> const& v, R const& r) { return r * v; }
 template<typename R>
-inline __host__ __device__ JonesVec_<R,false> operator*(JonesVec_<R,false> const& v, R const& r) { JonesVec_<R,false> c = v; return c *= r; }
+inline __host__ __device__ JonesVec_<R,false> operator*(R const& r, JonesVec_<R,false> const& v) { JonesVec_<R,false> c = v; return c *= r; }
 template<typename R>
-inline __host__ __device__ JonesVec_<R,false> operator*(R const& r, JonesVec_<R,false> const& v) { return r * v; }
+inline __host__ __device__ JonesVec_<R,false> operator*(JonesVec_<R,false> const& v, R const& r) { return r * v; }
 /*
 template<typename R>
 inline __host__ __device__ JonesMat operator*(JonesVec const& a, JonesVec_<R,false> const& b) {
