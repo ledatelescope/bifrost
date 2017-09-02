@@ -17,7 +17,7 @@ libbifrost:
 
 test:
 	#$(MAKE) -C $(SRC_DIR) test
-	cd test && python -m unittest discover
+	cd test && ./download_test_data.sh ; python -m unittest discover
 .PHONY: test
 clean:
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) clean || true
