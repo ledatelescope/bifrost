@@ -84,13 +84,12 @@ Install dependencies:
 Install dependencies:
 
  * numpy
- * matplotlib
  * contextlib2
  * pint
  * ctypesgen
 
 ```
-$ sudo pip install numpy matplotlib contextlib2 pint git+https://github.com/davidjamesca/ctypesgen.git@3d2d9803339503d2988382aa861b47a6a4872c32
+$ sudo pip install numpy contextlib2 pint git+https://github.com/davidjamesca/ctypesgen.git@3d2d9803339503d2988382aa861b47a6a4872c32
 ```
 
 ### Bifrost installation

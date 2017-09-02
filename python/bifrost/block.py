@@ -38,10 +38,6 @@ import bifrost
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
-import matplotlib
-# Use a graphical backend which supports threading
-matplotlib.use('Agg')
-from matplotlib import pyplot as plt
 
 class Pipeline(object):
     """Class which connects blocks linearly, with
@@ -838,6 +834,10 @@ class WaterfallBlock(object):
         @param[in] waterfall_matrix x axis is frequency and
             y axis is time. Values should be power.
             """
+        import matplotlib
+        # Use a graphical backend which supports threading
+        matplotlib.use('Agg')
+        from matplotlib import pyplot as plt
         plt.ioff()
         print "Interactive mode off"
         print waterfall_matrix.shape
