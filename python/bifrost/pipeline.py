@@ -444,7 +444,7 @@ class SourceBlock(Block):
                     if 'time_tag' not in ohdr:
                         ohdr['time_tag'] = self._seq_count
                     if 'name' not in ohdr:
-                        ohdr['name'] = '<unnamed-%i>' % self._seq_count
+                        ohdr['name'] = 'unnamed-sequence-%i' % self._seq_count
                 self._seq_count += 1
                 with ExitStack() as oseq_stack:
                     oseqs, ogulp_overlaps = self.begin_sequences(
