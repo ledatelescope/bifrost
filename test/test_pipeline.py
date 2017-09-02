@@ -54,7 +54,7 @@ class CorrelateTestInputBlock(SourceBlock):
                 'shape':  [-1, idict['nchan'], idict['nstation'], idict['npol']],
                 'labels': ['time', 'freq', 'station', 'pol'],
                 'scales': [(0, 1./idict['chan_bw']), (idict['cfreq'], idict['chan_bw']), None, None],
-                'units':  ['s', 'Hz', None, None]
+                'units':  ['s', 'Hz', None, ('X', 'Y')]
             }
         }
         self.nframe = idict['ntime']
@@ -78,9 +78,11 @@ class CallbackBlock(SinkBlock):
         self.data_callback = data_callback
         self.data_ref = data_ref
     def on_sequence(self, iseq):
-        self.seq_callback(iseq)
+        if self.seq_callback is not None:
+            self.seq_callback(iseq)
     def on_data(self, ispan):
-        self.data_callback(ispan)
+        if self.data_callback is not None:
+            self.data_callback(ispan)
         if self.data_ref is not None:
             # Note: This can be used to check data from outside the pipeline,
             #         which is useful when exceptions inside blocks prevent
@@ -175,15 +177,19 @@ class PipelineTest(unittest.TestCase):
             self.assertEqual(tensor['dtype'],  'cf32')
             self.assertEqual(tensor['labels'], ['time', 'freq', 'station_i', 'pol_i', 'station_j', 'pol_j'])
             self.assertEqual(tensor['scales'], [[0, nreduce_time / metadata['chan_bw']], [metadata['cfreq'], metadata['chan_bw']], None, None, None, None])
-            self.assertEqual(tensor['units'],  ['s', 'Hz', None, None, None, None])
+            pol_units = ['X', 'Y']
+            self.assertEqual(tensor['units'],  ['s', 'Hz', None, pol_units, None, pol_units])
         def check_data(ispan):
             pass
         with bf.Pipeline() as pipeline:
             data = CorrelateTestInputBlock([metadata], gulp_nframe=gulp_nframe)
             data = copy(data, space='cuda')
             data = bf.blocks.correlate(data, nreduce_time)
-            ref = {}
-            CallbackBlock(data, check_sequence, check_data, data_ref=ref)
+            ref1 = {}
+            CallbackBlock(data, check_sequence, check_data, data_ref=ref1)
+            data = bf.blocks.convert_visibilities(data, 'matrix')
+            ref2 = {}
+            CallbackBlock(data, check_sequence, check_data, data_ref=ref2)
             pipeline.run()
 
         # Now we check the results
@@ -193,30 +199,75 @@ class PipelineTest(unittest.TestCase):
         input_data[...].real = i[0::2]
         input_data[...].imag = i[1::2]
         expected_data = nreduce_time * input_data[:,:,None].conj() * input_data[:,None,:]
+        expected_data_shaped = expected_data.reshape(
+            (1, metadata['nchan'],
+             metadata['nstation'], metadata['npol'],
+             metadata['nstation'], metadata['npol']))
+
+        # Check full matrix output
+        idata = ref2['idata']
+        idata = idata.copy('system')
+        np.testing.assert_allclose(idata, expected_data_shaped, RTOL, ATOL)
+
+        # Check lower-tri matrix output
         triu = np.triu_indices(metadata['nstation'] * metadata['npol'], 1)
         expected_data[..., triu[0], triu[1]] = 0
-        expected_data = expected_data.reshape((1,
-                                               metadata['nchan'],
-                                               metadata['nstation'],
-                                               metadata['npol'],
-                                               metadata['nstation'],
-                                               metadata['npol']))
-        idata = ref['idata']
+        expected_data = expected_data.reshape(
+            (1, metadata['nchan'],
+             metadata['nstation'], metadata['npol'],
+             metadata['nstation'], metadata['npol']))
+        idata = ref1['idata']
         idata = idata.copy('system')
         idata = idata.reshape(1, metadata['nchan'],
                               metadata['nstation']*metadata['npol'],
                               metadata['nstation']*metadata['npol'])
         # TODO: Assignment to the upper triangle of a Bifrost ndarray is
-        #         not working! This is a WAR to use plain numpy instead.
+        #         silently failing! This is a WAR to use plain numpy instead.
         idata = np.array(idata)
         # Note: This is necessary because the upper triangle is left
         #         untouched by the kernel and ends up containing old
         #         data from the ring.
         idata[..., triu[0], triu[1]] = 0
-        idata = idata.reshape((1,
-                               metadata['nchan'],
-                               metadata['nstation'],
-                               metadata['npol'],
-                               metadata['nstation'],
-                               metadata['npol']))
+        idata = idata.reshape(
+            (1, metadata['nchan'],
+             metadata['nstation'], metadata['npol'],
+             metadata['nstation'], metadata['npol']))
         np.testing.assert_allclose(idata, expected_data, RTOL, ATOL)
+
+    def test_convert_visibilities(self):
+        gulp_nframe  = 100
+        nreduce_time = 1000
+        metadata = {
+            'ntime':  10000,
+            'nchan':    128,
+            'nstation':  60,
+            'npol':       2,
+            'chan_bw': 25e3,
+            'cfreq':   50e6
+        }
+        def check_sequence(seq):
+            tensor = seq.header['_tensor']
+            self.assertEqual(seq.header['gulp_nframe'], 1)
+            self.assertEqual(tensor['shape'],  [-1,metadata['nchan'],metadata['nstation'],metadata['npol'],metadata['nstation'],metadata['npol']])
+            self.assertEqual(tensor['dtype'],  'cf32')
+            self.assertEqual(tensor['labels'], ['time', 'freq', 'station_i', 'pol_i', 'station_j', 'pol_j'])
+            self.assertEqual(tensor['scales'], [[0, nreduce_time / metadata['chan_bw']], [metadata['cfreq'], metadata['chan_bw']], None, None, None, None])
+            pol_units = ['X', 'Y']
+            self.assertEqual(tensor['units'],  ['s', 'Hz', None, pol_units, None, pol_units])
+        def check_data(ispan):
+            pass
+        with bf.Pipeline() as pipeline:
+            data = CorrelateTestInputBlock([metadata], gulp_nframe=gulp_nframe)
+            data = copy(data, space='cuda')
+            data = bf.blocks.correlate(data, nreduce_time)
+            data1 = bf.blocks.convert_visibilities(data, 'matrix')
+            ref1 = {}
+            CallbackBlock(data1, check_sequence, check_data, data_ref=ref1)
+            data2 = bf.blocks.convert_visibilities(data, 'storage')
+            data2 = bf.blocks.convert_visibilities(data2, 'matrix')
+            ref2 = {}
+            CallbackBlock(data2, check_sequence, check_data, data_ref=ref2)
+            pipeline.run()
+        expected_data = ref1['idata'].copy('system')
+        actual_data   = ref2['idata'].copy('system')
+        np.testing.assert_allclose(actual_data, expected_data, RTOL, ATOL)
