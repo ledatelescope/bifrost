@@ -164,9 +164,11 @@ def _header_read(f):
     return s
 
 def write_header(hdr, f):
-    #f.write("HEADER_START")
     _header_write_string(f, "HEADER_START")
     for key, val in hdr.items():
+        if val is None:
+            # Do not write keys with no value
+            continue
         if key in _string_values:
             _header_write_string(f, key)
             _header_write_string(f, val)
