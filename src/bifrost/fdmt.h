@@ -92,8 +92,8 @@ BFstatus bfFdmtSetStream(BFfdmt      plan,
 /*! \p bfFdmtExecute executes a FDMT plan.
  *
  *  \param plan              The FDMT plan to execute
- *  \param in                The input filterbank of shape [..., ntime, \p nchan]
- *  \param out               The output dispersion bank of shape [..., ntime, \p max_delay]
+ *  \param iarray            The input filterbank of shape [..., ntime, \p nchan]
+ *  \param oarray            The output dispersion bank of shape [..., ntime, \p max_delay]
  *  \param negative_delays   If \p true, the function computes delays in the range (-max_delay, 0] instead of [0, max_delay)
  *  \param exec_storage      Pointer to memory storage for temporary execution data
  *  \param exec_storage_size Pointer to the size in bytes of the memory at \p exec_storage
