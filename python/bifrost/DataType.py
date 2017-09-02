@@ -96,6 +96,15 @@ NUMPY_TYPEMAP = {
            64: np.complex128, 128: np.complex256}
 }
 
+def is_vector_structure(dtype):
+    if dtype.names is None:
+        return False
+    ndim = len(dtype.names)
+    vector_field_names = tuple('f%i' % i for i in xrange(ndim))
+    return (dtype.kind == 'V' and
+            dtype.names == vector_field_names and
+            all([dtype[i] == dtype[0] for i in xrange(1, ndim)]))
+
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
     def __init__(self, t=None):
@@ -133,6 +142,9 @@ class DataType(object):
             self._nbit = t.itemsize * 8
             if t.kind not in set(['i', 'u', 'f', 'c', 'V', 'b']):
                 raise TypeError('Unsupported data type: %s' % str(t))
+            if is_vector_structure(t): # Field structure representing vector
+                self._veclen = len(t.names)
+                t = t[0]
             self._kind = t.kind
             if t.kind == 'c':
                 self._nbit /= 2   # Bifrost convention is nbit per real component
@@ -162,7 +174,12 @@ class DataType(object):
         if self._veclen == 1:
             return base
         else:
-            return np.dtype((base, self._veclen))
+            #return np.dtype((base, self._veclen))
+            # WAR for vector types not working as expected when passed to
+            #   np.view (the shape gets merged into the ndarray's shape instead
+            #   of remaining part of the dtype). We return a structure type
+            #   with fields representing a vector instead.
+            return np.dtype(','.join((str(base),)*self._veclen))
     def __str__(self):
         if self._veclen == 1:
             return '%s%i' % (self._kind, self._nbit)
