@@ -25,6 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# **TODO: Add tests with beta != 0
+
 import ctypes
 import unittest
 import numpy as np
@@ -47,7 +49,8 @@ class TestLinAlg(unittest.TestCase):
     def run_test_matmul_aa_ci8_shape(self, shape, transpose=False):
         # **TODO: This currently never triggers the transpose path in the backend
         shape_complex = shape[:-1] + (shape[-1] * 2,)
-        a8 = (np.random.random(size=shape_complex) * 255).astype(np.int8)
+        # Note: The xGPU-like correlation kernel does not support input values of -128 (only [-127:127])
+        a8 = ((np.random.random(size=shape_complex) * 2 - 1) * 127).astype(np.int8)
         a_gold = a8.astype(np.float32).view(np.complex64)
         if transpose:
             a_gold = H(a_gold)
@@ -274,12 +277,16 @@ class TestLinAlg(unittest.TestCase):
         self.run_test_matmul_ab_dtype_transpose(dtype, False)
         self.run_test_matmul_ab_dtype_transpose(dtype, True)
     def run_test_matmul_aa_ci8_transpose(self, transpose):
-        self.run_test_matmul_aa_ci8_shape((11,23),         transpose=transpose)
-        self.run_test_matmul_aa_ci8_shape((111,223),       transpose=transpose)
-        self.run_test_matmul_aa_ci8_shape((1111,2223),     transpose=transpose)
-        self.run_test_matmul_aa_ci8_shape((3,111,223),     transpose=transpose)
-        self.run_test_matmul_aa_ci8_shape((5,3,111,223),   transpose=transpose)
-        self.run_test_matmul_aa_ci8_shape((5,7,3,111,223), transpose=transpose)
+        # Note: The xGPU-like correlation kernel is only invoked when k%4 == 0
+        for kp in [0, 1]:
+            self.run_test_matmul_aa_ci8_shape((99+kp,3+kp),          transpose=transpose)
+            self.run_test_matmul_aa_ci8_shape((11+kp,3+kp),          transpose=transpose)
+            self.run_test_matmul_aa_ci8_shape((11+kp,23+kp),         transpose=transpose)
+            self.run_test_matmul_aa_ci8_shape((111+kp,223+kp),       transpose=transpose)
+            self.run_test_matmul_aa_ci8_shape((1111+kp,2223+kp),     transpose=transpose)
+            self.run_test_matmul_aa_ci8_shape((3,111+kp,223+kp),     transpose=transpose)
+            self.run_test_matmul_aa_ci8_shape((5,3,111+kp,223+kp),   transpose=transpose)
+            self.run_test_matmul_aa_ci8_shape((5,7,3,111+kp,223+kp), transpose=transpose)
     def test_matmul_aa_ci8(self):
         self.run_test_matmul_aa_ci8_transpose(False)
         self.run_test_matmul_aa_ci8_transpose(True)
