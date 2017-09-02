@@ -450,6 +450,9 @@ void bf_cherk_N(int N, int K, int nbatch,
 	BF_ASSERT_EXCEPTION(A_batchstride % 2 == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT_EXCEPTION(C_stride      % 2 == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT_EXCEPTION(C_batchstride % 2 == 0, BF_STATUS_UNSUPPORTED_STRIDE);
+	enum { TEXTURE_ALIGNMENT = 512 };
+	BF_ASSERT_EXCEPTION((uintptr_t)A_ptr % TEXTURE_ALIGNMENT == 0,
+	                    BF_STATUS_UNSUPPORTED_STRIDE);
 	// TODO: Assert supported limits on N and K based on texture constraints
 	
 	// Note: The kernel is 2x vectorized (i.e., operates on Jones vectors)
@@ -495,11 +498,14 @@ void bf_cherk_N(int N, int K, int nbatch,
 	resDesc.res.linear.desc.z = A_nbit;
 	resDesc.res.linear.desc.w = A_nbit;
 	resDesc.res.linear.sizeInBytes = A_nelement_total * 4 * (A_nbit / 8);
+	
 	cudaTextureDesc texDesc;
 	memset(&texDesc, 0, sizeof(texDesc));
 	texDesc.readMode = tex_read_mode;
 	cudaTextureObject_t A_tex = 0;
-	cudaCreateTextureObject(&A_tex, &resDesc, &texDesc, NULL);
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaCreateTextureObject(&A_tex, &resDesc, &texDesc, NULL),
+		BF_STATUS_INTERNAL_ERROR);
 	
 	cuda::child_stream stream0(stream);
 	cuda::child_stream stream1(stream);
@@ -522,16 +528,23 @@ void bf_cherk_N(int N, int K, int nbatch,
 	size_t nblock = nblock_m * (nblock_m + 1) / 2;
 #endif
 	dim3 grid(nblock, std::min(nbatch, 65535));
+	if( nblock > 0 ) {
+		// TODO: Replace with cudaLaunchKernel
+		bf_cherk_N_offdiagonal_kernel<M_THREAD, N_THREAD, M_REG, N_REG>
+			<<<grid, block, 0, stream0>>>
+			(N, K, nbatch,
+			 alpha,
+			 A_tex, A_nbit, A_stride, A_batchstride,
+			 beta,
+			 (float4*)C_ptr, C_stride, C_batchstride);
+		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+	}
 	
-	// TODO: Replace with cudaLaunchKernel
-	bf_cherk_N_offdiagonal_kernel<M_THREAD, N_THREAD, M_REG, N_REG>
-		<<<grid, block, 0, stream0>>>
-		(N, K, nbatch,
-		 alpha,
-		 A_tex, A_nbit, A_stride, A_batchstride,
-		 beta,
-		 (float4*)C_ptr, C_stride, C_batchstride);
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaDestroyTextureObject(A_tex),
+		BF_STATUS_INTERNAL_ERROR);
 	
+#if BF_USE_DIAGONAL_KERNEL
 	// Note: The second texture has 2x the elements because each is only
 	//         a 2-vector instead of a 4-vector.
 	// TODO: This condition is not currently included in the linalg.cu dispatch
@@ -555,13 +568,14 @@ void bf_cherk_N(int N, int K, int nbatch,
 	memset(&texDesc2, 0, sizeof(texDesc2));
 	texDesc2.readMode = tex_read_mode;
 	cudaTextureObject_t A_tex2 = 0;
-	cudaCreateTextureObject(&A_tex2, &resDesc2, &texDesc2, NULL);
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaCreateTextureObject(&A_tex2, &resDesc2, &texDesc2, NULL),
+		BF_STATUS_INTERNAL_ERROR);
 	
 	// TODO: Clean this up a bit
 	grid.x = nblock_m;
 	enum { N_THREAD_DIAG = 4 };
 	block.y = N_THREAD_DIAG;
-#if BF_USE_DIAGONAL_KERNEL
 	bf_cherk_N_diagonal_kernel<M_THREAD, N_THREAD_DIAG, 2, 2>
 		<<<grid, block, 0, stream1>>>
 		(N, K, nbatch,
@@ -569,10 +583,12 @@ void bf_cherk_N(int N, int K, int nbatch,
 		 A_tex2, A_nbit, A_stride, A_batchstride,
 		 beta,
 		 (float4*)C_ptr, C_stride, C_batchstride);
-#endif // BF_USE_DIAGONAL_KERNEL
+	BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 	
-	cudaDestroyTextureObject(A_tex2);
-	cudaDestroyTextureObject(A_tex);
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaDestroyTextureObject(A_tex2),
+		BF_STATUS_INTERNAL_ERROR);
+#endif // BF_USE_DIAGONAL_KERNEL
 }
 
 template<int SIZE> struct shflable_type {};
