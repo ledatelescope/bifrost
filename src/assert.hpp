@@ -157,4 +157,4 @@ public:
 	}
 };
 // Disables debug-printing in the current scope
-#define BF_DISABLE_DEBUG() NoDebugScope _bf_no_debug_scope;
+#define BF_DISABLE_DEBUG() NoDebugScope _bf_no_debug_scope

@@ -49,6 +49,16 @@ m is the fast dim of C (and A)
 #define BF_USE_DIAGONAL_KERNEL 1
 //#define BF_USE_DIAGONAL_KERNEL 0
 
+template<typename T>
+inline __device__
+T shfl_warp_sync(T var, int srcLane, int width=warpSize) {
+#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
+	return __shfl_sync(0xFFFFFFFF, var, srcLane, width);
+#else
+	return __shfl(var, srcLane, width);
+#endif
+}
+
 inline __host__ __device__
 int project_triangular(int i, int j) {
 	// Note: Assumes i >= j
@@ -97,13 +107,13 @@ inline void bf_cherk_N_diagonal_kernel_compute(int tm,
 	JonesVec<float> B[N_REG];
 #pragma unroll
 	for( int rm=0; rm<M_REG; ++rm ) {
-		A[rm] = JonesVec<float>(__shfl(data, (tm*M_REG + rm)*2 + 0),
-		                        __shfl(data, (tm*M_REG + rm)*2 + 1));
+		A[rm] = JonesVec<float>(shfl_warp_sync(data, (tm*M_REG + rm)*2 + 0),
+		                        shfl_warp_sync(data, (tm*M_REG + rm)*2 + 1));
 	}
 #pragma unroll
 	for( int rn=0; rn<N_REG; ++rn ) {
-		B[rn] = JonesVec<float>(__shfl(data, (tn*N_REG + rn)*2 + 0),
-		                        __shfl(data, (tn*N_REG + rn)*2 + 1));
+		B[rn] = JonesVec<float>(shfl_warp_sync(data, (tn*N_REG + rn)*2 + 0),
+		                        shfl_warp_sync(data, (tn*N_REG + rn)*2 + 1));
 	}
 #pragma unroll
 	for( int rn=0; rn<N_REG; ++rn ) {
@@ -113,10 +123,9 @@ inline void bf_cherk_N_diagonal_kernel_compute(int tm,
 		}
 	}
 	
-	// Note: Only the first 16 threads will write out C_extra
-	JonesVec<float> A_extra(__shfl(data, tm0_extra*2 + 0),
-	                        __shfl(data, tm0_extra*2 + 1));
-	Complex<float> B_extra = __shfl(data, tn0_extra);
+	JonesVec<float> A_extra(shfl_warp_sync(data, tm0_extra*2 + 0),
+	                        shfl_warp_sync(data, tm0_extra*2 + 1));
+	Complex<float> B_extra = shfl_warp_sync(data, tn0_extra);
 	C_extra.x.mad(A_extra.x, B_extra.conj());
 	C_extra.y.mad(A_extra.y, B_extra.conj());
 }
@@ -790,11 +799,11 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
 			break;
 		}
 #if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
-		case BF_DTYPE_CF16: {
-			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
-				JonesVec<FourBit>, JonesVec<half>, Complex<float>);
-			break;
-		}
+		//case BF_DTYPE_CF16: {
+		//	LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
+		//		JonesVec<FourBit>, JonesVec<half>, Complex<float>);
+		//	break;
+		//}
 #endif
 		case BF_DTYPE_CF32: {
 			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
@@ -815,11 +824,11 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
 			break;
 		}
 #if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
-		case BF_DTYPE_CF16: {
-			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
-				JonesVec<int8_t>, JonesVec<half>, Complex<float>);
-			break;
-		}
+		//case BF_DTYPE_CF16: {
+		//	LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
+		//		JonesVec<int8_t>, JonesVec<half>, Complex<float>);
+		//	break;
+		//}
 #endif
 		case BF_DTYPE_CF32: {
 			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
