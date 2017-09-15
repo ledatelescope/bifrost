@@ -162,18 +162,20 @@ class TestLinAlg(unittest.TestCase):
         print nbeam, '\t'*2, nbyte / dt / 1e9, 'GB/s'
         print nbeam, '\t'*3, nsamp / dt / 1e6, 'MHz/s'
         '''
-    def run_test_matmul_aa_correlator_kernel(self, ntime, nstand, nchan):
+    def run_test_matmul_aa_correlator_kernel(self, ntime, nstand, nchan, misalign=0):
         x_shape = (ntime, nchan, nstand*2)
         perm = [1,0,2]
         x8 = ((np.random.random(size=x_shape+(2,))*2-1)*127).astype(np.int8)
         x = x8.astype(np.float32).view(np.complex64).reshape(x_shape)
         x = x.transpose(perm)
+        x = x[..., misalign:]
         b_gold = np.matmul(H(x), x)
-        triu = np.triu_indices(x_shape[-1], 1)
+        triu = np.triu_indices(x.shape[-1], 1)
         b_gold[..., triu[0], triu[1]] = 0
         x = x8.view(bf.DataType.ci8).reshape(x_shape)
         x = bf.asarray(x, space='cuda')
         x = x.transpose(perm)
+        x = x[..., misalign:]
         b = bf.zeros_like(b_gold, space='cuda')
         self.linalg.matmul(1, None, x, 0, b)
         b = b.copy('system')
@@ -217,8 +219,10 @@ class TestLinAlg(unittest.TestCase):
         for nchan in xrange(1, 1+5):
             for ntime in [1, 2, 3, 4, 8, 12]:
                 for nstand in xrange(1, 1+65):
-                    self.run_test_matmul_aa_correlator_kernel(
-                        ntime=ntime, nstand=nstand, nchan=nchan)
+                    for misalign in xrange(0, min(2 * (nstand - 1), 3), 2):
+                        self.run_test_matmul_aa_correlator_kernel(
+                            ntime=ntime, nstand=nstand, nchan=nchan,
+                            misalign=misalign)
     def test_matmul_aa_correlator_kernel_large(self):
         self.run_test_matmul_aa_correlator_kernel(ntime=100,  nstand=200,  nchan=1)
         self.run_test_matmul_aa_correlator_kernel(ntime=99,   nstand=200,  nchan=1)

@@ -215,7 +215,6 @@ BFstatus bfMatMul_aa_exec(BFlinalg    handle,
 	if( //use_bf_cherk &&
 	    (CUDART_VERSION < 8000 || n < BF_CUBLAS_CHERK_THRESHOLD) &&
 	    trans == CUBLAS_OP_N &&
-	    k % 4 == 0 &&
 	    n % 2 == 0 &&
 	    a_stride % 2 == 0 && a_batchstride % 2 == 0 &&
 	    c_stride % 2 == 0 && c_batchstride % 2 == 0 &&
