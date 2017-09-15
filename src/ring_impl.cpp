@@ -89,7 +89,7 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	: _name(name), _space(space), _buf(nullptr),
 	  _ghost_span(0), _span(0), _stride(0), _nringlet(0), _offset0(0),
 	  _tail(0), _head(0), _reserve_head(0),
-	  _ghost_dirty(false),
+	  _ghost_dirty_beg(_ghost_span),
 	  _writing_begun(false), _writing_ended(false), _eod(0),
 	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0),
 	  _core(-1) {
@@ -135,6 +135,9 @@ void BFring_impl::resize(BFsize contiguous_span,
 	//new_ghost_span = round_up(new_ghost_span, bfGetAlignment());
 	//new_span       = round_up(new_span,       bfGetAlignment());
 	new_span = std::max(new_span, bfGetAlignment());
+	// **TODO: See if can avoid doing this, so that ghost-region memcpys can
+	//           be avoided if user chooses gulp sizes in whole multiplies
+	//           regardless of whether they are powers of two or not.
 	// Note: This is critical to enable safe overflowing/wrapping of offsets
 	new_span = round_up_pow2(new_span);
 	// This is just to ensure nice indexing
@@ -190,7 +193,9 @@ void BFring_impl::resize(BFsize contiguous_span,
 		bfMemcpy2D(new_buf + new_span + _ghost_span, new_stride, _space,
 		           _buf + _ghost_span,                  _stride, _space,
 		           std::min(new_ghost_span, _span) - _ghost_span, _nringlet);
-		_ghost_dirty = true; // TODO: Is this the right thing to do?
+		//_ghost_dirty = true; // TODO: Is this the right thing to do?
+		//_ghost_dirty_beg = new_ghost_span; // TODO: Is this the right thing to do?
+		_ghost_dirty_beg = 0; // TODO: Is this the right thing to do?
 		bfFree(_buf, _space);
 		bfStreamSynchronize();
 	}
@@ -245,10 +250,9 @@ void BFring_impl::_ghost_write(BFoffset offset, BFsize span) {
 		// The write went into the ghost region, so copy to the ghosted part
 		this->_copy_from_ghost(0, buf_offset_end);
 	}
-	else if( buf_offset_beg < (BFoffset)_ghost_span ) {
+	if( buf_offset_beg < (BFoffset)_ghost_span ) {
 		// The write touched the ghosted front of the buffer
-		_ghost_dirty = true;
-		// TODO: Implement fine-grained dirty region tracking
+		_ghost_dirty_beg = std::min(_ghost_dirty_beg, buf_offset_beg);
 	}
 }
 void BFring_impl::_ghost_read(BFoffset offset, BFsize span) {
@@ -256,10 +260,13 @@ void BFring_impl::_ghost_read(BFoffset offset, BFsize span) {
 	BFoffset buf_offset_end = _buf_offset(offset + span);
 	if( buf_offset_end < buf_offset_beg ) {
 		// The read will enter the ghost region, so copy from the ghosted part
-		if( _ghost_dirty ) {
-			this->_copy_to_ghost(0, _ghost_span);
-			_ghost_dirty = false;
-		}
+		buf_offset_end = std::min(buf_offset_end, (BFoffset)_ghost_span);
+		BFsize dirty_span =
+			std::max((BFdelta)buf_offset_end - (BFdelta)_ghost_dirty_beg,
+			         BFdelta(0));
+		this->_copy_to_ghost(_ghost_dirty_beg, dirty_span);
+		// Note: This is actually _decreasing_ the amount that is marked dirty
+		_ghost_dirty_beg += dirty_span;
 	}
 }
 void BFring_impl::_copy_to_ghost(BFoffset buf_offset, BFsize span) {

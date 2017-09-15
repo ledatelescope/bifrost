@@ -77,7 +77,7 @@ class BFring_impl {
 	BFoffset       _head;
 	BFoffset       _reserve_head;
 	
-	bool           _ghost_dirty;
+	BFoffset       _ghost_dirty_beg;
 	
 	bool     _writing_begun;
 	bool     _writing_ended;
