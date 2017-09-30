@@ -103,6 +103,8 @@ class Ring(BifrostObject):
         _check( _bf.bfRingEndWriting(self.obj) )
     def open_sequence(self, name, guarantee=True):
         return ReadSequence(self, name=name, guarantee=guarantee)
+    def open_sequence_at(self, time_tag, guarantee=True):
+        return ReadSequence(self, which='at', time_tag=time_tag, guarantee=guarantee)
     def open_latest_sequence(self, guarantee=True):
         return ReadSequence(self, which='latest', guarantee=guarantee)
     def open_earliest_sequence(self, guarantee=True):
@@ -229,7 +231,7 @@ class WriteSequence(SequenceBase):
         return WriteSpan(self.ring, self, nframe)
 
 class ReadSequence(SequenceBase):
-    def __init__(self, ring, which='specific', name="",
+    def __init__(self, ring, which='specific', name="", time_tag=None,
                  other_obj=None, guarantee=True,
                  header_transform=None):
         SequenceBase.__init__(self, ring)
@@ -239,6 +241,9 @@ class ReadSequence(SequenceBase):
         self.obj = _bf.BFrsequence()
         if which == 'specific':
             _check(_bf.bfRingSequenceOpen(self.obj, ring.obj, name, guarantee))
+        elif which == 'at':
+            assert(time_tag is not None)
+            _check(_bf.bfRingSequenceOpenAt(self.obj, ring.obj, time_tag, guarantee))
         elif which == 'latest':
             _check(_bf.bfRingSequenceOpenLatest(self.obj, ring.obj, guarantee))
         elif which == 'earliest':
