@@ -627,11 +627,12 @@ void BFring_impl::acquire_span(BFrsequence rsequence,
 		BFoffset guarantee_begin = rsequence->guarantee()->offset();
 		BFdelta distance_from_guarantee = BFdelta(requested_begin -
 		                                          guarantee_begin);
-		bool acquire_is_within_guarantee = (distance_from_guarantee >= 0);
-		// Note: We enforce this because it (probably) never makes sense to
-		//         try to acquire a span outside the guarantee.
-		BF_ASSERT_EXCEPTION(acquire_is_within_guarantee,
-		                    BF_STATUS_INVALID_ARGUMENT);
+		// Note: Triggered dumps may open a guaranteed sequence that has
+		//         already been partially overwritten. In such cases, the
+		//         user may reasonably request spans at the beginning of the
+		//         sequence that actually lie outside of the guarantee
+		//         (i.e., distance_from_guarantee < 0), and so an error should
+		//         _not_ be returned in this scenario (just a zero-size span).
 		if( distance_from_guarantee > 0 ) {
 			// Move the guarantee forward to the beginning of this span to
 			//   allow writers to make progress.
