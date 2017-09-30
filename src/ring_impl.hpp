@@ -228,15 +228,18 @@ public:
 class Guarantee {
 	BFring   _ring;
 	BFoffset _offset;
-	void create()  { _ring->_add_guarantee(_offset); }
+	void create(BFoffset offset)  {
+		_offset = offset;
+		_ring->_add_guarantee(_offset);
+	}
 	void destroy() { _ring->_remove_guarantee(_offset); }
 public:
 	Guarantee(Guarantee const& ) = delete;
 	Guarantee& operator=(Guarantee const& ) = delete;
-	Guarantee(BFring ring, BFoffset offset)
-		: _ring(ring), _offset(offset) {
+	explicit Guarantee(BFring ring)
+		: _ring(ring) {
 		BFring_impl::lock_guard_type lock(_ring->_mutex);
-		this->create();
+		this->create(_ring->_tail);
 	}
 	~Guarantee() {
 		BFring_impl::lock_guard_type lock(_ring->_mutex);
@@ -244,14 +247,13 @@ public:
 	}
 	void move_nolock(BFoffset offset) {
 		this->destroy();
-		_offset = offset;
-		this->create();
+		this->create(offset);
 	}
 	BFoffset offset() const { return _offset; }
 };
-inline std::unique_ptr<Guarantee> new_guarantee(BFring ring, BFoffset offset) {
+inline std::unique_ptr<Guarantee> new_guarantee(BFring ring) {
 	// TODO: Use std::make_unique here (requires C++14)
-	return std::unique_ptr<Guarantee>(new Guarantee(ring, offset));
+	return std::unique_ptr<Guarantee>(new Guarantee(ring));
 }
 
 class BFsequence_impl {

@@ -325,10 +325,21 @@ BFsequence_sptr BFring_impl::_get_sequence_by_name(const char* name) {
 BFsequence_sptr BFring_impl::open_sequence_by_name(const char* name,
                                                    bool with_guarantee,
                                                    std::unique_ptr<Guarantee>& guarantee) {
+	// Note: Guarantee uses locks, so must be kept outside the lock scope here
+	std::unique_ptr<Guarantee> scoped_guarantee;
+	if( with_guarantee ) {
+		// Ensure a guarantee is held while waiting for sequence to exist
+		scoped_guarantee = new_guarantee(this);
+	}
 	unique_lock_type lock(_mutex);
 	BFsequence_sptr sequence = this->_get_sequence_by_name(name);
-	guarantee = new_guarantee(
-		this, this->_get_start_of_sequence_within_ring(sequence));
+	if( scoped_guarantee ) {
+		// Move guarantee to start of sequence
+		scoped_guarantee->move_nolock(
+			this->_get_start_of_sequence_within_ring(sequence));
+	}
+	// Transfer ownership to the caller
+	guarantee = std::move(scoped_guarantee);
 	return sequence;
 }
 
@@ -352,10 +363,21 @@ BFsequence_sptr BFring_impl::_get_sequence_at(BFoffset time_tag) {
 BFsequence_sptr BFring_impl::open_sequence_at(BFoffset time_tag,
                                               bool with_guarantee,
                                               std::unique_ptr<Guarantee>& guarantee) {
+	// Note: Guarantee uses locks, so must be kept outside the lock scope here
+	std::unique_ptr<Guarantee> scoped_guarantee;
+	if( with_guarantee ) {
+		// Ensure a guarantee is held while waiting for sequence to exist
+		scoped_guarantee = new_guarantee(this);
+	}
 	unique_lock_type lock(_mutex);
 	BFsequence_sptr sequence = this->_get_sequence_at(time_tag);
-	guarantee = new_guarantee(
-		this, this->_get_start_of_sequence_within_ring(sequence));
+	if( scoped_guarantee ) {
+		// Move guarantee to start of sequence
+		scoped_guarantee->move_nolock(
+			this->_get_start_of_sequence_within_ring(sequence));
+	}
+	// Transfer ownership to the caller
+	guarantee = std::move(scoped_guarantee);
 	return sequence;
 }
 bool BFring_impl::_sequence_still_within_ring(BFsequence_sptr sequence) const {
@@ -405,7 +427,7 @@ BFsequence_sptr BFring_impl::open_earliest_or_latest_sequence(bool with_guarante
 	std::unique_ptr<Guarantee> scoped_guarantee;
 	if( with_guarantee ) {
 		// Ensure a guarantee is held while waiting for sequence to exist
-		scoped_guarantee = new_guarantee(this, _tail);
+		scoped_guarantee = new_guarantee(this);
 	}
 	unique_lock_type lock(_mutex);
 	BFsequence_sptr sequence = this->_get_earliest_or_latest_sequence(lock, latest);
