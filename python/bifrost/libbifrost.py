@@ -96,12 +96,16 @@ def _check(status):
                 raise RuntimeError("WTF, status is None")
             if status == _bf.BF_STATUS_END_OF_DATA:
                 raise StopIteration()
+            elif status == _bf.BF_STATUS_WOULD_BLOCK:
+                raise IOError('BF_STATUS_WOULD_BLOCK')
             else:
                 status_str = _bf.bfGetStatusString(status)
                 raise RuntimeError(status_str)
     else:
         if status == _bf.BF_STATUS_END_OF_DATA:
             raise StopIteration()
+        elif status == _bf.BF_STATUS_WOULD_BLOCK:
+            raise IOError('BF_STATUS_WOULD_BLOCK')
     return status
 
 DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
