@@ -532,6 +532,12 @@ class MultiTransformBlock(Block):
 
             igulp_nframes = [self.gulp_nframe or iseq.header['gulp_nframe']
                              for iseq in iseqs]
+            igulp_overlaps = self._define_input_overlap_nframe(iseqs)
+            istride_nframes = igulp_nframes[:]
+            igulp_nframes = [igulp_nframe + nframe_overlap
+                             for igulp_nframe, nframe_overlap
+                             in zip(igulp_nframes, igulp_overlaps)]
+
             for iseq, igulp_nframe in zip(iseqs, igulp_nframes):
                 if self.buffer_factor is None:
                     src_block = iseq.ring.owner
@@ -545,11 +551,6 @@ class MultiTransformBlock(Block):
                             buf_nframe=self.buffer_nframe,
                             buffer_factor=buffer_factor)
 
-            igulp_overlaps = self._define_input_overlap_nframe(iseqs)
-            istride_nframes = igulp_nframes[:]
-            igulp_nframes = [igulp_nframe + nframe_overlap
-                             for igulp_nframe, nframe_overlap
-                             in zip(igulp_nframes, igulp_overlaps)]
             # TODO: Ever need to specify starting offset?
             iframe0s = [0 for _ in igulp_nframes]
 
@@ -735,6 +736,12 @@ class SinkBlock(MultiTransformBlock):
     def define_valid_input_spaces(self):
         """Return set of valid spaces (or 'any') for the input"""
         return 'any'
+    def _define_input_overlap_nframe(self, iseqs):
+        return [self.define_input_overlap_nframe(iseqs[0])]
+    def define_input_overlap_nframe(self, iseq):
+        """Return no. input frames that should overlap between successive spans.
+        """
+        return 0
     def _define_output_nframes(self, input_nframes):
         return []
     def _on_sequence(self, iseqs):
