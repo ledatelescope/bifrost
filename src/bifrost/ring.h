@@ -190,10 +190,10 @@ typedef struct BFsequence_info_ {
 BFstatus bfRingSequenceGetInfo(BFsequence sequence, BFsequence_info* sequence_info);
 
 // Write span
-BFstatus bfRingSpanReserve(BFwspan*    span,
-                           //BFwsequence sequence,
-                           BFring      ring,
-                           BFsize      size);
+BFstatus bfRingSpanReserve(BFwspan* span,
+                           BFring   ring,
+                           BFsize   size,
+                           BFbool   nonblocking);
 BFstatus bfRingSpanCommit(BFwspan span,
                           BFsize  size);
 // Read span

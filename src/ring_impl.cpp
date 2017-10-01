@@ -73,7 +73,7 @@ public:
 	                       BFring_impl*      ring)
 		: _lock(lock), _ring(ring) {
 		++_ring->_nrealloc_pending;
-		_ring->_realloc_condition.wait(_lock, [&]() {
+		_ring->_realloc_condition.wait(_lock, [this]() {
 			return (_ring->_nwrite_open == 0 &&
 			        _ring->_nread_open == 0);
 		});
@@ -387,7 +387,7 @@ bool BFring_impl::_sequence_still_within_ring(BFsequence_sptr sequence) const {
 
 BFsequence_sptr BFring_impl::_get_earliest_or_latest_sequence(unique_lock_type& lock, bool latest) const {
 	// Wait until a sequence has been opened or writing has ended
-	_sequence_condition.wait(lock, [&]() {
+	_sequence_condition.wait(lock, [this]() {
 			return !_sequence_queue.empty() || _writing_ended;
 		});
 	BF_ASSERT_EXCEPTION(!(_sequence_queue.empty() && !_writing_ended), BF_STATUS_INVALID_STATE);
@@ -488,7 +488,7 @@ BFsequence_impl::BFsequence_impl(BFring      ring,
 void BFsequence_impl::set_next(BFsequence_sptr next) {
 	_next = next;
 }
-void BFring_impl::_pull_tail(unique_lock_type& lock) {
+bool BFring_impl::_pull_tail(unique_lock_type& lock, bool nonblocking) {
 	// This waits until all guarantees have caught up to the new valid
 	//   buffer region defined by _reserve_head, and then pulls the tail
 	//   along to ensure it is within a distance of _span from _reserve_head.
@@ -499,11 +499,16 @@ void BFring_impl::_pull_tail(unique_lock_type& lock) {
 	// TODO: This enables guaranteed reads to "cover for" unguaranteed
 	//         siblings that would be too slow on their own. Is this actually
 	//         a problem, and if so is there any way around it?
-	_write_condition.wait(lock, [&]() {
-			return ((_guarantees.empty() ||
-			         BFoffset(_reserve_head - _get_earliest_guarantee()) <= _span) &&
-			        _nrealloc_pending == 0);
-		});
+	auto postcondition_predicate = [this]() {
+		return ((_guarantees.empty() ||
+		         BFoffset(_reserve_head - _get_earliest_guarantee()) <= _span) &&
+		        _nrealloc_pending == 0);
+	};
+	if( !nonblocking ) {
+		_write_condition.wait(lock, postcondition_predicate);
+	} else if( !postcondition_predicate() ) {
+		return false;
+	}
 	
 	BFoffset cur_span = _reserve_head - _tail;
 	if( cur_span > _span ) {
@@ -525,14 +530,18 @@ void BFring_impl::_pull_tail(unique_lock_type& lock) {
 			_sequence_queue.pop();
 		}
 	}
+	return true;
 }
 
-void BFring_impl::reserve_span(BFsize size, BFoffset* begin, void** data) {
+void BFring_impl::reserve_span(BFsize size, BFoffset* begin, void** data,
+                               bool nonblocking) {
 	unique_lock_type lock(_mutex);
 	BF_ASSERT_EXCEPTION(size <= _ghost_span, BF_STATUS_INVALID_ARGUMENT);
 	*begin = _reserve_head;
 	_reserve_head += size;
-	this->_pull_tail(lock); // Must be called whenever _reserve_head is increased
+	// Note: _pull_tail must be called whenever _reserve_head is increased
+	BF_ASSERT_EXCEPTION(this->_pull_tail(lock, nonblocking),
+	                    BF_STATUS_WOULD_BLOCK);
 	++_nwrite_open;
 	*data = _buf_pointer(*begin);
 }
@@ -585,12 +594,13 @@ void BFring_impl::commit_span(BFoffset begin, BFsize reserve_size, BFsize commit
 	_realloc_condition.notify_all();
 }
 
-BFwspan_impl::BFwspan_impl(BFring      ring,
-                           BFsize      size)
+BFwspan_impl::BFwspan_impl(BFring ring,
+                           BFsize size,
+                           bool   nonblocking)
 	: BFspan_impl(ring, size),
 	  _begin(0),
 	  _commit_size(size), _data(nullptr) {
-	this->ring()->reserve_span(size, &_begin, &_data);
+	this->ring()->reserve_span(size, &_begin, &_data, nonblocking);
 }
 BFwspan_impl* BFwspan_impl::commit(BFsize size) {
 	BF_ASSERT_EXCEPTION(size <= this->size(), BF_STATUS_INVALID_ARGUMENT);

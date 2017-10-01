@@ -227,8 +227,8 @@ class WriteSequence(SequenceBase):
     def end(self):
         offset_from_head = 0
         _check(_bf.bfRingSequenceEnd(self.obj, offset_from_head))
-    def reserve(self, nframe):
-        return WriteSpan(self.ring, self, nframe)
+    def reserve(self, nframe, nonblocking=False):
+        return WriteSpan(self.ring, self, nframe, nonblocking)
 
 class ReadSequence(SequenceBase):
     def __init__(self, ring, which='specific', name="", time_tag=None,
@@ -416,11 +416,12 @@ class WriteSpan(SpanBase):
     def __init__(self,
                  ring,
                  sequence,
-                 nframe):
+                 nframe,
+                 nonblocking=False):
         SpanBase.__init__(self, ring, sequence, writeable=True)
         nbyte = nframe * self._sequence.tensor['frame_nbyte']
         self.obj = _bf.BFwspan()
-        _check(_bf.bfRingSpanReserve(self.obj, ring.obj, nbyte))
+        _check(_bf.bfRingSpanReserve(self.obj, ring.obj, nbyte, nonblocking))
         self._set_base_obj(self.obj)
         # Note: We default to 0 instead of nframe so that we don't accidentally
         #         commit bogus data if a block throws an exception.

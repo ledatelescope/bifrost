@@ -115,7 +115,7 @@ class BFring_impl {
 	void _ghost_read( BFoffset offset, BFsize size);
 	void _copy_to_ghost(  BFoffset buf_offset, BFsize span);
 	void _copy_from_ghost(BFoffset buf_offset, BFsize span);
-	void _pull_tail(unique_lock_type& lock);
+	bool _pull_tail(unique_lock_type& lock, bool nonblocking);
 	inline void _add_guarantee(BFoffset offset) {
 		auto iter = _guarantees.find(offset);
 		if( iter == _guarantees.end() ) {
@@ -211,7 +211,7 @@ public:
 	                               BFsize      nringlet,
 	                               BFoffset    offset_from_head=0);
 	
-	void reserve_span(BFsize size, BFoffset* begin, void** data);
+	void reserve_span(BFsize size, BFoffset* begin, void** data, bool nonblocking);
 	void commit_span(BFoffset begin, BFsize reserve_size, BFsize commit_size);
 	
 	void acquire_span(BFrsequence sequence,
@@ -412,8 +412,9 @@ class BFwspan_impl : public BFspan_impl {
 	BFwspan_impl(BFwspan_impl&& )                 = delete;
 	BFwspan_impl& operator=(BFwspan_impl&& )      = delete;
 public:
-	BFwspan_impl(BFring      ring,
-	             BFsize      size);
+	BFwspan_impl(BFring ring,
+	             BFsize size,
+	             bool   nonblocking);
 	~BFwspan_impl();
 	BFwspan_impl* commit(BFsize size);
 	inline virtual void*           data()     const { return _data; }

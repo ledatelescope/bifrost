@@ -240,13 +240,15 @@ BFstatus bfRingSequenceGetNRinglet(BFsequence sequence, BFsize* n) {
 	                   *n = 0);
 }
 
-BFstatus   bfRingSpanReserve(BFwspan*    span,
-                             BFring      ring,
-                             BFsize      size) {
-	BF_ASSERT(span,     BF_STATUS_INVALID_POINTER);
+BFstatus   bfRingSpanReserve(BFwspan* span,
+                             BFring   ring,
+                             BFsize   size,
+                             BFbool   nonblocking) {
+	BF_ASSERT(span, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
 	BF_TRY_RETURN_ELSE(*span = new BFwspan_impl(ring,
-	                                            size),
+	                                            size,
+	                                            nonblocking),
 	                   *span = 0);
 }
 // TODO: Separate setsize/shrink vs. commit methods?
