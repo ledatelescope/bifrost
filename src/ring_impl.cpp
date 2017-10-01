@@ -488,17 +488,18 @@ BFsequence_impl::BFsequence_impl(BFring      ring,
 void BFsequence_impl::set_next(BFsequence_sptr next) {
 	_next = next;
 }
-bool BFring_impl::_pull_tail(unique_lock_type& lock, bool nonblocking) {
+bool BFring_impl::_advance_reserve_head(unique_lock_type& lock, BFsize size,
+                                        bool nonblocking) {
 	// This waits until all guarantees have caught up to the new valid
 	//   buffer region defined by _reserve_head, and then pulls the tail
 	//   along to ensure it is within a distance of _span from _reserve_head.
-	// This must be done whenever _reserve_head is increased.
 	
 	// Note: By using _span, this correctly handles ring resizes that occur
 	//         while waiting on the condition.
 	// TODO: This enables guaranteed reads to "cover for" unguaranteed
 	//         siblings that would be too slow on their own. Is this actually
 	//         a problem, and if so is there any way around it?
+	_reserve_head += size;
 	auto postcondition_predicate = [this]() {
 		return ((_guarantees.empty() ||
 		         BFoffset(_reserve_head - _get_earliest_guarantee()) <= _span) &&
@@ -507,6 +508,8 @@ bool BFring_impl::_pull_tail(unique_lock_type& lock, bool nonblocking) {
 	if( !nonblocking ) {
 		_write_condition.wait(lock, postcondition_predicate);
 	} else if( !postcondition_predicate() ) {
+		// Revert and return failure
+		_reserve_head -= size;
 		return false;
 	}
 	
@@ -538,9 +541,7 @@ void BFring_impl::reserve_span(BFsize size, BFoffset* begin, void** data,
 	unique_lock_type lock(_mutex);
 	BF_ASSERT_EXCEPTION(size <= _ghost_span, BF_STATUS_INVALID_ARGUMENT);
 	*begin = _reserve_head;
-	_reserve_head += size;
-	// Note: _pull_tail must be called whenever _reserve_head is increased
-	BF_ASSERT_EXCEPTION(this->_pull_tail(lock, nonblocking),
+	BF_ASSERT_EXCEPTION(this->_advance_reserve_head(lock, size, nonblocking),
 	                    BF_STATUS_WOULD_BLOCK);
 	++_nwrite_open;
 	*data = _buf_pointer(*begin);

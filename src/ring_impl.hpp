@@ -115,7 +115,7 @@ class BFring_impl {
 	void _ghost_read( BFoffset offset, BFsize size);
 	void _copy_to_ghost(  BFoffset buf_offset, BFsize span);
 	void _copy_from_ghost(BFoffset buf_offset, BFsize span);
-	bool _pull_tail(unique_lock_type& lock, bool nonblocking);
+	bool _advance_reserve_head(unique_lock_type& lock, BFsize size, bool nonblocking);
 	inline void _add_guarantee(BFoffset offset) {
 		auto iter = _guarantees.find(offset);
 		if( iter == _guarantees.end() ) {
