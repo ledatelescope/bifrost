@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
@@ -82,11 +82,11 @@ const char* bfGetSpaceString(BFspace space) {
 	
 	
 	switch( space ) {
-		case 0:	 return "auto";
-		case 1:	 return "system";
-		case 2:	 return "cuda";
-		case 3:	 return "cuda_host";
-		case 4:	 return "cuda_managed";
+		case BF_SPACE_AUTO:         return "auto";
+		case BF_SPACE_SYSTEM:       return "system";
+		case BF_SPACE_CUDA:         return "cuda";
+		case BF_SPACE_CUDA_HOST:    return "cuda_host";
+		case BF_SPACE_CUDA_MANAGED: return "cuda_managed";
 		default: return "unknown";
 	}
 }
