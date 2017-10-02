@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
@@ -140,7 +140,6 @@ class BFring_impl {
 	inline BFoffset _get_earliest_guarantee() {
 		return _guarantees.begin()->first;
 	}
-
 	
 	bool _sequence_still_within_ring(BFsequence_sptr sequence) const;
 	BFoffset _get_start_of_sequence_within_ring(BFsequence_sptr sequence) const;
@@ -168,6 +167,8 @@ class BFring_impl {
 	BFring_impl& operator=(BFring_impl const& ) = delete;
 	BFring_impl(BFring_impl&& )                 = delete;
 	BFring_impl& operator=(BFring_impl&& )      = delete;
+	
+	void _write_proclog_entry();
 public:
 	BFring_impl(const char* name,
 	            BFspace space);
