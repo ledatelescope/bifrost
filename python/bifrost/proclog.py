@@ -97,7 +97,7 @@ def load_by_filename(filename):
 
             ### Convert and save
             contents[key] = _multi_convert(value)
-
+            
     # Done
     return contents
 
@@ -110,6 +110,7 @@ def load_by_pid(pid, include_rings=False):
         ProcLog name
            entry name
     """
+
 
     # Make sure we have a directory to load from
     baseDir = os.path.join('/dev/shm/bifrost/', str(pid))

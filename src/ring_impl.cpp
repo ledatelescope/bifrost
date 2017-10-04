@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
@@ -92,7 +92,7 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	  _ghost_dirty_beg(_ghost_span),
 	  _writing_begun(false), _writing_ended(false), _eod(0),
 	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0),
-	  _core(-1) {
+	  _core(-1), _size_log(std::string("rings/")+name) {
 
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM       ||
@@ -104,6 +104,9 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM,
 	                    BF_STATUS_INVALID_ARGUMENT);
 #endif
+	
+	// Create the ProcLog entry for this ring
+	_write_proclog_entry();
 }
 BFring_impl::~BFring_impl() {
 	// TODO: Should check if anything is still open here?
@@ -204,6 +207,9 @@ void BFring_impl::resize(BFsize contiguous_span,
 	_span       = new_span;
 	_stride     = new_stride;
 	_nringlet   = new_nringlet;
+	
+	// Update the ProcLog entry for this ring
+	_write_proclog_entry();
 }
 void BFring_impl::begin_writing() {
 	lock_guard_type lock(_mutex);
@@ -468,6 +474,21 @@ void BFring_impl::finish_sequence(BFsequence_sptr sequence,
 	// This marks the sequence as finished
 	sequence->_end = _head + offset_from_head;
 	_read_condition.notify_all();
+}
+
+void BFring_impl::_write_proclog_entry() {
+	char cinfo[32]="";
+	#if BF_NUMA_ENABLED
+	snprintf(cinfo, 31, "binding   : %i\n", _core);
+	#endif
+	_size_log.update("space     : %s\n", 
+	                 "%s", 
+	                 "alignment : %llu\n"
+	                 "ghost     : %llu\n"
+	                 "span      : %llu\n"
+	                 "stride    : %llu\n"
+	                 "nringlet  : %llu\n", 
+	                 bfGetSpaceString(_space), cinfo, _span, _ghost_span, _stride, _nringlet);
 }
 
 BFsequence_impl::BFsequence_impl(BFring      ring,

@@ -74,7 +74,6 @@ def parseOptions(args):
         # Print help information and exit:
         print str(err) # will print something like "option -a not recognized"
         usage(exitCode=2)
-
     # Work through opts
     for opt, value in opts:
         if opt in ('-h', '--help'):
@@ -216,7 +215,6 @@ def _getCommandLine(pid):
     """
 
     cmd = ''
-
     try:
         with open('/proc/%i/cmdline' % pid, 'r') as fh:
             cmd = fh.read()
@@ -409,7 +407,7 @@ def main(args):
     curses.echo()
     curses.nocbreak()
     curses.endwin()
-
+    
     # Final reporting
     try:
         ## Error
@@ -423,3 +421,4 @@ def main(args):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
+    

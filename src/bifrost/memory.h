@@ -57,6 +57,8 @@ BFstatus bfFree(void* ptr, BFspace space);
 
 BFstatus bfGetSpace(const void* ptr, BFspace* space);
 
+const char* bfGetSpaceString(BFspace space);
+
 // Note: This is sync wrt host but async wrt device
 BFstatus bfMemcpy(void*       dst,
                   BFspace     dst_space,

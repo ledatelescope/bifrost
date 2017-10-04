@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
@@ -73,6 +73,22 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 	}
 #endif
 	return BF_STATUS_SUCCESS;
+}
+
+const char* bfGetSpaceString(BFspace space) {
+	// TODO: Is there a better way to do this that does not involve hard 
+	//       coding all of these values twice (one in memory.h for the 
+	//       enum, once here)?
+	
+	
+	switch( space ) {
+		case BF_SPACE_AUTO:         return "auto";
+		case BF_SPACE_SYSTEM:       return "system";
+		case BF_SPACE_CUDA:         return "cuda";
+		case BF_SPACE_CUDA_HOST:    return "cuda_host";
+		case BF_SPACE_CUDA_MANAGED: return "cuda_managed";
+		default: return "unknown";
+	}
 }
 
 BFstatus bfMalloc(void** ptr, BFsize size, BFspace space) {

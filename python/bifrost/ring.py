@@ -29,21 +29,35 @@
 
 from libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string
 #from GPUArray import GPUArray
+from DataType import DataType
 from ndarray import ndarray, _address_as_buffer
 
 import ctypes
+import string
 import numpy as np
 from uuid import uuid4
 
+def _slugify(name):
+    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+    valid_chars = frozenset(valid_chars)
+    return ''.join([c for c in name if c in valid_chars])
+
 class Ring(BifrostObject):
-    def __init__(self, space='system', name=None):
+    def __init__(self, space='system', name=None, core=None):
         if name is None:
             name = str(uuid4())
+        name = _slugify(name)
         space = _string2space(space)
         #self.obj = None
         #self.obj = _get(_bf.bfRingCreate(name=name, space=space), retarg=0)
         BifrostObject.__init__(
             self, _bf.bfRingCreate, _bf.bfRingDestroy, name, space)
+        if core is not None:
+            try:
+                _check( _bf.bfRingSetAffinity(self.obj, 
+                                              core) )
+            except RuntimeError:
+                pass
     def resize(self, contiguous_span, total_span=None, nringlet=1,
                buffer_factor=4):
         if total_span is None:
@@ -58,9 +72,11 @@ class Ring(BifrostObject):
     @property
     def space(self):
         return _space2string(_get(_bf.bfRingGetSpace, self.obj))
+    @property
+    def core(self):
+        return _get(_bf.bfRingGetAffinity, self.obj)
     #def begin_sequence(self, name, header="", nringlet=1):
     #    return Sequence(ring=self, name=name, header=header, nringlet=nringlet)
-
     #def end_sequence(self, sequence):
     #    return sequence.end()
     #def _lock(self):
@@ -272,7 +288,7 @@ class SpanBase(object):
     def data(self):
         return self.data_view()
     def data_view(self, dtype=np.uint8, shape=-1):
-        itemsize = dtype().itemsize
+        itemsize = DataType(dtype).itemsize
         assert( self.size   % itemsize == 0 )
         assert( self.stride % itemsize == 0 )
         data_ptr = self._data_ptr

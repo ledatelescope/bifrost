@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 #
@@ -34,6 +35,7 @@ from ndarray import ndarray, _address_as_buffer
 from copy import copy, deepcopy
 
 import ctypes
+import string
 import numpy as np
 
 try:
@@ -41,6 +43,11 @@ try:
 except ImportError:
     print "WARNING: Install simplejson for better performance"
     import json
+
+def _slugify(name):
+    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+    valid_chars = frozenset(valid_chars)
+    return ''.join([c for c in name if c in valid_chars])
 
 # TODO: Should probably move this elsewhere (e.g., utils)
 def split_shape(shape):
@@ -69,15 +76,22 @@ def ring_view(ring, header_transform):
 
 class Ring(BifrostObject):
     instance_count = 0
-    def __init__(self, space='system', name=None, owner=None):
+    def __init__(self, space='system', name=None, owner=None, core=None):
         # If this is non-None, then the object is wrapping a base Ring instance
         self.base = None
         self.space = space
         if name is None:
             name = 'ring_%i' % Ring.instance_count
             Ring.instance_count += 1
+        name = _slugify(name)
         BifrostObject.__init__(self, _bf.bfRingCreate, _bf.bfRingDestroy,
                                name, _string2space(self.space))
+        if core is not None:
+            try:
+                _check( _bf.bfRingSetAffinity(self.obj, 
+                                              core) )
+            except RuntimeError:
+                pass
         self.owner = owner
         self.header_transform = None
     def __del__(self):
@@ -95,6 +109,9 @@ class Ring(BifrostObject):
     @property
     def name(self):
         return _get(_bf.bfRingGetName, self.obj)
+    @property
+    def core(self):
+        return _get(_bf.bfRingGetAffinity, self.obj)
     def begin_writing(self):
         return RingWriter(self)
     def _begin_writing(self):
@@ -399,7 +416,6 @@ class SpanBase(object):
         data_ptr = self._data_ptr
 
         space = self.ring.space
-
         # **TODO: Need to integrate support for endianness and conjugatedness
         #         Also need support in headers for units of the actual values,
         #           in addition to the axis scales.
