@@ -16,9 +16,9 @@ LIBBIFROST_OBJS = \
   udp_socket.o \
   udp_capture.o \
   udp_transmit.o \
+  proclog.o \
   unpack.o \
-  quantize.o \
-  proclog.o
+  quantize.o
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
@@ -32,6 +32,7 @@ ifndef NOCUDA
   linalg_kernels.o \
   reduce.o
 endif
+
 
 JIT_SOURCES ?= \
   Complex.hpp.jit \
