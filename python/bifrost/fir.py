@@ -27,34 +27,27 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _fast_call, _string2space
+from libbifrost import _bf, _check, _get, BifrostObject, _string2space
 from ndarray import asarray, zeros
 
 import ctypes
 import numpy as np
 
-class FIR(object):
+class Fir(BifrostObject):
     def __init__(self):
-        self.obj = _get(_bf.FIRCreate(), retarg=0)
-    def __del__(self):
-        if hasattr(self, 'obj') and bool(self.obj):
-            _bf.FIRDestroy(self.obj)
-        try:
-            del self._prots
-        except AttributeError:
-            pass
-    def init(self, ncoeff, decim, ntime, nstand, space='cuda'):
+        BifrostObject.__init__(self, _bf.bfFirCreate, _bf.bfFirDestroy)
+    def init(self, coeffs, decim=1, space='cuda'):
         space = _string2space(space)
         psize = None
-        _check( _bf.FIRInit(self.obj, ncoeff, decim, ntime, nstand, space, 0, psize) )
+        _check( _bf.bfFirInit(self.obj, asarray(coeffs).as_BFarray(), decim, space, 0, psize) )
     def set_coeffs(self, coeffs):
-        _check( _bf.FIRSetCoeffs(self.obj, 
-                                 asarray(coeffs).as_BFarray()) )
+        _check( _bf.bfFirSetCoeffs(self.obj, 
+                                   asarray(coeffs).as_BFarray()) )
     def reset_state(self):
-        _check( _bf.FIRResetState(self.obj) )
+        _check( _bf.bfFirResetState(self.obj) )
     def execute(self, idata, odata):
         # TODO: Work out how to integrate CUDA stream
-        _check( _bf.FIRExecute(self.obj,
-                                asarray(idata).as_BFarray(),
-                                asarray(odata).as_BFarray()) )
+        _check( _bf.bfFirExecute(self.obj,
+                                 asarray(idata).as_BFarray(),
+                                 asarray(odata).as_BFarray()) )
         return odata

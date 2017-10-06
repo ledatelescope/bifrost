@@ -40,24 +40,22 @@ extern "C" {
 
 typedef struct BFfir_impl* BFfir;
 
-BFstatus bfFIRCreate(BFfir* plan);
-BFstatus bfFIRInit(BFfir   plan,
-                   BFsize  ncoeff,
-                   BFsize  decim,
-                   BFsize  ntime,
-                   BFsize  nstand,
-                   BFspace space,
-                   void*   plan_storage,
-                   BFsize* plan_storage_size);
-BFstatus bfFIRSetStream(BFfir       plan,
+BFstatus bfFirCreate(BFfir* plan);
+BFstatus bfFirInit(BFfir          plan,
+                   BFarray const* coeffs,
+                   BFsize         decim,
+                   BFspace        space,
+                   void*          plan_storage,
+                   BFsize*        plan_storage_size);
+BFstatus bfFirSetStream(BFfir       plan,
                         void const* stream);
-BFstatus bfFIRSetCoeffs(BFfir          plan, 
+BFstatus bfFirSetCoeffs(BFfir          plan, 
                         BFarray const* coeffs);
-BFstatus bfFIRResetState(BFfir plan);
-BFstatus bfFIRExecute(BFfir          plan,
+BFstatus bfFirResetState(BFfir plan);
+BFstatus bfFirExecute(BFfir          plan,
                       BFarray const* in,
                       BFarray const* out);
-BFstatus bfFIRDestroy(BFfir plan);
+BFstatus bfFirDestroy(BFfir plan);
 
 #ifdef __cplusplus
 } // extern "C"
