@@ -35,7 +35,10 @@
 #include <limits>
 #include <cmath>
 
+// HACK TESTING
 #include <iostream>
+using std::cout;
+using std::endl;
 
 using std::max;
 using std::min;
@@ -63,14 +66,6 @@ inline __device__ F clip_1bit(F x) {
 template<typename IType, typename SType, typename OType>
 __device__
 void guantize(IType ival, SType scale, OType& oval) {
-	//std::cout << (int)minval<OType>() << ", " << (int)maxval<OType>() << std::endl;
-	//std::cout << scale << std::endl;
-	//std::cout << ival
-	//          << " --> " << ival*scale
-	//          << " --> " << clip<OType>(ival*scale)
-	//          << " --> " << rint(clip<OType>(ival*scale))
-	//          << " --> " << (int)OType(rint(clip<OType>(ival*scale)))
-	//          << std::endl;
 	oval = OType(rint(clip<OType>(ival*scale)));
 }
 
@@ -104,7 +99,7 @@ void foreach_simple_gpu(T const* in,
 	
 	if( v0 < nelement ) {
 		func(in[v0], out[v0]);
-		//std::cout << std::hex << (int)in[i] << " --> " << (int)out[i] << std::endl;
+
 	}
 }
 
@@ -114,7 +109,6 @@ inline void launch_foreach_simple_gpu(T const*     in,
                                       Size         nelement,
                                       Func         func,
                                       cudaStream_t stream=0) {
-	//cout << "LAUNCH for " << nelement << endl;
 	dim3 block(512, 1); // TODO: Tune this
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
 	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
@@ -160,7 +154,6 @@ void foreach_simple_gpu_4bit(T const* in,
 			byteswap_gpu(tempR, &tempR);
 			byteswap_gpu(tempI, &tempI);
 		}
-		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
 		tempO = (((int8_t(rint(clip_4bit(tempR*func.scale)))*16)     ) & 0xF0) | \
 			   (((int8_t(rint(clip_4bit(tempI*func.scale)))*16) >> 4) & 0x0F);
 		if(func.byteswap_out) {
@@ -177,7 +170,6 @@ inline void launch_foreach_simple_gpu_4bit(T const*     in,
                                            Func         func,
                                            cudaStream_t stream=0) {
 	nelement /= 2;
-	//cout << "LAUNCH for " << nelement << endl;
 	dim3 block(512, 1); // TODO: Tune this
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
 	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
@@ -229,7 +221,6 @@ void foreach_simple_gpu_2bit(T const* in,
 			byteswap_gpu(tempC, &tempC);
 			byteswap_gpu(tempD, &tempD);
 		}
-		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
 		tempO = (((int8_t(rint(clip_2bit(tempA*func.scale)))*64)     ) & 0xC0) | \
 			   (((int8_t(rint(clip_2bit(tempB*func.scale)))*64) >> 2) & 0x30) | \
 			   (((int8_t(rint(clip_2bit(tempC*func.scale)))*64) >> 4) & 0x0C) | \
@@ -248,7 +239,6 @@ inline void launch_foreach_simple_gpu_2bit(T const*     in,
                                            Func         func,
                                            cudaStream_t stream=0) {
 	nelement /= 4;
-	//cout << "LAUNCH for " << nelement << endl;
 	dim3 block(512, 1); // TODO: Tune this
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
 	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
@@ -312,7 +302,6 @@ void foreach_simple_gpu_1bit(T const* in,
 			byteswap_gpu(tempG, &tempG);
 			byteswap_gpu(tempH, &tempH);
 		}
-		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
 		tempO = (((int8_t(rint(clip_1bit(tempA*func.scale)))*128)     ) & 0x08) | \
 			   (((int8_t(rint(clip_1bit(tempB*func.scale)))*128) >> 1) & 0x04) | \
 			   (((int8_t(rint(clip_1bit(tempC*func.scale)))*128) >> 2) & 0x02) | \
@@ -335,7 +324,6 @@ inline void launch_foreach_simple_gpu_1bit(T const*     in,
                                            Func         func,
                                            cudaStream_t stream=0) {
 	nelement /= 8;
-	//cout << "LAUNCH for " << nelement << endl;
 	dim3 block(512, 1); // TODO: Tune this
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
 	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
@@ -363,12 +351,15 @@ inline void launch_foreach_simple_gpu_1bit(T const*     in,
 	                        BF_STATUS_INTERNAL_ERROR);
 }
 
+// Instantiation - gunatize functors used in quantize.cpp
+//// unsigned
 template class GuantizeFunctor<float,float,uint8_t>;
 template class GuantizeFunctor<float,double,uint8_t>;
 template class GuantizeFunctor<float,float,uint16_t>;
 template class GuantizeFunctor<float,double,uint16_t>;
 template class GuantizeFunctor<float,float,uint32_t>;
 template class GuantizeFunctor<float,double,uint32_t>;
+//// signed
 template class GuantizeFunctor<float,float,int8_t>;
 template class GuantizeFunctor<float,double,int8_t>;
 template class GuantizeFunctor<float,float,int16_t>;
@@ -376,21 +367,31 @@ template class GuantizeFunctor<float,double,int16_t>;
 template class GuantizeFunctor<float,float,int32_t>;
 template class GuantizeFunctor<float,double,int32_t>;
 
+// Instantiation - launch_foreach_simple_gpu_1bit calls used in quantize.cpp
 template void launch_foreach_simple_gpu_1bit<float,GuantizeFunctor<float,float,uint8_t>,size_t>(float const* in, int8_t* out, size_t nelement, GuantizeFunctor<float,float,uint8_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu_1bit<float,GuantizeFunctor<float,double,uint8_t>,size_t>(float const* in, int8_t* out, size_t nelement, GuantizeFunctor<float,double,uint8_t> func, cudaStream_t stream);
+
+// Instantiation - launch_foreach_simple_gpu_2bit calls used in quantize.cpp
 template void launch_foreach_simple_gpu_2bit<float,GuantizeFunctor<float,float,uint8_t>,size_t>(float const* in, int8_t* out, size_t nelement, GuantizeFunctor<float,float,uint8_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu_2bit<float,GuantizeFunctor<float,double,uint8_t>,size_t>(float const* in, int8_t* out, size_t nelement, GuantizeFunctor<float,double,uint8_t> func, cudaStream_t stream);
+
+// Instantiation - launch_foreach_simple_gpu_4bit calls used in quantize.cpp
 template void launch_foreach_simple_gpu_4bit<float,GuantizeFunctor<float,float,uint8_t>,size_t>(float const* in, int8_t* out, size_t nelement, GuantizeFunctor<float,float,uint8_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu_4bit<float,GuantizeFunctor<float,double,uint8_t>,size_t>(float const* in, int8_t* out, size_t nelement, GuantizeFunctor<float,double,uint8_t> func, cudaStream_t stream);
+
+// Instantiation - launch_foreach_simple_gpu calls used in quantize.cpp
+//// unsigned
 template void launch_foreach_simple_gpu<float,uint8_t,GuantizeFunctor<float,float,uint8_t>,size_t>(float const* in, uint8_t* out, size_t nelement, GuantizeFunctor<float,float,uint8_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu<float,uint8_t,GuantizeFunctor<float,double,uint8_t>,size_t>(float const* in, uint8_t* out, size_t nelement, GuantizeFunctor<float,double,uint8_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu<float,uint16_t,GuantizeFunctor<float,float,uint16_t>,size_t>(float const* in, uint16_t* out, size_t nelement, GuantizeFunctor<float,float,uint16_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu<float,uint16_t,GuantizeFunctor<float,double,uint16_t>,size_t>(float const* in, uint16_t* out, size_t nelement, GuantizeFunctor<float,double,uint16_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu<float,uint32_t,GuantizeFunctor<float,float,uint32_t>,size_t>(float const* in, uint32_t* out, size_t nelement, GuantizeFunctor<float,float,uint32_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu<float,uint32_t,GuantizeFunctor<float,double,uint32_t>,size_t>(float const* in, uint32_t* out, size_t nelement, GuantizeFunctor<float,double,uint32_t> func, cudaStream_t stream);
+//// signed
 template void launch_foreach_simple_gpu<float,int8_t,GuantizeFunctor<float,float,int8_t>,size_t>(float const* in, int8_t* out, size_t nelement, GuantizeFunctor<float,float,int8_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu<float,int8_t,GuantizeFunctor<float,double,int8_t>,size_t>(float const* in, int8_t* out, size_t nelement, GuantizeFunctor<float,double,int8_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu<float,int16_t,GuantizeFunctor<float,float,int16_t>,size_t>(float const* in, int16_t* out, size_t nelement, GuantizeFunctor<float,float,int16_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu<float,int16_t,GuantizeFunctor<float,double,int16_t>,size_t>(float const* in, int16_t* out, size_t nelement, GuantizeFunctor<float,double,int16_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu<float,int32_t,GuantizeFunctor<float,float,int32_t>,size_t>(float const* in, int32_t* out, size_t nelement, GuantizeFunctor<float,float,int32_t> func, cudaStream_t stream);
 template void launch_foreach_simple_gpu<float,int32_t,GuantizeFunctor<float,double,int32_t>,size_t>(float const* in, int32_t* out, size_t nelement, GuantizeFunctor<float,double,int32_t> func, cudaStream_t stream);
+

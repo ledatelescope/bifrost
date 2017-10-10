@@ -56,3 +56,4 @@ void launch_foreach_promote_gpu(T const*     in,
                                 cudaStream_t stream=0);
 
 #endif // BF_GUNPACK_HU_INCLUDE_GUARD_
+

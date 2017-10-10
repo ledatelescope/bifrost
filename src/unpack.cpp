@@ -520,3 +520,4 @@ BFstatus bfUnpack(BFarray const* in,
 #endif
 	return BF_STATUS_SUCCESS;
 }
+
