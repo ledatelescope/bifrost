@@ -34,6 +34,10 @@
 
 #include <iostream>
 
+#ifdef BF_CUDA_ENABLED
+#include <guantize.hu>
+#endif
+
 using std::max;
 using std::min;
 
@@ -58,6 +62,16 @@ inline F clip(F x) {
 
 inline int8_t clip_4bit(int8_t x) {
 	return min(max(x,int8_t(-7)),int8_t(7));
+}
+
+template<typename F>
+inline F clip_2bit(F x) {
+	return min(max(x,F(-1)),F(1));
+}
+
+template<typename F>
+inline F clip_1bit(F x) {
+	return x >= F(0) ? F(1) : F(0);
 }
 
 template<typename IType, typename SType, typename OType>
@@ -129,6 +143,88 @@ void foreach_simple_cpu_4bit(T const* in,
 	}
 }
 
+template<typename T, typename Func, typename Size>
+void foreach_simple_cpu_2bit(T const* in,
+                             int8_t*  out,
+                             Size     nelement,
+                             Func     func) {
+	T tempA;
+	T tempB;
+	T tempC;
+	T tempD;
+	int8_t tempO;
+	for( Size i=0; i<nelement; i+=4 ) {
+		tempA = in[i+0];
+		tempB = in[i+1];
+		tempC = in[i+2];
+		tempD = in[i+3];
+		if(func.byteswap_in) {
+			byteswap(tempA, &tempA);
+			byteswap(tempB, &tempB);
+			byteswap(tempC, &tempC);
+			byteswap(tempD, &tempD);
+		}
+		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
+		tempO = (((int8_t(rint(clip_2bit(tempA*func.scale)))*64)     ) & 0xC0) | \
+		(((int8_t(rint(clip_2bit(tempB*func.scale)))*64) >> 2) & 0x30) | \
+		(((int8_t(rint(clip_2bit(tempC*func.scale)))*64) >> 4) & 0x0C) | \
+		(((int8_t(rint(clip_2bit(tempD*func.scale)))*64) >> 6) & 0x03);
+		if(func.byteswap_out) {
+			byteswap(tempO, &tempO);
+		}
+		out[i/4] = tempO;
+	}
+}
+
+template<typename T, typename Func, typename Size>
+void foreach_simple_cpu_1bit(T const* in,
+                             int8_t*  out,
+                             Size     nelement,
+                             Func     func) {
+	T tempA;
+	T tempB;
+	T tempC;
+	T tempD;
+	T tempE;
+	T tempF;
+	T tempG;
+	T tempH;
+	int8_t tempO;
+	for( Size i=0; i<nelement; i+=8 ) {
+		tempA = in[i+0];
+		tempB = in[i+1];
+		tempC = in[i+2];
+		tempD = in[i+3];
+		tempE = in[i+4];
+		tempF = in[i+5];
+		tempG = in[i+6];
+		tempH = in[i+7];
+		if(func.byteswap_in) {
+			byteswap(tempA, &tempA);
+			byteswap(tempB, &tempB);
+			byteswap(tempC, &tempC);
+			byteswap(tempD, &tempD);
+			byteswap(tempE, &tempE);
+			byteswap(tempF, &tempF);
+			byteswap(tempG, &tempG);
+			byteswap(tempH, &tempH);
+		}
+		//std::cout << tempR << ", " << tempI << " --> " << rint(clip_4bit(tempR)) << ", " << rint(clip_4bit(tempI)) << '\n';
+		tempO = (((int8_t(rint(clip_1bit(tempA*func.scale)))*128)     ) & 0x08) | \
+		(((int8_t(rint(clip_1bit(tempB*func.scale)))*128) >> 1) & 0x04) | \
+		(((int8_t(rint(clip_1bit(tempC*func.scale)))*128) >> 2) & 0x02) | \
+		(((int8_t(rint(clip_1bit(tempD*func.scale)))*128) >> 3) & 0x10) | \
+		(((int8_t(rint(clip_1bit(tempE*func.scale)))*128) >> 4) & 0x08) | \
+		(((int8_t(rint(clip_1bit(tempF*func.scale)))*128) >> 5) & 0x04) | \
+		(((int8_t(rint(clip_1bit(tempG*func.scale)))*128) >> 6) & 0x02) | \
+		(((int8_t(rint(clip_1bit(tempH*func.scale)))*128) >> 7) & 0x01);
+		if(func.byteswap_out) {
+			byteswap(tempO, &tempO);
+		}
+		out[i/8] = tempO;
+	}
+}
+
 BFstatus bfQuantize(BFarray const* in,
                     BFarray const* out,
                     double         scale) {
@@ -153,15 +249,27 @@ BFstatus bfQuantize(BFarray const* in,
 	BF_ASSERT(is_contiguous(in),  BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT(is_contiguous(out), BF_STATUS_UNSUPPORTED_STRIDE);
 	
-	// TODO: Support CUDA space
+#ifdef BF_CUDA_ENABLED
+	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
+	          BF_STATUS_UNSUPPORTED_SPACE);
+	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
+	          BF_STATUS_UNSUPPORTED_SPACE);
+#else
 	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM),
 	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM),
 	          BF_STATUS_UNSUPPORTED_SPACE);
+#endif
 	
 	size_t nelement = num_contiguous_elements(in);
 	bool byteswap_in  = ( in->big_endian != is_big_endian());
 	bool byteswap_out = (out->big_endian != is_big_endian());
+	
+#ifdef BF_CUDA_ENABLED
+	if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+		BF_ASSERT(nelement<=(size_t)512*65535*65535, BF_STATUS_UNSUPPORTED_SHAPE);
+	}
+#endif
 	
 #define CALL_FOREACH_SIMPLE_CPU_QUANTIZE(itype,stype,otype) \
 	foreach_simple_cpu((itype*)in->data, \
@@ -170,39 +278,175 @@ BFstatus bfQuantize(BFarray const* in,
 	                   QuantizeFunctor<itype,stype,otype> \
 	                   (scale,byteswap_in,byteswap_out))
 	
+#ifdef BF_CUDA_ENABLED
+#define CALL_FOREACH_SIMPLE_GPU_QUANTIZE(itype,stype,otype) \
+	launch_foreach_simple_gpu((itype*)in->data, \
+	                          (otype*)out->data, \
+	                          nelement, \
+	                          GuantizeFunctor<itype,stype,otype> \
+	                          (scale,byteswap_in,byteswap_out), \
+	                          (cudaStream_t)0)
+#endif
+	
 	// **TODO: Need CF32 --> CI* separately to support conjugation
 	if( in->dtype == BF_DTYPE_F32 || in->dtype == BF_DTYPE_CF32 ) {
 		// TODO: Support T-->T with endian conversion (like quantize but with identity func instead)
 		switch( out->dtype ) {
+		case BF_DTYPE_CI1: nelement *= 2;
+		case BF_DTYPE_I1: {
+			BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				launch_foreach_simple_gpu_1bit((float*)in->data, \
+				                               (int8_t*)out->data, \
+				                               nelement, \
+				                               GuantizeFunctor<float,float,uint8_t> \
+				                               (scale,byteswap_in,byteswap_out), \
+				                               (cudaStream_t)0);
+			} else {
+				foreach_simple_cpu_1bit((float*)in->data, \
+				                        (int8_t*)out->data, \
+				                        nelement, \
+				                        QuantizeFunctor<float,float,uint8_t> \
+				                        (scale,byteswap_in,byteswap_out));
+			}
+#else
+			foreach_simple_cpu_1bit((float*)in->data, \
+				                   (int8_t*)out->data, \
+				                   nelement, \
+				                   QuantizeFunctor<float,float,uint8_t> \
+				                   (scale,byteswap_in,byteswap_out));
+#endif
+			break;
+		}
+		case BF_DTYPE_CI2: nelement *= 2;
+		case BF_DTYPE_I2: {
+			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				launch_foreach_simple_gpu_2bit((float*)in->data, \
+				                               (int8_t*)out->data, \
+				                               nelement, \
+				                               GuantizeFunctor<float,float,uint8_t> \
+				                               (scale,byteswap_in,byteswap_out), \
+				                               (cudaStream_t)0);
+			} else {
+				foreach_simple_cpu_2bit((float*)in->data, \
+				                        (int8_t*)out->data, \
+				                        nelement, \
+				                        QuantizeFunctor<float,float,uint8_t> \
+				                        (scale,byteswap_in,byteswap_out));
+			}
+#else
+			foreach_simple_cpu_2bit((float*)in->data, \
+				                   (int8_t*)out->data, \
+				                   nelement, \
+				                   QuantizeFunctor<float,float,uint8_t> \
+				                   (scale,byteswap_in,byteswap_out));
+#endif
+			break;
+		}
 		case BF_DTYPE_CI4: nelement *= 2;
 		case BF_DTYPE_I4: {
 			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				launch_foreach_simple_gpu_4bit((float*)in->data, \
+				                               (int8_t*)out->data, \
+				                               nelement, \
+				                               GuantizeFunctor<float,float,uint8_t> \
+				                               (scale,byteswap_in,byteswap_out), \
+				                               (cudaStream_t)0);
+			} else {
+				foreach_simple_cpu_4bit((float*)in->data, \
+				                        (int8_t*)out->data, \
+				                        nelement, \
+				                        QuantizeFunctor<float,float,uint8_t> \
+				                        (scale,byteswap_in,byteswap_out));
+			}
+#else
 			foreach_simple_cpu_4bit((float*)in->data, \
-			                        (int8_t*)out->data, \
-			                        nelement, \
-			                        QuantizeFunctor<float,float,uint8_t> \
-			                        (scale,byteswap_in,byteswap_out)); break;
+				                   (int8_t*)out->data, \
+				                   nelement, \
+				                   QuantizeFunctor<float,float,uint8_t> \
+				                   (scale,byteswap_in,byteswap_out));
+#endif
+			break;
 		}
 		case BF_DTYPE_CI8: nelement *= 2;
 		case BF_DTYPE_I8: {
-			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,int8_t); break;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,float,int8_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,int8_t);
+			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,int8_t);
+#endif
+			break;
 		}
 		case BF_DTYPE_CI16: nelement *= 2;
 		case BF_DTYPE_I16: {
-			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,int16_t); break;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,float,int16_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,int16_t);
+			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,int16_t);
+#endif
+			break;
 		}
 		case BF_DTYPE_CI32: nelement *= 2;
 		case BF_DTYPE_I32: {
-			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,double,int32_t); break;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,double,int32_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,double,int32_t);
+			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,double,int32_t);
+#endif
+			break;
 		}
 		case BF_DTYPE_U8: {
-			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,uint8_t); break;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,uint8_t);
+			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,uint8_t);
+#endif
+			break;
 		}
 		case BF_DTYPE_U16: {
-			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,uint16_t); break;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,float,uint16_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,uint16_t);
+			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,uint16_t);
+#endif
+			break;
 		}
 		case BF_DTYPE_U32: {
-			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,double,uint32_t); break;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,double,uint32_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,double,uint32_t);
+			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,double,uint32_t);
+#endif
+			break;
 		}
 		default: BF_FAIL("Supported bfQuantize output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 		}
@@ -210,5 +454,6 @@ BFstatus bfQuantize(BFarray const* in,
 		BF_FAIL("Supported bfQuantize input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 #undef CALL_FOREACH_SIMPLE_CPU_QUANTIZE
+#undef CALL_FOREACH_SIMPLE_GPU_QUANTIZE
 	return BF_STATUS_SUCCESS;
 }
