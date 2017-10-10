@@ -283,3 +283,103 @@ class TestFIR(unittest.TestCase):
                 known_result = known_result[0::2]
                 compare(odata[:,i,j], known_result)
                 
+    def test_2d_update_coeffs(self):
+        shape = self.shape2D
+        known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
+        idata = bf.ndarray(known_data, space='cuda')
+        odata = bf.empty_like(idata)
+        coeffs = self.coeffs*1.0
+        coeffs.shape += (1,)
+        coeffs = np.repeat(coeffs, idata.shape[1], axis=1)
+        coeffs.shape = (coeffs.shape[0],idata.shape[1])
+        coeffs2 = coeffs*2.0
+        coeffs = bf.ndarray(coeffs, space='cuda')
+        coeffs2 = bf.ndarray(coeffs2, space='cuda')
+        
+        fir = Fir()
+        fir.init(coeffs, 1)
+        fir.execute(idata, odata)
+        fir.set_coeffs(coeffs2)
+        fir.execute(idata, odata)
+        odata = odata.copy('system')
+        
+        for i in xrange(known_data.shape[1]):
+            zf = lfiltic(self.coeffs, 1.0, 0.0)
+            known_result, zf = lfilter(self.coeffs*2.0, 1.0, known_data[:,i], zi=zf)
+            compare(odata[:,i], known_result)
+            
+    def test_3d_update_coeffs(self):
+        shape = self.shape3D
+        known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
+        idata = bf.ndarray(known_data, space='cuda')
+        odata = bf.empty_like(idata)
+        coeffs = self.coeffs*1.0
+        coeffs.shape += (1,)
+        coeffs = np.repeat(coeffs, idata.shape[1]*idata.shape[2], axis=1)
+        coeffs.shape = (coeffs.shape[0],idata.shape[1],idata.shape[2])
+        coeffs2 = coeffs*2.0
+        coeffs = bf.ndarray(coeffs, space='cuda')
+        coeffs2 = bf.ndarray(coeffs2, space='cuda')
+        
+        fir = Fir()
+        fir.init(coeffs, 1)
+        fir.execute(idata, odata)
+        fir.set_coeffs(coeffs2)
+        fir.execute(idata, odata)
+        odata = odata.copy('system')
+        
+        for i in xrange(known_data.shape[1]):
+            for j in xrange(known_data.shape[2]):
+                zf = lfiltic(self.coeffs, 1.0, 0.0)
+                known_result, zf = lfilter(self.coeffs*2.0, 1.0, known_data[:,i,j], zi=zf)
+                compare(odata[:,i,j], known_result)
+                
+    def test_2d_reset_state(self):
+        shape = self.shape2D
+        known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
+        idata = bf.ndarray(known_data, space='cuda')
+        odata = bf.empty_like(idata)
+        coeffs = self.coeffs*1.0
+        coeffs.shape += (1,)
+        coeffs = np.repeat(coeffs, idata.shape[1], axis=1)
+        coeffs.shape = (coeffs.shape[0],idata.shape[1])
+        coeffs = bf.ndarray(coeffs, space='cuda')
+        
+        fir = Fir()
+        fir.init(coeffs, 1)
+        fir.execute(idata, odata)
+        fir.reset_state()
+        fir.execute(idata, odata)
+        odata = odata.copy('system')
+        
+        for i in xrange(known_data.shape[1]):
+            zf = lfiltic(self.coeffs, 1.0, 0.0)
+            known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i], zi=zf)
+            compare(odata[:,i], known_result)
+            
+    def test_3d_reset_state(self):
+        shape = self.shape3D
+        known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
+        idata = bf.ndarray(known_data, space='cuda')
+        odata = bf.empty_like(idata)
+        coeffs = self.coeffs*1.0
+        coeffs.shape += (1,)
+        coeffs = np.repeat(coeffs, idata.shape[1]*idata.shape[2], axis=1)
+        coeffs.shape = (coeffs.shape[0],idata.shape[1],idata.shape[2])
+        coeffs2 = coeffs*2.0
+        coeffs = bf.ndarray(coeffs, space='cuda')
+        coeffs2 = bf.ndarray(coeffs2, space='cuda')
+        
+        fir = Fir()
+        fir.init(coeffs, 1)
+        fir.execute(idata, odata)
+        fir.reset_state()
+        fir.execute(idata, odata)
+        odata = odata.copy('system')
+        
+        for i in xrange(known_data.shape[1]):
+            for j in xrange(known_data.shape[2]):
+                zf = lfiltic(self.coeffs, 1.0, 0.0)
+                known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i,j], zi=zf)
+                compare(odata[:,i,j], known_result)
+                
