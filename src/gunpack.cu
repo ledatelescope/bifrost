@@ -305,21 +305,75 @@ template class GunpackFunctor<uint8_t,int64_t>;
 
 // Instantiation - launch_foreach_simple_gpu calls used in unpack.cpp
 //// unsigned
-template void launch_foreach_simple_gpu<uint8_t,uint16_t,GunpackFunctor<uint8_t,uint16_t>,size_t>(uint8_t const *in, uint16_t* out,size_t nelement,GunpackFunctor<uint8_t,uint16_t> func,cudaStream_t stream);
-template void launch_foreach_simple_gpu<uint8_t,uint32_t,GunpackFunctor<uint8_t,uint32_t>,size_t>(uint8_t const *in, uint32_t* out,size_t nelement,GunpackFunctor<uint8_t,uint32_t> func,cudaStream_t stream);
-template void launch_foreach_simple_gpu<uint8_t,uint64_t,GunpackFunctor<uint8_t,uint64_t>,size_t>(uint8_t const *in, uint64_t* out,size_t nelement,GunpackFunctor<uint8_t,uint64_t> func,cudaStream_t stream);
+template void launch_foreach_simple_gpu<uint8_t,uint16_t,GunpackFunctor<uint8_t,uint16_t>,size_t>(uint8_t const* in,
+                                                                                                  uint16_t*      out,
+                                                                                                  size_t         nelement,
+                                                                                                  GunpackFunctor<uint8_t,uint16_t> func,
+                                                                                                  cudaStream_t   stream);
+template void launch_foreach_simple_gpu<uint8_t,uint32_t,GunpackFunctor<uint8_t,uint32_t>,size_t>(uint8_t const* in,
+                                                                                                  uint32_t*      out,
+                                                                                                  size_t         nelement,
+                                                                                                  GunpackFunctor<uint8_t,uint32_t> func,
+                                                                                                  cudaStream_t   stream);
+template void launch_foreach_simple_gpu<uint8_t,uint64_t,GunpackFunctor<uint8_t,uint64_t>,size_t>(uint8_t const* in,
+                                                                                                  uint64_t*      out,
+                                                                                                  size_t         nelement,
+                                                                                                  GunpackFunctor<uint8_t,uint64_t> func,
+                                                                                                  cudaStream_t   stream);
 //// signed
-template void launch_foreach_simple_gpu<uint8_t,int16_t,GunpackFunctor<uint8_t,int16_t>,size_t>(uint8_t const *in, int16_t* out,size_t nelement,GunpackFunctor<uint8_t,int16_t> func,cudaStream_t stream);
-template void launch_foreach_simple_gpu<uint8_t,int32_t,GunpackFunctor<uint8_t,int32_t>,size_t>(uint8_t const *in, int32_t* out,size_t nelement,GunpackFunctor<uint8_t,int32_t> func,cudaStream_t stream);
-template void launch_foreach_simple_gpu<uint8_t,int64_t,GunpackFunctor<uint8_t,int64_t>,size_t>(uint8_t const *in, int64_t* out,size_t nelement,GunpackFunctor<uint8_t,int64_t> func,cudaStream_t stream);
+template void launch_foreach_simple_gpu<uint8_t,int16_t,GunpackFunctor<uint8_t,int16_t>,size_t>(uint8_t const* in,
+                                                                                                int16_t*       out,
+                                                                                                size_t         nelement,
+                                                                                                GunpackFunctor<uint8_t,int16_t> func,
+                                                                                                cudaStream_t   stream);
+template void launch_foreach_simple_gpu<uint8_t,int32_t,GunpackFunctor<uint8_t,int32_t>,size_t>(uint8_t const* in,
+                                                                                                int32_t*       out,
+                                                                                                size_t         nelement,
+                                                                                                GunpackFunctor<uint8_t,int32_t> func,
+                                                                                                cudaStream_t   stream);
+template void launch_foreach_simple_gpu<uint8_t,int64_t,GunpackFunctor<uint8_t,int64_t>,size_t>(uint8_t const *in,
+                                                                                                int64_t*       out,
+                                                                                                size_t         nelement,
+                                                                                                GunpackFunctor<uint8_t,int64_t> func,
+                                                                                                cudaStream_t   stream);
 
 // Instantiation - launch_foreach_promote_gpu calls used in unpack.cpp
 //// promote to float
-template void launch_foreach_promote_gpu<uint8_t,int16_t,float,GunpackFunctor<uint8_t,int16_t>,size_t>(uint8_t const *in, int16_t* tmp, float* out,size_t nelement,GunpackFunctor<uint8_t,int16_t> func,cudaStream_t stream);
-template void launch_foreach_promote_gpu<uint8_t,int32_t,float,GunpackFunctor<uint8_t,int32_t>,size_t>(uint8_t const *in, int32_t* tmp, float* out,size_t nelement,GunpackFunctor<uint8_t,int32_t> func,cudaStream_t stream);
-template void launch_foreach_promote_gpu<uint8_t,int64_t,float,GunpackFunctor<uint8_t,int64_t>,size_t>(uint8_t const *in, int64_t* tmp, float* out,size_t nelement,GunpackFunctor<uint8_t,int64_t> func,cudaStream_t stream);
+template void launch_foreach_promote_gpu<uint8_t,int16_t,float,GunpackFunctor<uint8_t,int16_t>,size_t>(uint8_t const* in,
+                                                                                                       int16_t*       tmp,
+                                                                                                       float*         out,
+                                                                                                       size_t         nelement,
+                                                                                                       GunpackFunctor<uint8_t,int16_t> func,
+                                                                                                       cudaStream_t   stream);
+template void launch_foreach_promote_gpu<uint8_t,int32_t,float,GunpackFunctor<uint8_t,int32_t>,size_t>(uint8_t const* in,
+                                                                                                       int32_t*       tmp,
+                                                                                                       float*         out,
+                                                                                                       size_t         nelement,
+                                                                                                       GunpackFunctor<uint8_t,int32_t> func,
+                                                                                                       cudaStream_t   stream);
+template void launch_foreach_promote_gpu<uint8_t,int64_t,float,GunpackFunctor<uint8_t,int64_t>,size_t>(uint8_t const* in,
+                                                                                                       int64_t*       tmp,
+                                                                                                       float*         out,
+                                                                                                       size_t         nelement,
+                                                                                                       GunpackFunctor<uint8_t,int64_t> func,
+                                                                                                       cudaStream_t   stream);
 //// promote to double
-template void launch_foreach_promote_gpu<uint8_t,int16_t,double,GunpackFunctor<uint8_t,int16_t>,size_t>(uint8_t const *in, int16_t* tmp, double* out,size_t nelement,GunpackFunctor<uint8_t,int16_t> func,cudaStream_t stream);
-template void launch_foreach_promote_gpu<uint8_t,int32_t,double,GunpackFunctor<uint8_t,int32_t>,size_t>(uint8_t const *in, int32_t* tmp, double* out,size_t nelement,GunpackFunctor<uint8_t,int32_t> func,cudaStream_t stream);
-template void launch_foreach_promote_gpu<uint8_t,int64_t,double,GunpackFunctor<uint8_t,int64_t>,size_t>(uint8_t const *in, int64_t* tmp, double* out,size_t nelement,GunpackFunctor<uint8_t,int64_t> func,cudaStream_t stream);
+template void launch_foreach_promote_gpu<uint8_t,int16_t,double,GunpackFunctor<uint8_t,int16_t>,size_t>(uint8_t const* in,
+                                                                                                        int16_t*       tmp,
+                                                                                                        double*        out,
+                                                                                                        size_t         nelement,
+                                                                                                        GunpackFunctor<uint8_t,int16_t> func,
+                                                                                                        cudaStream_t   stream);
+template void launch_foreach_promote_gpu<uint8_t,int32_t,double,GunpackFunctor<uint8_t,int32_t>,size_t>(uint8_t const* in,
+                                                                                                        int32_t*       tmp,
+                                                                                                        double*        out,
+                                                                                                        size_t         nelement,
+                                                                                                        GunpackFunctor<uint8_t,int32_t> func,
+                                                                                                        cudaStream_t   stream);
+template void launch_foreach_promote_gpu<uint8_t,int64_t,double,GunpackFunctor<uint8_t,int64_t>,size_t>(uint8_t const* in,
+                                                                                                        int64_t*       tmp,
+                                                                                                        double*        out,
+                                                                                                        size_t         nelement,
+                                                                                                        GunpackFunctor<uint8_t,int64_t> func,
+                                                                                                        cudaStream_t   stream);
 
