@@ -32,12 +32,13 @@ import bifrost.unpack
 
 class UnpackTest(unittest.TestCase):
     def run_unpack_to_ci8_test(self, iarray):
-        oarray = bf.ndarray(shape=iarray.shape, dtype='ci8')
+        oarray = bf.ndarray(shape=iarray.shape, dtype='ci8', space='cuda')
         oarray_known = bf.ndarray([[(0, 1), (2, 3)],
                                    [(4, 5), (6, 7)],
                                    [(-8, -7), (-6, -5)]],
                                   dtype='ci8')
-        bf.unpack.unpack(iarray, oarray)
+        bf.unpack.unpack(iarray.copy(space='cuda'), oarray)
+        oarray = oarray.copy(space='system')
         np.testing.assert_equal(oarray, oarray_known)
     def test_ci4_to_ci8(self):
         iarray = bf.ndarray([[(0x10,),(0x32,)],
@@ -65,12 +66,13 @@ class UnpackTest(unittest.TestCase):
         self.run_unpack_to_ci8_test(iarray.byteswap().conj())
         
     def run_unpack_to_cf32_test(self, iarray):
-        oarray = bf.ndarray(shape=iarray.shape, dtype='cf32')
+        oarray = bf.ndarray(shape=iarray.shape, dtype='cf32', space='cuda')
         oarray_known = bf.ndarray([[ 0+1j,  2+3j],
                                    [ 4+5j,  6+7j],
                                    [-8-7j, -6-5j]],
                                   dtype='cf32')
-        bf.unpack.unpack(iarray, oarray)
+        bf.unpack.unpack(iarray.copy(space='cuda'), oarray)
+        oarray = oarray.copy(space='system')
         np.testing.assert_equal(oarray, oarray_known)
     def test_ci4_to_cf32(self):
         iarray = bf.ndarray([[(0x10,),(0x32,)],
