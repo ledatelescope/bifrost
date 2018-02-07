@@ -481,14 +481,14 @@ void BFring_impl::_write_proclog_entry() {
 	#if BF_NUMA_ENABLED
 	snprintf(cinfo, 31, "binding   : %i\n", _core);
 	#endif
-	_size_log.update("space     : %s\n", 
-	                 "%s", 
+	_size_log.update("space     : %s\n"
+	                 "%s"
 	                 "alignment : %llu\n"
 	                 "ghost     : %llu\n"
 	                 "span      : %llu\n"
 	                 "stride    : %llu\n"
 	                 "nringlet  : %llu\n", 
-	                 bfGetSpaceString(_space), cinfo, _span, _ghost_span, _stride, _nringlet);
+	                 bfGetSpaceString(_space), cinfo, bfGetAlignment(), _span, _ghost_span, _stride, _nringlet);
 }
 
 BFsequence_impl::BFsequence_impl(BFring      ring,
