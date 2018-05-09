@@ -15,6 +15,9 @@ Bifrost requires several dependencies, depending on how you want to use
 it. If you don't know what you are doing, assume that you want all the
 dependencies - we will walk you through this process.
 
+You will need a relatively new gcc and CUDA - we have used Bifrost with gcc 4.8 and CUDA 8,
+but higher ones should also work.
+
 Python dependencies
 ~~~~~~~~~~~~~~~~~~~
 

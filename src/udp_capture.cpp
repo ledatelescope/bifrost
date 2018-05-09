@@ -174,7 +174,7 @@ public:
 	~AlignedBuffer() {
 		this->free();
 	}
-	inline void swap(AlignedBuffer const& other) {
+	inline void swap(AlignedBuffer & other) {
 		std::swap(_buf,       other._buf);
 		std::swap(_size,      other._size);
 		std::swap(_alignment, other._alignment);
