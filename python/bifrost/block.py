@@ -571,6 +571,7 @@ class WriteAsciiBlock(SinkBlock):
                 data_accumulate = unpacked_data[0]
         text_file = open(self.filename, 'a')
         np.savetxt(text_file, data_accumulate.reshape((1, -1)))
+        text_file.close()
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
