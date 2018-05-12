@@ -16,6 +16,8 @@ LIBBIFROST_OBJS = \
   udp_socket.o \
   udp_capture.o \
   udp_transmit.o \
+  drx_reader.o \
+  tbn_reader.o \
   unpack.o \
   quantize.o \
   proclog.o
