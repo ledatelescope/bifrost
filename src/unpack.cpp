@@ -29,6 +29,10 @@
 #include <bifrost/unpack.h>
 #include "utils.hpp"
 
+#ifdef BF_CUDA_ENABLED
+#include <gunpack.hu>
+#endif
+
 // sign_extend == true  => output has same value as input  (slower)
 // sign_extend == false => output is scaled by 2**(8-nbit) (faster)
 
@@ -217,6 +221,22 @@ void foreach_simple_cpu(T const* in,
 	}
 }
 
+template<typename T, typename U, typename V, typename Func, typename Size>
+void foreach_promote_cpu(T const* in,
+					U*       tmp,
+					V*       out,
+					Size     nelement,
+					Func     func) {
+	U tmp2 = 0;
+	for( Size i=0; i<nelement; ++i ) {
+		func(in[i], tmp2);
+		for( Size j=0; j<sizeof(U)/sizeof(T); j++ ) {
+			out[i*sizeof(U)/sizeof(T) + j] = int8_t((tmp2 >> j*8) & 0xFF);
+		}
+		//std::cout << std::hex << (int)in[i] << " --> " << (int)out[i] << std::endl;
+	}
+}
+
 BFstatus bfUnpack(BFarray const* in,
                   BFarray const* out,
                   BFbool         align_msb) {
@@ -242,15 +262,29 @@ BFstatus bfUnpack(BFarray const* in,
 	BF_ASSERT(is_contiguous(in),  BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT(is_contiguous(out), BF_STATUS_UNSUPPORTED_STRIDE);
 	
-	// TODO: Support CUDA space
+#ifdef BF_CUDA_ENABLED
+	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
+	          BF_STATUS_UNSUPPORTED_SPACE);
+	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
+	          BF_STATUS_UNSUPPORTED_SPACE);
+#else
 	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM),
 	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM),
 	          BF_STATUS_UNSUPPORTED_SPACE);
+#endif
 	
 	size_t nelement = num_contiguous_elements(in);
 	bool byteswap    = ( in->big_endian != is_big_endian());
 	bool conjugate   = (in->conjugated != out->conjugated);
+	
+#ifdef BF_CUDA_ENABLED
+	if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+		BF_ASSERT(nelement<=(size_t)512*65535*65535, BF_STATUS_UNSUPPORTED_SHAPE);
+	}
+#endif
+	
+	float not_really_used = 0;
 	
 #define CALL_FOREACH_SIMPLE_CPU_UNPACK(itype,otype) \
 	foreach_simple_cpu((itype*)in->data, \
@@ -259,29 +293,84 @@ BFstatus bfUnpack(BFarray const* in,
 	                   UnpackFunctor<itype,otype>(byteswap, \
 	                                              align_msb, \
 	                                              conjugate))
+	                                              
+#define CALL_FOREACH_PROMOTE_CPU_UNPACK(itype,ttype,otype) \
+	foreach_promote_cpu((itype*)in->data, \
+	                    (ttype*)&not_really_used, \
+	                    (otype*)out->data, \
+	                    nelement, \
+	                    UnpackFunctor<itype,ttype>(byteswap, \
+	                                               align_msb, \
+	                                               conjugate))
+	                                              
+#ifdef BF_CUDA_ENABLED
+#define CALL_FOREACH_SIMPLE_GPU_UNPACK(itype,otype) \
+	launch_foreach_simple_gpu((itype*)in->data, \
+	                          (otype*)out->data, \
+	                          nelement, \
+	                          GunpackFunctor<itype,otype>(byteswap, \
+	                                                      align_msb, \
+	                                                      conjugate), \
+	                          (cudaStream_t)0)
+	                          
+#define CALL_FOREACH_PROMOTE_GPU_UNPACK(itype,ttype,otype) \
+	launch_foreach_promote_gpu((itype*)in->data, \
+	                           (ttype*)&not_really_used, \
+	                           (otype*)out->data, \
+	                           nelement, \
+	                           GunpackFunctor<itype,ttype>(byteswap, \
+	                                                       align_msb, \
+	                                                       conjugate), \
+	                           (cudaStream_t)0)
+
+#endif
+	
 	if( out->dtype == BF_DTYPE_I8 ||
 	           out->dtype == BF_DTYPE_CI8 ) {
 	//case BF_DTYPE_I8: {
 		switch( in->dtype ) {
-		// TODO: Work out how to properly deal with 1-bit
-		//case BF_DTYPE_CI1: nelement *= 2;
-		//case BF_DTYPE_I1: {
-		//	BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
-		//	nelement /= 8;
-		//	CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int64_t); break;
-		//}
+		case BF_DTYPE_CI1: nelement *= 2;
+		case BF_DTYPE_I1: {
+			BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 8;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,int64_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int64_t);
+			}
+#else
+			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int64_t);
+#endif
+		}
 		case BF_DTYPE_CI2: nelement *= 2;
 		case BF_DTYPE_I2: {
 			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 4;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,int32_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int32_t);
+			}
+#else
 			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int32_t);
+#endif
 			break;
 		}
 		case BF_DTYPE_CI4: nelement *= 2;
 		case BF_DTYPE_I4: {
 			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 2;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,int16_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int16_t);
+			}
+#else
 			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int16_t);
+#endif
 			break;
 		}
 		//case BF_DTYPE_U1: {
@@ -290,20 +379,145 @@ BFstatus bfUnpack(BFarray const* in,
 		case BF_DTYPE_U2: {
 			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 4;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,uint32_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint32_t);
+			}
+#else
 			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint32_t);
+#endif
 			break;
 		}
 		case BF_DTYPE_U4: {
 			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
 			nelement /= 2;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_SIMPLE_GPU_UNPACK(uint8_t,uint16_t);
+			} else {
+				CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint16_t);
+			}
+#else
 			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,uint16_t);
+#endif
 			break;
 		}
 		default: BF_FAIL("Supported bfUnpack input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 		}
+		
+	} else if( out->dtype == BF_DTYPE_F32 ||
+	           out->dtype == BF_DTYPE_CF32 ) {
+	//case BF_DTYPE_I8: {
+		switch( in->dtype ) {
+		case BF_DTYPE_CI1: nelement *= 2;
+		case BF_DTYPE_I1: {
+			BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 8;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int64_t,float);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int64_t,float);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int64_t,float);
+#endif
+		}
+		case BF_DTYPE_CI2: nelement *= 2;
+		case BF_DTYPE_I2: {
+			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 4;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int32_t,float);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int32_t,float);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int32_t,float);
+#endif
+			break;
+		}
+		case BF_DTYPE_CI4: nelement *= 2;
+		case BF_DTYPE_I4: {
+			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 2;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int16_t,float);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int16_t,float);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int16_t,float);
+#endif
+			break;
+		}
+		default: BF_FAIL("Supported bfUnpack input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
+		}
+		
+	} else if( out->dtype == BF_DTYPE_F64 ||
+	           out->dtype == BF_DTYPE_CF64 ) {
+	//case BF_DTYPE_I8: {
+		switch( in->dtype ) {
+		case BF_DTYPE_CI1: nelement *= 2;
+		case BF_DTYPE_I1: {
+			BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 8;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int64_t,double);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int64_t,double);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int64_t,double);
+#endif
+		}
+		case BF_DTYPE_CI2: nelement *= 2;
+		case BF_DTYPE_I2: {
+			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 4;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int32_t,double);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int32_t,double);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int32_t,double);
+#endif
+			break;
+		}
+		case BF_DTYPE_CI4: nelement *= 2;
+		case BF_DTYPE_I4: {
+			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
+			nelement /= 2;
+#ifdef BF_CUDA_ENABLED
+			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				CALL_FOREACH_PROMOTE_GPU_UNPACK(uint8_t,int16_t,double);
+			} else {
+				CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int16_t,double);
+			}
+#else
+			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int16_t,double);
+#endif
+			break;
+		}
+		default: BF_FAIL("Supported bfUnpack input dtype", BF_STATUS_UNSUPPORTED_DTYPE);
+		}
+		
 	} else {
 		BF_FAIL("Supported bfUnpack output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 #undef CALL_FOREACH_SIMPLE_CPU_UNPACK
+#undef CALL_FOREACH_PROMOTE_CPU_UNPACK
+#ifdef BF_CUDA_ENABLED
+#undef CALL_FOREACH_SIMPLE_GPU_UNPACK
+#undef CALL_FOREACH_PROMOTE_GPU_UNPACK
+#endif
 	return BF_STATUS_SUCCESS;
 }
+

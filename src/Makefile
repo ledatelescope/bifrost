@@ -31,7 +31,9 @@ ifndef NOCUDA
   linalg.o \
   linalg_kernels.o \
   reduce.o \
-  fir.o
+  fir.o \
+  guantize.o \
+  gunpack.o
 endif
 
 JIT_SOURCES ?= \
