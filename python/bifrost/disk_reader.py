@@ -29,14 +29,14 @@
 
 from libbifrost import _bf, _check, _get, BifrostObject
 
-class DrxReader(BifrostObject):
-    def __init__(self, fh, ring, nsrc, src0,
+class DiskReader(BifrostObject):
+    def __init__(self, fmt, fh, ring, nsrc, src0,
                  buffer_nframe, slot_nframe, sequence_callback, core=None):
         if core is None:
             core = -1
         BifrostObject.__init__(
-            self, _bf.bfDrxReaderCreate, _bf.bfDrxReaderDestroy,
-            fh.fileno(), ring.obj, nsrc, src0,
+            self, _bf.bfDiskReaderCreate, _bf.bfDiskReaderDestroy,
+            fmt, fh.fileno(), ring.obj, nsrc, src0,
             buffer_nframe, slot_nframe,
             sequence_callback, core)
     def __enter__(self):
@@ -44,10 +44,10 @@ class DrxReader(BifrostObject):
     def __exit__(self, type, value, tb):
         self.end()
     def read(self):
-        status = _bf.BFdrxreader_status()
-        _check(_bf.bfDrxReaderRead(self.obj, status))
+        status = _bf.BFdiskreader_status()
+        _check(_bf.bfDiskReaderRead(self.obj, status))
         return status
     def flush(self):
-        _check(_bf.bfDrxReaderFlush(self.obj))
+        _check(_bf.bfDiskReaderFlush(self.obj))
     def end(self):
-        _check(_bf.bfDrxReaderEnd(self.obj))
+        _check(_bf.bfDiskReaderEnd(self.obj))
