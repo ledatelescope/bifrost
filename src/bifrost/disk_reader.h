@@ -26,8 +26,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_DRX_READER_H_INCLUDE_GUARD_
-#define BF_DRX_READER_H_INCLUDE_GUARD_
+#ifndef BF_DISK_READER_H_INCLUDE_GUARD_
+#define BF_DISK_READER_H_INCLUDE_GUARD_
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,12 +35,12 @@ extern "C" {
 	
 	#include <bifrost/ring.h>
 	
-	typedef struct BFdrxreader_impl* BFdrxreader;
+	typedef struct BFdiskreader_impl* BFdiskreader;
 	
-	typedef int (*BFdrxreader_sequence_callback)(BFoffset, BFoffset, int, int, int,
-										void const**, size_t*);
+	typedef int (*BFdiskreader_sequence_callback)(BFoffset, BFoffset, int, int, int,
+	                                              void const**, size_t*);
 	
-	typedef enum BFdrxreader_status_ {
+	typedef enum BFdiskreader_status_ {
 		BF_READ_STARTED,
 		BF_READ_ENDED,
 		BF_READ_CONTINUED,
@@ -48,24 +48,25 @@ extern "C" {
 		BF_READ_NO_DATA,
 		BF_READ_INTERRUPTED,
 		BF_READ_ERROR
-	} BFdrxreader_status;
+	} BFdiskreader_status;
 	
-	BFstatus bfDrxReaderCreate(BFdrxreader* obj,
-	                           int           fd,
-	                           BFring        ring,
-	                           BFsize        nsrc,
-	                           BFsize        src0,
-	                           BFsize        buffer_ntime,
-	                           BFsize        slot_ntime,
-	                           BFdrxreader_sequence_callback sequence_callback,
-	                           int           core);
-	BFstatus bfDrxReaderDestroy(BFdrxreader obj);
-	BFstatus bfDrxReaderRead(BFdrxreader obj, BFdrxreader_status* result);
-	BFstatus bfDrxReaderFlush(BFdrxreader obj);
-	BFstatus bfDrxReaderEnd(BFdrxreader obj);
+	BFstatus bfDiskReaderCreate(BFdiskreader* obj,
+	                            const char*   format,
+	                            int           fd,
+	                            BFring        ring,
+	                            BFsize        nsrc,
+	                            BFsize        src0,
+	                            BFsize        buffer_ntime,
+	                            BFsize        slot_ntime,
+	                            BFdiskreader_sequence_callback sequence_callback,
+	                            int           core);
+	BFstatus bfDiskReaderDestroy(BFdiskreader obj);
+	BFstatus bfDiskReaderRead(BFdiskreader obj, BFdiskreader_status* result);
+	BFstatus bfDiskReaderFlush(BFdiskreader obj);
+	BFstatus bfDiskReaderEnd(BFdiskreader obj);
 	
 	#ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif // BF_DRX_READER_H_INCLUDE_GUARD_
+#endif // BF_DISK_READER_H_INCLUDE_GUARD_

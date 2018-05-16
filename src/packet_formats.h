@@ -26,46 +26,48 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_TBN_READER_H_INCLUDE_GUARD_
-#define BF_TBN_READER_H_INCLUDE_GUARD_
+#ifndef BF_PACKET_FORMATS_H_INCLUDE_GUARD_
+#define BF_PACKET_FORMATS_H_INCLUDE_GUARD_
 
-#ifdef __cplusplus
-extern "C" {
-	#endif
-	
-	#include <bifrost/ring.h>
-	
-	typedef struct BFtbnreader_impl* BFtbnreader;
-	
-	typedef int (*BFtbnreader_sequence_callback)(BFoffset, BFoffset, int, int,
-	                                             void const**, size_t*);
-	
-	typedef enum BFtbnreader_status_ {
-		BF_READ_STARTED,
-		BF_READ_ENDED,
-		BF_READ_CONTINUED,
-		BF_READ_CHANGED,
-		BF_READ_NO_DATA,
-		BF_READ_INTERRUPTED,
-		BF_READ_ERROR
-	} BFtbnreader_status;
-	
-	BFstatus bfTbnReaderCreate(BFtbnreader* obj,
-	                           int           fd,
-	                           BFring        ring,
-	                           BFsize        nsrc,
-	                           BFsize        src0,
-	                           BFsize        buffer_ntime,
-	                           BFsize        slot_ntime,
-	                           BFtbnreader_sequence_callback sequence_callback,
-	                           int           core);
-	BFstatus bfTbnReaderDestroy(BFtbnreader obj);
-	BFstatus bfTbnReaderRead(BFtbnreader obj, BFtbnreader_status* result);
-	BFstatus bfTbnReaderFlush(BFtbnreader obj);
-	BFstatus bfTbnReaderEnd(BFtbnreader obj);
-	
-	#ifdef __cplusplus
-} // extern "C"
-#endif
+enum {
+	JUMBO_FRAME_SIZE = 9000,
+	DRX_FRAME_SIZE   = 4128,
+	TBN_FRAME_SIZE   = 1048
+};
 
-#endif // BF_TBN_READER_H_INCLUDE_GUARD_
+#pragma pack(1)
+struct chips_hdr_type {
+	uint8_t  roach;    // Note: 1-based
+	uint8_t  gbe;      // (AKA tuning)
+	uint8_t  nchan;    // 109
+	uint8_t  nsubband; // 11
+	uint8_t  subband;  // 0-11
+	uint8_t  nroach;   // 16
+	// Note: Big endian
+	uint16_t chan0;    // First chan in packet
+	uint64_t seq;      // Note: 1-based
+};
+
+#pragma pack(1)
+struct drx_hdr_type {
+	uint32_t sync_word;
+	uint32_t frame_count_word;
+	uint32_t seconds_count;
+	uint16_t decimation;
+	uint16_t time_offset;
+	uint64_t time_tag;
+	uint32_t tuning_word;
+	uint32_t flags;
+};
+
+#pragma pack(1)
+struct tbn_hdr_type {
+	uint32_t sync_word;
+	uint32_t frame_count_word;
+	uint32_t tuning_word;
+	uint16_t tbn_id;
+	uint16_t gain;
+	uint64_t time_tag;
+};
+
+#endif // BF_PACKET_FORMATS_H_INCLUDE_GUARD_

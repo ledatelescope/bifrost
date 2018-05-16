@@ -27,7 +27,7 @@
  */
 
 #include "assert.hpp"
-#include <bifrost/tbn_reader.h>
+#include <bifrost/disk_reader.h>
 #include <bifrost/affinity.h>
 #include <bifrost/Ring.hpp>
 using bifrost::ring::RingWrapper;
@@ -35,6 +35,7 @@ using bifrost::ring::RingWriter;
 using bifrost::ring::WriteSpan;
 using bifrost::ring::WriteSequence;
 #include "proclog.hpp"
+#include "packet_formats.h"
 
 #include <arpa/inet.h>  // For ntohs
 #include <sys/socket.h> // For recvfrom
@@ -55,10 +56,6 @@ using bifrost::ring::WriteSequence;
 #define BF_HWLOC_ENABLED 0
 //#define BF_HWLOC_ENABLED 1
 #endif
-
-enum {
-	TBN_FRAME_SIZE   = 1048
-};
 
 template<typename T>
 inline T atomic_add_and_fetch(T* dst, T val) {
@@ -120,7 +117,7 @@ public:
 	~AlignedBuffer() {
 		this->free();
 	}
-	inline void swap(AlignedBuffer const& other) {
+	inline void swap(AlignedBuffer & other) {
 		std::swap(_buf,       other._buf);
 		std::swap(_size,      other._size);
 		std::swap(_alignment, other._alignment);
@@ -184,11 +181,11 @@ public:
 	}
 };
 
-class TBNReaderReader {
+class DiskFrameReader {
 	int                    _fd;
 	AlignedBuffer<uint8_t> _buf;
 public:
-	TBNReaderReader(int fd, size_t frm_size_max=TBN_FRAME_SIZE)
+	DiskFrameReader(int fd, size_t frm_size_max=9000)
 	: _fd(fd), _buf(frm_size_max)
 	{}
 	inline int read_frame(uint8_t** frm_ptr, int flags=0) {
@@ -197,13 +194,14 @@ public:
 	}
 };
 
-
 struct FrameDesc {
-	uint32_t       sync;
-	uint64_t       time_tag;
 	uint64_t       seq;
 	int            nsrc;
 	int            src;
+	int            nchan;
+	int            chan0;
+	uint32_t       sync;
+	uint64_t       time_tag;
 	int            tuning;
 	int            decimation;
 	int            valid_mode;
@@ -219,8 +217,8 @@ struct FrameStats {
 	size_t nvalid_bytes;
 };
 
-class TBNReaderThread : public BoundThread {
-	TBNReaderReader _disk;
+class DiskReaderThread : public BoundThread {
+	DiskFrameReader  _disk;
 	FrameStats       _stats;
 	std::vector<FrameStats> _src_stats;
 	bool             _have_frm;
@@ -232,7 +230,7 @@ public:
 		READ_INTERRUPTED = 1 << 2,
 		READ_ERROR       = 1 << 3
 	};
-	TBNReaderThread(int fd, int nsrc, int core=0, size_t frm_size_max=9000)
+	DiskReaderThread(int fd, int nsrc, int core=0, size_t frm_size_max=9000)
 	: BoundThread(core), _disk(fd, frm_size_max), _src_stats(nsrc),
 	_have_frm(false) {
 		this->reset_stats();
@@ -306,6 +304,9 @@ public:
 	inline const FrameDesc* get_last_frame() const {
 		return _have_frm ? &_frm : NULL;
 	}
+	inline void reset_last_frame() {
+		_have_frm = false;
+	}
 	inline const FrameStats* get_stats() const { return &_stats; }
 	inline const FrameStats* get_stats(int src) const { return &_src_stats[src]; }
 	inline void reset_stats() {
@@ -314,20 +315,60 @@ public:
 	}
 };
 
-#pragma pack(1)
-struct tbn_hdr_type {
-	uint32_t sync_word;
-	uint32_t frame_count_word;
-	uint32_t tuning_word;
-	uint16_t tbn_id;
-	uint16_t gain;
-	uint64_t time_tag;
-};
-
-class TBNDecoder {
+class DiskDecoder {
 protected:
 	int _nsrc;
 	int _src0;
+public:
+	DiskDecoder(int nsrc, int src0) : _nsrc(nsrc), _src0(src0) {}
+	virtual inline bool operator()(const uint8_t* frm_ptr,
+	                              int            frm_size,
+	                              FrameDesc*     frm) const {
+		return false;
+	}
+};
+
+class DRXDecoder:DiskDecoder {
+	inline bool valid_frame(const FrameDesc* frm) const {
+		return (frm->sync     == 0x5CDEC0DE &&
+		frm->src      >= 0 &&
+		frm->src      <  _nsrc &&
+		frm->time_tag >= 0 &&
+		frm->tuning   >= 0);
+	}
+public:
+	DRXDecoder(int nsrc, int src0) : DiskDecoder(nsrc, src0) {}
+	inline bool operator()(const uint8_t* frm_ptr,
+	                       int            frm_size,
+	                       FrameDesc*     frm) const {
+		if( frm_size < (int)sizeof(drx_hdr_type) ) {
+			return false;
+		}
+		const drx_hdr_type* frm_hdr  = (drx_hdr_type*)frm_ptr;
+		const uint8_t*      frm_pld  = frm_ptr  + sizeof(drx_hdr_type);
+		int                 pld_size = frm_size - sizeof(drx_hdr_type);
+		int frm_id   = frm_hdr->frame_count_word & 0xFF;
+		//uint8_t frm_beam = (frm_id & 0x7) - 1;
+		int frm_tune = ((frm_id >> 3) & 0x7) - 1;
+		int frm_pol  = ((frm_id >> 7) & 0x1);
+		frm_id       = (frm_tune << 1) | frm_pol;
+		frm->sync         = frm_hdr->sync_word;
+		frm->time_tag     = be64toh(frm_hdr->time_tag) - be16toh(frm_hdr->time_offset);
+		frm->seq          = frm->time_tag / be16toh(frm_hdr->decimation) / 4096;
+		//frm->nsrc         = frm_hdr->nroach;
+		frm->nsrc         = _nsrc;
+		frm->src          = frm_id - _src0;
+		frm->tuning       = be32toh(frm_hdr->tuning_word);
+		frm->decimation   = be16toh(frm_hdr->decimation);
+		frm->valid_mode   = 1;
+		frm->payload_size = pld_size;
+		frm->payload_ptr  = frm_pld;
+// 		cout << frm_id << frm->src << "valid? " << this->valid_frame(frm) << endl;
+		return this->valid_frame(frm);
+	}
+};
+
+class TBNDecoder:DiskDecoder {
 	inline bool valid_frame(const FrameDesc* frm) const {
 		return (frm->sync       == 0x5CDEC0DE &&
 		frm->src        >= 0 &&
@@ -337,7 +378,7 @@ protected:
 		frm->valid_mode == 1);
 	}
 public:
-	TBNDecoder(int nsrc, int src0) : _nsrc(nsrc), _src0(src0) {}
+	TBNDecoder(int nsrc, int src0) : DiskDecoder(nsrc, src0) {}
 	inline bool operator()(const uint8_t* frm_ptr,
 	                               int            frm_size,
 	                               FrameDesc*     frm) const {
@@ -362,7 +403,65 @@ public:
 	}
 };
 
-class TBNProcessor {
+class DiskProcessor {
+public:
+	virtual inline void operator()(const FrameDesc* frm,
+	                               uint64_t         seq0,
+	                               uint64_t         nseq_per_obuf,
+	                               int              nbuf,
+	                               uint8_t*         obufs[],
+	                               size_t           ngood_bytes[],
+	                               size_t*          src_ngood_bytes[]) {}
+	virtual inline void blank_out_source(uint8_t* data,
+	                             int      src,
+	                             int      nsrc,
+	                             int      nseq) {}
+};
+
+class DRXProcessor:DiskProcessor {
+public:
+	inline void operator()(const FrameDesc* frm,
+	                       uint64_t         seq0,
+	                       uint64_t         nseq_per_obuf,
+	                       int              nbuf,
+	                       uint8_t*         obufs[],
+	                       size_t           ngood_bytes[],
+	                       size_t*          src_ngood_bytes[]) {
+		int    obuf_idx = ((frm->seq - seq0 >= 1*nseq_per_obuf) +
+		(frm->seq - seq0 >= 2*nseq_per_obuf));
+		size_t obuf_seq0 = seq0 + obuf_idx*nseq_per_obuf;
+		size_t nbyte = frm->payload_size;
+		ngood_bytes[obuf_idx]               += nbyte;
+		src_ngood_bytes[obuf_idx][frm->src] += nbyte;
+		int payload_size = frm->payload_size;
+		
+		size_t obuf_offset = (frm->seq-obuf_seq0)*frm->nsrc*payload_size;
+		
+		// Note: Using these SSE types allows the compiler to use SSE instructions
+		//         However, they require aligned memory (otherwise segfault)
+		uint8_t const* __restrict__ in  = (uint8_t const*)frm->payload_ptr;
+		uint8_t*       __restrict__ out = (uint8_t*      )&obufs[obuf_idx][obuf_offset];
+		
+		int samp = 0;
+		for( ; samp<4096; ++samp ) { // HACK TESTING
+			out[samp*frm->nsrc + frm->src] = in[samp];
+		}
+	}
+	inline void blank_out_source(uint8_t* data,
+	                             int      src,
+	                             int      nsrc,
+	                             int      nseq) {
+		uint8_t* __restrict__ aligned_data = (uint8_t*)data;
+		for( int t=0; t<nseq; ++t ) {
+			for( int c=0; c<4096; ++c ) {
+				aligned_data[t*4096*nsrc + c*nsrc + src] = 0;
+				aligned_data[t*4096*nsrc + c*nsrc + src] = 0;
+			}
+		}
+	}
+};
+
+class TBNProcessor:DiskProcessor {
 public:
 	inline void operator()(const FrameDesc* frm,
 	                       uint64_t         seq0,
@@ -415,10 +514,9 @@ inline uint64_t round_nearest(uint64_t val, uint64_t mult) {
 	return (2*val/mult+1)/2*mult;
 }
 
-class BFtbnreader_impl {
-	TBNReaderThread   _reader;
-	TBNDecoder         _decoder;
-	TBNProcessor       _processor;
+class BFdiskreader_impl {
+protected:
+	DiskProcessor      _processor;
 	ProcLog            _type_log;
 	ProcLog            _bind_log;
 	ProcLog            _out_log;
@@ -440,9 +538,11 @@ class BFtbnreader_impl {
 	BFoffset _seq;
 	BFoffset _time_tag;
 	int      _chan0;
+	int      _chan1;
 	int      _payload_size;
 	bool     _active;
-	BFtbnreader_sequence_callback _sequence_callback;
+	uint8_t  _tstate;
+	BFdiskreader_sequence_callback _sequence_callback;
 	
 	RingWrapper _ring;
 	RingWriter  _oring;
@@ -502,6 +602,7 @@ class BFtbnreader_impl {
 			int status = (*_sequence_callback)(seq0,
 			                                   _time_tag,
 			                                   _chan0,
+			                                   _chan1,
 			                                   _nsrc,
 			                                   &hdr,
 			                                   &hdr_size);
@@ -524,45 +625,28 @@ class BFtbnreader_impl {
 		_sequence.reset(); // Note: This is releasing the shared_ptr
 	}
 public:
-	inline BFtbnreader_impl(int    fd,
-	                      BFring ring,
-	                      int    nsrc,
-	                      int    src0,
-	                      int    buffer_nframe,
-	                      int    slot_nframe,
-	                      BFtbnreader_sequence_callback sequence_callback,
-	                      int    core)
-	:  _reader(fd, nsrc, core, TBN_FRAME_SIZE), _decoder(nsrc, src0), _processor(), 
-	   _type_log("lwa_file/type"),
-	   _bind_log("lwa_file/bind"),
-	   _out_log("lwa_file/out"),
-	   _size_log("lwa_file/sizes"),
-	   _chan_log("lwa_file/chans"),
-	   _stat_log("lwa_file/stats"),
-	   _perf_log("lwa_file/perf"), 
+	inline BFdiskreader_impl(int    fd,
+	                         BFring ring,
+	                         int    nsrc,
+	                         int    src0,
+	                         int    buffer_nframe,
+	                         int    slot_nframe,
+	                         BFdiskreader_sequence_callback sequence_callback,
+	                         int    core)
+	:  _processor(), 
+	   _type_log("disk_reader/type"),
+	   _bind_log("disk_reader/bind"),
+	   _out_log("disk_reader/out"),
+	   _size_log("disk_reader/sizes"),
+	   _chan_log("disk_reader/chans"),
+	   _stat_log("disk_reader/stats"),
+	   _perf_log("disk_reader/perf"), 
 	   _nsrc(nsrc), _nseq_per_buf(buffer_nframe), _slot_nframe(slot_nframe),
-	   _seq(0), _time_tag(0), _chan0(), _active(false),
+	   _seq(0), _time_tag(0), _chan0(), _active(false), _tstate(0), 
 	   _sequence_callback(sequence_callback),
 	   _ring(ring), _oring(_ring),
 	   // TODO: Add reset method for stats
-	   _ngood_bytes(0), _nmissing_bytes(0) {
-		size_t contig_span  = this->bufsize(TBN_FRAME_SIZE - sizeof(tbn_hdr_type));
-		// Note: 2 write bufs may be open for writing at one time
-		size_t total_span   = contig_span * 4;
-		size_t nringlet_max = 1;
-		_ring.resize(contig_span, total_span, nringlet_max);
-		_type_log.update("type : %s", "tbn");
-		_bind_log.update("ncore : %i\n"
-		                 "core0 : %i\n", 
-		                 1, core);
-		_out_log.update("nring : %i\n"
-		                "ring0 : %s\n", 
-		                1, _ring.name());
-		_size_log.update("nsrc         : %i\n"
-		                 "nseq_per_buf : %i\n"
-		                 "slot_nframe   : %i\n",
-		                 _nsrc, _nseq_per_buf, _slot_nframe);
-	}
+	   _ngood_bytes(0), _nmissing_bytes(0) {}
 	inline void flush() {
 		while( _bufs.size() ) {
 			this->commit_buf();
@@ -575,7 +659,44 @@ public:
 		this->flush();
 		_oring.close();
 	}
-	BFtbnreader_status read() {
+	virtual BFdiskreader_status read() {
+		return BF_READ_NO_DATA;
+	}
+};
+
+class BFdrxreader_impl:public BFdiskreader_impl {
+	DiskReaderThread  _reader;
+	DRXDecoder        _decoder;
+	DRXProcessor      _processor;
+public:
+	inline BFdrxreader_impl(int    fd,
+	                      BFring ring,
+	                      int    nsrc,
+	                      int    src0,
+	                      int    buffer_nframe,
+	                      int    slot_nframe,
+	                      BFdiskreader_sequence_callback sequence_callback,
+	                      int    core)
+	:   BFdiskreader_impl(fd, ring, nsrc, src0, buffer_nframe, slot_nframe, sequence_callback, core),
+	    _reader(fd, nsrc, core, DRX_FRAME_SIZE), _decoder(nsrc, src0), _processor() {
+		size_t contig_span  = this->bufsize(DRX_FRAME_SIZE - sizeof(drx_hdr_type));
+		// Note: 2 write bufs may be open for writing at one time
+		size_t total_span   = contig_span * 4;
+		size_t nringlet_max = 1;
+		_ring.resize(contig_span, total_span, nringlet_max);
+		_type_log.update("type : %s", "drx");
+		_bind_log.update("ncore : %i\n"
+		                 "core0 : %i\n", 
+		                 1, core);
+		_out_log.update("nring : %i\n"
+		                "ring0 : %s\n", 
+		                1, _ring.name());
+		_size_log.update("nsrc         : %i\n"
+		                 "nseq_per_buf : %i\n"
+		                 "slot_nframe   : %i\n",
+		                 _nsrc, _nseq_per_buf, _slot_nframe);
+	}
+	BFdiskreader_status read() {
 		_t0 = std::chrono::high_resolution_clock::now();
 		
 		uint8_t* buf_ptrs[2];
@@ -599,9 +720,9 @@ public:
 		                        src_ngood_bytes_ptrs,
 		                        &_decoder,
 		                        &_processor);
-		if( state & TBNReaderThread::READ_ERROR ) {
+		if( state & DiskReaderThread::READ_ERROR ) {
 			return BF_READ_ERROR;
-		} else if( state & TBNReaderThread::READ_INTERRUPTED ) {
+		} else if( state & DiskReaderThread::READ_INTERRUPTED ) {
 			return BF_READ_INTERRUPTED;
 		}
 		const FrameStats* stats = _reader.get_stats();
@@ -616,9 +737,170 @@ public:
 		
 		_t1 = std::chrono::high_resolution_clock::now();
 		
-		BFtbnreader_status ret;
+		BFdiskreader_status ret;
 		bool was_active = _active;
-		_active = state & TBNReaderThread::READ_SUCCESS;
+		_active = state & DiskReaderThread::READ_SUCCESS;
+		if( _active ) {
+			const FrameDesc* frm = _reader.get_last_frame();
+			if( frm ) {
+				//cout << "Latest nchan, chan0 = " << frm->nchan << ", " << frm->chan0 << endl;
+			}
+			else {
+				//cout << "No latest frame" << endl;
+			}
+			
+			if( frm->src / 2  == 0 ) {
+				if( frm->tuning != _chan0 ) {
+					_tstate |= 1;
+					_chan0 = frm->tuning;
+				}
+			} else {
+				if( frm->tuning != _chan1 ) {
+					_tstate |= 2;
+					_chan1 = frm->tuning;
+				}
+			}
+			//cout << "State is now " << int(_tstate) << " with " << _chan0 << " and " << _chan1 << " with " << _seq << endl;
+			//cout << "  " << frm->time_tag << endl;
+			
+			if( !was_active ) {
+				if( (_tstate == 3 && _nsrc == 4) ||
+				    (_tstate != 0 && _nsrc == 2) ) {
+					_seq          = round_nearest(frm->seq, _nseq_per_buf);
+					_time_tag     = frm->time_tag;
+					_payload_size = frm->payload_size;
+					_chan_log.update() << "chan0        : " << _chan0 << "\n"
+					                   << "chan1        : " << _chan1 << "\n"
+					                   << "payload_size : " << _payload_size << "\n";
+					this->begin_sequence();
+					ret = BF_READ_STARTED;
+					_tstate = 0;
+				} else {
+					ret = BF_READ_NO_DATA;
+					_active = false;
+					_reader.reset_last_frame();
+				}
+			} else {
+				//cout << "Continuing data, seq = " << seq << endl;
+				if( (_tstate == 3 && _nsrc == 4) ||
+				    (_tstate != 0 && _nsrc == 2) ) {
+					_time_tag     = frm->time_tag;
+					_payload_size = frm->payload_size;
+					_chan_log.update() << "chan0        : " << _chan0 << "\n"
+					                   << "chan1        : " << _chan1 << "\n"
+					                   << "payload_size : " << _payload_size << "\n";
+					this->end_sequence();
+					this->begin_sequence();
+					ret = BF_READ_CHANGED;
+					_tstate = 0;
+				} else {
+					ret = BF_READ_CONTINUED;
+				}
+			}
+			
+			if( ret != BF_READ_NO_DATA ) {
+				if( _bufs.size() == 2 ) {
+					this->commit_buf();
+				}
+				this->reserve_buf();
+			}
+		} else {
+			
+			if( was_active ) {
+				this->flush();
+				ret = BF_READ_ENDED;
+			} else {
+				ret = BF_READ_NO_DATA;
+			}
+		}
+		
+		_t2 = std::chrono::high_resolution_clock::now();
+		_process_time = std::chrono::duration_cast<std::chrono::duration<double>>(_t1-_t0);
+		_reserve_time = std::chrono::duration_cast<std::chrono::duration<double>>(_t2-_t1);
+		_perf_log.update() << "acquire_time : " << -1.0 << "\n"
+		                   << "process_time : " << _process_time.count() << "\n"
+		                   << "reserve_time : " << _reserve_time.count() << "\n";
+		
+		return ret;
+	}
+};
+
+class BFtbnreader_impl:public BFdiskreader_impl {
+	DiskReaderThread  _reader;
+	TBNDecoder        _decoder;
+	TBNProcessor      _processor;
+public:
+	inline BFtbnreader_impl(int    fd,
+	                        BFring ring,
+	                        int    nsrc,
+	                        int    src0,
+	                        int    buffer_nframe,
+	                        int    slot_nframe,
+	                        BFdiskreader_sequence_callback sequence_callback,
+	                        int    core)
+	:   BFdiskreader_impl(fd, ring, nsrc, src0, buffer_nframe, slot_nframe, sequence_callback, core),
+	    _reader(fd, nsrc, core, TBN_FRAME_SIZE), _decoder(nsrc, src0), _processor() {
+		size_t contig_span  = this->bufsize(TBN_FRAME_SIZE - sizeof(tbn_hdr_type));
+		// Note: 2 write bufs may be open for writing at one time
+		size_t total_span   = contig_span * 4;
+		size_t nringlet_max = 1;
+		_ring.resize(contig_span, total_span, nringlet_max);
+		_type_log.update("type : %s", "tbn");
+		_bind_log.update("ncore : %i\n"
+		                 "core0 : %i\n", 
+		                 1, core);
+		_out_log.update("nring : %i\n"
+		                "ring0 : %s\n", 
+		                1, _ring.name());
+		_size_log.update("nsrc         : %i\n"
+		                 "nseq_per_buf : %i\n"
+		                 "slot_nframe   : %i\n",
+		                 _nsrc, _nseq_per_buf, _slot_nframe);
+	}
+	BFdiskreader_status read() {
+		_t0 = std::chrono::high_resolution_clock::now();
+		
+		uint8_t* buf_ptrs[2];
+		// Minor HACK to access the buffers in a 2-element queue
+		buf_ptrs[0] = _bufs.size() > 0 ? (uint8_t*)_bufs.front()->data() : NULL;
+		buf_ptrs[1] = _bufs.size() > 1 ? (uint8_t*)_bufs.back()->data()  : NULL;
+		
+		size_t* ngood_bytes_ptrs[2];
+		ngood_bytes_ptrs[0] = _buf_ngood_bytes.size() > 0 ? &_buf_ngood_bytes.front() : NULL;
+		ngood_bytes_ptrs[1] = _buf_ngood_bytes.size() > 1 ? &_buf_ngood_bytes.back()  : NULL;
+		
+		size_t* src_ngood_bytes_ptrs[2];
+		src_ngood_bytes_ptrs[0] = _buf_src_ngood_bytes.size() > 0 ? &_buf_src_ngood_bytes.front()[0] : NULL;
+		src_ngood_bytes_ptrs[1] = _buf_src_ngood_bytes.size() > 1 ? &_buf_src_ngood_bytes.back()[0]  : NULL;
+		
+		int state = _reader.run(_seq,
+		                        _nseq_per_buf,
+		                        _bufs.size(),
+		                        buf_ptrs,
+		                        ngood_bytes_ptrs,
+		                        src_ngood_bytes_ptrs,
+		                        &_decoder,
+		                        &_processor);
+		if( state & DiskReaderThread::READ_ERROR ) {
+			return BF_READ_ERROR;
+		} else if( state & DiskReaderThread::READ_INTERRUPTED ) {
+			return BF_READ_INTERRUPTED;
+		}
+		const FrameStats* stats = _reader.get_stats();
+		_stat_log.update() << "ngood_bytes    : " << _ngood_bytes << "\n"
+		                   << "nmissing_bytes : " << _nmissing_bytes << "\n"
+		                   << "ninvalid       : " << stats->ninvalid << "\n"
+		                   << "ninvalid_bytes : " << stats->ninvalid_bytes << "\n"
+		                   << "nlate          : " << stats->nlate << "\n"
+		                   << "nlate_bytes    : " << stats->nlate_bytes << "\n"
+		                   << "nvalid         : " << stats->nvalid << "\n"
+		                   << "nvalid_bytes   : " << stats->nvalid_bytes << "\n";
+		
+		_t1 = std::chrono::high_resolution_clock::now();
+		
+		BFdiskreader_status ret;
+		bool was_active = _active;
+		_active = state & DiskReaderThread::READ_SUCCESS;
 		if( _active ) {
 			const FrameDesc* frm = _reader.get_last_frame();
 			if( frm ) {
@@ -676,36 +958,47 @@ public:
 	}
 };
 
-BFstatus bfTbnReaderCreate(BFtbnreader* obj,
-                           int           fd,
-                           BFring        ring,
-                           BFsize        nsrc,
-                           BFsize        src0,
-                           BFsize        buffer_nframe,
-                           BFsize        slot_nframe,
-                           BFtbnreader_sequence_callback sequence_callback,
-                           int           core) {
+BFstatus bfDiskReaderCreate(BFdiskreader* obj,
+                           const char*    format,
+                           int            fd,
+                           BFring         ring,
+                           BFsize         nsrc,
+                           BFsize         src0,
+                           BFsize         buffer_nframe,
+                           BFsize         slot_nframe,
+                           BFdiskreader_sequence_callback sequence_callback,
+                           int            core) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
-	BF_TRY_RETURN_ELSE(*obj = new BFtbnreader_impl(fd, ring, nsrc, src0,
-		                                          buffer_nframe, slot_nframe,
-		                                          sequence_callback, core),
-		              *obj = 0);
+	if( format == std::string("drx") ) {
+		BF_TRY_RETURN_ELSE(*obj = new BFdrxreader_impl(fd, ring, nsrc, src0,
+		                                               buffer_nframe, slot_nframe,
+		                                               sequence_callback, core),
+		                   *obj = 0);
+	} else if( format == std::string("tbn") ) {
+		BF_TRY_RETURN_ELSE(*obj = new BFtbnreader_impl(fd, ring, nsrc, src0,
+		                                               buffer_nframe, slot_nframe,
+		                                               sequence_callback, core),
+		                   *obj = 0);
+	} else {
+		return BF_STATUS_UNSUPPORTED;
+	}
 }
-BFstatus bfTbnReaderDestroy(BFtbnreader obj) {
+
+BFstatus bfDiskReaderDestroy(BFdiskreader obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	delete obj;
 	return BF_STATUS_SUCCESS;
 }
-BFstatus bfTbnReaderRead(BFtbnreader obj, BFtbnreader_status* result) {
+BFstatus bfDiskReaderRead(BFdiskreader obj, BFdiskreader_status* result) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	BF_TRY_RETURN_ELSE(*result = obj->read(),
 	                   *result = BF_READ_ERROR);
 }
-BFstatus bfTbnReaderFlush(BFtbnreader obj) {
+BFstatus bfDiskReaderFlush(BFdiskreader obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	BF_TRY_RETURN(obj->flush());
 }
-BFstatus bfTbnReaderEnd(BFtbnreader obj) {
+BFstatus bfDiskReaderEnd(BFdiskreader obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	BF_TRY_RETURN(obj->end_writing());
 }
