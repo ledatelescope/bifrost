@@ -29,11 +29,16 @@ from libbifrost import _bf, _check
 from bifrost import asarray
 
 REDUCE_MAP = {
-    'sum':    _bf.BF_REDUCE_SUM,
-    'mean':   _bf.BF_REDUCE_MEAN,
-    'min':    _bf.BF_REDUCE_MIN,
-    'max':    _bf.BF_REDUCE_MAX,
-    'stderr': _bf.BF_REDUCE_STDERR
+    'sum':       _bf.BF_REDUCE_SUM,
+    'mean':      _bf.BF_REDUCE_MEAN,
+    'min':       _bf.BF_REDUCE_MIN,
+    'max':       _bf.BF_REDUCE_MAX,
+    'stderr':    _bf.BF_REDUCE_STDERR,
+    'pwrsum':    _bf.BF_REDUCE_POWER_SUM,
+    'pwrmean':   _bf.BF_REDUCE_POWER_MEAN,
+    'pwrmin':    _bf.BF_REDUCE_POWER_MIN,
+    'pwrmax':    _bf.BF_REDUCE_POWER_MAX,
+    'pwrstderr': _bf.BF_REDUCE_POWER_STDERR,
 }
 
 def reduce(idata, odata, op='sum'):

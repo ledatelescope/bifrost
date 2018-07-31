@@ -51,12 +51,25 @@ def scrunch(data, factor=2, axis=0, func=np.sum):
     axis = axis + 1 if axis >= 0 else axis
     return func(data.reshape(s), axis=axis)
 
+def pwrscrunch(data, factor=2, axis=0, func=np.sum):
+    if factor is None:
+        factor = data.shape[axis]
+    s = data.shape
+    if s[axis] % factor != 0:
+        raise ValueError("Scrunch factor does not divide axis size")
+    s = s[:axis] + (s[axis]//factor, factor) + s[axis:][1:]
+    axis = axis + 1 if axis >= 0 else axis
+    return func(np.abs(data.reshape(s))**2, axis=axis)
+
 class ReduceTest(unittest.TestCase):
     def setUp(self):
         np.random.seed(1234)
     def run_reduce_test(self, shape, axis, n, op='sum', dtype=np.float32):
         a = ((np.random.random(size=shape)*2-1)*127).astype(np.int8).astype(dtype)
-        b_gold = scrunch(a.astype(np.float32), n, axis, NP_OPS[op])
+        if op[:3] == 'pwr':
+            b_gold = pwrscrunch(a.astype(np.float32), n, axis, NP_OPS[op[3:]])
+        else:
+            b_gold = scrunch(a.astype(np.float32), n, axis, NP_OPS[op])
         a = bf.asarray(a, space='cuda')
         b = bf.empty_like(b_gold, space='cuda')
         bf.reduce(a, b, op)
@@ -77,7 +90,7 @@ class ReduceTest(unittest.TestCase):
         for shape in [(20,20,40), (20,40,60), (40,100,200)]:
             for axis in xrange(3):
                 for n in [2, 4, 5, 10, None]:
-                    for op in ['sum', 'mean']:#, 'min', 'max', 'stderr']:
+                    for op in ['sum', 'mean', 'pwrsum', 'pwrmean']:#, 'min', 'max', 'stderr']:
                         for dtype in [np.float32, np.int16, np.int8]:
                             #print shape, axis, n, op, dtype
                             self.run_reduce_test(shape, axis, n, op, dtype)
@@ -85,7 +98,47 @@ class ReduceTest(unittest.TestCase):
         for shape in [(16,32,64), (16,64,256), (256,64,16)]:#, (256, 256, 512)]:
             for axis in xrange(3):
                 for n in [2, 4, 8, 16, None]:
-                    for op in ['sum', 'mean']:#, 'min', 'max', 'stderr']:
+                    for op in ['sum', 'mean', 'pwrsum', 'pwrmean']:#, 'min', 'max', 'stderr']:
                         for dtype in [np.float32, np.int16, np.int8]:
                             #print shape, axis, n, op, dtype
                             self.run_reduce_test(shape, axis, n, op, dtype)
+    
+    def run_complex_reduce_test(self, shape, axis, n, op='sum', dtype=np.complex64):
+        a = ((np.random.random(size=shape)*2-1)*127).astype(np.int8).astype(dtype) \
+            + 1j*((np.random.random(size=shape)*2-1)*127).astype(np.int8).astype(dtype)
+        if op[:3] == 'pwr':
+            b_gold = pwrscrunch(a.astype(np.complex64), n, axis, NP_OPS[op[3:]]).astype(np.complex64)
+        else:
+            b_gold = scrunch(a.astype(np.complex64), n, axis, NP_OPS[op])
+        a = bf.asarray(a, space='cuda')
+        b = bf.empty_like(b_gold, space='cuda')
+        bf.reduce(a, b, op)
+        #for _ in xrange(10):
+        #    bf.reduce(a, b, op)
+        #bf.device.stream_synchronize();
+        #t0 = time.time()
+        #nrep = 30
+        #for _ in xrange(nrep):
+        #    bf.reduce(a, b, op)
+        #bf.device.stream_synchronize();
+        #dt = time.time() - t0
+        #print nrep * (a.nbytes + b.nbytes) / dt / 1e9, 'GB/s', shape, axis, n, dtype
+        b = b.copy('system')
+        np.testing.assert_allclose(b, b_gold, rtol=1e-3 if op[:3] == 'pwr' else 1e-7)
+    def test_complex_reduce(self):
+        self.run_complex_reduce_test((3,6,5), axis=1, n=2, op='pwrsum', dtype=np.complex64)
+        for shape in [(20,20,40), (20,40,60), (40,100,200)]:
+            for axis in xrange(3):
+                for n in [2, 4, 5, 10, None]:
+                    for op in ['sum', 'mean', 'pwrsum', 'pwrmean']:#, 'min', 'max', 'stderr']:
+                        for dtype in [np.complex64,]:
+                            #print shape, axis, n, op, dtype
+                            self.run_complex_reduce_test(shape, axis, n, op, dtype)
+    def test_complex_reduce_pow2(self):
+        for shape in [(16,32,64), (16,64,256), (256,64,16)]:#, (256, 256, 512)]:
+            for axis in xrange(3):
+                for n in [2, 4, 8, 16, None]:
+                    for op in ['sum', 'mean', 'pwrsum', 'pwrmean']:#, 'min', 'max', 'stderr']:
+                        for dtype in [np.complex64,]:
+                            #print shape, axis, n, op, dtype
+                            self.run_complex_reduce_test(shape, axis, n, op, dtype)
