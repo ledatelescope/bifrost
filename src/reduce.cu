@@ -325,8 +325,8 @@ BFstatus reduce_itype_otype(BFarray const* in,
 	} else if( use_vec16_kernel ) {
 		BF_TRY_RETURN(
 			launch_reduce_vector_kernel<16>((IType*)in->data, (OType*)out->data,
-			                               shape, istrides, ostrides,
-			                               op, g_cuda_stream));
+			                                shape, istrides, ostrides,
+			                                op, g_cuda_stream));
 	} else {
 		BF_TRY_RETURN(
 			launch_reduce_loop_kernel((IType*)in->data, (OType*)out->data,
@@ -357,11 +357,11 @@ BFstatus reduce_itype(BFarray const* in,
 template<int N, typename IType>
 __global__
 void reduce_complex_standard_vector_kernel(IType const* __restrict__ in,
-                                  float*       __restrict__ out,
-                                  int4         shape,
-                                  int4         istrides,
-                                  int4         ostrides,
-                                  BFreduce_op  op) {
+                                           float*       __restrict__ out,
+                                           int4         shape,
+                                           int4         istrides,
+                                           int4         ostrides,
+                                           BFreduce_op  op) {
 	int4 i0 = make_int4(threadIdx.x + blockIdx.x * blockDim.x,
 	                    threadIdx.y + blockIdx.y * blockDim.y,
 	                    threadIdx.z + blockIdx.z * blockDim.z,
@@ -401,12 +401,12 @@ void reduce_complex_standard_vector_kernel(IType const* __restrict__ in,
 
 template<int N, typename IType>
 void launch_reduce_complex_standard_vector_kernel(IType const* in,
-                                         float*       out,
-                                         int4         shape,
-                                         int4         istrides,
-                                         int4         ostrides,
-                                         BFreduce_op  op,
-                                         cudaStream_t stream) {
+                                                  float*       out,
+                                                  int4         shape,
+                                                  int4         istrides,
+                                                  int4         ostrides,
+                                                  BFreduce_op  op,
+                                                  cudaStream_t stream) {
 	dim3 block(128); // TODO: Tune this
 	dim3 grid(std::min((shape.x - 1) / block.x + 1, 65535u),
 	          std::min(shape.y, 65535),
@@ -435,11 +435,11 @@ void launch_reduce_complex_standard_vector_kernel(IType const* in,
 template<typename IType>
 __global__
 void reduce_complex_standard_loop_kernel(IType const* __restrict__ in,
-                                float*       __restrict__ out,
-                                int4         shape,
-                                int4         istrides,
-                                int4         ostrides,
-                                BFreduce_op  op) {
+                                         float*       __restrict__ out,
+                                         int4         shape,
+                                         int4         istrides,
+                                         int4         ostrides,
+                                         BFreduce_op  op) {
 	int4 i0 = make_int4(threadIdx.x + blockIdx.x * blockDim.x,
 	                    threadIdx.y + blockIdx.y * blockDim.y,
 	                    threadIdx.z + blockIdx.z * blockDim.z,
@@ -476,12 +476,12 @@ void reduce_complex_standard_loop_kernel(IType const* __restrict__ in,
 
 template<typename IType>
 void launch_reduce_complex_standard_loop_kernel(IType const* in,
-                                       float*       out,
-                                       int4         shape,
-                                       int4         istrides,
-                                       int4         ostrides,
-                                       BFreduce_op  op,
-                                       cudaStream_t stream) {
+                                                float*       out,
+                                                int4         shape,
+                                                int4         istrides,
+                                                int4         ostrides,
+                                                BFreduce_op  op,
+                                                cudaStream_t stream) {
 	dim3 block(128);
 	if( istrides.w == 1 && shape.w > 16 ) {
 		// This gives better perf when reducing along the fastest-changing axis
@@ -508,9 +508,9 @@ void launch_reduce_complex_standard_loop_kernel(IType const* in,
 
 template<typename IType>
 BFstatus reduce_complex_standard_itype_otype(BFarray const* in,
-                                    BFarray const* out,
-                                    BFreduce_op    op,
-                                    int            axis) {
+                                             BFarray const* out,
+                                             BFreduce_op    op,
+                                             int            axis) {
 	BF_ASSERT(in->shape[axis] % out->shape[axis] == 0, BF_STATUS_INVALID_SHAPE);
 	long reduce_size    =  in->shape[axis] / out->shape[axis];
 	long istride_reduce =  in->strides[axis];
@@ -568,44 +568,23 @@ BFstatus reduce_complex_standard_itype_otype(BFarray const* in,
 	if( use_vec2_kernel ) {
 		BF_TRY_RETURN(
 			launch_reduce_complex_standard_vector_kernel<4>((IType*)in->data, (float*)out->data,
-			                                       shape, istrides, ostrides,
-			                                       op, g_cuda_stream));
+			                                                shape, istrides, ostrides,
+			                                                op, g_cuda_stream));
 	} else if( use_vec4_kernel ) {
 		BF_TRY_RETURN(
 			launch_reduce_complex_standard_vector_kernel<8>((IType*)in->data, (float*)out->data,
-			                                       shape, istrides, ostrides,
-			                                       op, g_cuda_stream));
+			                                                shape, istrides, ostrides,
+			                                                op, g_cuda_stream));
 	} else if( use_vec8_kernel ) {
 		BF_TRY_RETURN(
 			launch_reduce_complex_standard_vector_kernel<16>((IType*)in->data, (float*)out->data,
-			                                       shape, istrides, ostrides,
-			                                       op, g_cuda_stream));
+			                                                 shape, istrides, ostrides,
+                                                             op, g_cuda_stream));
 	} else {
 		BF_TRY_RETURN(
 			launch_reduce_complex_standard_loop_kernel((IType*)in->data, (float*)out->data,
-			                                  shape, istrides, ostrides,
-			                                  op, g_cuda_stream));
-	}
-}
-
-template<typename IType>
-BFstatus reduce_complex_standard_itype(BFarray const* in,
-                              BFarray const* out,
-                              BFreduce_op    op,
-                              int            axis) {
-	if( op == BF_REDUCE_MIN \
-	    || op == BF_REDUCE_MAX \
-        || op == BF_REDUCE_POWER_MIN \
-        || op == BF_REDUCE_POWER_MAX \
-        || op == BF_REDUCE_POWER_SUM \
-        || op == BF_REDUCE_POWER_MEAN \
-        || op == BF_REDUCE_POWER_STDERR ) {
-		BF_FAIL("Unsupported operation on input dtype", BF_STATUS_UNSUPPORTED);
-	}
-	
-	switch( out->dtype ) {
-        case BF_DTYPE_CF32:  return reduce_complex_standard_itype_otype<IType>(in, out, op, axis);
-        default: BF_FAIL("Unsupported output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
+			                                           shape, istrides, ostrides,
+			                                           op, g_cuda_stream));
 	}
 }
 
@@ -852,25 +831,6 @@ BFstatus reduce_complex_power_itype_otype(BFarray const* in,
     }
 }
 
-template<typename IType>
-BFstatus reduce_complex_power_itype(BFarray const* in,
-                                   BFarray const* out,
-                                   BFreduce_op    op,
-                                   int            axis) {
-    if( op == BF_REDUCE_MIN \
-        || op == BF_REDUCE_MAX \
-        || op == BF_REDUCE_SUM \
-        || op == BF_REDUCE_MEAN \
-        || op == BF_REDUCE_STDERR ) {
-        BF_FAIL("Unsupported operation on input dtype", BF_STATUS_UNSUPPORTED);
-    }
-    
-    switch( out->dtype ) {
-        case BF_DTYPE_F32:  return reduce_complex_power_itype_otype<IType>(in, out, op, axis);
-        default: BF_FAIL("Unsupported output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
-    }
-}
-
 /*
  * Complex - combined
  */
@@ -882,16 +842,18 @@ BFstatus reduce_complex_itype(BFarray const* in,
                               int            axis) {
     
     switch( op ) {
-        case BF_REDUCE_POWER_MIN:   // Fall-through
-        case BF_REDUCE_POWER_MAX:    // Fall-through
-        case BF_REDUCE_POWER_SUM:    // Fall-through
-        case BF_REDUCE_POWER_MEAN:   // Fall-through
+        case BF_REDUCE_POWER_MIN:  // Fall-through
+        case BF_REDUCE_POWER_MAX:  // Fall-through
+        case BF_REDUCE_POWER_SUM:  // Fall-through
+        case BF_REDUCE_POWER_MEAN: // Fall-through
         case BF_REDUCE_POWER_STDERR: {
             switch( out->dtype ) {
                 case BF_DTYPE_F32:  return reduce_complex_power_itype_otype<IType>(in, out, op, axis);
                 default: BF_FAIL("Unsupported output dtype", BF_STATUS_UNSUPPORTED_DTYPE);
             }
         }
+        case BF_REDUCE_MIN: // Fall-through
+        case BF_REDUCE_MAX: BF_FAIL("Unsupported operation on input dtype", BF_STATUS_UNSUPPORTED);
         default: {
             switch( out->dtype ) {
                 case BF_DTYPE_CF32:  return reduce_complex_standard_itype_otype<IType>(in, out, op, axis);
