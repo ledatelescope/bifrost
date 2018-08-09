@@ -107,7 +107,7 @@ class ReduceTest(unittest.TestCase):
         a = ((np.random.random(size=shape)*2-1)*127).astype(np.int8).astype(dtype) \
             + 1j*((np.random.random(size=shape)*2-1)*127).astype(np.int8).astype(dtype)
         if op[:3] == 'pwr':
-            b_gold = pwrscrunch(a.astype(np.complex64), n, axis, NP_OPS[op[3:]]).astype(np.complex64)
+            b_gold = pwrscrunch(a.astype(np.complex64), n, axis, NP_OPS[op[3:]]).astype(np.float32)
         else:
             b_gold = scrunch(a.astype(np.complex64), n, axis, NP_OPS[op])
         a = bf.asarray(a, space='cuda')
