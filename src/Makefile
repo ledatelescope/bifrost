@@ -30,6 +30,8 @@ ifndef NOCUDA
   trace.o \
   linalg.o \
   linalg_kernels.o \
+  romein.o \
+  romein_kernels.o \
   reduce.o \
   fir.o \
   guantize.o \
