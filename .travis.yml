@@ -20,7 +20,6 @@ addons:
             - software-properties-common
             - exuberant-ctags
             - python-dev
-            - gfortran
 
 jobs:
     include:
