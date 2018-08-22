@@ -81,8 +81,10 @@ BFstatus romein_float(BFarray const* data, // Our data, strided by d
     void const* xloc = data_xloc->data;
     void const* yloc = data_yloc->data;
     void const* zloc = data_zloc->data;
+    cuda::child_stream stream(g_cuda_stream);
+    BF_TRACE_STREAM(stream);
 
-    scatter_grid_kernel <<< nbatch, 16, 0, 0 >>> ((cuComplex*)dptr,
+    scatter_grid_kernel <<< nbatch, 16, 0, stream >>> ((cuComplex*)dptr,
 						  (cuComplex*)uvgridptr,
 						  (cuComplex*)illumptr,
 						  (int*)xloc,
