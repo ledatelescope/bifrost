@@ -111,7 +111,7 @@ class RomeinTest(unittest.TestCase):
         grid = grid.copy(space="system")
 #        diff = grid - gridnaive
         
-        diffs = numpy.sum(abs(grid.flatten()-gridnaive.flatten()))
+        diff = numpy.sum(abs(grid.flatten()-gridnaive.flatten()))
         if diff > 0.01:
             raise ValueError("Large difference between naive romein and CUDA implementation.")
         
