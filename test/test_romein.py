@@ -113,19 +113,20 @@ class RomeinTest(unittest.TestCase):
         
         diff = numpy.sum(abs(grid.flatten()-gridnaive.flatten()))
         if diff > 0.01:
+            print("#### DIFFERENCE: %f ####"%diff)
             raise ValueError("Large difference between naive romein and CUDA implementation.")
         
-    def test_ntime8_nchan2_npol2_gridsize128_illumsize3_datasize256(self):
-        self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=8, npol=2, nchan=2)
-
-    def test_ntime32_nchan64_npol2_gridsize128_illumsize3_datasize256(self):
-        self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=32, npol=2, nchan=64)
-        
-    def test_ntime512_nchan4_npol2_gridsize128_illumsize3_datasize256(self):
-        self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=512, npol=2, nchan=4)
-        
-    def test_ntime1024_nchan2_npol2_gridsize128_illumsize3_datasize256(self):
-        self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=1024, npol=2, nchan=2)
+    #def test_ntime8_nchan2_npol2_gridsize128_illumsize3_datasize256(self):
+    #    self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=8, npol=2, nchan=2)
+    #
+    #def test_ntime32_nchan64_npol2_gridsize128_illumsize3_datasize256(self):
+    #    self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=32, npol=2, nchan=64)
+    #    
+    #def test_ntime512_nchan4_npol2_gridsize128_illumsize3_datasize256(self):
+    #    self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=512, npol=2, nchan=4)
+    #    
+    #def test_ntime1024_nchan2_npol2_gridsize128_illumsize3_datasize256(self):
+    #    self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=1024, npol=2, nchan=2)
 
     def test_ntime_1024_nchan2_npol2_gridsize256_illumsize10_datasize256(self):
         self.run_test(grid_size=256, illum_size=10, data_size=256, ntime=1024, npol=2, nchan=2)

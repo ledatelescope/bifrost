@@ -93,7 +93,7 @@ BFstatus romein_float(BFarray const* data, // Our data, strided by d
 						  max_support,
 						  grid_size,
 						  data_size);
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
     //cudaError_t err = cudaGetLastError();
     //std::cout << "Error: " << cudaGetErrorString(err) << "\n";
     return BF_STATUS_SUCCESS;
