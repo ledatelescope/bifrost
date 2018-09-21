@@ -143,6 +143,7 @@ inline void launch_romein_kernel(int        nbaseline,
                                  OutType*   d_out,
                                  cudaStream_t stream=0) {
     //cout << "LAUNCH for " << nelement << endl;
+    // TODO: Is this really the best setup to use?
     dim3 block(8,1);
     dim3 grid(nbatch,1);
     /*
@@ -367,6 +368,7 @@ BFstatus bfRomeinExecute(BFromein          plan,
     BF_ASSERT( in->ndim == 4,          BF_STATUS_INVALID_SHAPE);
     BF_ASSERT(out->ndim == in->ndim+1, BF_STATUS_INVALID_SHAPE);
     
+//     TODO: What all should we support here?
 //     BFarray in_flattened;
 //     if( in->ndim > 4 ) {
 //         // Keep the last three dim but attempt to flatten all others
@@ -384,6 +386,7 @@ BFstatus bfRomeinExecute(BFromein          plan,
     BF_ASSERT( in->shape[2] == plan->npol(),      BF_STATUS_INVALID_SHAPE);
     BF_ASSERT( in->shape[3] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE);
     
+//     TODO: What all should we support here?
 //     BFarray out_flattened;
 //     if( out->ndim > 5 ) {
 //         // Keep the last four dim but attempt to flatten all others
@@ -458,27 +461,6 @@ BFstatus romein_float(BFarray const* data, // Our data, strided by d
     void const* zloc = data_zloc->data;
     cuda::child_stream stream(g_cuda_stream);
     BF_TRACE_STREAM(stream);
-    
-    /*
-    dim3 block(16);
-    dim3 grid(nbatch);
-    
-    void* args[] = {&dptr,
-                    &uvgridptr, 
-                    &illumptr,
-                    &xloc,
-                    &yloc,
-                    &zloc,
-                    &max_support,
-                    &grid_size,
-                    &data_size};
-    
-    BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)scatter_grid_kernel, 
-                                             grid, block,
-                                             &args[0], 0, stream), 
-                            BF_STATUS_INTERNAL_ERROR);
-    */
-    
     
     scatter_grid_kernel <<< nbatch, 8, 0, stream >>> ((cuComplex*)dptr,
 						  (cuComplex*)uvgridptr,
