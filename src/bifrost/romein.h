@@ -3,14 +3,30 @@
 
 // Bifrost Includes
 #include <bifrost/common.h>
+#include <bifrost/memory.h>
 #include <bifrost/array.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+typedef struct BFromein_impl* BFromein;
 
-
+BFstatus bfRomeinCreate(BFromein* plan);
+BFstatus bfRomeinInit(BFromein       plan,
+                      BFarray const* positions,
+                      BFarray const* kernels,
+                      BFsize         ngrid);
+BFstatus bfRomeinSetStream(BFromein    plan,
+                           void const* stream);
+BFstatus bfRomeinSetPositions(BFromein       plan, 
+                              BFarray const* positions);
+BFstatus bfRomeinSetKernels(BFromein       plan, 
+                            BFarray const* kernels);
+BFstatus bfRomeinExecute(BFromein          plan,
+                         BFarray const* in,
+                         BFarray const* out);
+BFstatus bfRomeinDestroy(BFromein plan);
 
 /*****************************
     Host Functions
