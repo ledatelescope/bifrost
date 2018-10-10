@@ -209,7 +209,7 @@ public:
     inline IType tkernels()   const { return _tkernels;   }
     void init(IType nbaseline,
               IType npol,
-              bool polmajor,
+              bool  polmajor,
               IType maxsupport, 
               IType gridsize) {
         BF_TRACE();
@@ -338,7 +338,7 @@ BFstatus bfRomeinInit(BFromein       plan,
                       BFarray const* positions,
                       BFarray const* kernels,
                       BFsize         gridsize,
-                      BFsize         polmajor) {
+                      BFbool         polmajor) {
     BF_TRACE();
     BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
     BF_ASSERT(positions,                                BF_STATUS_INVALID_POINTER);
@@ -373,7 +373,7 @@ BFstatus bfRomeinInit(BFromein       plan,
     // Validate
     BF_ASSERT(npositions == nkernels, BF_STATUS_INVALID_SHAPE);
     
-    BF_TRY(plan->init(nbaseline, npol, polmajor > 0, maxsupport, gridsize));
+    BF_TRY(plan->init(nbaseline, npol, polmajor, maxsupport, gridsize));
     BF_TRY(plan->set_positions(positions));
     BF_TRY_RETURN(plan->set_kernels(kernels));
 }
