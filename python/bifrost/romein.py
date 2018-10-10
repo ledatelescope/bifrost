@@ -31,11 +31,12 @@ from ndarray import asarray
 class Romein(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfRomeinCreate, _bf.bfRomeinDestroy)
-    def init(self, positions, kernels, ngrid):
+    def init(self, positions, kernels, ngrid, polmajor=True):
         _check( _bf.bfRomeinInit(self.obj, 
                                  asarray(positions).as_BFarray(), 
-                                 asarray(kernels).as_BFarray(), 
-                                 ngrid) )
+                                 asarray(kernels).as_BFarray(),
+                                 ngrid,
+                                 polmajor) )
     def set_positions(self, positions):
         _check( _bf.bfRomeinSetPositions(self.obj, 
                                          asarray(positions).as_BFarray()) )

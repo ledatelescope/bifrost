@@ -16,7 +16,8 @@ BFstatus bfRomeinCreate(BFromein* plan);
 BFstatus bfRomeinInit(BFromein       plan,
                       BFarray const* positions,
                       BFarray const* kernels,
-                      BFsize         ngrid);
+                      BFsize         ngrid,
+                      BFsize         polmajor);
 BFstatus bfRomeinSetStream(BFromein    plan,
                            void const* stream);
 BFstatus bfRomeinSetPositions(BFromein       plan, 

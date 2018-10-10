@@ -43,9 +43,13 @@ Implements the Romein convolutional algorithm onto a GPU using CUDA.
 
 #include "Complex.hpp"
 
+struct __attribute__((aligned(1))) nibble2 {
+    char x:4, y:4;
+};
+
 template<typename RealType>
 __host__ __device__
-inline Complex<RealType> Complexfcma(Complex<float> x, Complex<RealType> y, Complex<RealType> d) {
+inline Complex<RealType> Complexfcma(Complex<RealType> x, Complex<RealType> y, Complex<RealType> d) {
     RealType real_res;
     RealType imag_res;
     
@@ -59,15 +63,17 @@ inline Complex<RealType> Complexfcma(Complex<float> x, Complex<RealType> y, Comp
 }
 
 template<typename InType, typename OutType>
-__global__ void romein_kernel(int                           nbaseline,
-                              int                           maxsupport, 
-                              int                           gridsize, 
-                              int                           nbatch,
-                              const int3* __restrict__       positions,
-                              const Complex32* __restrict__ kernels,
-                              const InType* __restrict__    d_in,
-                              OutType*                      d_out) {
+__global__ void romein_kernel(int                         nbaseline,
+                              int                         npol,
+                              int                         maxsupport, 
+                              int                         gridsize, 
+                              int                         nbatch,
+                              const int3* __restrict__    positions,
+                              const OutType* __restrict__ kernels,
+                              const InType* __restrict__  d_in,
+                              OutType*                    d_out) {
     int batch_no = blockIdx.x;
+    int pol_no = threadIdx.y;
     for(int i = threadIdx.x; i < maxsupport * maxsupport; i += blockDim.x) {
         int myU = i % maxsupport;
         int myV = i / maxsupport;
@@ -75,10 +81,10 @@ __global__ void romein_kernel(int                           nbaseline,
         int grid_point_u = myU;
         int grid_point_v = myV;
         OutType sum = OutType(0.0, 0.0);
-        int vi_s = batch_no*nbaseline;
-        int grid_s = batch_no*gridsize*gridsize;
+        int vi_s = batch_no*nbaseline*npol + pol_no;
+        int grid_s = batch_no*npol*gridsize*gridsize + pol_no*gridsize*gridsize;
         int vi = 0;
-        for(vi = vi_s; vi < (vi_s+nbaseline); ++vi) {
+        for(vi = vi_s; vi < (vi_s+nbaseline*npol); vi+=npol) {
             int3 uvw = positions[vi]; 
             
             // Determine convolution point. This is basically just an
@@ -117,7 +123,7 @@ __global__ void romein_kernel(int                           nbaseline,
             }
             
             //TODO: Re-do the w-kernel/gcf for our data.
-            Complex32 px = kernels[vi*maxsupport*maxsupport + myConvV * maxsupport + myConvU];// ??
+            OutType px = kernels[vi*maxsupport*maxsupport + myConvV * maxsupport + myConvU];// ??
             // Sum up
             InType temp = d_in[vi];
             OutType vi_v = OutType(temp.x, temp.y);
@@ -133,25 +139,33 @@ __global__ void romein_kernel(int                           nbaseline,
 }
 
 template<typename InType, typename OutType>
-inline void launch_romein_kernel(int        nbaseline,
-                                 int        maxsupport, 
-                                 int        gridsize, 
-                                 int        nbatch,
-                                 int*       positions,
-                                 Complex32* kernels,
-                                 InType*    d_in,
-                                 OutType*   d_out,
+inline void launch_romein_kernel(int      nbaseline,
+                                 int      npol,
+                                 bool     polmajor,
+                                 int      maxsupport, 
+                                 int      gridsize, 
+                                 int      nbatch,
+                                 int*     positions,
+                                 OutType* kernels,
+                                 InType*  d_in,
+                                 OutType* d_out,
                                  cudaStream_t stream=0) {
     //cout << "LAUNCH for " << nelement << endl;
-    // TODO: Is this really the best setup to use?
     dim3 block(8,1);
-    dim3 grid(nbatch,1);
+    dim3 grid(nbatch*npol,1);
+    if( polmajor ) {
+        npol = 1;
+    } else {
+        block.y = npol;
+        grid.x = nbatch;
+    }
     /*
     cout << "  Block size is " << block.x << " by " << block.y << endl;
     cout << "  Grid  size is " << grid.x << " by " << grid.y << endl;
     */
     
     void* args[] = {&nbaseline,
+                    &npol,
                     &maxsupport,
                     &gridsize, 
                     &nbatch,
@@ -171,35 +185,37 @@ class BFromein_impl {
 public: // HACK WAR for what looks like a bug in the CUDA 7.0 compiler
     typedef float  DType;
 private:
-    IType        _ntime;
-    IType        _nchan;
-    IType        _npol;
     IType        _nbaseline;
+    IType        _npol;
+    bool         _polmajor;
     IType        _maxsupport;
     IType        _gridsize;
+    IType        _nxyz = 0;
     int*         _xyz = NULL;
-    Complex32*   _kernels = NULL;
+    IType        _nkernels = 0;
+    BFdtype      _tkernels = BF_DTYPE_INT_TYPE;
+    void*        _kernels = NULL;
     cudaStream_t _stream;
 public:
-    BFromein_impl() : _ntime(1), _nchan(1), _npol(1), _nbaseline(1), \
+    BFromein_impl() : _nbaseline(1), _npol(1), _polmajor(true), \
                       _maxsupport(1), _stream(g_cuda_stream) {}
-    inline IType ntime()      const { return _ntime;      }
-    inline IType nchan()      const { return _nchan;      }
-    inline IType npol()       const { return _npol;       }
     inline IType nbaseline()  const { return _nbaseline;  }
+    inline IType npol()       const { return _npol;       }
+    inline bool polmajor()    const { return _polmajor;   }
     inline IType maxsupport() const { return _maxsupport; }
     inline IType gridsize()   const { return _gridsize;   }
-    void init(IType ntime, 
-              IType nchan, 
+    inline IType nxyz()       const { return _nxyz;       }
+    inline IType nkernels()   const { return _nkernels;   }
+    inline IType tkernels()   const { return _tkernels;   }
+    void init(IType nbaseline,
               IType npol,
-              IType nbaseline,
+              bool polmajor,
               IType maxsupport, 
               IType gridsize) {
         BF_TRACE();
-        _ntime      = ntime;
-        _nchan      = nchan;
-        _npol       = npol;
         _nbaseline  = nbaseline;
+        _npol       = npol;
+        _polmajor   = polmajor;
         _maxsupport = maxsupport;
         _gridsize   = gridsize;
     }
@@ -208,14 +224,28 @@ public:
         BF_TRACE_STREAM(_stream);
         BF_ASSERT_EXCEPTION(positions->dtype == BF_DTYPE_I32, BF_STATUS_UNSUPPORTED_DTYPE);
         
+        int npositions = positions->shape[0];
+        for(int i=1; i<positions->ndim-3; ++i) {
+            npositions *= positions->shape[i];
+        }
+        
+        _nxyz = npositions;
         _xyz = (int*) positions->data;
     }
     void set_kernels(BFarray const* kernels) {
         BF_TRACE();
         BF_TRACE_STREAM(_stream);
-        BF_ASSERT_EXCEPTION(kernels->dtype == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
+        BF_ASSERT_EXCEPTION(kernels->dtype == BF_DTYPE_CF32 \
+                                              || BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
         
-        _kernels = (Complex32*) kernels->data;
+        int nkernels = kernels->shape[0];
+        for(int i=1; i<kernels->ndim-4; ++i) {
+            nkernels *= kernels->shape[i];
+        }
+        
+        _nkernels = nkernels;
+        _tkernels = kernels->dtype;
+        _kernels = (void*) kernels->data;
     }
     void execute(BFarray const* in, BFarray const* out) {
         BF_TRACE();
@@ -227,15 +257,23 @@ public:
         
         BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
         
-        int nbatch = in->shape[0]*in->shape[1]*in->shape[2];
+        int nbatch = in->shape[0];
         
 #define LAUNCH_ROMEIN_KERNEL(IterType,OterType) \
-        launch_romein_kernel(_nbaseline, _maxsupport, _gridsize, nbatch, \
-                             _xyz, _kernels, \
+        launch_romein_kernel(_nbaseline, _npol, _polmajor, _maxsupport, _gridsize, nbatch, \
+                             _xyz, (OterType)_kernels, \
                              (IterType)in->data, (OterType)out->data, \
                              _stream)
         
         switch( in->dtype ) {
+            case BF_DTYPE_CI4:
+                BF_ASSERT_EXCEPTION(in->big_endian, BF_STATUS_UNSUPPORTED_DTYPE);
+                switch( out->dtype ) {
+                    case BF_DTYPE_CF32: LAUNCH_ROMEIN_KERNEL(nibble2*, Complex32*);  break;
+                    case BF_DTYPE_CF64: LAUNCH_ROMEIN_KERNEL(nibble2*, Complex64*);  break;
+                    default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
+                };
+                break;
             case BF_DTYPE_CI8:
                 switch( out->dtype ) {
                     case BF_DTYPE_CF32: LAUNCH_ROMEIN_KERNEL(char2*, Complex32*);  break;
@@ -299,27 +337,43 @@ BFstatus bfRomeinCreate(BFromein* plan_ptr) {
 BFstatus bfRomeinInit(BFromein       plan,
                       BFarray const* positions,
                       BFarray const* kernels,
-                      BFsize         gridsize) {
+                      BFsize         gridsize,
+                      BFsize         polmajor) {
     BF_TRACE();
     BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
-    BF_ASSERT(positions,                BF_STATUS_INVALID_POINTER);
-    BF_ASSERT(positions->ndim == 5,     BF_STATUS_INVALID_SHAPE);
-    BF_ASSERT(positions->shape[4] == 3, BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(positions,                                BF_STATUS_INVALID_POINTER);
+    BF_ASSERT(positions->ndim >= 4,                     BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(positions->shape[positions->ndim-1] == 3, BF_STATUS_INVALID_SHAPE);
     BF_ASSERT(space_accessible_from(positions->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
     BF_ASSERT(kernels,                                BF_STATUS_INVALID_POINTER);
-    BF_ASSERT(kernels->ndim == 6,                     BF_STATUS_INVALID_SHAPE);
-    BF_ASSERT(kernels->shape[4] == kernels->shape[5], BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(kernels->ndim >= 5,                     BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(kernels->shape[kernels->ndim-2] \
+              == kernels->shape[kernels->ndim-1],     BF_STATUS_INVALID_SHAPE);
     BF_ASSERT(space_accessible_from(kernels->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
     
     // Discover the dimensions of the positions/kernels.
-    int ntime, nchan, npol, nbaseline, maxsupport;
-    ntime = positions->shape[0];
-    nchan = positions->shape[1];
-    npol = positions->shape[2];
-    nbaseline = positions->shape[3];
-    maxsupport = kernels->shape[5];
+    int npositions, nbaseline, npol, nkernels, maxsupport;
+    npositions = positions->shape[0];
+    for(int i=1; i<positions->ndim-3; ++i) {
+        npositions *= positions->shape[i];
+    }
+    if( polmajor ) {
+         npol = positions->shape[positions->ndim-3];
+         nbaseline = positions->shape[positions->ndim-2];
+    } else {
+        nbaseline = positions->shape[positions->ndim-3];
+        npol = positions->shape[positions->ndim-2];
+    }
+    nkernels = kernels->shape[0];
+    for(int i=1; i<kernels->ndim-4; ++i) {
+        nkernels *= kernels->shape[i];
+    }
+    maxsupport = kernels->shape[kernels->ndim-1];
     
-    BF_TRY(plan->init(ntime, nchan, npol, nbaseline, maxsupport, gridsize));
+    // Validate
+    BF_ASSERT(npositions == nkernels, BF_STATUS_INVALID_SHAPE);
+    
+    BF_TRY(plan->init(nbaseline, npol, polmajor > 0, maxsupport, gridsize));
     BF_TRY(plan->set_positions(positions));
     BF_TRY_RETURN(plan->set_kernels(kernels));
 }
@@ -334,28 +388,35 @@ BFstatus bfRomeinSetPositions(BFromein       plan,
                               BFarray const* positions) {
     BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
     BF_ASSERT(positions,            BF_STATUS_INVALID_POINTER);
-    BF_ASSERT(positions->ndim == 5, BF_STATUS_INVALID_SHAPE  );
-    BF_ASSERT(positions->shape[0] == plan->ntime(),     BF_STATUS_INVALID_SHAPE  );
-    BF_ASSERT(positions->shape[1] == plan->nchan(),     BF_STATUS_INVALID_SHAPE  );
-    BF_ASSERT(positions->shape[2] == plan->npol(),      BF_STATUS_INVALID_SHAPE  );
-    BF_ASSERT(positions->shape[3] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE  );
-    BF_ASSERT(positions->shape[4] == 3,                 BF_STATUS_INVALID_SHAPE  );
+    BF_ASSERT(positions->ndim >= 4, BF_STATUS_INVALID_SHAPE  );
+    if( plan->polmajor() ) {
+        BF_ASSERT(positions->shape[positions->ndim-3] == plan->npol(),      BF_STATUS_INVALID_SHAPE  );
+        BF_ASSERT(positions->shape[positions->ndim-2] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE  );
+    } else {
+        BF_ASSERT(positions->shape[positions->ndim-3] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE  );
+        BF_ASSERT(positions->shape[positions->ndim-2] == plan->npol(),      BF_STATUS_INVALID_SHAPE  );
+    }
+    BF_ASSERT(positions->shape[positions->ndim-1] == 3,                 BF_STATUS_INVALID_SHAPE  );
     BF_ASSERT(space_accessible_from(positions->space,   BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
+    
     BF_TRY_RETURN(plan->set_positions(positions));
 }
 BFstatus bfRomeinSetKernels(BFromein       plan, 
                             BFarray const* kernels) {
     BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
     BF_ASSERT(kernels,            BF_STATUS_INVALID_POINTER);
-    BF_ASSERT(kernels->ndim == 6, BF_STATUS_INVALID_SHAPE  );
-    BF_ASSERT(kernels->shape[0] == plan->ntime(),      BF_STATUS_INVALID_SHAPE  );
-    BF_ASSERT(kernels->shape[1] == plan->nchan(),      BF_STATUS_INVALID_SHAPE  );
-    BF_ASSERT(kernels->shape[2] == plan->npol(),       BF_STATUS_INVALID_SHAPE  );
-    BF_ASSERT(kernels->shape[3] == plan->nbaseline(),  BF_STATUS_INVALID_SHAPE  );
-    BF_ASSERT(kernels->shape[4] == plan->maxsupport(), BF_STATUS_INVALID_SHAPE  );
-    BF_ASSERT(kernels->shape[5] == plan->maxsupport(), BF_STATUS_INVALID_SHAPE  );
-    
+    BF_ASSERT(kernels->ndim >= 5, BF_STATUS_INVALID_SHAPE  );
+    if( plan->polmajor() ) {
+        BF_ASSERT(kernels->shape[kernels->ndim-4] == plan->npol(),      BF_STATUS_INVALID_SHAPE  );
+        BF_ASSERT(kernels->shape[kernels->ndim-3] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE  );
+    } else {
+        BF_ASSERT(kernels->shape[kernels->ndim-4] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE  );
+        BF_ASSERT(kernels->shape[kernels->ndim-3] == plan->npol(),      BF_STATUS_INVALID_SHAPE  );
+    }
+    BF_ASSERT(kernels->shape[kernels->ndim-2] == plan->maxsupport(), BF_STATUS_INVALID_SHAPE  );
+    BF_ASSERT(kernels->shape[kernels->ndim-1] == plan->maxsupport(), BF_STATUS_INVALID_SHAPE  );
     BF_ASSERT(space_accessible_from(kernels->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
+    
     BF_TRY_RETURN(plan->set_kernels(kernels));
 }
 BFstatus bfRomeinExecute(BFromein          plan,
@@ -365,46 +426,62 @@ BFstatus bfRomeinExecute(BFromein          plan,
     BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
     BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
     BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
-    BF_ASSERT( in->ndim == 4,          BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT( in->ndim >= 3,          BF_STATUS_INVALID_SHAPE);
     BF_ASSERT(out->ndim == in->ndim+1, BF_STATUS_INVALID_SHAPE);
     
-//     TODO: What all should we support here?
-//     BFarray in_flattened;
-//     if( in->ndim > 4 ) {
-//         // Keep the last three dim but attempt to flatten all others
-//         unsigned long keep_dims_mask = padded_dims_mask(in);
-//         keep_dims_mask |= 0x1 << (out->ndim-1);
-//         keep_dims_mask |= 0x1 << (out->ndim-2);
-//         keep_dims_mask |= 0x1 << (out->ndim-3);
-//         keep_dims_mask |= 0x1 << (out->ndim-4);
-//         flatten(in,   &in_flattened, keep_dims_mask);
-//         in  =  &in_flattened;
-//         BF_ASSERT(in_flattened.ndim == 4, BF_STATUS_UNSUPPORTED_SHAPE);
-//     }
-    BF_ASSERT( in->shape[0] == plan->ntime(),     BF_STATUS_INVALID_SHAPE);
-    BF_ASSERT( in->shape[1] == plan->nchan(),     BF_STATUS_INVALID_SHAPE);
-    BF_ASSERT( in->shape[2] == plan->npol(),      BF_STATUS_INVALID_SHAPE);
-    BF_ASSERT( in->shape[3] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE);
+    BFarray in_flattened;
+    if( in->ndim > 3 ) {
+        // Keep the last two dim but attempt to flatten all others
+        unsigned long keep_dims_mask = padded_dims_mask(in);
+        keep_dims_mask |= 0x1 << (in->ndim-1);
+        keep_dims_mask |= 0x1 << (in->ndim-2);
+        keep_dims_mask |= 0x1 << (in->ndim-3);
+        flatten(in,   &in_flattened, keep_dims_mask);
+        in  =  &in_flattened;
+        BF_ASSERT(in_flattened.ndim == 3, BF_STATUS_UNSUPPORTED_SHAPE);
+    }
+    /*
+    std::cout << "ndim = " << in->ndim << std::endl;
+    std::cout << "   0 = " << in->shape[0] << std::endl;
+    std::cout << "   1 = " << in->shape[1] << std::endl;
+    std::cout << "   2 = " << in->shape[2] << std::endl;
+    */
+    BF_ASSERT( in->shape[0] == plan->nxyz(),     BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT( in->shape[0] == plan->nkernels(), BF_STATUS_INVALID_SHAPE);
+    if( plan->polmajor() ) {
+        BF_ASSERT( in->shape[1] == plan->npol(),      BF_STATUS_INVALID_SHAPE);
+        BF_ASSERT( in->shape[2] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE);
+    } else {
+        BF_ASSERT( in->shape[1] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE);
+        BF_ASSERT( in->shape[2] == plan->npol(),      BF_STATUS_INVALID_SHAPE);
+    }
     
-//     TODO: What all should we support here?
-//     BFarray out_flattened;
-//     if( out->ndim > 5 ) {
-//         // Keep the last four dim but attempt to flatten all others
-//         unsigned long keep_dims_mask = padded_dims_mask(out);
-//         keep_dims_mask |= 0x1 << (out->ndim-1);
-//         keep_dims_mask |= 0x1 << (out->ndim-2);
-//         keep_dims_mask |= 0x1 << (out->ndim-3);
-//         keep_dims_mask |= 0x1 << (out->ndim-4);
-//         keep_dims_mask |= 0x1 << (out->ndim-5);
-//         flatten(out,   &out_flattened, keep_dims_mask);
-//         out  =  &out_flattened;
-//         BF_ASSERT(out_flattened.ndim == 5, BF_STATUS_UNSUPPORTED_SHAPE);
-//     }
-    BF_ASSERT(out->shape[0] == in->shape[0],     BF_STATUS_INVALID_SHAPE);
-    BF_ASSERT(out->shape[1] == plan->nchan(),    BF_STATUS_INVALID_SHAPE);
-    BF_ASSERT(out->shape[2] == plan->npol(),     BF_STATUS_INVALID_SHAPE);
+    BFarray out_flattened;
+    if( out->ndim > 4 ) {
+        // Keep the last three dim but attempt to flatten all others
+        unsigned long keep_dims_mask = padded_dims_mask(out);
+        keep_dims_mask |= 0x1 << (out->ndim-1);
+        keep_dims_mask |= 0x1 << (out->ndim-2);
+        keep_dims_mask |= 0x1 << (out->ndim-3);
+        keep_dims_mask |= 0x1 << (out->ndim-4);
+        flatten(out,   &out_flattened, keep_dims_mask);
+        out  =  &out_flattened;
+        BF_ASSERT(out_flattened.ndim == 4, BF_STATUS_UNSUPPORTED_SHAPE);
+    }
+    /*
+    std::cout << "ndim = " << out->ndim << std::endl;
+    std::cout << "   0 = " << out->shape[0] << std::endl;
+    std::cout << "   1 = " << out->shape[1] << std::endl;
+    std::cout << "   2 = " << out->shape[2] << std::endl;
+    std::cout << "   3 = " << out->shape[3] << std::endl;
+    */
+    BF_ASSERT(out->shape[0] == plan->nxyz(),     BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(out->shape[0] == plan->nkernels(), BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(out->shape[1] == plan->npol(),     BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(out->shape[2] == plan->gridsize(), BF_STATUS_INVALID_SHAPE);
     BF_ASSERT(out->shape[3] == plan->gridsize(), BF_STATUS_INVALID_SHAPE);
-    BF_ASSERT(out->shape[4] == plan->gridsize(), BF_STATUS_INVALID_SHAPE);
+    
+    BF_ASSERT(out->dtype == plan->tkernels(),    BF_STATUS_UNSUPPORTED_DTYPE);
     
     BF_ASSERT(space_accessible_from( in->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
     BF_ASSERT(space_accessible_from(out->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
@@ -461,6 +538,27 @@ BFstatus romein_float(BFarray const* data, // Our data, strided by d
     void const* zloc = data_zloc->data;
     cuda::child_stream stream(g_cuda_stream);
     BF_TRACE_STREAM(stream);
+    
+    /*
+    dim3 block(16);
+    dim3 grid(nbatch);
+    
+    void* args[] = {&dptr,
+                    &uvgridptr, 
+                    &illumptr,
+                    &xloc,
+                    &yloc,
+                    &zloc,
+                    &max_support,
+                    &grid_size,
+                    &data_size};
+    
+    BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)scatter_grid_kernel, 
+                                             grid, block,
+                                             &args[0], 0, stream), 
+                            BF_STATUS_INTERNAL_ERROR);
+    */
+    
     
     scatter_grid_kernel <<< nbatch, 8, 0, stream >>> ((cuComplex*)dptr,
 						  (cuComplex*)uvgridptr,
