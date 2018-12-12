@@ -372,6 +372,12 @@ BFstatus bfRomeinInit(BFromein       plan,
     
     // Validate
     BF_ASSERT(npositions == nkernels, BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(kernels->shape[kernels->ndim-4] \
+              == positions->shape[positions->ndim-3], BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(kernels->shape[kernels->ndim-3] \
+              == positions->shape[positions->ndim-2], BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(kernels->shape[kernels->ndim-2] \
+              == kernels->shape[kernels->ndim-1], BF_STATUS_INVALID_SHAPE);
     
     BF_TRY(plan->init(nbaseline, npol, polmajor, maxsupport, gridsize));
     BF_TRY(plan->set_positions(positions));
