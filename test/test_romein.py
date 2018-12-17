@@ -25,13 +25,21 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 import unittest
 import numpy
 import bifrost
 from bifrost.romein import romein_float
+from bifrost.romein import Romein
 import matplotlib.pyplot as plt
 
 class RomeinTest(unittest.TestCase):
+    def setUp(self):
+        self.romein=Romein()
+        numpy.random.seed(1337)
+        
+    
     def naive_romein(self,
                      grid_shape,
                      illum,
@@ -55,9 +63,9 @@ class RomeinTest(unittest.TestCase):
                         #    print(datapoint)
                         x_s = xlocs[t,c,p,d]
                         y_s = ylocs[t,c,p,d]
-                        for y in numpy.arange(y_s,y_s+illum.shape[0]):
-                            for x in numpy.arange(x_s,x_s+illum.shape[1]):
-                                illump = illum[y-y_s,x-x_s]
+                        for y in numpy.arange(y_s,y_s+illum.shape[4]):
+                            for x in numpy.arange(x_s,x_s+illum.shape[5]):
+                                illump = illum[t,c,p,d,y-y_s,x-x_s]
                                 grid[t,c,p,y,x] += datapoint * illump
 
         return grid
@@ -67,7 +75,7 @@ class RomeinTest(unittest.TestCase):
         
         gridshape = (ntime,nchan,npol,grid_size,grid_size)
         ishape = (ntime,nchan,npol,data_size)
-        illum_shape = (illum_size,illum_size)
+        illum_shape = (ntime,nchan,npol,data_size,illum_size,illum_size)
 
         # Create grid and illumination pattern
         grid = numpy.zeros(shape=gridshape,dtype=numpy.complex64)
@@ -87,7 +95,6 @@ class RomeinTest(unittest.TestCase):
         data = numpy.copy(data,order='C')
         data = bifrost.ndarray(data_i[...,0] + 1j * data_i[...,1])
 
-
         xlocs = numpy.random.uniform(illum_size, grid_size-illum_size,size=ishape)
         ylocs = numpy.random.uniform(illum_size, grid_size-illum_size,size=ishape)
         zlocs = numpy.random.uniform(illum_size, grid_size-illum_size,size=ishape)
@@ -97,8 +104,10 @@ class RomeinTest(unittest.TestCase):
         xlocs = bifrost.ndarray(xlocs)
         ylocs = bifrost.ndarray(ylocs)
         zlocs = bifrost.ndarray(zlocs)
-
-        gridnaive = self.naive_romein(gridshape,illum,data,xlocs,ylocs,zlocs,ntime,npol,nchan)
+        locs = numpy.stack((xlocs, ylocs, zlocs))
+        #locs = numpy.transpose(locs,(1,2,3,4,0))
+        locs = numpy.copy(locs.astype(numpy.int32),order='C')
+        locs = bifrost.ndarray(locs)
         
         grid = grid.copy(space='cuda')
         data = data.copy(space='cuda')
@@ -106,30 +115,25 @@ class RomeinTest(unittest.TestCase):
         xlocs = xlocs.copy(space='cuda')
         ylocs = ylocs.copy(space='cuda')
         zlocs = zlocs.copy(space='cuda')
-        
-        grid = romein_float(data,grid,illum,xlocs,ylocs,zlocs,illum_size,grid_size,data_size,ntime*npol*nchan)
+        locs = locs.copy(space='cuda')
+        self.romein.init(locs,illum, grid_size,polmajor=True)
+        self.romein.execute(data,grid)
         grid = grid.copy(space="system")
-#        diff = grid - gridnaive
-        
-        diff = numpy.sum(abs(grid.flatten()-gridnaive.flatten()))
+        gridnaive = self.naive_romein(gridshape,illum,data,xlocs,ylocs,zlocs,ntime,npol,nchan)
+        diff = numpy.mean(abs(grid.flatten()-gridnaive.flatten()))
         if diff > 0.01:
             print("#### DIFFERENCE: %f ####"%diff)
             raise ValueError("Large difference between naive romein and CUDA implementation.")
-        
-    #def test_ntime8_nchan2_npol2_gridsize128_illumsize3_datasize256(self):
-    #    self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=8, npol=2, nchan=2)
-    #
-    #def test_ntime32_nchan64_npol2_gridsize128_illumsize3_datasize256(self):
-    #    self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=32, npol=2, nchan=64)
-    #    
-    #def test_ntime512_nchan4_npol2_gridsize128_illumsize3_datasize256(self):
-    #    self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=512, npol=2, nchan=4)
-    #    
-    #def test_ntime1024_nchan2_npol2_gridsize128_illumsize3_datasize256(self):
-    #    self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=1024, npol=2, nchan=2)
-
+    def test_ntime8_nchan2_npol2_gridsize64_illumsize3_datasize256(self):
+        self.run_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=2, nchan=2)
+    def test_ntime2_nchan2_npol2_gridsize64_illumsize7_datasize256(self):
+        self.run_test(grid_size=64, illum_size=7, data_size=256, ntime=2, npol=2, nchan=2)    
+    def test_ntime2_nchan2_npol2_gridsize128_illumsize3_datasize256(self):
+        self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=2, npol=2, nchan=2)
+    def test_ntime_16_nchan4_npol2_gridsize64_illumsize5_datasize256(self):
+        self.run_test(grid_size=64, illum_size=3, data_size=256, ntime=16, npol=2, nchan=4) 
     def test_ntime_1024_nchan2_npol2_gridsize256_illumsize10_datasize256(self):
-        self.run_test(grid_size=256, illum_size=10, data_size=256, ntime=1024, npol=2, nchan=2)
+        self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2)
 
 
 
