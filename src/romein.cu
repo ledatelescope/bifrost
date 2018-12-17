@@ -44,7 +44,13 @@ Implements the Romein convolutional algorithm onto a GPU using CUDA.
 #include "Complex.hpp"
 
 struct __attribute__((aligned(1))) nibble2 {
-    char x:4, y:4;
+    // Yikes!  This is dicey since the packing order is implementation dependent!  
+    signed char y:4, x:4;
+};
+
+struct __attribute__((aligned(1))) blenib2 {
+    // Yikes!  This is dicey since the packing order is implementation dependent!
+    signed char x:4, y:4;
 };
 
 template<typename RealType>
@@ -301,12 +307,19 @@ public:
         
         switch( in->dtype ) {
             case BF_DTYPE_CI4:
-                BF_ASSERT_EXCEPTION(in->big_endian, BF_STATUS_UNSUPPORTED_DTYPE);
-                switch( out->dtype ) {
-                    case BF_DTYPE_CF32: LAUNCH_ROMEIN_KERNEL(nibble2*, Complex32*);  break;
-                    case BF_DTYPE_CF64: LAUNCH_ROMEIN_KERNEL(nibble2*, Complex64*);  break;
-                    default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
-                };
+                if( in->big_endian ) {
+                    switch( out->dtype ) {
+                        case BF_DTYPE_CF32: LAUNCH_ROMEIN_KERNEL(nibble2*, Complex32*);  break;
+                        case BF_DTYPE_CF64: LAUNCH_ROMEIN_KERNEL(nibble2*, Complex64*);  break;
+                        default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
+                    };
+                } else {
+                    switch( out->dtype ) {
+                        case BF_DTYPE_CF32: LAUNCH_ROMEIN_KERNEL(blenib2*, Complex32*);  break;
+                        case BF_DTYPE_CF64: LAUNCH_ROMEIN_KERNEL(blenib2*, Complex64*);  break;
+                        default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
+                    };
+                }
                 break;
             case BF_DTYPE_CI8:
                 switch( out->dtype ) {
