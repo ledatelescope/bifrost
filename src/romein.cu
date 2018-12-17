@@ -68,11 +68,24 @@ __global__ void romein_kernel(int                         nbaseline,
                               int                         maxsupport, 
                               int                         gridsize, 
                               int                         nbatch,
-                              const int3* __restrict__    positions,
+                              const int* __restrict__    x,
+			      const int* __restrict__    y,
+			      const int* __restrict__    z,
                               const OutType* __restrict__ kernels,
                               const InType* __restrict__  d_in,
                               OutType*                    d_out) {
     int batch_no = blockIdx.x;
+    extern __shared__ int shared[];
+    int* xdata = shared;
+    int* ydata = shared+nbaseline;
+
+    for(int i = threadIdx.x; i < nbaseline; i += blockDim.x){
+	xdata[i] = *(x + batch_no * nbaseline + i);
+	ydata[i] = *(y + batch_no * nbaseline + i);
+    }
+
+    __syncthreads();
+    
     int pol_no = threadIdx.y;
     for(int i = threadIdx.x; i < maxsupport * maxsupport; i += blockDim.x) {
         int myU = i % maxsupport;
@@ -81,12 +94,14 @@ __global__ void romein_kernel(int                         nbaseline,
         int grid_point_u = myU;
         int grid_point_v = myV;
         OutType sum = OutType(0.0, 0.0);
-        int vi_s = batch_no*nbaseline*npol + pol_no;
+        int vi_s = batch_no*nbaseline*npol+pol_no;
         int grid_s = batch_no*npol*gridsize*gridsize + pol_no*gridsize*gridsize;
         int vi = 0;
-        for(vi = vi_s; vi < (vi_s+nbaseline*npol); vi+=npol) {
-            int3 uvw = positions[vi]; 
-            
+        for(vi = 0; vi < (nbaseline); vi+=npol) {
+
+	    int xl = xdata[vi];
+	    int yl = ydata[vi];
+
             // Determine convolution point. This is basically just an
             // optimised way to calculate.
             //int myConvU = myU - u;
@@ -94,8 +109,8 @@ __global__ void romein_kernel(int                         nbaseline,
             int myConvU = 0;
             int myConvV = 0;
             if( maxsupport > 1 ) {
-                myConvU = (uvw.x - myU) % maxsupport;
-                myConvV = (uvw.y - myV) % maxsupport;    
+                myConvU = (xl - myU) % maxsupport;
+                myConvV = (yl - myV) % maxsupport;    
                 if (myConvU < 0) myConvU += maxsupport;
                 if (myConvV < 0) myConvV += maxsupport;
             } 
@@ -103,8 +118,8 @@ __global__ void romein_kernel(int                         nbaseline,
             // Determine grid point. Because of the above we know here that
             //   myGridU % max_supp = myU
             //   myGridV % max_supp = myV
-            int myGridU = uvw.x + myConvU;
-            int myGridV = uvw.y + myConvV;
+            int myGridU = xl + myConvU;
+            int myGridV = yl + myConvV;
             
             // Grid point changed?
             if (myGridU == grid_point_u && myGridV == grid_point_v) {
@@ -125,7 +140,7 @@ __global__ void romein_kernel(int                         nbaseline,
             //TODO: Re-do the w-kernel/gcf for our data.
             OutType px = kernels[vi*maxsupport*maxsupport + myConvV * maxsupport + myConvU];// ??
             // Sum up
-            InType temp = d_in[vi];
+            InType temp = d_in[vi+vi_s];
             OutType vi_v = OutType(temp.x, temp.y);
             sum = Complexfcma(px, vi_v, sum);
         }
@@ -145,7 +160,9 @@ inline void launch_romein_kernel(int      nbaseline,
                                  int      maxsupport, 
                                  int      gridsize, 
                                  int      nbatch,
-                                 int*     positions,
+                                 int*     xpos,
+				 int*     ypos,
+				 int*     zpos,
                                  OutType* kernels,
                                  InType*  d_in,
                                  OutType* d_out,
@@ -169,13 +186,15 @@ inline void launch_romein_kernel(int      nbaseline,
                     &maxsupport,
                     &gridsize, 
                     &nbatch,
-                    &positions,
+                    &xpos,
+		    &ypos,
+		    &zpos,
                     &kernels,
                     &d_in,
                     &d_out};
     BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)romein_kernel<InType,OutType>,
                                              grid, block,
-                                             &args[0], 0, stream),
+                                             &args[0], 2*nbaseline*sizeof(int), stream),
                             BF_STATUS_INTERNAL_ERROR);
 }
 
@@ -191,7 +210,9 @@ private:
     IType        _maxsupport;
     IType        _gridsize;
     IType        _nxyz = 0;
-    int*         _xyz = NULL;
+    int*         _x = NULL;
+    int*         _y = NULL;
+    int*         _z = NULL;    
     IType        _nkernels = 0;
     BFdtype      _tkernels = BF_DTYPE_INT_TYPE;
     void*        _kernels = NULL;
@@ -224,13 +245,21 @@ public:
         BF_TRACE_STREAM(_stream);
         BF_ASSERT_EXCEPTION(positions->dtype == BF_DTYPE_I32, BF_STATUS_UNSUPPORTED_DTYPE);
         
-        int npositions = positions->shape[0];
-        for(int i=1; i<positions->ndim-3; ++i) {
+        int npositions = positions->shape[1];
+	int stride = positions->shape[1];
+
+	int i;
+        for(i=2; i<positions->ndim-2; ++i) {
             npositions *= positions->shape[i];
-        }
-        
+	    stride *= positions->shape[i];
+	}
+	for(; i<positions->ndim; ++i) {
+	    stride *= positions->shape[i];
+	}
         _nxyz = npositions;
-        _xyz = (int*) positions->data;
+        _x = (int*) positions->data;
+	_y = _x + stride;
+	_z = _y + stride;
     }
     void set_kernels(BFarray const* kernels) {
         BF_TRACE();
@@ -250,7 +279,12 @@ public:
     void execute(BFarray const* in, BFarray const* out) {
         BF_TRACE();
         BF_TRACE_STREAM(_stream);
-        BF_ASSERT_EXCEPTION(_xyz != NULL, BF_STATUS_INVALID_STATE);
+        BF_ASSERT_EXCEPTION(_x != NULL, BF_STATUS_INVALID_STATE);
+	BF_ASSERT_EXCEPTION(_y != NULL, BF_STATUS_INVALID_STATE);
+	BF_ASSERT_EXCEPTION(_z != NULL, BF_STATUS_INVALID_STATE);
+	//BF_ASSERT(space_accessible_from(_x, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
+	//BF_ASSERT(space_accessible_from(_y, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
+	//	BF_ASSERT(space_accessible_from(_z, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
         BF_ASSERT_EXCEPTION(_kernels != NULL, BF_STATUS_INVALID_STATE);
         BF_ASSERT_EXCEPTION(out->dtype == BF_DTYPE_CF32 \
                                           || BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
@@ -261,7 +295,7 @@ public:
         
 #define LAUNCH_ROMEIN_KERNEL(IterType,OterType) \
         launch_romein_kernel(_nbaseline, _npol, _polmajor, _maxsupport, _gridsize, nbatch, \
-                             _xyz, (OterType)_kernels, \
+                             _x, _y, _z, (OterType)_kernels,		\
                              (IterType)in->data, (OterType)out->data, \
                              _stream)
         
@@ -343,7 +377,7 @@ BFstatus bfRomeinInit(BFromein       plan,
     BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
     BF_ASSERT(positions,                                BF_STATUS_INVALID_POINTER);
     BF_ASSERT(positions->ndim >= 4,                     BF_STATUS_INVALID_SHAPE);
-    BF_ASSERT(positions->shape[positions->ndim-1] == 3, BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(positions->shape[0] == 3, BF_STATUS_INVALID_SHAPE);
     BF_ASSERT(space_accessible_from(positions->space, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
     BF_ASSERT(kernels,                                BF_STATUS_INVALID_POINTER);
     BF_ASSERT(kernels->ndim >= 5,                     BF_STATUS_INVALID_SHAPE);
@@ -353,16 +387,16 @@ BFstatus bfRomeinInit(BFromein       plan,
     
     // Discover the dimensions of the positions/kernels.
     int npositions, nbaseline, npol, nkernels, maxsupport;
-    npositions = positions->shape[0];
-    for(int i=1; i<positions->ndim-3; ++i) {
+    npositions = positions->shape[1];
+    for(int i=2; i<positions->ndim-2; ++i) {
         npositions *= positions->shape[i];
     }
     if( polmajor ) {
-         npol = positions->shape[positions->ndim-3];
-         nbaseline = positions->shape[positions->ndim-2];
+         npol = positions->shape[positions->ndim-2];
+         nbaseline = positions->shape[positions->ndim-1];
     } else {
-        nbaseline = positions->shape[positions->ndim-3];
-        npol = positions->shape[positions->ndim-2];
+        nbaseline = positions->shape[positions->ndim-2];
+        npol = positions->shape[positions->ndim-1];
     }
     nkernels = kernels->shape[0];
     for(int i=1; i<kernels->ndim-4; ++i) {
@@ -373,9 +407,9 @@ BFstatus bfRomeinInit(BFromein       plan,
     // Validate
     BF_ASSERT(npositions == nkernels, BF_STATUS_INVALID_SHAPE);
     BF_ASSERT(kernels->shape[kernels->ndim-4] \
-              == positions->shape[positions->ndim-3], BF_STATUS_INVALID_SHAPE);
-    BF_ASSERT(kernels->shape[kernels->ndim-3] \
               == positions->shape[positions->ndim-2], BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(kernels->shape[kernels->ndim-3] \
+              == positions->shape[positions->ndim-1], BF_STATUS_INVALID_SHAPE);
     BF_ASSERT(kernels->shape[kernels->ndim-2] \
               == kernels->shape[kernels->ndim-1], BF_STATUS_INVALID_SHAPE);
     
@@ -500,84 +534,3 @@ BFstatus bfRomeinDestroy(BFromein plan) {
     delete plan;
     return BF_STATUS_SUCCESS;
 }
-
-
-
-
-// Fix this to use templates properly.
-BFstatus romein_float(BFarray const* data, // Our data, strided by d
-		      BFarray const* uvgrid, // Our UV Grid to Convolve onto, strided by g
-		      BFarray const* illum, // Our convolution kernel.
-		      BFarray const* data_xloc,
-		      BFarray const* data_yloc,
-		      BFarray const* data_zloc,
-		      int max_support,
-		      int grid_size,
-		      int data_size,
-		      int nbatch){
-
-
-    //TODO: I think remove these as the overhead is probably quite high...
-    BF_TRACE();
-    //BF_ASSERT(uvgrid && data && illum && data_xloc && data_yloc && data_zloc,
-    //	      BF_STATUS_UNSUPPORTED_DTYPE);
-    BF_ASSERT(uvgrid->dtype == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
-    BF_ASSERT(data->dtype == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
-    BF_ASSERT(illum->dtype == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
-    BF_ASSERT(data_xloc->dtype == BF_DTYPE_I32, BF_STATUS_UNSUPPORTED_DTYPE);
-    BF_ASSERT(data_yloc->dtype == BF_DTYPE_I32, BF_STATUS_UNSUPPORTED_DTYPE);
-    BF_ASSERT(data_zloc->dtype == BF_DTYPE_I32, BF_STATUS_UNSUPPORTED_DTYPE);
-
-
-    BF_ASSERT(space_accessible_from(data->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
-    BF_ASSERT(space_accessible_from(uvgrid->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
-    BF_ASSERT(space_accessible_from(illum->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
-    BF_ASSERT(space_accessible_from(data_xloc->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
-    BF_ASSERT(space_accessible_from(data_yloc->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
-    BF_ASSERT(space_accessible_from(data_zloc->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
-    
-    void const* dptr = data->data;
-    void const* uvgridptr = uvgrid->data;
-    void const* illumptr = illum->data;
-    void const* xloc = data_xloc->data;
-    void const* yloc = data_yloc->data;
-    void const* zloc = data_zloc->data;
-    cuda::child_stream stream(g_cuda_stream);
-    BF_TRACE_STREAM(stream);
-    
-    /*
-    dim3 block(16);
-    dim3 grid(nbatch);
-    
-    void* args[] = {&dptr,
-                    &uvgridptr, 
-                    &illumptr,
-                    &xloc,
-                    &yloc,
-                    &zloc,
-                    &max_support,
-                    &grid_size,
-                    &data_size};
-    
-    BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)scatter_grid_kernel, 
-                                             grid, block,
-                                             &args[0], 0, stream), 
-                            BF_STATUS_INTERNAL_ERROR);
-    */
-    
-    
-    scatter_grid_kernel <<< nbatch, 8, 0, stream >>> ((cuComplex*)dptr,
-						  (cuComplex*)uvgridptr,
-						  (cuComplex*)illumptr,
-						  (int*)xloc,
-						  (int*)yloc,
-						  (int*)zloc,
-						  max_support,
-						  grid_size,
-						  data_size);
-    
-    //cudaError_t err = cudaGetLastError();
-    //std::cout << "Error: " << cudaGetErrorString(err) << "\n";
-    return BF_STATUS_SUCCESS;
-}
-		      
