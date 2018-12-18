@@ -70,20 +70,20 @@ inline Complex<RealType> Complexfcma(Complex<RealType> x, Complex<RealType> y, C
 
 template<typename InType, typename OutType>
 __global__ void romein_kernel(int                         nbaseline,
-                              int                         npol,
-                              int                         maxsupport, 
-                              int                         gridsize, 
-                              int                         nbatch,
-                              const int* __restrict__    x,
-			      const int* __restrict__    y,
-			      const int* __restrict__    z,
-                              const OutType* __restrict__ kernels,
-                              const InType* __restrict__  d_in,
-                              OutType*                    d_out) {
+			      int                         npol,
+			      int                         maxsupport, 
+			      int                         gridsize, 
+			      int                         nbatch,
+			      const int* __restrict__     x,
+			      const int* __restrict__     y,
+			      const int* __restrict__     z,
+			      const OutType* __restrict__ kernels,
+			      const InType* __restrict__  d_in,
+			      OutType*                    d_out) {
     int batch_no = blockIdx.x;
     extern __shared__ int shared[];
     int* xdata = shared;
-    int* ydata = shared+nbaseline;
+    int* ydata = xdata + nbaseline;
 
     for(int i = threadIdx.x; i < nbaseline; i += blockDim.x){
 	xdata[i] = *(x + batch_no * nbaseline + i);
@@ -288,9 +288,6 @@ public:
         BF_ASSERT_EXCEPTION(_x != NULL, BF_STATUS_INVALID_STATE);
 	BF_ASSERT_EXCEPTION(_y != NULL, BF_STATUS_INVALID_STATE);
 	BF_ASSERT_EXCEPTION(_z != NULL, BF_STATUS_INVALID_STATE);
-	//BF_ASSERT(space_accessible_from(_x, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
-	//BF_ASSERT(space_accessible_from(_y, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
-	//	BF_ASSERT(space_accessible_from(_z, BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
         BF_ASSERT_EXCEPTION(_kernels != NULL, BF_STATUS_INVALID_STATE);
         BF_ASSERT_EXCEPTION(out->dtype == BF_DTYPE_CF32 \
                                           || BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
