@@ -348,13 +348,13 @@ public:
         
         int npositions = positions->shape[1];
         int stride = positions->shape[1];
-	    for(int i=2; i<positions->ndim-2; ++i) {
+	for(int i=2; i<positions->ndim-2; ++i) {
             npositions *= positions->shape[i];
-	        stride *= positions->shape[i];
-	    }
-	    stride *= positions->shape[positions->ndim-2];
-	    stride *= positions->shape[positions->ndim-1];
-	    _nxyz = npositions;
+	    stride *= positions->shape[i];
+	}
+	stride *= positions->shape[positions->ndim-2];
+	stride *= positions->shape[positions->ndim-1];
+	_nxyz = npositions;
         _x = (int *) positions->data;
         _y = _x + stride;
         _z = _y + stride;
