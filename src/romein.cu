@@ -82,8 +82,9 @@ __global__ void romein_kernel(int                         nbaseline,
 			      const InType* __restrict__  d_in,
 			      OutType*                    d_out) {
     int batch_no = blockIdx.x;
-    int pol_no = threadIdx.y;
-    
+    int pol_no = threadIdx.y; 
+    int vi_s = batch_no*nbaseline*npol+pol_no;
+    int grid_s = batch_no*npol*gridsize*gridsize + pol_no*gridsize*gridsize;
     for(int i = threadIdx.x; i < maxsupport * maxsupport; i += blockDim.x) {
         int myU = i % maxsupport;
         int myV = i / maxsupport;
@@ -91,8 +92,8 @@ __global__ void romein_kernel(int                         nbaseline,
         int grid_point_u = myU;
         int grid_point_v = myV;
         OutType sum = OutType(0.0, 0.0);
-        int vi_s = batch_no*nbaseline*npol+pol_no;
-        int grid_s = batch_no*npol*gridsize*gridsize + pol_no*gridsize*gridsize;
+
+
         int vi = 0;
         for(vi = 0; vi < (nbaseline*npol); vi+=npol) {
             int xl = x[vi+vi_s];
@@ -164,14 +165,18 @@ __global__ void romein_kernel_sloc(int                         nbaseline,
 				   OutType*                    d_out) {
     int batch_no = blockIdx.x;
     int pol_no = threadIdx.y;
+    int vi_s = batch_no*nbaseline*npol+pol_no;
+    int grid_s = batch_no*npol*gridsize*gridsize + pol_no*gridsize*gridsize;
     
     extern __shared__ int shared[];
+    
     int* xdata = shared;
     int* ydata = xdata + nbaseline * npol;
-    
+
     for(int i = threadIdx.x; i < nbaseline; i += blockDim.x){
-	    xdata[i] = *(x + batch_no * nbaseline * npol + pol_no + npol * i);
-	    ydata[i] = *(y + batch_no * nbaseline * npol + pol_no + npol * i);
+	    
+	xdata[i*npol + pol_no] = x[vi_s + npol * i];
+	ydata[i*npol + pol_no] = y[vi_s + npol * i];
     }
 
     __syncthreads();
@@ -183,8 +188,7 @@ __global__ void romein_kernel_sloc(int                         nbaseline,
         int grid_point_u = myU;
         int grid_point_v = myV;
         OutType sum = OutType(0.0, 0.0);
-        int vi_s = batch_no*nbaseline*npol+pol_no;
-        int grid_s = batch_no*npol*gridsize*gridsize + pol_no*gridsize*gridsize;
+
         int vi = 0;
         for(vi = 0; vi < (nbaseline*npol); vi+=npol) {
 	        int xl = xdata[vi];
@@ -283,15 +287,19 @@ inline void launch_romein_kernel(int      nbaseline,
                     &d_in,
                     &d_out};
     size_t loc_size = 2 * nbaseline * npol * sizeof(int);
-    size_t shared_mem_size = 16384;
-
+    size_t shared_mem_size = 16384; //Just keep this vanilla for now
+    std::cout << "Npol: " << npol << "\n";
+    std::cout << "Nbaseline: " << nbaseline << "\n";
+    std::cout << "Loc Size: " << loc_size << "\n";
     if(loc_size <= shared_mem_size) {
+	std::cout << "Shared Memory Kernel \n";
 	BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)romein_kernel_sloc<InType,OutType>,
 						 grid, block,
-						 &args[0], 2*nbaseline*sizeof(int), stream),
+						 &args[0], 2*nbaseline*npol*sizeof(int), stream),
 				BF_STATUS_INTERNAL_ERROR);
     } else {
-    BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)romein_kernel<InType,OutType>,
+	std::cout << "General Kernel \n";
+	BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)romein_kernel<InType,OutType>,
 						 grid, block,
 						 &args[0], 0, stream),
 				BF_STATUS_INTERNAL_ERROR);
