@@ -82,8 +82,8 @@ __global__ void romein_kernel(int                         nbaseline,
 			      const InType* __restrict__  d_in,
 			      OutType*                    d_out) {
     int batch_no = blockIdx.x;
-    
     int pol_no = threadIdx.y;
+    
     for(int i = threadIdx.x; i < maxsupport * maxsupport; i += blockDim.x) {
         int myU = i % maxsupport;
         int myV = i / maxsupport;
@@ -94,11 +94,10 @@ __global__ void romein_kernel(int                         nbaseline,
         int vi_s = batch_no*nbaseline*npol+pol_no;
         int grid_s = batch_no*npol*gridsize*gridsize + pol_no*gridsize*gridsize;
         int vi = 0;
-        for(vi = 0; vi < (nbaseline); vi+=npol) {
-
-	    int xl = x[vi];
-	    int yl = y[vi];
-
+        for(vi = 0; vi < (nbaseline*npol); vi+=npol) {
+            int xl = x[vi+vi_s];
+            int yl = y[vi+vi_s];
+            
             // Determine convolution point. This is basically just an
             // optimised way to calculate.
             //int myConvU = myU - u;
@@ -135,7 +134,7 @@ __global__ void romein_kernel(int                         nbaseline,
             }
             
             //TODO: Re-do the w-kernel/gcf for our data.
-            OutType px = kernels[vi*maxsupport*maxsupport + myConvV * maxsupport + myConvU];// ??
+            OutType px = kernels[(vi+vi_s)*maxsupport*maxsupport + myConvV * maxsupport + myConvU];// ??
             // Sum up
             InType temp = d_in[vi+vi_s];
             OutType vi_v = OutType(temp.x, temp.y);
@@ -164,18 +163,19 @@ __global__ void romein_kernel_sloc(int                         nbaseline,
 				   const InType* __restrict__  d_in,
 				   OutType*                    d_out) {
     int batch_no = blockIdx.x;
+    int pol_no = threadIdx.y;
+    
     extern __shared__ int shared[];
     int* xdata = shared;
-    int* ydata = xdata + nbaseline;
-
+    int* ydata = xdata + nbaseline * npol;
+    
     for(int i = threadIdx.x; i < nbaseline; i += blockDim.x){
-	xdata[i] = *(x + batch_no * nbaseline + i);
-	ydata[i] = *(y + batch_no * nbaseline + i);
+	    xdata[i] = *(x + batch_no * nbaseline * npol + pol_no + npol * i);
+	    ydata[i] = *(y + batch_no * nbaseline * npol + pol_no + npol * i);
     }
 
     __syncthreads();
     
-    int pol_no = threadIdx.y;
     for(int i = threadIdx.x; i < maxsupport * maxsupport; i += blockDim.x) {
         int myU = i % maxsupport;
         int myV = i / maxsupport;
@@ -186,10 +186,9 @@ __global__ void romein_kernel_sloc(int                         nbaseline,
         int vi_s = batch_no*nbaseline*npol+pol_no;
         int grid_s = batch_no*npol*gridsize*gridsize + pol_no*gridsize*gridsize;
         int vi = 0;
-        for(vi = 0; vi < (nbaseline); vi+=npol) {
-
-	    int xl = xdata[vi];
-	    int yl = ydata[vi];
+        for(vi = 0; vi < (nbaseline*npol); vi+=npol) {
+	        int xl = xdata[vi];
+	        int yl = ydata[vi];
 
             // Determine convolution point. This is basically just an
             // optimised way to calculate.
@@ -227,7 +226,7 @@ __global__ void romein_kernel_sloc(int                         nbaseline,
             }
             
             //TODO: Re-do the w-kernel/gcf for our data.
-            OutType px = kernels[vi*maxsupport*maxsupport + myConvV * maxsupport + myConvU];// ??
+            OutType px = kernels[(vi+vi_s)*maxsupport*maxsupport + myConvV * maxsupport + myConvU];// ??
             // Sum up
             InType temp = d_in[vi+vi_s];
             OutType vi_v = OutType(temp.x, temp.y);
@@ -252,8 +251,8 @@ inline void launch_romein_kernel(int      nbaseline,
                                  int      gridsize, 
                                  int      nbatch,
                                  int*     xpos,
-				 int*     ypos,
-				 int*     zpos,
+                                 int*     ypos,
+                                 int*     zpos,
                                  OutType* kernels,
                                  InType*  d_in,
                                  OutType* d_out,
@@ -278,8 +277,8 @@ inline void launch_romein_kernel(int      nbaseline,
                     &gridsize, 
                     &nbatch,
                     &xpos,
-		    &ypos,
-		    &zpos,
+                    &ypos,
+                    &zpos,
                     &kernels,
                     &d_in,
                     &d_out};
@@ -292,7 +291,7 @@ inline void launch_romein_kernel(int      nbaseline,
 						 &args[0], 2*nbaseline*sizeof(int), stream),
 				BF_STATUS_INTERNAL_ERROR);
     } else {
-	BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)romein_kernel<InType,OutType>,
+    BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)romein_kernel<InType,OutType>,
 						 grid, block,
 						 &args[0], 0, stream),
 				BF_STATUS_INTERNAL_ERROR);
@@ -348,20 +347,17 @@ public:
         BF_ASSERT_EXCEPTION(positions->dtype == BF_DTYPE_I32, BF_STATUS_UNSUPPORTED_DTYPE);
         
         int npositions = positions->shape[1];
-	int stride = positions->shape[1];
-
-	int i;
-        for(i=2; i<positions->ndim-2; ++i) {
+        int stride = positions->shape[1];
+	    for(int i=2; i<positions->ndim-2; ++i) {
             npositions *= positions->shape[i];
-	    stride *= positions->shape[i];
-	}
-	for(; i<positions->ndim; ++i) {
-	    stride *= positions->shape[i];
-	}
-        _nxyz = npositions;
-        _x = (int*) positions->data;
-	_y = _x + stride;
-	_z = _y + stride;
+	        stride *= positions->shape[i];
+	    }
+	    stride *= positions->shape[positions->ndim-2];
+	    stride *= positions->shape[positions->ndim-1];
+	    _nxyz = npositions;
+        _x = (int *) positions->data;
+        _y = _x + stride;
+        _z = _y + stride;
     }
     void set_kernels(BFarray const* kernels) {
         BF_TRACE();
