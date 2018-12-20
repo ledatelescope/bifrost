@@ -144,18 +144,10 @@ class RomeinTest(unittest.TestCase):
 
         gridnaive = self.naive_romein_polmajor(gridshape,illum,data,locs[0,:],locs[1,:],locs[2,:],ntime,npol,nchan,data_size)
         
-        print(data.shape)
-        print(locs.shape)
-        print(illum.shape)
         if not polmajor:
             data=data.transpose((0,1,3,2)).copy()
             locs=locs.transpose((0,1,2,4,3)).copy()
-            illum=illum.transpose((0,1,3,2,4,5)).copy()
-            print("Transposed Shape: ")
-            print(data.shape)
-            print(locs.shape)
-            print(illum.shape)
-            
+            illum=illum.transpose((0,1,3,2,4,5)).copy()            
         
         grid = grid.copy(space='cuda')
         data = data.copy(space='cuda')
@@ -173,7 +165,7 @@ class RomeinTest(unittest.TestCase):
         #else:
          #   gridnaive = self.naive_romein(gridshape,illum,data,locs[0,:],locs[1,:],locs[2,:],ntime,npol,nchan,data_size)
         diff = numpy.mean(abs(grid.flatten()-gridnaive.flatten()))
-        if diff > 0.0:
+        if diff > 1.0:
             print("#### DIFFERENCE: %f ####"%diff)
             raise ValueError("Large difference between naive romein and CUDA implementation.")
     def test_ntime8_nchan2_npol2_gridsize64_illumsize3_datasize256_pm(self):
