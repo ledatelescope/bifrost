@@ -288,17 +288,12 @@ inline void launch_romein_kernel(int      nbaseline,
                     &d_out};
     size_t loc_size = 2 * nbaseline * npol * sizeof(int);
     size_t shared_mem_size = 16384; //Just keep this vanilla for now
-    std::cout << "Npol: " << npol << "\n";
-    std::cout << "Nbaseline: " << nbaseline << "\n";
-    std::cout << "Loc Size: " << loc_size << "\n";
     if(loc_size <= shared_mem_size) {
-	std::cout << "Shared Memory Kernel \n";
 	BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)romein_kernel_sloc<InType,OutType>,
 						 grid, block,
 						 &args[0], 2*nbaseline*npol*sizeof(int), stream),
 				BF_STATUS_INTERNAL_ERROR);
     } else {
-	std::cout << "General Kernel \n";
 	BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)romein_kernel<InType,OutType>,
 						 grid, block,
 						 &args[0], 0, stream),
