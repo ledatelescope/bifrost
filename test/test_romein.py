@@ -56,38 +56,6 @@ class RomeinTest(unittest.TestCase):
         grid = numpy.zeros(shape=grid_shape,dtype=numpy.complex64)
         for t in numpy.arange(ntime):
             for c in numpy.arange(nchan):
-                for d in numpy.arange(ndata):
-                    for p in numpy.arange(npol):
-                        datapoint = data[t,c,d,p]
-                        #if(d==128):
-                        #    print(datapoint)
-                        x_s = xlocs[t,c,d,p]
-                        y_s = ylocs[t,c,d,p]
-                        for y in numpy.arange(y_s,y_s+illum.shape[4]):
-                            for x in numpy.arange(x_s,x_s+illum.shape[5]):
-                                illump = illum[t,c,d,p,y-y_s,x-x_s]
-                                grid[t,c,p,y,x] += datapoint * illump
-
-        return grid
-
-        
-    def naive_romein_polmajor(self,
-                              grid_shape,
-                              illum,
-                              data,
-                              xlocs,
-                              ylocs,
-                              zlocs,
-                              ntime,
-                              npol,
-                              nchan,
-                              ndata):
-        
-        #Excruciatingly slow, but it's just for testing purposes...
-        #Could probably use a blas based function for simplicity.
-        grid = numpy.zeros(shape=grid_shape,dtype=numpy.complex64)
-        for t in numpy.arange(ntime):
-            for c in numpy.arange(nchan):
                 for p in numpy.arange(npol):
                     for d in numpy.arange(ndata):
 
@@ -104,7 +72,7 @@ class RomeinTest(unittest.TestCase):
         return grid
 
     
-    def run_test(self, grid_size, illum_size, data_size, ntime, npol, nchan,polmajor=True):
+    def run_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor):
         
         gridshape = (ntime,nchan,npol,grid_size,grid_size)
         ishape = (ntime,nchan,npol,data_size)
@@ -142,7 +110,9 @@ class RomeinTest(unittest.TestCase):
         locs = numpy.copy(locs.astype(numpy.int32),order='C')
         locs = bifrost.ndarray(locs)
 
-        gridnaive = self.naive_romein_polmajor(gridshape,illum,data,locs[0,:],locs[1,:],locs[2,:],ntime,npol,nchan,data_size)
+        gridnaive = self.naive_romein(gridshape,illum,data,locs[0,:],locs[1,:],locs[2,:],ntime,npol,nchan,data_size)
+
+        # Transpose for non pol-major kernels
         
         if not polmajor:
             data=data.transpose((0,1,3,2)).copy()
@@ -165,12 +135,12 @@ class RomeinTest(unittest.TestCase):
         #else:
          #   gridnaive = self.naive_romein(gridshape,illum,data,locs[0,:],locs[1,:],locs[2,:],ntime,npol,nchan,data_size)
         diff = numpy.mean(abs(grid.flatten()-gridnaive.flatten()))
-        if diff > 1.0:
+        if diff > 0.1:
             print("#### DIFFERENCE: %f ####"%diff)
             raise ValueError("Large difference between naive romein and CUDA implementation.")
-    def test_ntime8_nchan2_npol2_gridsize64_illumsize3_datasize256_pm(self):
+    def test_ntime8_nchan2_npol3_gridsize64_illumsize3_datasize256_pm(self):
         self.run_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2,polmajor=True)
-    def test_ntime8_nchan2_npol2_gridsize64_illumsize3_datasize256(self):
+    def test_ntime8_nchan2_npol3_gridsize64_illumsize3_datasize256(self):
         self.run_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2, polmajor=False)
     def test_ntime2_nchan2_npol2_gridsize64_illumsize7_datasize256_pm(self):
         self.run_test(grid_size=64, illum_size=7, data_size=256, ntime=2, npol=2, nchan=2,polmajor=True)
@@ -181,8 +151,8 @@ class RomeinTest(unittest.TestCase):
     def test_ntime2_nchan2_npol2_gridsize128_illumsize3_datasize256(self):
         self.run_test(grid_size=128, illum_size=3, data_size=256, ntime=2, npol=2, nchan=2,polmajor=False)
     def test_ntime_16_nchan4_npol2_gridsize64_illumsize5_datasize256_pm(self):
-        self.run_test(grid_size=64, illum_size=3, data_size=256, ntime=16, npol=2, nchan=4,polmajor=True) 
-    def test_ntime_1024_nchan2_npol2_gridsize256_illumsize10_datasize256(self):
+        self.run_test(grid_size=64, illum_size=5, data_size=256, ntime=16, npol=2, nchan=4,polmajor=True) 
+    def test_ntime_32_nchan2_npol2_gridsize32_illumsize3_datasize256(self):
         self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2,polmajor=False)
 
 
