@@ -85,6 +85,7 @@ __global__ void romein_kernel(int                         nbaseline,
     int pol_no = threadIdx.y; 
     int vi_s = batch_no*nbaseline*npol+pol_no;
     int grid_s = batch_no*npol*gridsize*gridsize + pol_no*gridsize*gridsize;
+
     for(int i = threadIdx.x; i < maxsupport * maxsupport; i += blockDim.x) {
         int myU = i % maxsupport;
         int myV = i / maxsupport;
@@ -191,8 +192,8 @@ __global__ void romein_kernel_sloc(int                         nbaseline,
 
         int vi = 0;
         for(vi = 0; vi < (nbaseline*npol); vi+=npol) {
-	        int xl = xdata[vi];
-	        int yl = ydata[vi];
+	        int xl = xdata[vi+pol_no];
+	        int yl = ydata[vi+pol_no];
 
             // Determine convolution point. This is basically just an
             // optimised way to calculate.
