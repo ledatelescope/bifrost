@@ -43,6 +43,7 @@ bfMap(3, c.shape, {"dm", "t"},
 #endif
 
 #include <bifrost/map.h>
+#include "fileutils.hpp"
 
 #include "cuda.hpp"
 #include "utils.hpp"
@@ -73,6 +74,11 @@ bfMap(3, c.shape, {"dm", "t"},
 using std::cout;
 using std::cerr;
 using std::endl;
+
+#include <fstream>
+using std::getline;
+#include <set>
+#include <mutex>
 
 #define BF_CHECK_NVRTC(call) \
 	do { \
@@ -389,6 +395,131 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	return BF_STATUS_SUCCESS;
 }
 
+class DiskCacheMgr {
+	static constexpr const char* _cachedir = "/dev/shm/bifrost_cache/";
+	std::set<std::string>        _created_dirs;
+	mutable std::mutex           _mutex;
+	bool                         _loaded;
+	
+	void write_to_disk(std::string  cache_key, 
+                       std::string  kernel_name,
+                       std::string  ptx,  
+                       bool         basic_indexing_only) {
+        // Do this with a file lock to avoid interference from other processes
+		LockFile lock(std::string(_cachedir) + ".lock");
+		
+        std::ofstream index, cache;
+        try {
+            // Open
+            cache.open(std::string(_cachedir)+"map_cache.bf", std::ios::app);
+            index.open(std::string(_cachedir)+"map_index.bf", std::ios::app);
+            
+            // Write
+            cache.write(ptx.c_str(), ptx.size());
+            index << ptx.size() << "~" << kernel_name << "~" << basic_indexing_only << "~" << cache_key << "~" << std::endl;
+	        
+	        // Done
+	        cache.close();
+	        index.close();
+	        //cout << "SAVED TO DISK " << cache_key << endl;
+	    } catch( std::exception ) {}
+	}
+	
+	void load_from_disk(ObjectCache<std::string,std::pair<CUDAKernel,bool> > *kernel_cache) {
+	    std::ifstream index, cache;
+        size_t kernel_size;
+        std::string kernel_name;
+        bool basic_indexing_only;
+        std::string cache_key;
+        std::string ptx;
+        CUDAKernel kernel;
+        
+        std::string field;
+        std::vector<std::string> separated_fields;
+        
+        // Do this with a file lock to avoid interference from other processes
+		LockFile lock(std::string(_cachedir) + ".lock");
+		
+        try {
+            // Open
+            index.open(std::string(_cachedir)+"map_index.bf", std::ios::in);
+            cache.open(std::string(_cachedir)+"map_cache.bf", std::ios::in);
+            
+            // Read in fields separated by '~' until we get four, and then build the kernels
+            while( getline(index, field, '~') ) {
+                separated_fields.push_back(field);
+                if( separated_fields.size() == 4 ) {
+                    // PTX size
+                    kernel_size = std::atoi(separated_fields[0].c_str());
+                    // Kernel name
+                    kernel_name = separated_fields[1];
+                    // Whether or not the kernel supports basic indexing only
+                    basic_indexing_only = false;
+                    if( std::atoi(separated_fields[2].c_str()) > 0 ) {
+                        basic_indexing_only = true;
+                    }
+                    // In-memory cache name
+                    cache_key = separated_fields[3];
+                    
+                    // Check the cache to see if it is aleady there...
+                    if( !kernel_cache->contains(cache_key) ) {
+                        ptx.resize(kernel_size);
+                        cache.read(&ptx[0], kernel_size);
+                        kernel.set(kernel_name.c_str(), ptx.c_str());
+                        
+                        kernel_cache->insert(cache_key,
+		                                     std::make_pair(kernel, basic_indexing_only));         
+		                //cout << "LOADED FROM DISK " << cache_key << endl;
+		            }
+		            
+		            separated_fields.clear();
+		        }
+	        }
+	        
+	        // Done
+	        index.close();
+	        cache.close();
+	    } catch( std::exception ) {}
+	}
+	
+	DiskCacheMgr()
+		: _loaded(false) {
+		    make_dir(_cachedir);
+	}
+	
+public:
+	DiskCacheMgr(DiskCacheMgr& ) = delete;
+	DiskCacheMgr& operator=(DiskCacheMgr& ) = delete;
+	
+	static DiskCacheMgr& get() {
+		static DiskCacheMgr cache;
+		return cache;
+	}
+	
+	bool load(ObjectCache<std::string,std::pair<CUDAKernel,bool> > *kernel_cache) {
+		if( !_loaded ) {
+		    std::lock_guard<std::mutex> lock(_mutex);
+		    this->load_from_disk(kernel_cache);
+	        _loaded = true;
+		}
+		return _loaded;
+	}
+	
+	void save(std::string  cache_key, 
+              std::string  kernel_name,
+              std::string  ptx,  
+              bool         basic_indexing_only) {
+         std::lock_guard<std::mutex> lock(_mutex);
+         this->write_to_disk(cache_key, kernel_name, ptx, basic_indexing_only);
+    }
+	
+	void flush(void) {
+	    std::lock_guard<std::mutex> lock(_mutex);
+	    remove_file(std::string(_cachedir)+"map_cache.bf");
+	    remove_file(std::string(_cachedir)+"map_index.bf");
+	}
+};
+
 BFstatus bfMap(int                  ndim,
                long const*          shape,
                char const*const*    axis_names,
@@ -403,7 +534,7 @@ BFstatus bfMap(int                  ndim,
 	// Map containing compiled kernels and basic_indexing_only flag
 	thread_local static ObjectCache<std::string,std::pair<CUDAKernel,bool> >
 		kernel_cache(BF_MAP_KERNEL_CACHE_SIZE);
-	BF_ASSERT(ndim >= 0,           BF_STATUS_INVALID_ARGUMENT);
+    BF_ASSERT(ndim >= 0,           BF_STATUS_INVALID_ARGUMENT);
 	//BF_ASSERT(!ndim || shape,      BF_STATUS_INVALID_POINTER);
 	//BF_ASSERT(!ndim || axis_names, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(narg >= 0,           BF_STATUS_INVALID_ARGUMENT);
@@ -462,6 +593,8 @@ BFstatus bfMap(int                  ndim,
 	}
 	std::string cache_key = cache_key_ss.str();
 	
+	DiskCacheMgr::get().load(&kernel_cache);
+	
 	if( !kernel_cache.contains(cache_key) ) {
 		std::string ptx;
 		std::string kernel_name;
@@ -485,10 +618,11 @@ BFstatus bfMap(int                  ndim,
 			                          basic_indexing_only,
 			                          &ptx, &kernel_name));
 		}
-		CUDAKernel kernel;
+        CUDAKernel kernel;
 		BF_TRY(kernel.set(kernel_name.c_str(), ptx.c_str()));
 		kernel_cache.insert(cache_key,
 		                    std::make_pair(kernel, basic_indexing_only));
+		DiskCacheMgr::get().save(cache_key, kernel_name, ptx, basic_indexing_only);
 		//std::cout << "INSERTING INTO CACHE" << std::endl;
 	} else {
 		//std::cout << "FOUND IN CACHE" << std::endl;

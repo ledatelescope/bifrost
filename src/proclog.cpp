@@ -29,76 +29,17 @@
 #include <bifrost/proclog.h>
 #include "trace.hpp"
 #include "proclog.hpp"
+#include "fileutils.hpp"
 
 #include <fstream>
 #include <cstdlib>     // For system
 #include <cstdarg>     // For va_start, va_list, va_end
-#include <sys/file.h>  // For flock
-#include <sys/stat.h>  // For fstat
 #include <sys/types.h> // For getpid
 #include <dirent.h>    // For opendir, readdir, closedir
 #include <unistd.h>    // For getpid
 #include <system_error>
 #include <set>
 #include <mutex>
-
-void make_dir(std::string path, int perms=775) {
-	if( std::system(("mkdir -p "+path+" -m "+std::to_string(perms)).c_str()) ) {
-		throw std::runtime_error("Failed to create path: "+path);
-	}
-}
-void remove_all(std::string path) {
-	if( std::system(("rm -rf "+path).c_str()) ) {
-		throw std::runtime_error("Failed to remove all: "+path);
-	}
-}
-void remove_dir(std::string path) {
-	if( std::system(("rmdir "+path+" 2> /dev/null").c_str()) ) {
-		throw std::runtime_error("Failed to remove dir: "+path);
-	}
-}
-void remove_file(std::string path) {
-	if( std::system(("rm -f "+path).c_str()) ) {
-		throw std::runtime_error("Failed to remove file: "+path);
-	}
-}
-bool process_exists(pid_t pid) {
-	struct stat s;
-	return !(stat(("/proc/"+std::to_string(pid)).c_str(), &s) == -1
-	         && errno == ENOENT);
-}
-
-std::string get_dirname(std::string filename) {
-	// TODO: This is crude, but works for our proclog use-case
-	return filename.substr(0, filename.find_last_of("/"));
-}
-
-class LockFile {
-	std::string _lockfile;
-	int         _fd;
-public:
-	LockFile(LockFile const& ) = delete;
-	LockFile& operator=(LockFile const& ) = delete;
-	LockFile(std::string lockfile) : _lockfile(lockfile) {
-		while( true ) {
-			_fd = open(_lockfile.c_str(), O_CREAT, 600);
-			flock(_fd, LOCK_EX);
-			struct stat fd_stat, lockfile_stat;
-			fstat(_fd, &fd_stat);
-			stat(_lockfile.c_str(), &lockfile_stat);
-			// Compare inodes
-			if( fd_stat.st_ino == lockfile_stat.st_ino ) {
-				// Got the lock
-				break;
-			}
-			close(_fd);
-		}
-	}
-	~LockFile() {
-		unlink(_lockfile.c_str());
-		flock(_fd, LOCK_UN);
-	}
-};
 
 class ProcLogMgr {
 	static constexpr const char* base_logdir = "/dev/shm/bifrost";
