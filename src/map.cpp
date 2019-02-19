@@ -397,22 +397,76 @@ BFstatus build_map_kernel(int*                 external_ndim,
 
 class DiskCacheMgr {
 	static constexpr const char* _cachedir = "/dev/shm/bifrost_cache/";
+	std::string                  _vinfofile = std::string(_cachedir)+"vinfo.map";
+	std::string                  _indexfile = std::string(_cachedir)+"index.map"; 
+	std::string                  _cachefile = std::string(_cachedir)+"cache.map";
 	std::set<std::string>        _created_dirs;
 	mutable std::mutex           _mutex;
 	bool                         _loaded;
 	
+	void tag_cache(void) {
+	    // NOTE:  Must be called from within a LockFile lock
+	    int rt, drv;
+		cudaRuntimeGetVersion(&rt);
+		cudaDriverGetVersion(&drv);
+		
+		std::ofstream info;
+		
+		if( !file_exists(_vinfofile) ) {
+		    try {
+		        info.open(_vinfofile, std::ios::out);
+		        info << rt << " " << drv << endl;
+		        info.close();
+		    } catch( std::exception ) {}
+		}
+	}
+	
+	bool validate_cache(void) {
+	    // NOTE:  Must be called from within a LockFile lock
+	    bool status = true;
+	    int rt, drv, cached_rt, cached_drv;
+		cudaRuntimeGetVersion(&rt);
+		cudaDriverGetVersion(&drv);
+		
+		std::ifstream info;
+		try {
+		    // Open
+		    info.open(_vinfofile, std::ios::in);
+		    
+		    // Read
+		    info >> cached_rt >> cached_drv;
+		    
+		    // Close
+		    info.close();
+		} catch( std::exception ) {
+		    cached_rt = cached_drv = -1;
+		}
+		
+		if( rt != cached_rt || drv != cached_drv ) {
+		    status = false;
+		}
+		
+		if( !file_exists(_indexfile) || !file_exists(_cachefile) ) {
+		    status = false;
+		}
+		
+		return status;
+	}
+	
 	void write_to_disk(std::string  cache_key, 
                        std::string  kernel_name,
                        std::string  ptx,  
-                       bool         basic_indexing_only) {
+                       bool         basic_indexing_only) {              
         // Do this with a file lock to avoid interference from other processes
 		LockFile lock(std::string(_cachedir) + ".lock");
 		
+        this->tag_cache();
+        
         std::ofstream index, cache;
         try {
             // Open
-            cache.open(std::string(_cachedir)+"map_cache.bf", std::ios::app);
-            index.open(std::string(_cachedir)+"map_index.bf", std::ios::app);
+            cache.open(_cachefile, std::ios::app);
+            index.open(_indexfile, std::ios::app);
             
             // Write
             cache.write(ptx.c_str(), ptx.size());
@@ -426,6 +480,19 @@ class DiskCacheMgr {
 	}
 	
 	void load_from_disk(ObjectCache<std::string,std::pair<CUDAKernel,bool> > *kernel_cache) {
+	    // Do this with a file lock to avoid interference from other processes
+		LockFile lock(std::string(_cachedir) + ".lock");
+		
+        // Validate and disgard if necessary
+		if( !this->validate_cache() ) {
+		    //cout << "INVALIDATING DISK CACHE" << endl;
+		    try {
+		        remove_file(_cachefile);
+	            remove_file(_indexfile);
+	            remove_file(_vinfofile);
+	        } catch( std::exception ) {}
+		}
+		
 	    std::ifstream index, cache;
         size_t kernel_size;
         std::string kernel_name;
@@ -437,13 +504,10 @@ class DiskCacheMgr {
         std::string field;
         std::vector<std::string> separated_fields;
         
-        // Do this with a file lock to avoid interference from other processes
-		LockFile lock(std::string(_cachedir) + ".lock");
-		
         try {
             // Open
-            index.open(std::string(_cachedir)+"map_index.bf", std::ios::in);
-            cache.open(std::string(_cachedir)+"map_cache.bf", std::ios::in);
+            index.open(_indexfile, std::ios::in);
+            cache.open(_cachefile, std::ios::in);
             
             // Read in fields separated by '~' until we get four, and then build the kernels
             while( getline(index, field, '~') ) {
@@ -512,12 +576,6 @@ public:
          std::lock_guard<std::mutex> lock(_mutex);
          this->write_to_disk(cache_key, kernel_name, ptx, basic_indexing_only);
     }
-	
-	void flush(void) {
-	    std::lock_guard<std::mutex> lock(_mutex);
-	    remove_file(std::string(_cachedir)+"map_cache.bf");
-	    remove_file(std::string(_cachedir)+"map_index.bf");
-	}
 };
 
 BFstatus bfMap(int                  ndim,

@@ -54,6 +54,11 @@ inline void remove_file(std::string path) {
 		throw std::runtime_error("Failed to remove file: "+path);
 	}
 }
+inline bool file_exists(std::string path) {
+    struct stat s;
+    return !(stat(path.c_str(), &s) == -1
+	         && errno == ENOENT);
+}
 inline bool process_exists(pid_t pid) {
 	struct stat s;
 	return !(stat(("/proc/"+std::to_string(pid)).c_str(), &s) == -1
