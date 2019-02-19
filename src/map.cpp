@@ -421,7 +421,7 @@ class DiskCacheMgr {
 		}
 	}
 	
-	bool validate_cache(void) {
+	void validate_cache(void) {
 	    // NOTE:  Must be called from within a LockFile lock
 	    bool status = true;
 	    int rt, drv, cached_rt, cached_drv;
@@ -450,7 +450,14 @@ class DiskCacheMgr {
 		    status = false;
 		}
 		
-		return status;
+		if( !status ) {
+		    //cout << "INVALIDATING DISK CACHE" << endl;
+		    try {
+		        remove_file(_cachefile);
+	            remove_file(_indexfile);
+	            remove_file(_vinfofile);
+	        } catch( std::exception ) {}
+	    }
 	}
 	
 	void write_to_disk(std::string  cache_key, 
@@ -483,15 +490,8 @@ class DiskCacheMgr {
 	    // Do this with a file lock to avoid interference from other processes
 		LockFile lock(std::string(_cachedir) + ".lock");
 		
-        // Validate and disgard if necessary
-		if( !this->validate_cache() ) {
-		    //cout << "INVALIDATING DISK CACHE" << endl;
-		    try {
-		        remove_file(_cachefile);
-	            remove_file(_indexfile);
-	            remove_file(_vinfofile);
-	        } catch( std::exception ) {}
-		}
+        // Validate the cache
+		this->validate_cache();
 		
 	    std::ifstream index, cache;
         size_t kernel_size;
