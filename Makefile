@@ -13,6 +13,7 @@ all: libbifrost python
 
 libbifrost:
 	$(MAKE) -C $(SRC_DIR) all
+	rm -f /dev/shm/bifrost_cache/*
 .PHONY: libbifrost
 
 test:
