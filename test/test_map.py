@@ -33,6 +33,7 @@ import bifrost as bf
 class TestMap(unittest.TestCase):
     def setUp(self):
         np.random.seed(1234)
+        bf.map_clear_cache()
     def run_simple_test(self, x, funcstr, func):
         x_orig = x
         x = bf.asarray(x, 'cuda')

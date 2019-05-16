@@ -32,6 +32,8 @@ import bifrost.transpose
 from itertools import permutations
 
 class TransposeTest(unittest.TestCase):
+    def setUp(self):
+        bf.map_clear_cache()
     def run_simple_test(self, axes, dtype, shape):
         n = reduce(lambda a,b:a*b, shape)
         idata = (np.arange(n).reshape(shape) % 251).astype(dtype)
