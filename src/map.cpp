@@ -575,6 +575,16 @@ class DiskCacheMgr {
 	    closedir(dir);
 	}
 	
+	void clear_cache() {
+	    // Do this with a file lock to avoid interference from other processes
+		LockFile lock(std::string(_cachedir) + ".lock");
+		
+	    try {
+		        remove_file(std::string(_cachedir)+"*.inf");
+		        remove_file(std::string(_cachedir)+"*.ptx");
+	        } catch( std::exception ) {}
+	}
+	
 	DiskCacheMgr()
 		: _loaded(false) {
 		    make_dir(_cachedir);
@@ -603,6 +613,12 @@ public:
               bool         basic_indexing_only) {
          std::lock_guard<std::mutex> lock(_mutex);
          this->write_to_disk(cache_key, kernel_name, ptx, basic_indexing_only);
+    }
+    
+    void clear() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        this->clear_cache();
+        _loaded = false;
     }
 };
 
