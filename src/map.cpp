@@ -789,3 +789,8 @@ BFstatus bfMap(int                  ndim,
 	
 	return BF_STATUS_SUCCESS;
 }
+
+BFstatus bfMapClearCache() {
+    DiskCacheMgr::get().clear();
+    return BF_STATUS_SUCCESS;
+}

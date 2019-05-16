@@ -124,3 +124,6 @@ def map(func_string, data, axis_names=None, shape=None,
                      narg, _array(args), _array(arg_names),
                      func_name, func_string, extra_code,
                      _array(block_shape), _array(block_axes)))
+
+def map_clear_cache():
+    _check(_bf.bfMapClearCache())

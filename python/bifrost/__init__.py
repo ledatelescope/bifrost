@@ -36,7 +36,7 @@ import pipeline
 import device
 from ndarray import ndarray, asarray, empty_like, empty, zeros_like, zeros
 import views
-from map import map
+from map import map, map_clear_cache
 from pipeline import Pipeline, get_default_pipeline, block_scope
 import blocks
 from block_chainer import BlockChainer

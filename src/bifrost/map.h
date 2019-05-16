@@ -91,6 +91,8 @@ BFstatus bfMap(int                  ndim,
                int const*           block_shape, // Must be array of length 2, or NULL
                int const*           block_axes); // Must be array of length 2, or NULL
 
+BFstatus bfMapClearCache();
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
