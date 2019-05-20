@@ -35,7 +35,7 @@ class UDPCapture(BifrostObject):
         if core is None:
             core = -1
         BifrostObject.__init__(
-            self, _bf.bfUdpCaptureCreate, _bf.bfUdpCaptureDestroy,
+            self, _bf.bfUdpCaptureCreate, _bf.bfDataCaptureDestroy,
             fmt, sock.fileno(), ring.obj, nsrc, src0,
             max_payload_size, buffer_ntime, slot_ntime,
             sequence_callback, core)
@@ -44,10 +44,10 @@ class UDPCapture(BifrostObject):
     def __exit__(self, type, value, tb):
         self.end()
     def recv(self):
-        status = _bf.BFudpcapture_status()
-        _check(_bf.bfUdpCaptureRecv(self.obj, status))
+        status = _bf.BFdatacapture_status()
+        _check(_bf.bfDataCaptureRecv(self.obj, status))
         return status
     def flush(self):
-        _check(_bf.bfUdpCaptureFlush(self.obj))
+        _check(_bf.bfDataCaptureFlush(self.obj))
     def end(self):
-        _check(_bf.bfUdpCaptureEnd(self.obj))
+        _check(_bf.bfDataCaptureEnd(self.obj))

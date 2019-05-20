@@ -1,5 +1,5 @@
 
-# Copyright (c) 2017, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,23 +31,23 @@ from libbifrost import _bf, _check, _get, BifrostObject
 
 class DiskReader(BifrostObject):
     def __init__(self, fmt, fh, ring, nsrc, src0,
-                 buffer_nframe, slot_nframe, sequence_callback, core=None):
+                 buffer_ntime, slot_ntime, sequence_callback, core=None):
         if core is None:
             core = -1
         BifrostObject.__init__(
-            self, _bf.bfDiskReaderCreate, _bf.bfDiskReaderDestroy,
+            self, _bf.bfDiskReaderCreate, _bf.bfDataCaptureDestroy,
             fmt, fh.fileno(), ring.obj, nsrc, src0,
-            buffer_nframe, slot_nframe,
+            buffer_ntime, slot_ntime,
             sequence_callback, core)
     def __enter__(self):
         return self
     def __exit__(self, type, value, tb):
         self.end()
-    def read(self):
-        status = _bf.BFdiskreader_status()
-        _check(_bf.bfDiskReaderRead(self.obj, status))
+    def recv(self):
+        status = _bf.BFdatacapture_status()
+        _check(_bf.bfDataCaptureRecv(self.obj, status))
         return status
     def flush(self):
-        _check(_bf.bfDiskReaderFlush(self.obj))
+        _check(_bf.bfDataCaptureFlush(self.obj))
     def end(self):
-        _check(_bf.bfDiskReaderEnd(self.obj))
+        _check(_bf.bfDataCaptureEnd(self.obj))
