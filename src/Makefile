@@ -13,6 +13,7 @@ LIBBIFROST_OBJS = \
   ring_impl.o \
   array.o \
   address.o \
+  data_capture.o \
   udp_socket.o \
   udp_capture.o \
   udp_transmit.o \

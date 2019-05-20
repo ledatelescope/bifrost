@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,48 +26,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_PACKET_FORMATS_H_INCLUDE_GUARD_
-#define BF_PACKET_FORMATS_H_INCLUDE_GUARD_
+#pragma once
 
-enum {
-	JUMBO_FRAME_SIZE = 9000,
-	DRX_FRAME_SIZE   = 4128,
-	TBN_FRAME_SIZE   = 1048
-};
-
-#pragma pack(1)
-struct chips_hdr_type {
-	uint8_t  roach;    // Note: 1-based
-	uint8_t  gbe;      // (AKA tuning)
-	uint8_t  nchan;    // 109
-	uint8_t  nsubband; // 11
-	uint8_t  subband;  // 0-11
-	uint8_t  nroach;   // 16
-	// Note: Big endian
-	uint16_t chan0;    // First chan in packet
-	uint64_t seq;      // Note: 1-based
-};
-
-#pragma pack(1)
-struct drx_hdr_type {
-	uint32_t sync_word;
-	uint32_t frame_count_word;
-	uint32_t seconds_count;
-	uint16_t decimation;
-	uint16_t time_offset;
-	uint64_t time_tag;
-	uint32_t tuning_word;
-	uint32_t flags;
-};
-
-#pragma pack(1)
-struct tbn_hdr_type {
-	uint32_t sync_word;
-	uint32_t frame_count_word;
-	uint32_t tuning_word;
-	uint16_t tbn_id;
-	uint16_t gain;
-	uint64_t time_tag;
-};
-
-#endif // BF_PACKET_FORMATS_H_INCLUDE_GUARD_
+#include "chips.hpp"
+#include "drx.hpp"
+#include "tbn.hpp"

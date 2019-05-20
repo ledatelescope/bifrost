@@ -33,6 +33,7 @@
 extern "C" {
 #endif
 
+#include <bifrost/data_capture.h>
 #include <bifrost/address.h>
 #include <bifrost/ring.h>
 
@@ -41,32 +42,17 @@ typedef struct BFudpcapture_impl* BFudpcapture;
 typedef int (*BFudpcapture_sequence_callback)(BFoffset, int, int, int,
                                               BFoffset*, void const**, size_t*);
 
-typedef enum BFudpcapture_status_ {
-	BF_CAPTURE_STARTED,
-	BF_CAPTURE_ENDED,
-	BF_CAPTURE_CONTINUED,
-	BF_CAPTURE_CHANGED,
-	BF_CAPTURE_NO_DATA,
-	BF_CAPTURE_INTERRUPTED,
-	BF_CAPTURE_ERROR
-} BFudpcapture_status;
-
-BFstatus bfUdpCaptureCreate(BFudpcapture* obj,
-                            const char*   format,
-                            int           fd,
-                            BFring        ring,
-                            BFsize        nsrc,
-                            BFsize        src0,
-                            BFsize        max_payload_size,
-                            BFsize        buffer_ntime,
-                            BFsize        slot_ntime,
+BFstatus bfUdpCaptureCreate(BFdatacapture* obj,
+                            const char*    format,
+                            int            fd,
+                            BFring         ring,
+                            BFsize         nsrc,
+                            BFsize         src0,
+                            BFsize         max_payload_size,
+                            BFsize         buffer_ntime,
+                            BFsize         slot_ntime,
                             BFudpcapture_sequence_callback sequence_callback,
-                            int           core);
-BFstatus bfUdpCaptureDestroy(BFudpcapture obj);
-BFstatus bfUdpCaptureRecv(BFudpcapture obj, BFudpcapture_status* result);
-BFstatus bfUdpCaptureFlush(BFudpcapture obj);
-BFstatus bfUdpCaptureEnd(BFudpcapture obj);
-// TODO: bfUdpCaptureGetXX
+                            int            core);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -26,36 +26,38 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_DISK_READER_H_INCLUDE_GUARD_
-#define BF_DISK_READER_H_INCLUDE_GUARD_
+#ifndef BF_DATA_CAPTURE_H_INCLUDE_GUARD_
+#define BF_DATA_CAPTURE_H_INCLUDE_GUARD_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-	
-#include <bifrost/data_capture.h>
+
 #include <bifrost/address.h>
 #include <bifrost/ring.h>
 
-typedef struct BFdiskreader_impl* BFdiskreader;
+typedef struct BFdatacapture_impl* BFdatacapture;
 
-typedef int (*BFdiskreader_sequence_callback)(BFoffset, int, int, int,
-                                              BFoffset*, void const**, size_t*);
+typedef enum BFdatacapture_status_ {
+        BF_CAPTURE_STARTED,
+        BF_CAPTURE_ENDED,
+        BF_CAPTURE_CONTINUED,
+        BF_CAPTURE_CHANGED,
+        BF_CAPTURE_NO_DATA,
+        BF_CAPTURE_INTERRUPTED,
+        BF_CAPTURE_ERROR
+} BFdatacapture_status;
 
-BFstatus bfDiskReaderCreate(BFdatacapture* obj,
-                            const char*    format,
-                            int            fd,
-                            BFring         ring,
-                            BFsize         nsrc,
-                            BFsize         src0,
-                            BFsize         max_payload_size,
-                            BFsize         buffer_ntime,
-                            BFsize         slot_ntime,
-                            BFdiskreader_sequence_callback sequence_callback,
-                            int            core);
+
+
+BFstatus bfDataCaptureDestroy(BFdatacapture obj);
+BFstatus bfDataCaptureRecv(BFdatacapture obj, BFdatacapture_status* result);
+BFstatus bfDataCaptureFlush(BFdatacapture obj);
+BFstatus bfDataCaptureEnd(BFdatacapture obj);
+// TODO: bfDataCaptureGetXX
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif // BF_DISK_READER_H_INCLUDE_GUARD_
+#endif // BF_DATA_CAPTURE_H_INCLUDE_GUARD_
