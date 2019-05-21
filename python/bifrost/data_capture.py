@@ -29,19 +29,19 @@
 
 from libbifrost import _bf, _check, _get, BifrostObject, BFdatacapture_chips_sequence_callback, BFdatacapture_tbn_sequence_callback, BFdatacapture_drx_sequence_callback
 
-class SequenceCallback(BifrostObject):
+class DataCaptureCallback(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(
             self, _bf.bfDataCaptureCallbackCreate, _bf.bfDataCaptureCallbackDestroy)
     def set_chips(self, fnc):
         _check(_bf.bfDataCaptureCallbackSetCHIPS(
-            BFdatacapture_chips_sequence_callback(fnc)))
+            self.obj, BFdatacapture_chips_sequence_callback(fnc)))
     def set_tbn(self, fnc):
         _check(_bf.bfDataCaptureCallbackSetTBN(
-            BFdatacapture_tbn_sequence_callback(fnc)))
+            self.obj, BFdatacapture_tbn_sequence_callback(fnc)))
     def set_drx(self, fnc):
         _check(_bf.bfDataCaptureCallbackSetDRX(
-            BFdatacapture_drx_sequence_callback(fnc)))
+            self.obj, BFdatacapture_drx_sequence_callback(fnc)))
 
 class UDPCapture(BifrostObject):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
@@ -68,13 +68,13 @@ class UDPCapture(BifrostObject):
 
 class DiskReader(BifrostObject):
     def __init__(self, fmt, fh, ring, nsrc, src0,
-                 buffer_ntime, slot_ntime, sequence_callback, core=None):
+                 buffer_nframe, slot_nframe, sequence_callback, core=None):
         if core is None:
             core = -1
         BifrostObject.__init__(
             self, _bf.bfDiskReaderCreate, _bf.bfDataCaptureDestroy,
             fmt, fh.fileno(), ring.obj, nsrc, src0,
-            buffer_ntime, slot_ntime,
+            buffer_nframe, slot_nframe,
             sequence_callback, core)
     def __enter__(self):
         return self
