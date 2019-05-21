@@ -164,17 +164,26 @@ BFstatus bfDataCaptureCallbackCreate(BFdatacapture_callback* obj) {
                                *obj = 0);
 }
 
+BFstatus bfDataCaptureCallbackDestroy(BFdatacapture_callback obj) {
+	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+	delete obj;
+	return BF_STATUS_SUCCESS;
+}
+
 BFstatus bfDataCaptureCallbackSetCHIPS(BFdatacapture_callback obj, BFdatacapture_chips_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	obj->set_chips(callback);
 	return BF_STATUS_SUCCESS;
 }
 
 BFstatus bfDataCaptureCallbackSetTBN(BFdatacapture_callback obj, BFdatacapture_tbn_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	obj->set_tbn(callback);
 	return BF_STATUS_SUCCESS;
 }
 
 BFstatus bfDataCaptureCallbackSetDRX(BFdatacapture_callback obj, BFdatacapture_drx_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	obj->set_drx(callback);
 	return BF_STATUS_SUCCESS;
 }
