@@ -235,6 +235,34 @@ inline uint64_t round_nearest(uint64_t val, uint64_t mult) {
 	return (2*val/mult+1)/2*mult;
 }
 
+class BFdatacapture_callback_impl {
+    BFdatacapture_chips_sequence_callback _chips_callback;
+    BFdatacapture_tbn_sequence_callback _tbn_callback;
+    BFdatacapture_drx_sequence_callback _drx_callback;
+public:
+    BFdatacapture_callback_impl()
+     : _chips_callback(NULL), _tbn_callback(NULL), _drx_callback(NULL) {}
+    inline void set_chips(BFdatacapture_chips_sequence_callback callback) {
+	_chips_callback = callback;
+    }
+    inline BFdatacapture_chips_sequence_callback get_chips() {
+	return _chips_callback;
+    }
+    inline void set_tbn(BFdatacapture_tbn_sequence_callback callback) {
+        _tbn_callback = callback;
+    }
+    inline BFdatacapture_tbn_sequence_callback get_tbn() {
+        return _tbn_callback;
+    }
+    inline void set_drx(BFdatacapture_drx_sequence_callback callback) {
+        _drx_callback = callback;
+    }
+    inline BFdatacapture_drx_sequence_callback get_drx() {
+        return _drx_callback;
+    }
+    
+};
+
 class BFdatacapture_impl {
 protected:
     std::string        _name;

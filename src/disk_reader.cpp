@@ -152,9 +152,6 @@ public:
 	}
 };
 
-typedef int (*BFdiskreader_tbn_sequence_callback)(BFoffset, int, int, int,
-                                                  BFoffset*, void const**, size_t*);
-
 class BFdiskreader_tbn_impl : public BFdatacapture_impl {
 	DiskReaderThread _capture;
 	TBNDecoder       _decoder;
@@ -162,7 +159,7 @@ class BFdiskreader_tbn_impl : public BFdatacapture_impl {
 	ProcLog          _type_log;
 	ProcLog          _chan_log;
 	
-	BFdiskreader_tbn_sequence_callback _sequence_callback;
+	BFdatacapture_tbn_sequence_callback _sequence_callback;
 	
 	BFoffset _time_tag;
 	
@@ -183,14 +180,14 @@ class BFdiskreader_tbn_impl : public BFdatacapture_impl {
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+	    *time_tag = pkt->time_tag;
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
-			                                   _chan0,
-			                                   _nchan,
-			                                   _nsrc,
-			                                   time_tag,
-			                                   hdr,
-			                                   hdr_size);
+	                                        *time_tag,
+			                                _chan0,
+			                                _nsrc,
+			                                hdr,
+			                                hdr_size);
 			if( status != 0 ) {
 			    // TODO: What to do here? Needed?
 				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -216,13 +213,13 @@ public:
 	                             int    max_payload_size,
 	                             int    buffer_ntime,
 	                             int    slot_ntime,
-	                             BFdiskreader_tbn_sequence_callback sequence_callback,
+	                             BFdatacapture_callback* sequence_callback,
 	                             int    core)
 		: BFdatacapture_impl("disk_reader", fd, ring, nsrc, src0, max_payload_size, buffer_ntime, slot_ntime, core), 
 		  _capture(fd, nsrc, core), _decoder(nsrc, src0), _processor(),
 		  _type_log("disk_reader/type"),
 		  _chan_log("disk_reader/chans"),
-		  _sequence_callback(sequence_callback) {
+		  _sequence_callback((*sequence_callback)->get_tbn()) {
 		size_t contig_span  = this->bufsize(max_payload_size);
 		// Note: 2 write bufs may be open for writing at one time
 		size_t total_span   = contig_span * 4;
@@ -231,9 +228,6 @@ public:
 		_type_log.update("type : %s", "tbn");
 	}
 };
-
-typedef int (*BFdiskreader_drx_sequence_callback)(BFoffset, int, int, int,
-                                                  BFoffset*, void const**, size_t*);
                                                     
 class BFdiskreader_drx_impl : public BFdatacapture_impl {
 	DiskReaderThread _capture;
@@ -242,7 +236,7 @@ class BFdiskreader_drx_impl : public BFdatacapture_impl {
 	ProcLog          _type_log;
 	ProcLog          _chan_log;
 	
-	BFdiskreader_drx_sequence_callback _sequence_callback;
+	BFdatacapture_drx_sequence_callback _sequence_callback;
 	
 	BFoffset _time_tag;
 	int      _chan1;
@@ -278,14 +272,15 @@ class BFdiskreader_drx_impl : public BFdatacapture_impl {
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+	    *time_tag = pkt->time_tag;
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
-			                                   _chan0,
-			                                   _nchan,
-			                                   _nsrc,
-			                                   time_tag,
-			                                   hdr,
-			                                   hdr_size);
+	                                        *time_tag,
+			                                _chan0,
+			                                _chan1,
+			                                _nsrc,
+			                                hdr,
+			                                hdr_size);
 			if( status != 0 ) {
 			    // TODO: What to do here? Needed?
 				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -311,20 +306,20 @@ public:
 	                             int    max_payload_size,
 	                             int    buffer_ntime,
 	                             int    slot_ntime,
-	                             BFdiskreader_tbn_sequence_callback sequence_callback,
+	                             BFdatacapture_callback* sequence_callback,
 	                             int    core)
 		: BFdatacapture_impl("disk_reader", fd, ring, nsrc, src0, max_payload_size, buffer_ntime, slot_ntime, core), 
 		  _capture(fd, nsrc, core), _decoder(nsrc, src0), _processor(),
 		  _type_log("disk_reader/type"),
 		  _chan_log("disk_reader/chans"),
-		  _sequence_callback(sequence_callback), 
+		  _sequence_callback((*sequence_callback)->get_drx()), 
 		  _chan1(), _tstate(0) {
 		size_t contig_span  = this->bufsize(max_payload_size);
 		// Note: 2 write bufs may be open for writing at one time
 		size_t total_span   = contig_span * 4;
 		size_t nringlet_max = 1;
 		_ring.resize(contig_span, total_span, nringlet_max);
-		_type_log.update("type : %s", "tbn");
+		_type_log.update("type : %s", "drx");
 	}
 };
 
@@ -337,7 +332,7 @@ BFstatus bfDiskReaderCreate(BFdatacapture* obj,
                             BFsize         max_payload_size,
                             BFsize         buffer_ntime,
                             BFsize         slot_ntime,
-                            BFdiskreader_sequence_callback sequence_callback,
+                            BFdatacapture_callback* sequence_callback,
                             int            core) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
 	if( format == std::string("tbn") ) {

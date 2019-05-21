@@ -39,9 +39,6 @@ extern "C" {
 
 typedef struct BFudpcapture_impl* BFudpcapture;
 
-typedef int (*BFudpcapture_sequence_callback)(BFoffset, int, int, int,
-                                              BFoffset*, void const**, size_t*);
-
 BFstatus bfUdpCaptureCreate(BFdatacapture* obj,
                             const char*    format,
                             int            fd,
@@ -51,7 +48,7 @@ BFstatus bfUdpCaptureCreate(BFdatacapture* obj,
                             BFsize         max_payload_size,
                             BFsize         buffer_ntime,
                             BFsize         slot_ntime,
-                            BFudpcapture_sequence_callback sequence_callback,
+                            BFdatacapture_callback sequence_callback,
                             int            core);
 
 #ifdef __cplusplus

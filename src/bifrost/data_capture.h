@@ -48,13 +48,25 @@ typedef enum BFdatacapture_status_ {
         BF_CAPTURE_ERROR
 } BFdatacapture_status;
 
-
-
 BFstatus bfDataCaptureDestroy(BFdatacapture obj);
 BFstatus bfDataCaptureRecv(BFdatacapture obj, BFdatacapture_status* result);
 BFstatus bfDataCaptureFlush(BFdatacapture obj);
 BFstatus bfDataCaptureEnd(BFdatacapture obj);
 // TODO: bfDataCaptureGetXX
+
+typedef int (*BFdatacapture_chips_sequence_callback)(BFoffset, int, int, int,
+                                                    BFoffset*, void const**, size_t*);
+typedef int (*BFdatacapture_tbn_sequence_callback)(BFoffset, BFoffset, int, int, 
+                                                   void const**, size_t*);
+typedef int (*BFdatacapture_drx_sequence_callback)(BFoffset, BFoffset, int, int, int, 
+                                                   void const**, size_t*);
+
+typedef struct BFdatacapture_callback_impl* BFdatacapture_callback;
+
+BFstatus bfDataCaptureCallbackCreate(BFdatacapture_callback* obj);
+BFstatus bfDataCaptureCallbackSetCHIPS(BFdatacapture_callback obj, BFdatacapture_chips_sequence_callback callback);
+BFstatus bfDataCaptureCallbackSetTBN(BFdatacapture_callback obj, BFdatacapture_tbn_sequence_callback callback);
+BFstatus bfDataCaptureCallbackSetDRX(BFdatacapture_callback obj, BFdatacapture_drx_sequence_callback callback);
 
 #ifdef __cplusplus
 } // extern "C"

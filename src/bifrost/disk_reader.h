@@ -39,9 +39,6 @@ extern "C" {
 
 typedef struct BFdiskreader_impl* BFdiskreader;
 
-typedef int (*BFdiskreader_sequence_callback)(BFoffset, int, int, int,
-                                              BFoffset*, void const**, size_t*);
-
 BFstatus bfDiskReaderCreate(BFdatacapture* obj,
                             const char*    format,
                             int            fd,
@@ -51,7 +48,7 @@ BFstatus bfDiskReaderCreate(BFdatacapture* obj,
                             BFsize         max_payload_size,
                             BFsize         buffer_ntime,
                             BFsize         slot_ntime,
-                            BFdiskreader_sequence_callback sequence_callback,
+                            BFdatacapture_callback sequence_callback,
                             int            core);
 
 #ifdef __cplusplus
