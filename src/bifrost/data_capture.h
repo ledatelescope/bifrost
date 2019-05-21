@@ -33,7 +33,6 @@
 extern "C" {
 #endif
 
-#include <bifrost/address.h>
 #include <bifrost/ring.h>
 
 typedef struct BFdatacapture_impl* BFdatacapture;

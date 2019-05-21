@@ -27,7 +27,7 @@
 
 # **TODO: Write tests for this class
 
-from libbifrost import _bf, _check, _get, BifrostObject, BFdatacapture_chips_sequence_callback, BFdatacapture_tbn_sequence_callback, BFdatacapture_drx_sequence_callback
+from libbifrost import _bf, _check, _get, BifrostObject
 
 class DataCaptureCallback(BifrostObject):
     def __init__(self):
@@ -35,13 +35,13 @@ class DataCaptureCallback(BifrostObject):
             self, _bf.bfDataCaptureCallbackCreate, _bf.bfDataCaptureCallbackDestroy)
     def set_chips(self, fnc):
         _check(_bf.bfDataCaptureCallbackSetCHIPS(
-            self.obj, BFdatacapture_chips_sequence_callback(fnc)))
+            self.obj, _bf.BFdatacapture_chips_sequence_callback(fnc)))
     def set_tbn(self, fnc):
         _check(_bf.bfDataCaptureCallbackSetTBN(
-            self.obj, BFdatacapture_tbn_sequence_callback(fnc)))
+            self.obj, _bf.BFdatacapture_tbn_sequence_callback(fnc)))
     def set_drx(self, fnc):
         _check(_bf.bfDataCaptureCallbackSetDRX(
-            self.obj, BFdatacapture_drx_sequence_callback(fnc)))
+            self.obj, _bf.BFdatacapture_drx_sequence_callback(fnc)))
 
 class UDPCapture(BifrostObject):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,

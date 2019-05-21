@@ -34,10 +34,7 @@ extern "C" {
 #endif
 	
 #include <bifrost/data_capture.h>
-#include <bifrost/address.h>
 #include <bifrost/ring.h>
-
-typedef struct BFdiskreader_impl* BFdiskreader;
 
 BFstatus bfDiskReaderCreate(BFdatacapture* obj,
                             const char*    format,
@@ -48,7 +45,7 @@ BFstatus bfDiskReaderCreate(BFdatacapture* obj,
                             BFsize         max_payload_size,
                             BFsize         buffer_ntime,
                             BFsize         slot_ntime,
-                            BFdatacapture_callback sequence_callback,
+                            BFdatacapture_callback* sequence_callback,
                             int            core);
 
 #ifdef __cplusplus
