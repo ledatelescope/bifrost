@@ -277,7 +277,7 @@ class BFudpcapture_tbn_impl : virtual public BFdatacapture_impl {
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
 	                                        *time_tag,
-			                                _chan0,
+			                                pkt->tuning,
 			                                _nsrc,
 			                                hdr,
 			                                hdr_size);
