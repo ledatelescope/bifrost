@@ -42,21 +42,21 @@ struct tbn_hdr_type {
 	uint64_t time_tag;
 };
 
-class TBNDecoder : public PacketDecoder {
+class TBNDecoder : virtual public PacketDecoder {
     inline bool valid_packet(const PacketDesc* pkt) const {
 	    return (pkt->sync       == 0x5CDEC0DE &&
 	            pkt->src        >= 0 &&
                	pkt->src        <  _nsrc &&
 	            pkt->time_tag   >= 0 &&
 	            pkt->tuning     >= 0 && 
-                pkt->valid_mode == 1);
+                pkt->valid_mode == 0);
     }
 public:
     TBNDecoder(int nsrc, int src0) : PacketDecoder(nsrc, src0) {}
     inline bool operator()(const uint8_t* pkt_ptr,
 	                       int            pkt_size,
 	                       PacketDesc*    pkt) const {
-	    if( pkt_size < (int)sizeof(tbn_hdr_type) ) {
+	    if( pkt_size != TBN_FRAME_SIZE ) {
 		    return false;
 	    }
 	    const tbn_hdr_type* pkt_hdr  = (tbn_hdr_type*)pkt_ptr;
@@ -65,19 +65,19 @@ public:
 	    pkt->sync         = pkt_hdr->sync_word;
 	    pkt->time_tag     = be64toh(pkt_hdr->time_tag);
 	    pkt->seq          = pkt->time_tag / 1960 / 512;
-	    //pkt->nsrc         = pkt_hdr->nroach;
 	    pkt->nsrc         = _nsrc;
 	    pkt->src          = (be16toh(pkt_hdr->tbn_id) & 1023) - 1 - _src0;
 	    pkt->tuning       = be32toh(pkt_hdr->tuning_word);
 	    pkt->decimation   = 1960;
-	    pkt->valid_mode   = (be16toh(pkt_hdr->tbn_id) >> 7) & 1;
+	    pkt->valid_mode   = (be16toh(pkt_hdr->tbn_id) >> 15) & 1;
+	    pkt->gain         = (be16toh(pkt_hdr->gain));
 	    pkt->payload_size = pld_size;
 	    pkt->payload_ptr  = pkt_pld;
 	    return this->valid_packet(pkt);
     }
 };
 
-class TBNProcessor : public PacketProcessor {
+class TBNProcessor : virtual public PacketProcessor {
 public:
     inline void operator()(const PacketDesc* pkt,
 	                       uint64_t          seq0,

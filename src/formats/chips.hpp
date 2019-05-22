@@ -45,7 +45,7 @@ struct chips_hdr_type {
 	uint64_t seq;      // Note: 1-based
 };
 
-class CHIPSDecoder : public PacketDecoder {
+class CHIPSDecoder : virtual public PacketDecoder {
 	inline bool valid_packet(const PacketDesc* pkt) const {
         return (pkt->seq   >= 0 &&
 		        pkt->src   >= 0 && pkt->src < _nsrc &&
@@ -74,7 +74,7 @@ public:
     }
 };
 
-class CHIPSProcessor : public PacketProcessor {
+class CHIPSProcessor : virtual public PacketProcessor {
 public:
     inline void operator()(const PacketDesc* pkt,
                            uint64_t          seq0,

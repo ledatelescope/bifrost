@@ -125,9 +125,10 @@ public:
 			tmp.swap(*this);
 		}
 	}
-	inline size_t size() const                 { return _size; }
-	inline T      & operator[](size_t i)       { return _buf[i]; }
-	inline T const& operator[](size_t i) const { return _buf[i]; }
+	inline size_t size() const                 { return _size;      }
+	inline size_t alignment() const            { return _alignment; }
+	inline T      & operator[](size_t i)       { return _buf[i];    }
+	inline T const& operator[](size_t i) const { return _buf[i];    }
 };
 
 #if BF_HWLOC_ENABLED
@@ -167,9 +168,8 @@ protected:
 	AlignedBuffer<uint8_t> _buf;
 public:
 	DataCaptureMethod(int fd, size_t pkt_size_max=9000)
-	: _fd(fd), _buf(pkt_size_max)
-	{}
-	virtual inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
+	 : _fd(fd), _buf(pkt_size_max) {}
+	virtual int recv_packet(uint8_t** pkt_ptr, int flags=0) {
 	    return 0;
 	}
 };
@@ -184,12 +184,16 @@ struct PacketStats {
 };
 
 class DataCaptureThread : public BoundThread {
-protected:
-    DataCaptureMethod        _mthd;
+private:
+    DataCaptureMethod        _method;
     PacketStats              _stats;
 	std::vector<PacketStats> _src_stats;
 	bool                     _have_pkt;
 	PacketDesc               _pkt;
+    
+    virtual DataCaptureMethod* get_method() {
+	    return &_method;
+	}
 public:
 	enum {
 		CAPTURE_SUCCESS     = 1 << 0,
@@ -198,20 +202,19 @@ public:
 		CAPTURE_ERROR       = 1 << 3
 	};
 	DataCaptureThread(int fd, int nsrc, int core=0, size_t pkt_size_max=9000)
-		: BoundThread(core), _mthd(fd, pkt_size_max), _src_stats(nsrc),
-		  _have_pkt(false) {
+     : BoundThread(core), _method(fd, pkt_size_max), _src_stats(nsrc),
+	   _have_pkt(false) {
 		this->reset_stats();
 	}
-	virtual int run(uint64_t         seq_beg,
-	                uint64_t         nseq_per_obuf,
-	                int              nbuf,
-	                uint8_t*         obufs[],
-	                size_t*          ngood_bytes[],
-	                size_t*          src_ngood_bytes[],
-	                PacketDecoder*   decode,
-	                PacketProcessor* process) {
-        return CAPTURE_ERROR;
-    }
+	template<class PDC, class PPC>
+	int run(uint64_t seq_beg,
+	        uint64_t nseq_per_obuf,
+	        int      nbuf,
+	        uint8_t* obufs[],
+	        size_t*  ngood_bytes[],
+	        size_t*  src_ngood_bytes[],
+	        PDC*     decode,
+	        PPC*     process);
     inline const PacketDesc* get_last_packet() const {
 		return _have_pkt ? &_pkt : NULL;
 	}
@@ -276,12 +279,6 @@ protected:
 	ProcLog            _perf_log;
 	pid_t              _pid;
 	
-	std::chrono::high_resolution_clock::time_point _t0;
-	std::chrono::high_resolution_clock::time_point _t1;
-	std::chrono::high_resolution_clock::time_point _t2;
-	std::chrono::duration<double> _process_time;
-	std::chrono::duration<double> _reserve_time;
-	
 	int      _nsrc;
 	int      _nseq_per_buf;
 	int      _slot_ntime;
@@ -290,6 +287,13 @@ protected:
 	int      _nchan;
 	int      _payload_size;
 	bool     _active;
+
+private:
+    std::chrono::high_resolution_clock::time_point _t0;
+	std::chrono::high_resolution_clock::time_point _t1;
+	std::chrono::high_resolution_clock::time_point _t2;
+	std::chrono::duration<double> _process_time;
+	std::chrono::duration<double> _reserve_time;
 	
 	RingWrapper _ring;
 	RingWriter  _oring;
@@ -300,6 +304,15 @@ protected:
 	size_t _ngood_bytes;
 	size_t _nmissing_bytes;
 	
+	virtual DataCaptureThread* get_capture() {
+	    return &_capture;
+	}
+	virtual PacketDecoder* get_decoder() {
+	    return &_decoder;
+	}
+	virtual PacketProcessor* get_processor() {
+	    return &_processor;
+	}
 	inline size_t bufsize(int payload_size=-1) {
 		if( payload_size == -1 ) {
 			payload_size = _payload_size;
@@ -354,9 +367,7 @@ protected:
 	}
 	virtual void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {}
 	virtual void on_sequence_active(const PacketDesc* pkt) {}
-	virtual inline bool has_sequence_changed(const PacketDesc* pkt) {
-	    return false;
-	}
+	virtual inline bool has_sequence_changed(const PacketDesc* pkt) { return false; }
 	virtual void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {}
 public:
 	inline BFdatacapture_impl(std::string name,
@@ -378,9 +389,25 @@ public:
 		  _seq(), _chan0(), _nchan(), _active(false),
 		  _ring(ring), _oring(_ring),
 		  // TODO: Add reset method for stats
-		  _ngood_bytes(0), _nmissing_bytes(0) {}
+		  _ngood_bytes(0), _nmissing_bytes(0) {
+        size_t contig_span  = this->bufsize(max_payload_size);
+		// Note: 2 write bufs may be open for writing at one time
+		size_t total_span   = contig_span * 4;
+		size_t nringlet_max = 1;
+		_ring.resize(contig_span, total_span, nringlet_max);
+		_bind_log.update("ncore : %i\n"
+		                 "core0 : %i\n", 
+		                 1, core);
+		_out_log.update("nring : %i\n"
+		                "ring0 : %s\n", 
+		                1, _ring.name());
+		_size_log.update("nsrc         : %i\n"
+		                 "nseq_per_buf : %i\n"
+		                 "slot_ntime   : %i\n",
+		                 _nsrc, _nseq_per_buf, _slot_ntime);
+	}
     virtual ~BFdatacapture_impl() {}
-	inline void flush() {
+    inline void flush() {
 		while( _bufs.size() ) {
 			this->commit_buf();
 		}

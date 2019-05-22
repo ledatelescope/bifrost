@@ -44,48 +44,47 @@ struct drx_hdr_type {
 	uint32_t flags;
 };
 
-class DRXDecoder : public PacketDecoder {
+class DRXDecoder : virtual public PacketDecoder {
     inline bool valid_packet(const PacketDesc* pkt) const {
-	    return (pkt->sync     == 0x5CDEC0DE &&
-	            pkt->src      >= 0 &&
-        	    pkt->src      <  _nsrc &&
-	            pkt->time_tag >= 0 &&
-	            pkt->tuning   >= 0);
+	    return (pkt->sync       == 0x5CDEC0DE &&
+	            pkt->src        >= 0 &&
+        	    pkt->src        <  _nsrc &&
+	            pkt->time_tag   >= 0 &&
+	            pkt->tuning     >= 0 && 
+	            pkt->valid_mode == 0);
     }
 public:
     DRXDecoder(int nsrc, int src0) : PacketDecoder(nsrc, src0) {}
     inline bool operator()(const uint8_t* pkt_ptr,
 	                       int            pkt_size,
 	                       PacketDesc*    pkt) const {
-	    if( pkt_size < (int)sizeof(drx_hdr_type) ) {
+	    if( pkt_size != DRX_FRAME_SIZE ) {
 		    return false;
 	    }
 	    const drx_hdr_type* pkt_hdr  = (drx_hdr_type*)pkt_ptr;
 	    const uint8_t*      pkt_pld  = pkt_ptr  + sizeof(drx_hdr_type);
 	    int                 pld_size = pkt_size - sizeof(drx_hdr_type);
-	    int pkt_id   = pkt_hdr->frame_count_word & 0xFF;
-	    //uint8_t pkt_beam = (pkt_id & 0x7) - 1;
-	    int pkt_tune = ((pkt_id >> 3) & 0x7) - 1;
-	    int pkt_pol  = ((pkt_id >> 7) & 0x1);
-	    pkt_id       = (pkt_tune << 1) | pkt_pol;
+	    int pkt_id        = pkt_hdr->frame_count_word & 0xFF;
+	    pkt->beam         = (pkt_id & 0x7) - 1;
+	    int pkt_tune      = ((pkt_id >> 3) & 0x7) - 1;
+	    int pkt_pol       = ((pkt_id >> 7) & 0x1);
+	    pkt_id            = (pkt_tune << 1) | pkt_pol;
 	    pkt->sync         = pkt_hdr->sync_word;
 	    pkt->time_tag     = be64toh(pkt_hdr->time_tag) - be16toh(pkt_hdr->time_offset);
 	    pkt->seq          = pkt->time_tag / be16toh(pkt_hdr->decimation) / 4096;
-	    //pkt->nsrc         = pkt_hdr->nroach;
 	    pkt->nsrc         = _nsrc;
 	    pkt->src          = pkt_id - _src0;
 	    pkt->tuning       = be32toh(pkt_hdr->tuning_word);
 	    pkt->decimation   = be16toh(pkt_hdr->decimation);
-	    pkt->valid_mode   = 1;
+	    pkt->valid_mode   = ((pkt_id >> 6) & 0x1);
 	    pkt->payload_size = pld_size;
 	    pkt->payload_ptr  = pkt_pld;
-        // cout << pkt_id << pkt->src << "valid? " << this->valid_packet(pkt) << endl;
 	    return this->valid_packet(pkt);
     }
 };
 
 
-class DRXProcessor : public PacketProcessor {
+class DRXProcessor : virtual public PacketProcessor {
 public:
     inline void operator()(const PacketDesc* pkt,
                            uint64_t          seq0,

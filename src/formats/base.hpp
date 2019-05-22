@@ -55,8 +55,10 @@ struct PacketDesc {
 	uint32_t       sync;
 	uint64_t       time_tag;
 	int            tuning;
-	int            decimation;
-	int            valid_mode;
+	uint8_t        beam;
+	uint16_t       gain;
+	uint16_t       decimation;
+	uint8_t        valid_mode;
 	int            payload_size;
 	const uint8_t* payload_ptr;
 };
@@ -66,6 +68,7 @@ class PacketDecoder {
 protected:
 	int _nsrc;
 	int _src0;
+private:
     virtual inline bool valid_packet(const PacketDesc* pkt) const {
         return false;
     }

@@ -45,7 +45,7 @@ BFstatus bfUdpCaptureCreate(BFdatacapture* obj,
                             BFsize         max_payload_size,
                             BFsize         buffer_ntime,
                             BFsize         slot_ntime,
-                            BFdatacapture_callback* sequence_callback,
+                            BFdatacapture_callback sequence_callback,
                             int            core);
 
 #ifdef __cplusplus

@@ -42,10 +42,9 @@ BFstatus bfDiskReaderCreate(BFdatacapture* obj,
                             BFring         ring,
                             BFsize         nsrc,
                             BFsize         src0,
-                            BFsize         max_payload_size,
                             BFsize         buffer_ntime,
                             BFsize         slot_ntime,
-                            BFdatacapture_callback* sequence_callback,
+                            BFdatacapture_callback sequence_callback,
                             int            core);
 
 #ifdef __cplusplus

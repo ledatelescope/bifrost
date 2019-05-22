@@ -132,12 +132,12 @@ public:
 	}
 };
 
-class UDPCaptureThread : public DataCaptureThread {
-	UDPPacketReceiver _udp;
-	PacketStats       _stats;
-	std::vector<PacketStats> _src_stats;
-	bool              _have_pkt;
-	PacketDesc        _pkt;
+class UDPCaptureThread : virtual public DataCaptureThread {
+	UDPPacketReceiver _method;
+    
+   	DataCaptureMethod* get_method() {
+	    return &_method;
+	}
 public:
 	enum {
 		CAPTURE_SUCCESS     = 1 << 0,
@@ -146,79 +146,12 @@ public:
 		CAPTURE_ERROR       = 1 << 3
 	};
 	UDPCaptureThread(int fd, int nsrc, int core=0, size_t pkt_size_max=9000)
-		: DataCaptureThread(fd, nsrc, core, pkt_size_max), _udp(fd, pkt_size_max), _src_stats(nsrc),
-		  _have_pkt(false) {
+		: DataCaptureThread(fd, nsrc, core, pkt_size_max), _method(fd, pkt_size_max) {
 		this->reset_stats();
-	}
-	// Captures, decodes and unpacks packets into the provided buffers
-	// Note: Capture continues until the first packet that belongs
-	//         beyond the end of the provided buffers. This packet is
-	//         saved, accessible via get_last_packet(), and will be
-	//         processed on the next call to run() if possible.
-	template<class PacketDecoder, class PacketProcessor>
-	int run(uint64_t         seq_beg,
-	        uint64_t         nseq_per_obuf,
-	        int              nbuf,
-	        uint8_t*         obufs[],
-	        size_t*          ngood_bytes[],
-	        size_t*          src_ngood_bytes[],
-	        PacketDecoder*   decode,
-	        PacketProcessor* process) {
-		uint64_t seq_end = seq_beg + nbuf*nseq_per_obuf;
-		size_t local_ngood_bytes[2] = {0, 0};
-		int ret;
-		while( true ) {
-			if( !_have_pkt ) {
-				uint8_t* pkt_ptr;
-				int pkt_size = _udp.recv_packet(&pkt_ptr);
-				if( pkt_size <= 0 ) {
-					if( errno == EAGAIN || errno == EWOULDBLOCK ) {
-						ret = CAPTURE_TIMEOUT; // Timed out
-					} else if( errno == EINTR ) {
-						ret = CAPTURE_INTERRUPTED; // Interrupted by signal
-					} else {
-						ret = CAPTURE_ERROR; // Socket error
-					}
-					break;
-				}
-				if( !(*decode)(pkt_ptr, pkt_size, &_pkt) ) {
-					++_stats.ninvalid;
-					_stats.ninvalid_bytes += pkt_size;
-					continue;
-				}
-				_have_pkt = true;
-			}
-			if( greater_equal(_pkt.seq, seq_end) ) {
-				// Reached the end of this processing gulp, so leave this
-				//   packet unprocessed and return.
-				ret = CAPTURE_SUCCESS;
-				break;
-			}
-			_have_pkt = false;
-			if( less_than(_pkt.seq, seq_beg) ) {
-				++_stats.nlate;
-				_stats.nlate_bytes += _pkt.payload_size;
-				++_src_stats[_pkt.src].nlate;
-				_src_stats[_pkt.src].nlate_bytes += _pkt.payload_size;
-				continue;
-			}
-			++_stats.nvalid;
-			_stats.nvalid_bytes += _pkt.payload_size;
-			++_src_stats[_pkt.src].nvalid;
-			_src_stats[_pkt.src].nvalid_bytes += _pkt.payload_size;
-			// HACK TODO: src_ngood_bytes should be accumulated locally and
-			//              then atomically updated, like ngood_bytes. The
-			//              current way is not thread-safe.
-			(*process)(&_pkt, seq_beg, nseq_per_obuf, nbuf, obufs,
-			           local_ngood_bytes, /*local_*/src_ngood_bytes);
-		}
-		if( nbuf > 0 ) { atomic_add_and_fetch(ngood_bytes[0], local_ngood_bytes[0]); }
-		if( nbuf > 1 ) { atomic_add_and_fetch(ngood_bytes[1], local_ngood_bytes[1]); }
-		return ret;
 	}
 };
 
-class BFudpcapture_chips_impl : public BFdatacapture_impl {
+class BFudpcapture_chips_impl : virtual public BFdatacapture_impl {
 	UDPCaptureThread   _capture;
 	CHIPSDecoder       _decoder;
 	CHIPSProcessor     _processor;
@@ -227,6 +160,15 @@ class BFudpcapture_chips_impl : public BFdatacapture_impl {
 	
 	BFdatacapture_chips_sequence_callback _sequence_callback;
 	
+	inline DataCaptureThread* get_capture() {
+	    return &_capture;
+	}
+	inline PacketDecoder* get_decoder() {
+	    return &_decoder;
+	}
+	inline PacketProcessor* get_processor() {
+	    return &_processor;
+    }
 	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
         // TODO: Might be safer to round to nearest here, but the current firmware
 		//         always starts things ~3 seq's before the 1sec boundary anyway.
@@ -283,23 +225,18 @@ public:
 	                               int    max_payload_size,
 	                               int    buffer_ntime,
 	                               int    slot_ntime,
-	                               BFdatacapture_callback* sequence_callback,
+	                               BFdatacapture_callback sequence_callback,
 	                               int    core)
 		: BFdatacapture_impl("udp_capture", fd, ring, nsrc, src0, max_payload_size, buffer_ntime, slot_ntime, core), 
 		  _capture(fd, nsrc, core), _decoder(nsrc, src0), _processor(),
 		  _type_log("udp_capture/type"),
 		  _chan_log("udp_capture/chans"),
-		  _sequence_callback((*sequence_callback)->get_chips()) {
-		size_t contig_span  = this->bufsize(max_payload_size);
-		// Note: 2 write bufs may be open for writing at one time
-		size_t total_span   = contig_span * 4;
-		size_t nringlet_max = 1;
-		_ring.resize(contig_span, total_span, nringlet_max);
-		_type_log.update("type : %s", "chips");
+		  _sequence_callback(sequence_callback->get_chips()) {
+		_type_log.update("type : %s\n", "chips");
 	}
 };
 
-class BFudpcapture_tbn_impl : public BFdatacapture_impl {
+class BFudpcapture_tbn_impl : virtual public BFdatacapture_impl {
 	UDPCaptureThread _capture;
 	TBNDecoder       _decoder;
 	TBNProcessor     _processor;
@@ -310,6 +247,15 @@ class BFudpcapture_tbn_impl : public BFdatacapture_impl {
 	
 	BFoffset _time_tag;
 	
+	inline DataCaptureThread* get_capture() {
+	    return &_capture;
+	}
+	inline PacketDecoder* get_decoder() {
+	    return &_decoder;
+	}
+	inline PacketProcessor* get_processor() {
+	    return &_processor;
+    }
 	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
 		_seq          = round_nearest(pkt->seq, _nseq_per_buf);
 		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
@@ -360,23 +306,18 @@ public:
 	                             int    max_payload_size,
 	                             int    buffer_ntime,
 	                             int    slot_ntime,
-	                             BFdatacapture_callback* sequence_callback,
+	                             BFdatacapture_callback sequence_callback,
 	                             int    core)
 		: BFdatacapture_impl("udp_capture", fd, ring, nsrc, src0, max_payload_size, buffer_ntime, slot_ntime, core), 
 		  _capture(fd, nsrc, core), _decoder(nsrc, src0), _processor(),
 		  _type_log("udp_capture/type"),
 		  _chan_log("udp_capture/chans"),
-		  _sequence_callback((*sequence_callback)->get_tbn()) {
-		size_t contig_span  = this->bufsize(max_payload_size);
-		// Note: 2 write bufs may be open for writing at one time
-		size_t total_span   = contig_span * 4;
-		size_t nringlet_max = 1;
-		_ring.resize(contig_span, total_span, nringlet_max);
-		_type_log.update("type : %s", "tbn");
+		  _sequence_callback(sequence_callback->get_tbn()) {
+		_type_log.update("type : %s\n", "tbn");
 	}
 };
                                                     
-class BFudpcapture_drx_impl : public BFdatacapture_impl {
+class BFudpcapture_drx_impl : virtual public BFdatacapture_impl {
 	UDPCaptureThread _capture;
 	DRXDecoder       _decoder;
 	DRXProcessor     _processor;
@@ -389,6 +330,15 @@ class BFudpcapture_drx_impl : public BFdatacapture_impl {
 	int      _chan1;
 	uint8_t  _tstate;
 	
+	inline DataCaptureThread* get_capture() {
+	    return &_capture;
+	}
+	inline PacketDecoder* get_decoder() {
+	    return &_decoder;
+	}
+	inline PacketProcessor* get_processor() {
+	    return &_processor;
+    }
 	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
 		_seq          = round_nearest(pkt->seq, _nseq_per_buf);
 		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
@@ -453,20 +403,15 @@ public:
 	                             int    max_payload_size,
 	                             int    buffer_ntime,
 	                             int    slot_ntime,
-	                             BFdatacapture_callback* sequence_callback,
+	                             BFdatacapture_callback sequence_callback,
 	                             int    core)
 		: BFdatacapture_impl("udp_capture", fd, ring, nsrc, src0, max_payload_size, buffer_ntime, slot_ntime, core), 
 		  _capture(fd, nsrc, core), _decoder(nsrc, src0), _processor(),
 		  _type_log("udp_capture/type"),
 		  _chan_log("udp_capture/chans"),
-		  _sequence_callback((*sequence_callback)->get_drx()), 
+		  _sequence_callback(sequence_callback->get_drx()), 
 		  _chan1(), _tstate(0) {
-		size_t contig_span  = this->bufsize(max_payload_size);
-		// Note: 2 write bufs may be open for writing at one time
-		size_t total_span   = contig_span * 4;
-		size_t nringlet_max = 1;
-		_ring.resize(contig_span, total_span, nringlet_max);
-		_type_log.update("type : %s", "drx");
+		_type_log.update("type : %s\n", "drx");
 	}
 };
 
@@ -479,7 +424,7 @@ BFstatus bfUdpCaptureCreate(BFdatacapture* obj,
                             BFsize         max_payload_size,
                             BFsize         buffer_ntime,
                             BFsize         slot_ntime,
-                            BFdatacapture_callback* sequence_callback,
+                            BFdatacapture_callback sequence_callback,
                             int            core) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
 	if( format == std::string("chips") ) {

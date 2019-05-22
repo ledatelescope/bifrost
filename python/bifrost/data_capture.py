@@ -75,7 +75,7 @@ class DiskReader(BifrostObject):
             self, _bf.bfDiskReaderCreate, _bf.bfDataCaptureDestroy,
             fmt, fh.fileno(), ring.obj, nsrc, src0,
             buffer_nframe, slot_nframe,
-            sequence_callback, core)
+            sequence_callback.obj, core)
     def __enter__(self):
         return self
     def __exit__(self, type, value, tb):
