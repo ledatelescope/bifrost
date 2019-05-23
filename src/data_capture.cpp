@@ -28,8 +28,14 @@
  
 #include "data_capture.hpp"
 
+#define BF_JAYCE_DEBUG 0
+
+#if BF_JAYCE_DEBUG
 #define BF_PRINTD(stmt) \
     std::cout << stmt << std::endl
+#else // not BF_JAYCE_DEBUG
+#define BF_PRINTD(stmt)
+#endif
 
 #if BF_HWLOC_ENABLED
 int HardwareLocality::bind_memory_to_core(int core) {
@@ -75,6 +81,8 @@ int DataCaptureThread::run(uint64_t seq_beg,
 					ret = CAPTURE_TIMEOUT; // Timed out
 				} else if( errno == EINTR ) {
 					ret = CAPTURE_INTERRUPTED; // Interrupted by signal
+				} else if( pkt_size == 0 ) {
+				    ret = CAPTURE_NO_DATA;
 				} else {
 					ret = CAPTURE_ERROR; // Socket error
 				}
@@ -153,6 +161,12 @@ BFdatacapture_status BFdatacapture_impl::recv() {
 	    return BF_CAPTURE_ERROR;
 	} else if( state & DataCaptureThread::CAPTURE_INTERRUPTED ) {
 		return BF_CAPTURE_INTERRUPTED;
+	} else if( state & DataCaptureThread::CAPTURE_INTERRUPTED ) {
+	    if( _active ) {
+    	    return BF_CAPTURE_ENDED;
+    	} else {
+    	    return BF_CAPTURE_NO_DATA;
+    	}
 	}
 	const PacketStats* stats = (this->get_capture())->get_stats();
 	_stat_log.update() << "ngood_bytes    : " << _ngood_bytes << "\n"

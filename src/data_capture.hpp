@@ -199,7 +199,8 @@ public:
 		CAPTURE_SUCCESS     = 1 << 0,
 		CAPTURE_TIMEOUT     = 1 << 1,
 		CAPTURE_INTERRUPTED = 1 << 2,
-		CAPTURE_ERROR       = 1 << 3
+		CAPTURE_NO_DATA     = 1 << 3,
+		CAPTURE_ERROR       = 1 << 4
 	};
 	DataCaptureThread(int fd, int nsrc, int core=0, size_t pkt_size_max=9000)
      : BoundThread(core), _method(fd, pkt_size_max), _src_stats(nsrc),
