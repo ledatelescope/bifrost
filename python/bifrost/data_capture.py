@@ -60,7 +60,7 @@ class UDPCapture(BifrostObject):
     def recv(self):
         status = _bf.BFdatacapture_status()
         _check(_bf.bfDataCaptureRecv(self.obj, status))
-        return status
+        return status.value
     def flush(self):
         _check(_bf.bfDataCaptureFlush(self.obj))
     def end(self):
@@ -83,7 +83,7 @@ class DiskReader(BifrostObject):
     def recv(self):
         status = _bf.BFdatacapture_status()
         _check(_bf.bfDataCaptureRecv(self.obj, status))
-        return status
+        return status.value
     def flush(self):
         _check(_bf.bfDataCaptureFlush(self.obj))
     def end(self):
