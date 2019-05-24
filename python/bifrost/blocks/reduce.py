@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -48,7 +48,10 @@ class ReduceBlock(TransformBlock):
         itensor = ihdr['_tensor']
         ohdr = deepcopy(ihdr)
         otensor = ohdr['_tensor']
-        otensor['dtype'] = 'f32'
+        if itensor['dtype'] == 'cf32' and not self.op.startswith('pwr'):
+            otensor['dtype'] = 'cf32'
+        else:
+            otensor['dtype'] = 'f32'
         if 'labels' in itensor and isinstance(self.specified_axis, basestring):
             # Look up axis by label
             self.axis = itensor['labels'].index(self.specified_axis)
@@ -96,14 +99,18 @@ def reduce(iring, axis, factor=None, op='sum', *args, **kwargs):
                       the size of the axis (or the gulp_size in the case
                       where the axis is the frame axis).
         op (str): The operation with which the data should be reduced.
-                  One of: sum, mean, min, max, stderr [stderr=sum/sqrt(n)].
+                  One of: sum, mean, min, max, stderr [stderr=sum/sqrt(n)], 
+                  pwrsum [magnitude squared sum], pwrmean, pwrmin, pwrmax, 
+                  or pwrstderr
         *args: Arguments to ``bifrost.pipeline.TransformBlock``.
         **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
 
     **Tensor semantics**::
 
-        Input:  [..., N, ...], dtype = any real, space = CUDA
-        Output: [..., N / factor, ...], dtype = f32, space = CUDA
+        Input:  [..., N, ...], dtype = any, space = CUDA
+        Output: [..., N / factor, ...], dtype = f32 (real input or 'pwr' op.) or 
+                                                cf32 (complex input and non-'pwr' op.),
+                                        space = CUDA
 
     Returns:
         ReduceBlock: A new block instance.
