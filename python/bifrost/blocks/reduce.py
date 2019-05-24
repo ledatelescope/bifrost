@@ -48,10 +48,9 @@ class ReduceBlock(TransformBlock):
         itensor = ihdr['_tensor']
         ohdr = deepcopy(ihdr)
         otensor = ohdr['_tensor']
+        otensor['dtype'] = 'f32'
         if itensor['dtype'] == 'cf32' and not self.op.startswith('pwr'):
             otensor['dtype'] = 'cf32'
-        else:
-            otensor['dtype'] = 'f32'
         if 'labels' in itensor and isinstance(self.specified_axis, basestring):
             # Look up axis by label
             self.axis = itensor['labels'].index(self.specified_axis)
