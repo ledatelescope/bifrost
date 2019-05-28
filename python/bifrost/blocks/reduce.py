@@ -100,16 +100,24 @@ def reduce(iring, axis, factor=None, op='sum', *args, **kwargs):
         op (str): The operation with which the data should be reduced.
                   One of: sum, mean, min, max, stderr [stderr=sum/sqrt(n)], 
                   pwrsum [magnitude squared sum], pwrmean, pwrmin, pwrmax, 
-                  or pwrstderr
+                  or pwrstderr.  Note:  min and max are not supported for 
+                  complex valued data.
         *args: Arguments to ``bifrost.pipeline.TransformBlock``.
         **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
 
     **Tensor semantics**::
 
-        Input:  [..., N, ...], dtype = any, space = CUDA
-        Output: [..., N / factor, ...], dtype = f32 (real input or 'pwr' op.) or 
-                                                cf32 (complex input and non-'pwr' op.),
-                                        space = CUDA
+        Input:  [..., N, ...], dtype = float, space = CUDA
+        op = any
+        Output: [..., N / factor, ...], dtype = f32, space = CUDA
+        
+        Input:  [..., N, ...], dtype = complex, space = CUDA
+        op = 'sum', 'mean', 'stderr'
+        Output: [..., N / factor, ...], dtype = cf32, space = CUDA
+        
+        Input:  [..., N, ...], dtype = complex, space = CUDA
+        op = 'pwrsum', 'pwrmean', 'pwrmin', 'pwrmax', 'pwrstderr'
+        Output: [..., N / factor, ...], dtype = f32, space = CUDA
 
     Returns:
         ReduceBlock: A new block instance.
