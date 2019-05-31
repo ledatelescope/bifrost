@@ -52,7 +52,7 @@ class UDPCapture(BifrostObject):
             self, _bf.bfUdpCaptureCreate, _bf.bfDataCaptureDestroy,
             fmt, sock.fileno(), ring.obj, nsrc, src0,
             max_payload_size, buffer_ntime, slot_ntime,
-            sequence_callback, core)
+            sequence_callback.obj, core)
     def __enter__(self):
         return self
     def __exit__(self, type, value, tb):
