@@ -44,7 +44,7 @@ int HardwareLocality::bind_memory_to_core(int core) {
     int ret = 0;
     if( 0 <= core && core < ncore ) {
 	    hwloc_obj_t    obj    = hwloc_get_obj_by_depth(_topo, core_depth, core);
-	    hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->cpuset);
+	    hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->allowed_cpuset);
 	    hwloc_bitmap_singlify(cpuset); // Avoid hyper-threads
 	    hwloc_membind_policy_t policy = HWLOC_MEMBIND_BIND;
 	    hwloc_membind_flags_t  flags  = HWLOC_MEMBIND_THREAD;
