@@ -39,19 +39,19 @@
 
 #if BF_HWLOC_ENABLED
 int HardwareLocality::bind_memory_to_core(int core) {
-	int core_depth = hwloc_get_type_or_below_depth(_topo, HWLOC_OBJ_CORE);
-	int ncore      = hwloc_get_nbobjs_by_depth(_topo, core_depth);
-	int ret = 0;
-	if( 0 <= core && core < ncore ) {
-		hwloc_obj_t    obj    = hwloc_get_obj_by_depth(_topo, core_depth, core);
-		hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->cpuset);
-		hwloc_bitmap_singlify(cpuset); // Avoid hyper-threads
-		hwloc_membind_policy_t policy = HWLOC_MEMBIND_BIND;
-		hwloc_membind_flags_t  flags  = HWLOC_MEMBIND_THREAD;
-		ret = hwloc_set_membind(_topo, cpuset, policy, flags);
-		hwloc_bitmap_free(cpuset);
-	}
-	return ret;
+    int core_depth = hwloc_get_type_or_below_depth(_topo, HWLOC_OBJ_CORE);
+    int ncore      = hwloc_get_nbobjs_by_depth(_topo, core_depth);
+    int ret = 0;
+    if( 0 <= core && core < ncore ) {
+	    hwloc_obj_t    obj    = hwloc_get_obj_by_depth(_topo, core_depth, core);
+	    hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->cpuset);
+	    hwloc_bitmap_singlify(cpuset); // Avoid hyper-threads
+	    hwloc_membind_policy_t policy = HWLOC_MEMBIND_BIND;
+	    hwloc_membind_flags_t  flags  = HWLOC_MEMBIND_THREAD;
+	    ret = hwloc_set_membind(_topo, cpuset, policy, flags);
+	    hwloc_bitmap_free(cpuset);
+    }
+    return ret;
 }
 #endif // BF_HWLOC_ENABLED
 
@@ -75,7 +75,7 @@ int DataCaptureThread::run(uint64_t seq_beg,
 	while( true ) {
 		if( !_have_pkt ) {
 			uint8_t* pkt_ptr;
-			int pkt_size = (this->get_method())->recv_packet(&pkt_ptr);
+			int pkt_size = _method->recv_packet(&pkt_ptr);
 			if( pkt_size <= 0 ) {
 				if( errno == EAGAIN || errno == EWOULDBLOCK ) {
 					ret = CAPTURE_TIMEOUT; // Timed out
@@ -148,14 +148,14 @@ BFdatacapture_status BFdatacapture_impl::recv() {
 	src_ngood_bytes_ptrs[0] = _buf_src_ngood_bytes.size() > 0 ? &_buf_src_ngood_bytes.front()[0] : NULL;
 	src_ngood_bytes_ptrs[1] = _buf_src_ngood_bytes.size() > 1 ? &_buf_src_ngood_bytes.back()[0]  : NULL;
 	
-	int state = (this->get_capture())->run(_seq,
-	                                       _nseq_per_buf,
-	                                       _bufs.size(),
-	                                       buf_ptrs,
-	                                       ngood_bytes_ptrs,
-	                                       src_ngood_bytes_ptrs,
-	                                       this->get_decoder(),
-	                                       this->get_processor());
+	int state = _capture->run(_seq,
+	                          _nseq_per_buf,
+	                          _bufs.size(),
+	                          buf_ptrs,
+	                          ngood_bytes_ptrs,
+	                          src_ngood_bytes_ptrs,
+	                          _decoder,
+	                          _processor);
 	BF_PRINTD("OUTSIDE");
 	if( state & DataCaptureThread::CAPTURE_ERROR ) {
 	    return BF_CAPTURE_ERROR;
@@ -168,7 +168,7 @@ BFdatacapture_status BFdatacapture_impl::recv() {
     	    return BF_CAPTURE_NO_DATA;
     	}
 	}
-	const PacketStats* stats = (this->get_capture())->get_stats();
+	const PacketStats* stats = _capture->get_stats();
 	_stat_log.update() << "ngood_bytes    : " << _ngood_bytes << "\n"
 	                   << "nmissing_bytes : " << _nmissing_bytes << "\n"
 	                   << "ninvalid       : " << stats->ninvalid << "\n"
@@ -190,7 +190,7 @@ BFdatacapture_status BFdatacapture_impl::recv() {
 	BF_PRINTD("ACTIVE: " << _active << " WAS ACTIVE: " << was_active);
 	if( _active ) {
 	    BF_PRINTD("START");
-	    const PacketDesc* pkt = (this->get_capture())->get_last_packet();
+	    const PacketDesc* pkt = _capture->get_last_packet();
 	    BF_PRINTD("PRE-CALL");
 	    this->on_sequence_active(pkt);
 	    BF_PRINTD("POST-CALL");

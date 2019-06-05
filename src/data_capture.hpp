@@ -165,13 +165,16 @@ public:
 class DataCaptureMethod {
 protected:
     int                    _fd;
+    size_t                 _pkt_size_max;
 	AlignedBuffer<uint8_t> _buf;
 public:
 	DataCaptureMethod(int fd, size_t pkt_size_max=9000)
-	 : _fd(fd), _buf(pkt_size_max) {}
+	 : _fd(fd), _pkt_size_max(pkt_size_max), _buf(pkt_size_max) {}
 	virtual int recv_packet(uint8_t** pkt_ptr, int flags=0) {
 	    return 0;
 	}
+	virtual const char* get_name() { return "generic_capture"; }
+	inline const size_t get_max_size() {return _pkt_size_max; }
 };
 
 struct PacketStats {
@@ -185,15 +188,13 @@ struct PacketStats {
 
 class DataCaptureThread : public BoundThread {
 private:
-    DataCaptureMethod        _method;
+    DataCaptureMethod*       _method;
     PacketStats              _stats;
 	std::vector<PacketStats> _src_stats;
 	bool                     _have_pkt;
 	PacketDesc               _pkt;
+	int                      _core;
     
-    virtual DataCaptureMethod* get_method() {
-	    return &_method;
-	}
 public:
 	enum {
 		CAPTURE_SUCCESS     = 1 << 0,
@@ -202,9 +203,9 @@ public:
 		CAPTURE_NO_DATA     = 1 << 3,
 		CAPTURE_ERROR       = 1 << 4
 	};
-	DataCaptureThread(int fd, int nsrc, int core=0, size_t pkt_size_max=9000)
-     : BoundThread(core), _method(fd, pkt_size_max), _src_stats(nsrc),
-	   _have_pkt(false) {
+	DataCaptureThread(DataCaptureMethod* method, int nsrc, int core=0)
+     : BoundThread(core), _method(method), _src_stats(nsrc),
+	   _have_pkt(false), _core(core) {
 		this->reset_stats();
 	}
 	template<class PDC, class PPC>
@@ -216,6 +217,9 @@ public:
 	        size_t*  src_ngood_bytes[],
 	        PDC*     decode,
 	        PPC*     process);
+	inline const char* get_name() { return _method->get_name(); }
+	inline const size_t get_max_size() { return _method->get_max_size(); }
+	inline const int get_core() { return _core; }
     inline const PacketDesc* get_last_packet() const {
 		return _have_pkt ? &_pkt : NULL;
 	}
@@ -270,9 +274,9 @@ public:
 class BFdatacapture_impl {
 protected:
     std::string        _name;
-	DataCaptureThread  _capture;
-	PacketDecoder      _decoder;
-	PacketProcessor    _processor;
+	DataCaptureThread* _capture;
+	PacketDecoder*     _decoder;
+	PacketProcessor*   _processor;
 	ProcLog            _bind_log;
 	ProcLog            _out_log;
 	ProcLog            _size_log;
@@ -305,15 +309,6 @@ private:
 	size_t _ngood_bytes;
 	size_t _nmissing_bytes;
 	
-	virtual DataCaptureThread* get_capture() {
-	    return &_capture;
-	}
-	virtual PacketDecoder* get_decoder() {
-	    return &_decoder;
-	}
-	virtual PacketProcessor* get_processor() {
-	    return &_processor;
-	}
 	inline size_t bufsize(int payload_size=-1) {
 		if( payload_size == -1 ) {
 			payload_size = _payload_size;
@@ -340,8 +335,8 @@ private:
 			if( src_nmissing_bytes > src_ngood_bytes ) {
 				// Zero-out this source's contribution to the buffer
 				uint8_t* data = (uint8_t*)_bufs.front()->data();
-				_processor.blank_out_source(data, src, _nsrc,
-				                            _nchan, _nseq_per_buf);
+				_processor->blank_out_source(data, src, _nsrc,
+				                             _nchan, _nseq_per_buf);
 			}
 		}
 		_buf_src_ngood_bytes.pop();
@@ -371,16 +366,14 @@ private:
 	virtual inline bool has_sequence_changed(const PacketDesc* pkt) { return false; }
 	virtual void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {}
 public:
-	inline BFdatacapture_impl(std::string name,
-				              int         fd,
-	                          BFring      ring,
+	inline BFdatacapture_impl(DataCaptureThread* capture,
+	                          PacketDecoder*     decoder,
+	                          PacketProcessor*   processor,
+				              BFring      ring,
             	              int         nsrc,
-	                          int         src0,
-	                          int         max_payload_size,
 	                          int         buffer_ntime,
-	                          int         slot_ntime,
-	                          int         core)
-		: _name(name), _capture(fd, nsrc, core), _decoder(nsrc, src0), _processor(),
+	                          int         slot_ntime)
+		: _name(capture->get_name()), _capture(capture), _decoder(decoder), _processor(processor),
 		  _bind_log(_name+"/bind"),
 		  _out_log(_name+"/out"),
 		  _size_log(_name+"/sizes"),
@@ -391,14 +384,14 @@ public:
 		  _ring(ring), _oring(_ring),
 		  // TODO: Add reset method for stats
 		  _ngood_bytes(0), _nmissing_bytes(0) {
-        size_t contig_span  = this->bufsize(max_payload_size);
+        size_t contig_span  = this->bufsize(_capture->get_max_size());
 		// Note: 2 write bufs may be open for writing at one time
 		size_t total_span   = contig_span * 4;
 		size_t nringlet_max = 1;
 		_ring.resize(contig_span, total_span, nringlet_max);
 		_bind_log.update("ncore : %i\n"
 		                 "core0 : %i\n", 
-		                 1, core);
+		                 1, _capture->get_core());
 		_out_log.update("nring : %i\n"
 		                "ring0 : %s\n", 
 		                1, _ring.name());
@@ -421,4 +414,230 @@ public:
 		_oring.close();
 	}
 	BFdatacapture_status recv();
+};
+
+class BFdatacapture_chips_impl : public BFdatacapture_impl {
+	ProcLog            _type_log;
+	ProcLog            _chan_log;
+	
+	BFdatacapture_chips_sequence_callback _sequence_callback;
+	
+	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
+        // TODO: Might be safer to round to nearest here, but the current firmware
+		//         always starts things ~3 seq's before the 1sec boundary anyway.
+		//seq = round_up(pkt->seq, _slot_ntime);
+		//*_seq          = round_nearest(pkt->seq, _slot_ntime);
+		_seq          = round_up(pkt->seq, _slot_ntime);
+		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
+    }
+    void on_sequence_active(const PacketDesc* pkt) {
+        if( pkt ) {
+		    //cout << "Latest nchan, chan0 = " << pkt->nchan << ", " << pkt->chan0 << endl;
+		}
+		else {
+			//cout << "No latest packet" << endl;
+		}
+	}
+	inline bool has_sequence_changed(const PacketDesc* pkt) {
+	    return (pkt->chan0 != _chan0) \
+	           || (pkt->nchan != _nchan);
+	}
+	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+	    if( _sequence_callback ) {
+	        int status = (*_sequence_callback)(*seq0,
+			                                _chan0,
+			                                _nchan,
+			                                _nsrc,
+			                                time_tag,
+			                                hdr,
+			                                hdr_size);
+			if( status != 0 ) {
+			    // TODO: What to do here? Needed?
+				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
+			}
+		} else {
+			// Simple default for easy testing
+			*time_tag = *seq0;
+			*hdr      = NULL;
+			*hdr_size = 0;
+		}
+        
+	    _chan0 = pkt->chan0;
+		_nchan = pkt->nchan;
+		_payload_size = pkt->payload_size;
+		_chan_log.update() << "chan0        : " << _chan0 << "\n"
+		                   << "nchan        : " << _nchan << "\n"
+		                   << "payload_size : " << _payload_size << "\n";
+    }
+public:
+	inline BFdatacapture_chips_impl(DataCaptureThread* capture,
+	                                BFring ring,
+	                                int    nsrc,
+	                                int    src0,
+	                                int    buffer_ntime,
+	                                int    slot_ntime,
+	                                BFdatacapture_callback sequence_callback)
+		: BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+		  _type_log((std::string(capture->get_name())+"type").c_str()),
+		  _chan_log((std::string(capture->get_name())+"chans").c_str()),
+		  _sequence_callback(sequence_callback->get_chips()) {
+		_decoder = new CHIPSDecoder(nsrc, src0);
+		_processor = new CHIPSProcessor();
+		_type_log.update("type : %s\n", "chips");
+	}
+};
+
+class BFdatacapture_tbn_impl : public BFdatacapture_impl {
+	ProcLog          _type_log;
+	ProcLog          _chan_log;
+	
+	BFdatacapture_tbn_sequence_callback _sequence_callback;
+	
+	BFoffset _time_tag;
+	
+	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
+		_seq          = round_nearest(pkt->seq, _nseq_per_buf);
+		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
+    }
+    void on_sequence_active(const PacketDesc* pkt) {
+        if( pkt ) {
+		    //cout << "Latest time_tag, tuning = " << pkt->time_tag << ", " << pkt->tuning << endl;
+		}
+		else {
+			//cout << "No latest packet" << endl;
+		}
+	}
+	inline bool has_sequence_changed(const PacketDesc* pkt) {
+	    return (pkt->tuning != _chan0);
+	}
+	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+	    //cout << "Sequence changed" << endl;
+	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+	    *time_tag = pkt->time_tag;
+	    if( _sequence_callback ) {
+	        int status = (*_sequence_callback)(*seq0,
+	                                        *time_tag,
+			                                pkt->tuning,
+			                                _nsrc,
+			                                hdr,
+			                                hdr_size);
+			if( status != 0 ) {
+			    // TODO: What to do here? Needed?
+				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
+			}
+		} else {
+			// Simple default for easy testing
+			*time_tag = *seq0;
+			*hdr      = NULL;
+			*hdr_size = 0;
+		}
+        
+	    _time_tag     = pkt->time_tag;
+		_chan0        = pkt->tuning;
+		_payload_size = pkt->payload_size;
+		_chan_log.update() << "chan0        : " << _chan0 << "\n"
+				           << "payload_size : " << _payload_size << "\n";
+    }
+public:
+	inline BFdatacapture_tbn_impl(DataCaptureThread* capture,
+	                                BFring ring,
+	                                int    nsrc,
+	                                int    src0,
+	                                int    buffer_ntime,
+	                                int    slot_ntime,
+	                             BFdatacapture_callback sequence_callback)
+		: BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+		  _type_log((std::string(capture->get_name())+"type").c_str()),
+		  _chan_log((std::string(capture->get_name())+"chans").c_str()),
+		  _sequence_callback(sequence_callback->get_tbn()) {
+		_decoder = new TBNDecoder(nsrc, src0);
+		_processor = new TBNProcessor();
+		_type_log.update("type : %s\n", "tbn");
+	}
+};
+                                                    
+class BFdatacapture_drx_impl : public BFdatacapture_impl {
+	ProcLog          _type_log;
+	ProcLog          _chan_log;
+	
+	BFdatacapture_drx_sequence_callback _sequence_callback;
+	
+	BFoffset _time_tag;
+	int      _chan1;
+	uint8_t  _tstate;
+	
+	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
+		_seq          = round_nearest(pkt->seq, _nseq_per_buf);
+		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
+    }
+    void on_sequence_active(const PacketDesc* pkt) {
+        if( pkt ) {
+		    //cout << "Latest nchan, chan0 = " << pkt->nchan << ", " << pkt->chan0 << endl;
+		}
+		else {
+			//cout << "No latest packet" << endl;
+		}
+		
+		if( pkt->src / 2  == 0 ) {
+			if( pkt->tuning != _chan0 ) {
+				_tstate |= 1;
+				_chan0 = pkt->tuning;
+			}
+		} else {
+			if( pkt->tuning != _chan1 ) {
+				_tstate |= 2;
+				_chan1 = pkt->tuning;
+			}
+		}
+	}
+	inline bool has_sequence_changed(const PacketDesc* pkt) {
+	    return (   (_tstate == 3 && _nsrc == 4) 
+	            || (_tstate != 0 && _nsrc == 2) );
+	}
+	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+	    *time_tag = pkt->time_tag;
+	    if( _sequence_callback ) {
+	        int status = (*_sequence_callback)(*seq0,
+	                                        *time_tag,
+			                                _chan0,
+			                                _chan1,
+			                                _nsrc,
+			                                hdr,
+			                                hdr_size);
+			if( status != 0 ) {
+			    // TODO: What to do here? Needed?
+				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
+			}
+		} else {
+			// Simple default for easy testing
+			*time_tag = *seq0;
+			*hdr      = NULL;
+			*hdr_size = 0;
+		}
+        
+	    _time_tag     = pkt->time_tag;
+		_payload_size = pkt->payload_size;
+		_chan_log.update() << "chan0        : " << _chan0 << "\n"
+					       << "chan1        : " << _chan1 << "\n"
+					       << "payload_size : " << _payload_size << "\n";
+    }
+public:
+	inline BFdatacapture_drx_impl(DataCaptureThread* capture,
+	                                BFring ring,
+	                                int    nsrc,
+	                                int    src0,
+	                                int    buffer_ntime,
+	                                int    slot_ntime,
+	                             BFdatacapture_callback sequence_callback)
+		: BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+		  _type_log((std::string(capture->get_name())+"type").c_str()),
+		  _chan_log((std::string(capture->get_name())+"chans").c_str()),
+		  _sequence_callback(sequence_callback->get_drx()), 
+		  _chan1(), _tstate(0) {
+		_decoder = new DRXDecoder(nsrc, src0);
+		_processor = new DRXProcessor();
+		_type_log.update("type : %s\n", "drx");
+	}
 };
