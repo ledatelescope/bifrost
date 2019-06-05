@@ -66,6 +66,29 @@ class UDPCapture(BifrostObject):
     def end(self):
         _check(_bf.bfDataCaptureEnd(self.obj))
 
+class UDPSniffer(BifrostObject):
+    def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
+                 buffer_ntime, slot_ntime, sequence_callback, core=None):
+        if core is None:
+            core = -1
+        BifrostObject.__init__(
+            self, _bf.bfUdpSnifferCreate, _bf.bfDataCaptureDestroy,
+            fmt, sock.fileno(), ring.obj, nsrc, src0,
+            max_payload_size, buffer_ntime, slot_ntime,
+            sequence_callback.obj, core)
+    def __enter__(self):
+        return self
+    def __exit__(self, type, value, tb):
+        self.end()
+    def recv(self):
+        status = _bf.BFdatacapture_status()
+        _check(_bf.bfDataCaptureRecv(self.obj, status))
+        return status.value
+    def flush(self):
+        _check(_bf.bfDataCaptureFlush(self.obj))
+    def end(self):
+        _check(_bf.bfDataCaptureEnd(self.obj))
+
 class DiskReader(BifrostObject):
     def __init__(self, fmt, fh, ring, nsrc, src0,
                  buffer_nframe, slot_nframe, sequence_callback, core=None):
