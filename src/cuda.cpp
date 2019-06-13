@@ -34,12 +34,27 @@
 thread_local cudaStream_t g_cuda_stream = cudaStreamPerThread;
 #endif
 
+BFstatus bfStreamCreate(void* stream,
+                        BFbool nonblocking=false) {
+    BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
+#if BF_CUDA_ENABLED
+    int flags = cudaStreamDefault;
+    if( nonblocking ) {
+        flags = cudaStreamNonBlocking;
+    }
+    BF_CHECK_CUDA(cudaStreamCreateWithFlags((cudaStream_t*)stream, flags),
+                  BF_STATUS_DEVICE_ERROR);
+#else
+    BF_FAIL("Built without CUDA support (bfStreamCreate)", BF_STATUS_INVALID_STATE);
+#endif
+    return BF_STATUS_SUCCESS;
+}
 BFstatus bfStreamGet(void* stream) {
 	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
 #if BF_CUDA_ENABLED
 	*(cudaStream_t*)stream = g_cuda_stream;
 #else
-	BF_FAIL("Built with CUDA support (bfStreamGet)", BF_STATUS_INVALID_STATE);
+	BF_FAIL("Built without CUDA support (bfStreamGet)", BF_STATUS_INVALID_STATE);
 #endif
 	return BF_STATUS_SUCCESS;
 }

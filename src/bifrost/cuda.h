@@ -35,6 +35,8 @@
 extern "C" {
 #endif
 
+BFstatus bfStreamCreate(void*    stream,
+                        BFbool   nonblocking);
 BFstatus bfStreamGet(void*       stream);
 BFstatus bfStreamSet(void const* stream);
 BFstatus bfStreamSynchronize();
