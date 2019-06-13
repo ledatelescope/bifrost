@@ -30,6 +30,7 @@
 #include "utils.hpp"
 
 #ifdef BF_CUDA_ENABLED
+#include "cuda.hpp"
 #include <gunpack.hu>
 #endif
 
@@ -311,7 +312,7 @@ BFstatus bfUnpack(BFarray const* in,
 	                          GunpackFunctor<itype,otype>(byteswap, \
 	                                                      align_msb, \
 	                                                      conjugate), \
-	                          (cudaStream_t)0)
+	                          g_cuda_stream)
 	                          
 #define CALL_FOREACH_PROMOTE_GPU_UNPACK(itype,ttype,otype) \
 	launch_foreach_promote_gpu((itype*)in->data, \
@@ -321,7 +322,7 @@ BFstatus bfUnpack(BFarray const* in,
 	                           GunpackFunctor<itype,ttype>(byteswap, \
 	                                                       align_msb, \
 	                                                       conjugate), \
-	                           (cudaStream_t)0)
+	                           g_cuda_stream)
 
 #endif
 	

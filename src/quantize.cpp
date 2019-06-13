@@ -35,6 +35,7 @@
 #include <iostream>
 
 #ifdef BF_CUDA_ENABLED
+#include "cuda.hpp"
 #include <guantize.hu>
 #endif
 
@@ -285,7 +286,7 @@ BFstatus bfQuantize(BFarray const* in,
 	                          nelement, \
 	                          GuantizeFunctor<itype,stype,otype> \
 	                          (scale,byteswap_in,byteswap_out), \
-	                          (cudaStream_t)0)
+	                          g_cuda_stream)
 #endif
 	
 	// **TODO: Need CF32 --> CI* separately to support conjugation
@@ -302,7 +303,7 @@ BFstatus bfQuantize(BFarray const* in,
 				                               nelement, \
 				                               GuantizeFunctor<float,float,uint8_t> \
 				                               (scale,byteswap_in,byteswap_out), \
-				                               (cudaStream_t)0);
+				                               g_cuda_stream);
 			} else {
 				foreach_simple_cpu_1bit((float*)in->data, \
 				                        (int8_t*)out->data, \
@@ -329,7 +330,7 @@ BFstatus bfQuantize(BFarray const* in,
 				                               nelement, \
 				                               GuantizeFunctor<float,float,uint8_t> \
 				                               (scale,byteswap_in,byteswap_out), \
-				                               (cudaStream_t)0);
+				                               g_cuda_stream);
 			} else {
 				foreach_simple_cpu_2bit((float*)in->data, \
 				                        (int8_t*)out->data, \
@@ -356,7 +357,7 @@ BFstatus bfQuantize(BFarray const* in,
 				                               nelement, \
 				                               GuantizeFunctor<float,float,uint8_t> \
 				                               (scale,byteswap_in,byteswap_out), \
-				                               (cudaStream_t)0);
+				                               g_cuda_stream);
 			} else {
 				foreach_simple_cpu_4bit((float*)in->data, \
 				                        (int8_t*)out->data, \
