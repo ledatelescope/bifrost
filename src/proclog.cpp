@@ -167,12 +167,19 @@ public:
 	std::string create_log(std::string name) {
 		std::lock_guard<std::mutex> lock(_mutex);
 		std::string origname = name;
-		int i = 1;
-		while( _logs.count(name) ) {
-			// Disambiguate by adding suffix to name
-			name = origname + "_" + std::to_string(++i);
-		}
+		std::string modname = name.substr(0, name.find("/"));
+		std::string logname = name.substr(name.find("/"), name.length());
 		std::string filename = _logdir + "/" + name;
+		
+		int i = 1;
+		while( _logs.count(filename) ) {
+			// Disambiguate by adding suffix to name
+			name = modname + "_" + std::to_string(++i);
+			if( logname.length() > 0 ) {
+				name = name + "/" + logname;
+			}
+			filename = _logdir + "/" + name;
+		}
 		_logs.insert(filename);
 		return filename;
 	}
