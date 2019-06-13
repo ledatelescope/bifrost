@@ -116,8 +116,10 @@ class ProcLogMgr {
 			while( (ep = readdir(dp)) ) {
 				pid_t pid = atoi(ep->d_name);
 				if( pid && !process_exists(pid) ) {
-					remove_all(std::string(base_logdir) + "/" +
-					           std::to_string(pid));
+					try {
+						remove_all(std::string(base_logdir) + "/" +
+							   std::to_string(pid));
+					} catch( std::exception ) {}
 				}
 			}
 			closedir(dp);
