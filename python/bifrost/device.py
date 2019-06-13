@@ -25,6 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from ctypes import c_ulong, byref
 from libbifrost import _bf, _check, _get
 
 def set_device(device):
@@ -32,10 +33,22 @@ def set_device(device):
         _check(_bf.bfDeviceSet(device))
     else:
         _check(_bf.bfDeviceSetById(device))
+
 def get_device():
     return _get(_bf.bfDeviceGet)
 
-# TODO: set/get_stream
+def get_stream():
+    """Get the current CUDA stream and return it as a ctypes.c_ulong instance."""
+    stream = c_ulong(0)
+    _check(_bf.bfStreamGet(byref(stream)))
+    return stream
+
+def set_stream(stream):
+    """Set the CUDA stream to the provided ctypes.c_ulong instance."""
+    if not isinstance(stream, c_ulong):
+        raise TypeError("Expected a ctypes.u_int instance")
+    _check(_bf.bfStreamSet(byref(stream)))
+    return True
 
 def stream_synchronize():
     _check(_bf.bfStreamSynchronize())
