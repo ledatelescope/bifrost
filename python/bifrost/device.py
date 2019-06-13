@@ -37,6 +37,15 @@ def set_device(device):
 def get_device():
     return _get(_bf.bfDeviceGet)
 
+def create_stream(nonblocking=False):
+    """Create a new CUDA stream and return it as a ctypes.c_ulong instance.  
+    If the `nonblocking` is True then the stream may run independently with
+    respect to stream 0."""
+    stream = c_ulong(0)
+    _check(_bf.bfStreamCreate(byref(stream), nonblocking))
+    return stream
+
+
 def get_stream():
     """Get the current CUDA stream and return it as a ctypes.c_ulong instance."""
     stream = c_ulong(0)
