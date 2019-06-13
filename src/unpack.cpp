@@ -31,6 +31,7 @@
 
 #ifdef BF_CUDA_ENABLED
 #include "cuda.hpp"
+#include "trace.hpp"
 #include <gunpack.hu>
 #endif
 
@@ -306,15 +307,22 @@ BFstatus bfUnpack(BFarray const* in,
 	                                              
 #ifdef BF_CUDA_ENABLED
 #define CALL_FOREACH_SIMPLE_GPU_UNPACK(itype,otype) \
+	{ \
+	BF_TRACE(); \
+	BF_TRACE_STREAM(g_cuda_stream); \
 	launch_foreach_simple_gpu((itype*)in->data, \
 	                          (otype*)out->data, \
 	                          nelement, \
 	                          GunpackFunctor<itype,otype>(byteswap, \
 	                                                      align_msb, \
 	                                                      conjugate), \
-	                          g_cuda_stream)
+	                          g_cuda_stream); \
+	} while(0)
 	                          
 #define CALL_FOREACH_PROMOTE_GPU_UNPACK(itype,ttype,otype) \
+	{ \
+	BF_TRACE(); \
+	BF_TRACE_STREAM(g_cuda_stream); \
 	launch_foreach_promote_gpu((itype*)in->data, \
 	                           (ttype*)&not_really_used, \
 	                           (otype*)out->data, \
@@ -322,7 +330,8 @@ BFstatus bfUnpack(BFarray const* in,
 	                           GunpackFunctor<itype,ttype>(byteswap, \
 	                                                       align_msb, \
 	                                                       conjugate), \
-	                           g_cuda_stream)
+	                           g_cuda_stream); \
+	} while(0)
 
 #endif
 	
