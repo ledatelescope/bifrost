@@ -81,6 +81,9 @@ BFstatus bfDiskReaderCreate(BFdatacapture* obj,
 	if( std::string(format).substr(0, 6) == std::string("chips_") ) {
 	    int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
 	    max_payload_size = sizeof(chips_hdr_type) + 32*nchan;
+    } else if(std::string(format).substr(0, 4) == std::string("cor_") ) {
+        int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
+        max_payload_size = sizeof(cor_hdr_type) + (8*4*nchan);
 	} else if( format == std::string("tbn") ) {
 	    max_payload_size = TBN_FRAME_SIZE;
 	} else if( format == std::string("drx") ) {
@@ -95,6 +98,11 @@ BFstatus bfDiskReaderCreate(BFdatacapture* obj,
 		                                                       buffer_ntime, slot_ntime,
 		                                                       sequence_callback),
 		                   *obj = 0);
+    } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFdatacapture_cor_impl(capture, ring, nsrc, src0,
+                                                             buffer_ntime, slot_ntime,
+                                                             sequence_callback),
+                           *obj = 0);
 	} else if( format == std::string("tbn") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFdatacapture_tbn_impl(capture, ring, nsrc, src0,
 		                                                    buffer_ntime, slot_ntime,
@@ -105,7 +113,7 @@ BFstatus bfDiskReaderCreate(BFdatacapture* obj,
 		                                                    buffer_ntime, slot_ntime,
 		                                                    sequence_callback),
 		                   *obj = 0);
-	} else {
+    } else {
 		return BF_STATUS_UNSUPPORTED;
 	}
 }

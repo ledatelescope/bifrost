@@ -55,6 +55,8 @@ BFstatus bfDataCaptureEnd(BFdatacapture obj);
 
 typedef int (*BFdatacapture_chips_sequence_callback)(BFoffset, int, int, int,
                                                     BFoffset*, void const**, size_t*);
+typedef int (*BFdatacapture_cor_sequence_callback)(BFoffset, BFoffset, int, int,
+                                                   int, int, void const**, size_t*);
 typedef int (*BFdatacapture_tbn_sequence_callback)(BFoffset, BFoffset, int, int, 
                                                    void const**, size_t*);
 typedef int (*BFdatacapture_drx_sequence_callback)(BFoffset, BFoffset, int, int, int, 
@@ -65,6 +67,7 @@ typedef struct BFdatacapture_callback_impl* BFdatacapture_callback;
 BFstatus bfDataCaptureCallbackCreate(BFdatacapture_callback* obj);
 BFstatus bfDataCaptureCallbackDestroy(BFdatacapture_callback obj);
 BFstatus bfDataCaptureCallbackSetCHIPS(BFdatacapture_callback obj, BFdatacapture_chips_sequence_callback callback);
+BFstatus bfDataCaptureCallbackSetCOR(BFdatacapture_callback obj, BFdatacapture_cor_sequence_callback callback);
 BFstatus bfDataCaptureCallbackSetTBN(BFdatacapture_callback obj, BFdatacapture_tbn_sequence_callback callback);
 BFstatus bfDataCaptureCallbackSetDRX(BFdatacapture_callback obj, BFdatacapture_drx_sequence_callback callback);
 

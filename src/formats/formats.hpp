@@ -29,5 +29,6 @@
 #pragma once
 
 #include "chips.hpp"
+#include "cor.hpp"
 #include "drx.hpp"
 #include "tbn.hpp"

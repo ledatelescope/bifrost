@@ -36,6 +36,9 @@ class DataCaptureCallback(BifrostObject):
     def set_chips(self, fnc):
         _check(_bf.bfDataCaptureCallbackSetCHIPS(
             self.obj, _bf.BFdatacapture_chips_sequence_callback(fnc)))
+    def set_cor(self, fnc):
+        _check(_bf.bfDataCaptureCallbackSetCOR(
+            self.obj, _bf.BFdatacapture_cor_sequence_callback(fnc)))
     def set_tbn(self, fnc):
         _check(_bf.bfDataCaptureCallbackSetTBN(
             self.obj, _bf.BFdatacapture_tbn_sequence_callback(fnc)))

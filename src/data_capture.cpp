@@ -273,6 +273,12 @@ BFstatus bfDataCaptureCallbackSetCHIPS(BFdatacapture_callback obj, BFdatacapture
 	return BF_STATUS_SUCCESS;
 }
 
+BFstatus bfDataCaptureCallbackSetCOR(BFdatacapture_callback obj, BFdatacapture_cor_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_cor(callback);
+    return BF_STATUS_SUCCESS;
+}
+
 BFstatus bfDataCaptureCallbackSetTBN(BFdatacapture_callback obj, BFdatacapture_tbn_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	obj->set_tbn(callback);

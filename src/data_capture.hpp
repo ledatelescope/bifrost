@@ -245,16 +245,23 @@ inline uint64_t round_nearest(uint64_t val, uint64_t mult) {
 
 class BFdatacapture_callback_impl {
     BFdatacapture_chips_sequence_callback _chips_callback;
+    BFdatacapture_cor_sequence_callback _cor_callback;
     BFdatacapture_tbn_sequence_callback _tbn_callback;
     BFdatacapture_drx_sequence_callback _drx_callback;
 public:
     BFdatacapture_callback_impl()
-     : _chips_callback(NULL), _tbn_callback(NULL), _drx_callback(NULL) {}
+     : _chips_callback(NULL), _cor_callback(NULL), _tbn_callback(NULL), _drx_callback(NULL) {}
     inline void set_chips(BFdatacapture_chips_sequence_callback callback) {
-	_chips_callback = callback;
+        _chips_callback = callback;
     }
     inline BFdatacapture_chips_sequence_callback get_chips() {
-	return _chips_callback;
+        return _chips_callback;
+    }
+    inline void set_cor(BFdatacapture_cor_sequence_callback callback) {
+        _cor_callback = callback;
+    }
+    inline BFdatacapture_cor_sequence_callback get_cor() {
+        return _cor_callback;
     }
     inline void set_tbn(BFdatacapture_tbn_sequence_callback callback) {
         _tbn_callback = callback;
@@ -268,7 +275,6 @@ public:
     inline BFdatacapture_drx_sequence_callback get_drx() {
         return _drx_callback;
     }
-    
 };
 
 class BFdatacapture_impl {
@@ -444,14 +450,18 @@ class BFdatacapture_chips_impl : public BFdatacapture_impl {
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+        _chan0 = pkt->chan0;
+        _nchan = pkt->nchan;
+        _payload_size = pkt->payload_size;
+        
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
-			                                _chan0,
-			                                _nchan,
-			                                _nsrc,
-			                                time_tag,
-			                                hdr,
-			                                hdr_size);
+			                                   _chan0,
+			                                   _nchan,
+			                                   _nsrc,
+			                                   time_tag,
+			                                   hdr,
+			                                   hdr_size);
 			if( status != 0 ) {
 			    // TODO: What to do here? Needed?
 				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -463,9 +473,6 @@ class BFdatacapture_chips_impl : public BFdatacapture_impl {
 			*hdr_size = 0;
 		}
         
-	    _chan0 = pkt->chan0;
-		_nchan = pkt->nchan;
-		_payload_size = pkt->payload_size;
 		_chan_log.update() << "chan0        : " << _chan0 << "\n"
 		                   << "nchan        : " << _nchan << "\n"
 		                   << "payload_size : " << _payload_size << "\n";
@@ -486,6 +493,83 @@ public:
 		_processor = new CHIPSProcessor();
 		_type_log.update("type : %s\n", "chips");
 	}
+};
+
+class BFdatacapture_cor_impl : public BFdatacapture_impl {
+    ProcLog          _type_log;
+    ProcLog          _chan_log;
+    
+    BFdatacapture_cor_sequence_callback _sequence_callback;
+    
+    BFoffset _time_tag;
+    int      _navg;
+    
+    void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
+        _seq          = round_nearest(pkt->seq, _nseq_per_buf);
+        this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
+    }
+    void on_sequence_active(const PacketDesc* pkt) {
+        if( pkt ) {
+            //cout << "Latest time_tag, tuning = " << pkt->time_tag << ", " << pkt->tuning << endl;
+        }
+        else {
+            //cout << "No latest packet" << endl;
+        }
+    }
+    inline bool has_sequence_changed(const PacketDesc* pkt) {
+        return (pkt->tuning == 0) \
+               && ((pkt->chan0 != _chan0) \
+                  || (pkt->nchan != _nchan) \
+                  || (pkt->decimation != _navg));
+    }
+    void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+        *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+        *time_tag = pkt->time_tag;
+        _chan0 = pkt->chan0;
+        _nchan = pkt->nchan;
+        _navg  = pkt->decimation;
+        _payload_size = pkt->payload_size;
+        
+        if( _sequence_callback ) {
+            int status = (*_sequence_callback)(*seq0,
+                                               *time_tag,
+                                               _chan0,
+                                               _nchan,
+                                               _navg,
+                                               _nsrc,
+                                               hdr,
+                                               hdr_size);
+            if( status != 0 ) {
+                // TODO: What to do here? Needed?
+                throw std::runtime_error("BAD HEADER CALLBACK STATUS");
+            }
+        } else {
+            // Simple default for easy testing
+            *time_tag = *seq0;
+            *hdr      = NULL;
+            *hdr_size = 0;
+        }
+        
+        _chan_log.update() << "chan0        : " << _chan0 << "\n"
+                           << "nchan        : " << _nchan << "\n"
+                           << "payload_size : " << _payload_size << "\n";
+    }
+public:
+    inline BFdatacapture_cor_impl(DataCaptureThread* capture,
+                                  BFring ring,
+                                  int    nsrc,
+                                  int    src0,
+                                  int    buffer_ntime,
+                                  int    slot_ntime,
+                                  BFdatacapture_callback sequence_callback)
+        : BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+          _type_log((std::string(capture->get_name())+"type").c_str()),
+          _chan_log((std::string(capture->get_name())+"chans").c_str()),
+          _sequence_callback(sequence_callback->get_cor()) {
+        _decoder = new CORDecoder(nsrc, src0);
+        _processor = new CORProcessor();
+        _type_log.update("type : %s\n", "cor");
+    }
 };
 
 class BFdatacapture_tbn_impl : public BFdatacapture_impl {
@@ -515,13 +599,17 @@ class BFdatacapture_tbn_impl : public BFdatacapture_impl {
 	    //cout << "Sequence changed" << endl;
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
 	    *time_tag = pkt->time_tag;
+        _time_tag     = pkt->time_tag;
+        _chan0        = pkt->tuning;
+        _payload_size = pkt->payload_size;
+        
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
-	                                        *time_tag,
-			                                pkt->tuning,
-			                                _nsrc,
-			                                hdr,
-			                                hdr_size);
+	                                           *time_tag,
+			                                   pkt->tuning,
+			                                   _nsrc,
+			                                   hdr,
+			                                   hdr_size);
 			if( status != 0 ) {
 			    // TODO: What to do here? Needed?
 				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -533,9 +621,6 @@ class BFdatacapture_tbn_impl : public BFdatacapture_impl {
 			*hdr_size = 0;
 		}
         
-	    _time_tag     = pkt->time_tag;
-		_chan0        = pkt->tuning;
-		_payload_size = pkt->payload_size;
 		_chan_log.update() << "chan0        : " << _chan0 << "\n"
 				           << "payload_size : " << _payload_size << "\n";
     }
@@ -598,6 +683,9 @@ class BFdatacapture_drx_impl : public BFdatacapture_impl {
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
 	    *time_tag = pkt->time_tag;
+        _time_tag     = pkt->time_tag;
+        _payload_size = pkt->payload_size;
+        
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
 	                                        *time_tag,
@@ -617,8 +705,6 @@ class BFdatacapture_drx_impl : public BFdatacapture_impl {
 			*hdr_size = 0;
 		}
         
-	    _time_tag     = pkt->time_tag;
-		_payload_size = pkt->payload_size;
 		_chan_log.update() << "chan0        : " << _chan0 << "\n"
 					       << "chan1        : " << _chan1 << "\n"
 					       << "payload_size : " << _payload_size << "\n";
