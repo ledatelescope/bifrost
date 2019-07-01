@@ -799,7 +799,10 @@ sockaddr_storage Socket::get_local_address() /*const*/ {
 }
 void Socket::close() {
 	if( _fd >= 0 ) {
-	    this->set_promiscuous(false);
+            try {
+	        this->set_promiscuous(false);
+            }
+            catch( Socket::Error ) {}
 		::close(_fd);
 		_fd     = -1;
 		_family = AF_UNSPEC;
