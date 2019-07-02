@@ -48,7 +48,7 @@ class CORDecoder : virtual public PacketDecoder {
    inline bool valid_packet(const PacketDesc* pkt) const {
 	    return (pkt->sync       == 0x5CDEC0DE &&
 	            pkt->src        >= 0 &&
-               	pkt->src        <  _nsrc &&
+	            pkt->src        <  pkt->nsrc &&
 	            pkt->time_tag   >= 0 &&
 	            pkt->chan0      >= 0);
     }
@@ -63,21 +63,22 @@ public:
 	    const cor_hdr_type* pkt_hdr  = (cor_hdr_type*)pkt_ptr;
 	    const uint8_t*      pkt_pld  = pkt_ptr  + sizeof(cor_hdr_type);
 	    int                 pld_size = pkt_size - sizeof(cor_hdr_type);
-        // HACK
-        uint8_t             nserver = 1;//(be32toh(pkt_hdr->frame_count_word) >> 8) & 0xFF;
-        // HACK
-	    uint8_t             server = 1;//be32toh(pkt_hdr->frame_count_word) & 0xFF;
+        uint8_t             nserver = (be32toh(pkt_hdr->frame_count_word) >> 8) & 0xFF;
+        uint8_t             server = be32toh(pkt_hdr->frame_count_word) & 0xFF;
+        uint16_t            nchan_pkt = (pld_size/(8*4));
 	    uint16_t            stand0 = be16toh(pkt_hdr->stand0) - 1;
 	    uint16_t            stand1 = be16toh(pkt_hdr->stand1) - 1;
-	    uint16_t            nstand = (sqrt(8*_nsrc+1)-1)/2;
+	    uint16_t            nstand = (sqrt(8*_nsrc/nserver+1)-1)/2;
 	    pkt->sync         = pkt_hdr->sync_word;
 	    pkt->time_tag     = be64toh(pkt_hdr->time_tag);
 	    pkt->decimation   = be32toh(pkt_hdr->navg);
 	    pkt->seq          = pkt->time_tag / 196000000 / (pkt->decimation / 100);
 	    pkt->nsrc         = _nsrc;
-	    pkt->src          = stand0*(2*(nstand-1)+1-stand0)/2 + stand1 + 1 - _src0;
-	    pkt->chan0        = be16toh(pkt_hdr->first_chan);
-        pkt->nchan        = nserver * (pld_size/(8*4));     // Stores the total number of channels
+	    pkt->src          = (stand0*(2*(nstand-1)+1-stand0)/2 + stand1 + 1 - _src0)*nserver \
+	                        + (server - 1);
+	    pkt->chan0        = be16toh(pkt_hdr->first_chan) \
+	                        - nchan_pkt * (server - 1);
+        pkt->nchan        = nchan_pkt * nserver;            // Stores the total number of channels
 	    pkt->tuning       = (nserver << 8) | (server - 1);  // Stores the number of servers and 
                                                             // the server that sent this packet
 	    pkt->gain         = be16toh(pkt_hdr->gain);
@@ -88,6 +89,7 @@ public:
             std::cout << "nsrc:   " << pkt->nsrc << std::endl;
             std::cout << "stand0: " << stand0 << std::endl;
             std::cout << "stand1: " << stand1 << std::endl;
+            std::cout << "server: " << server << std::endl;
             std::cout << "src:    " << pkt->src << std::endl;
             std::cout << "chan0:  " << pkt->chan0 << std::endl;
             std::cout << "nchan:  " << pld_size/32 << std::endl;
@@ -126,29 +128,27 @@ public:
 	    itype const* __restrict__ in  = (itype const*)pkt->payload_ptr;
 	    otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
 	    
-	    // Convinience
-	    int bl = pkt->src;
-	    //int nbl = pkt->nsrc;
-	    int server = pkt->tuning & 0xFF;
+	    // Convenience
+	    int bl_server = pkt->src;
 	    int nserver = (pkt->tuning >> 8) & 0xFF;
         int nchan = pkt->nchan/nserver;
 	    
 	    int chan = 0;
-	    for( ; chan<nchan; ++chan ) {
-		    out[bl*nserver*nchan + server*nchan + chan] = in[chan];
+        for( ; chan<nchan; ++chan ) {
+		    out[bl_server*nchan + chan] = in[chan];
 	    }
     }
 	
     inline void blank_out_source(uint8_t* data,
-	                             int      src,  // bl
-	                             int      nsrc, // nbl
+	                             int      src,  // bl_server
+	                             int      nsrc, // nbl_server
 	                             int      nchan,
 	                             int      nseq) {
 	    typedef aligned256_type otype;
 	    otype* __restrict__ aligned_data = (otype*)data;
         for( int t=0; t<nseq; ++t ) {
 		    ::memset(&aligned_data[t*nsrc*nchan + src*nchan],
-			             0, nchan*sizeof(otype));
+			         0, nchan*sizeof(otype));
 	    }
     }
 };

@@ -517,10 +517,9 @@ class BFdatacapture_cor_impl : public BFdatacapture_impl {
         }
     }
     inline bool has_sequence_changed(const PacketDesc* pkt) {
-        return (pkt->tuning == 0) \
-               && ((pkt->chan0 != _chan0) \
-                  || (pkt->nchan != _nchan) \
-                  || (pkt->decimation != _navg));
+        return ((pkt->chan0 != _chan0) \
+                || (pkt->nchan != _nchan) \
+                || (pkt->decimation != _navg));
     }
     void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
         *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
@@ -536,7 +535,7 @@ class BFdatacapture_cor_impl : public BFdatacapture_impl {
                                                _chan0,
                                                _nchan,
                                                _navg,
-                                               _nsrc,
+                                               _nsrc/((pkt->tuning >> 8) & 0xFF),
                                                hdr,
                                                hdr_size);
             if( status != 0 ) {
