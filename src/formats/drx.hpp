@@ -138,8 +138,8 @@ public:
         memset(header, 0, sizeof(drx_hdr_type));
         
         header->sync_word        = 0x5CDEC0DE;
-        header->frame_count_word = (hdr_base->src & 0xFD);   // ID is the lower 8 bits;
-                                                             // bit 2 is reserved
+        header->frame_count_word = htobe32(hdr_base->src & 0xFD);   // ID is the lower 8 bits;
+                                                                    // bit 2 is reserved
         header->decimation       = htobe16(hdr_base->decimation);
         header->time_offset      = 0;
         header->time_tag         = htobe64(hdr_base->seq);
