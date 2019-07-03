@@ -152,3 +152,16 @@ public:
 	    }
     }
 };
+
+class CORHeaderFiller : virtual public PacketHeaderFiller {
+public:
+    inline int get_size() { return sizeof(cor_hdr_type); }
+    inline void operator()(const PacketDesc* hdr_base,
+                           char*             hdr) {
+        cor_hdr_type* header = reinterpret_cast<cor_hdr_type*>(hdr);
+        memset(header, 0, sizeof(cor_hdr_type));
+        
+        // TODO:  Finish this!
+        header->sync_word   = 0x5CDEC0DE;
+    }
+};

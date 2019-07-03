@@ -18,6 +18,8 @@ LIBBIFROST_OBJS = \
   disk_reader.o \
   udp_capture.o \
   udp_sniffer.o \
+  packet_writer.o \
+  disk_writer.o \
   udp_transmit.o \
   unpack.o \
   quantize.o \
