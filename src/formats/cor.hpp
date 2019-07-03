@@ -172,7 +172,9 @@ public:
         int stand1 = hdr_base->src - stand0*(2*(N-1)+1-stand0)/2 + stand0;
         
         header->sync_word        = 0x5CDEC0DE;
-        header->frame_count_word = 0x02;    // COR packet identifier
+        header->frame_count_word = htobe32(((hdr_base->tuning & 0xFFFFFF) << 8)\
+                                           | 0x02);   // bits 9-32 are the server identifier
+                                                      // bits 1-8 are the COR packet flag
         header->first_chan       = htons(hdr_base->chan0);
         header->gain             = htons(hdr_base->gain);
         header->time_tag         = htobe64(hdr_base->seq);
