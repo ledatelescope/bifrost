@@ -486,8 +486,8 @@ public:
 	                                int    slot_ntime,
 	                                BFdatacapture_callback sequence_callback)
 		: BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
-		  _type_log((std::string(capture->get_name())+"type").c_str()),
-		  _chan_log((std::string(capture->get_name())+"chans").c_str()),
+		  _type_log((std::string(capture->get_name())+"/type").c_str()),
+		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
 		  _sequence_callback(sequence_callback->get_chips()) {
 		_decoder = new CHIPSDecoder(nsrc, src0);
 		_processor = new CHIPSProcessor();
@@ -562,8 +562,8 @@ public:
                                   int    slot_ntime,
                                   BFdatacapture_callback sequence_callback)
         : BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
-          _type_log((std::string(capture->get_name())+"type").c_str()),
-          _chan_log((std::string(capture->get_name())+"chans").c_str()),
+          _type_log((std::string(capture->get_name())+"/type").c_str()),
+          _chan_log((std::string(capture->get_name())+"/chans").c_str()),
           _sequence_callback(sequence_callback->get_cor()) {
         _decoder = new CORDecoder(nsrc, src0);
         _processor = new CORProcessor();
@@ -632,8 +632,8 @@ public:
 	                                int    slot_ntime,
 	                             BFdatacapture_callback sequence_callback)
 		: BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
-		  _type_log((std::string(capture->get_name())+"type").c_str()),
-		  _chan_log((std::string(capture->get_name())+"chans").c_str()),
+		  _type_log((std::string(capture->get_name())+"/type").c_str()),
+		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
 		  _sequence_callback(sequence_callback->get_tbn()) {
 		_decoder = new TBNDecoder(nsrc, src0);
 		_processor = new TBNProcessor();
@@ -717,8 +717,8 @@ public:
 	                                int    slot_ntime,
 	                             BFdatacapture_callback sequence_callback)
 		: BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
-		  _type_log((std::string(capture->get_name())+"type").c_str()),
-		  _chan_log((std::string(capture->get_name())+"chans").c_str()),
+		  _type_log((std::string(capture->get_name())+"/type").c_str()),
+		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
 		  _sequence_callback(sequence_callback->get_drx()), 
 		  _chan1(), _tstate(0) {
 		_decoder = new DRXDecoder(nsrc, src0);
