@@ -29,7 +29,7 @@
 #pragma once
 
 #include "assert.hpp"
-#include <bifrost/data_capture.h>
+#include <bifrost/packet_capture.h>
 #include <bifrost/affinity.h>
 #include <bifrost/Ring.hpp>
 using bifrost::ring::RingWrapper;

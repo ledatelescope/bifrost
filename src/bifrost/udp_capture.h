@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#include <bifrost/data_capture.h>
+#include <bifrost/packet_capture.h>
 #include <bifrost/ring.h>
 
 BFstatus bfUdpCaptureCreate(BFdatacapture* obj,

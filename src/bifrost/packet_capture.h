@@ -26,8 +26,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_DATA_CAPTURE_H_INCLUDE_GUARD_
-#define BF_DATA_CAPTURE_H_INCLUDE_GUARD_
+#ifndef BF_PACKET_CAPTURE_H_INCLUDE_GUARD_
+#define BF_PACKET_CAPTURE_H_INCLUDE_GUARD_
 
 #ifdef __cplusplus
 extern "C" {
@@ -75,4 +75,4 @@ BFstatus bfDataCaptureCallbackSetDRX(BFdatacapture_callback obj, BFdatacapture_d
 } // extern "C"
 #endif
 
-#endif // BF_DATA_CAPTURE_H_INCLUDE_GUARD_
+#endif // BF_PACKET_CAPTURE_H_INCLUDE_GUARD_

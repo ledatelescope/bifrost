@@ -26,7 +26,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
  
-#include "data_capture.hpp"
+#include "packet_capture.hpp"
 
 #define BF_JAYCE_DEBUG 0
 

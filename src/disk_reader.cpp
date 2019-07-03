@@ -27,7 +27,7 @@
  */
 
 #include "assert.hpp"
-#include <bifrost/data_capture.h>
+#include <bifrost/packet_capture.h>
 #include <bifrost/disk_reader.h>
 #include <bifrost/affinity.h>
 #include <bifrost/Ring.hpp>
@@ -37,7 +37,7 @@ using bifrost::ring::WriteSpan;
 using bifrost::ring::WriteSequence;
 #include "proclog.hpp"
 #include "formats/formats.hpp"
-#include "data_capture.hpp"
+#include "packet_capture.hpp"
 
 #include <arpa/inet.h>  // For ntohs
 #include <sys/socket.h> // For recvfrom
@@ -117,4 +117,3 @@ BFstatus bfDiskReaderCreate(BFdatacapture* obj,
 		return BF_STATUS_UNSUPPORTED;
 	}
 }
-

@@ -13,12 +13,12 @@ LIBBIFROST_OBJS = \
   ring_impl.o \
   array.o \
   address.o \
-  data_capture.o \
   udp_socket.o \
+  packet_capture.o \
+  disk_reader.o \
   udp_capture.o \
   udp_sniffer.o \
   udp_transmit.o \
-  disk_reader.o \
   unpack.o \
   quantize.o \
   proclog.o
@@ -36,7 +36,9 @@ ifndef NOCUDA
   reduce.o \
   fir.o \
   guantize.o \
-  gunpack.o
+  gunpack.o \
+  romein.o \
+  orville.o
 endif
 
 JIT_SOURCES ?= \
