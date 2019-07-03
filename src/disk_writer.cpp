@@ -91,6 +91,8 @@ BFstatus bfDiskWriterCreate(BFpacketwriter* obj,
         nsamples = 512;
     } else if( format == std::string("drx") ) {
         nsamples = 4096;
+    } else if( format == std::string("tbf") ) {
+        nsamples = 6144;
     }
     
     DiskPacketWriter* method = new DiskPacketWriter(fd);
@@ -110,6 +112,9 @@ BFstatus bfDiskWriterCreate(BFpacketwriter* obj,
                            *obj = 0);
     } else if( format == std::string("drx") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_drx_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( format == std::string("tbf") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_tbf_impl(writer, nsamples),
                            *obj = 0);
     } else {
         return BF_STATUS_UNSUPPORTED;

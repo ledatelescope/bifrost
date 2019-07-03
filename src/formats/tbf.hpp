@@ -28,8 +28,31 @@
 
 #pragma once
 
-#include "chips.hpp"
-#include "cor.hpp"
-#include "drx.hpp"
-#include "tbn.hpp"
-#include "tbf.hpp"
+#include "base.hpp"
+
+#define TBF_FRAME_SIZE 6168
+
+#pragma pack(1)
+struct tbf_hdr_type {
+    uint32_t sync_word;
+    uint32_t frame_count_word;
+    uint32_t seconds_count;
+    uint16_t first_chan;
+    uint16_t unassinged;
+    uint64_t time_tag;
+};
+
+class TBFHeaderFiller : virtual public PacketHeaderFiller {
+public:
+    inline int get_size() { return sizeof(tbf_hdr_type); }
+    inline void operator()(const PacketDesc* hdr_base,
+                           char*             hdr) {
+        tbf_hdr_type* header = reinterpret_cast<tbf_hdr_type*>(hdr);
+        memset(header, 0, sizeof(tbf_hdr_type));
+        
+        header->sync_word        = 0x5CDEC0DE;
+        header->frame_count_word = htobe32(0x01);   // bits 1-8 are the COR packet flag
+        header->first_chan       = htons(hdr_base->src);
+        header->time_tag         = htobe64(hdr_base->seq);
+    }
+};

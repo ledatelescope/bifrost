@@ -257,3 +257,15 @@ public:
         _type_log.update("type : %s\n", "drx");
     }
 };
+
+class BFpacketwriter_tbf_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_tbf_impl(PacketWriterThread* writer,
+                                   int                 nsamples)
+     : BFpacketwriter_impl(writer, nullptr, nsamples),
+       _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new TBFHeaderFiller();
+        _type_log.update("type : %s\n", "tbf");
+    }
+};
