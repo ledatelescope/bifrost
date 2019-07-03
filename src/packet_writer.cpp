@@ -58,8 +58,10 @@ int HardwareLocality::bind_memory_to_core(int core) {
 BFstatus BFpacketwriter_impl::send(BFheaderinfo   desc,
                                    BFoffset       seq,
                                    BFoffset       seq_increment,
+                                   BFoffset       seq_stride,
                                    BFoffset       src,
                                    BFoffset       src_increment,
+                                   BFoffset       src_stride,
                                    BFarray const* in) {
     BF_ASSERT(desc,          BF_STATUS_INVALID_HANDLE);
     BF_ASSERT(in,            BF_STATUS_INVALID_POINTER);
@@ -73,12 +75,10 @@ BFstatus BFpacketwriter_impl::send(BFheaderinfo   desc,
     
     char* hdrs;
     hdrs = (char*) malloc(npackets*hdr_size*sizeof(char));
-    hdr_base->seq = seq;
-    hdr_base->src = src;
     for(int i=0; i<npackets; i++) {
+        hdr_base->seq = seq + i*seq_increment/seq_stride;
+        hdr_base->src = src + i*src_increment/src_stride;
         (*_filler)(hdr_base, hdrs+hdr_size*i);
-        hdr_base->seq += seq_increment;
-        hdr_base->src += src_increment;
     }
     
     _writer->send(hdrs, hdr_size, (char*) in->data, data_size, npackets);
@@ -151,9 +151,11 @@ BFstatus bfPacketWriterSend(BFpacketwriter obj,
                             BFheaderinfo   desc,
                             BFoffset       seq,
                             BFoffset       seq_increment,
+                            BFoffset       seq_stride,
                             BFoffset       src,
                             BFoffset       src_increment,
+                            BFoffset       src_stride,
                             BFarray const* in) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    return obj->send(desc, seq, seq_increment, src, src_increment, in);
+    return obj->send(desc, seq, seq_increment, seq_stride, src, src_increment, src_stride, in);
 }

@@ -205,8 +205,10 @@ public:
     BFstatus send(BFheaderinfo   desc,
                   BFoffset       seq,
                   BFoffset       seq_increment,
+                  BFoffset       seq_stride,
                   BFoffset       src,
                   BFoffset       src_increment,
+                  BFoffset       src_stride,
                   BFarray const* in);
 };
 

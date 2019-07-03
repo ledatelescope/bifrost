@@ -64,13 +64,15 @@ class UDPTransmit(BifrostObject):
         return self
     def __exit__(self, type, value, tb):
         pass
-    def send(self, headerinfo, seq, seq_increment, src, src_increment, idata):
+    def send(self, headerinfo, seq, seq_increment, seq_stride, src, src_increment, src_stride, idata):
         _check(_bf.bfPacketWriterSend(self.obj,
                                       headerinfo.obj,
                                       seq,
                                       seq_increment,
+                                      seq_stride,
                                       src,
                                       src_increment,
+                                      src_stride,
                                       asarray(idata).as_BFarray()))
 
 class DiskWriter(BifrostObject):
@@ -84,12 +86,14 @@ class DiskWriter(BifrostObject):
         return self
     def __exit__(self, type, value, tb):
         pass
-    def send(self, headerinfo, seq, seq_increment, src, src_increment, idata):
+    def send(self, headerinfo, seq, seq_increment, seq_stride, src, src_increment, src_stride, idata):
         _check(_bf.bfPacketWriterSend(self.obj,
                                       headerinfo.obj,
                                       seq,
                                       seq_increment,
+                                      seq_stride,
                                       src,
                                       src_increment,
+                                      src_stride,
                                       asarray(idata).as_BFarray()))
 
