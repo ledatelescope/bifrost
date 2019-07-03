@@ -30,7 +30,6 @@
 
 #include "assert.hpp"
 #include <bifrost/packet_capture.h>
-#include <bifrost/affinity.h>
 #include <bifrost/Ring.hpp>
 using bifrost::ring::RingWrapper;
 using bifrost::ring::RingWriter;
@@ -38,6 +37,7 @@ using bifrost::ring::WriteSpan;
 using bifrost::ring::WriteSequence;
 #include "proclog.hpp"
 #include "formats/formats.hpp"
+#include "hw_locality.hpp"
 
 #include <cstdlib>      // For posix_memalign
 #include <cstring>      // For memcpy, memset
@@ -129,37 +129,6 @@ public:
 	inline size_t alignment() const            { return _alignment; }
 	inline T      & operator[](size_t i)       { return _buf[i];    }
 	inline T const& operator[](size_t i) const { return _buf[i];    }
-};
-
-#if BF_HWLOC_ENABLED
-#include <hwloc.h>
-class HardwareLocality {
-	hwloc_topology_t _topo;
-	HardwareLocality(HardwareLocality const&);
-	HardwareLocality& operator=(HardwareLocality const&);
-public:
-	HardwareLocality() {
-		hwloc_topology_init(&_topo);
-		hwloc_topology_load(_topo);
-	}
-	~HardwareLocality() {
-		hwloc_topology_destroy(_topo);
-	}
-	int bind_memory_to_core(int core);
-};
-#endif // BF_HWLOC_ENABLED
-
-class BoundThread {
-#if BF_HWLOC_ENABLED
-	HardwareLocality _hwloc;
-#endif
-public:
-	BoundThread(int core) {
-		bfAffinitySetCore(core);
-#if BF_HWLOC_ENABLED
-		assert(_hwloc.bind_memory_to_core(core) == 0);
-#endif
-	}
 };
 
 class PacketCaptureMethod {

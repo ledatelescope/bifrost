@@ -28,10 +28,10 @@
 
 #include "assert.hpp"
 #include <bifrost/packet_writer.h>
-#include <bifrost/affinity.h>
 #include "proclog.hpp"
 #include "formats/formats.hpp"
 #include "utils.hpp"
+#include "hw_locality.hpp"
 
 #include <arpa/inet.h>  // For ntohs
 #include <sys/socket.h> // For recvfrom
@@ -46,37 +46,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <fstream>
-
-#if BF_HWLOC_ENABLED
-#include <hwloc.h>
-class HardwareLocality {
-    hwloc_topology_t _topo;
-    HardwareLocality(HardwareLocality const&);
-    HardwareLocality& operator=(HardwareLocality const&);
-public:
-    HardwareLocality() {
-        hwloc_topology_init(&_topo);
-        hwloc_topology_load(_topo);
-    }
-    ~HardwareLocality() {
-        hwloc_topology_destroy(_topo);
-    }
-    int bind_memory_to_core(int core);
-};
-#endif // BF_HWLOC_ENABLED
-
-class BoundThread {
-#if BF_HWLOC_ENABLED
-    HardwareLocality _hwloc;
-#endif
-public:
-    BoundThread(int core) {
-        bfAffinitySetCore(core);
-#if BF_HWLOC_ENABLED
-        assert(_hwloc.bind_memory_to_core(core) == 0);
-#endif
-    }
-};
 
 class PacketWriterMethod {
 protected:

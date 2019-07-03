@@ -14,6 +14,7 @@ LIBBIFROST_OBJS = \
   array.o \
   address.o \
   udp_socket.o \
+  hw_locality.o \
   packet_capture.o \
   disk_reader.o \
   udp_capture.o \
@@ -38,9 +39,7 @@ ifndef NOCUDA
   reduce.o \
   fir.o \
   guantize.o \
-  gunpack.o \
-  romein.o \
-  orville.o
+  gunpack.o
 endif
 
 JIT_SOURCES ?= \

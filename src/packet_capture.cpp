@@ -37,24 +37,6 @@
 #define BF_PRINTD(stmt)
 #endif
 
-#if BF_HWLOC_ENABLED
-int HardwareLocality::bind_memory_to_core(int core) {
-    int core_depth = hwloc_get_type_or_below_depth(_topo, HWLOC_OBJ_CORE);
-    int ncore      = hwloc_get_nbobjs_by_depth(_topo, core_depth);
-    int ret = 0;
-    if( 0 <= core && core < ncore ) {
-	    hwloc_obj_t    obj    = hwloc_get_obj_by_depth(_topo, core_depth, core);
-	    hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->allowed_cpuset);
-	    hwloc_bitmap_singlify(cpuset); // Avoid hyper-threads
-	    hwloc_membind_policy_t policy = HWLOC_MEMBIND_BIND;
-	    hwloc_membind_flags_t  flags  = HWLOC_MEMBIND_THREAD;
-	    ret = hwloc_set_membind(_topo, cpuset, policy, flags);
-	    hwloc_bitmap_free(cpuset);
-    }
-    return ret;
-}
-#endif // BF_HWLOC_ENABLED
-
 // Reads, decodes and unpacks frames into the provided buffers
 // Note: Read continues until the first frame that belongs
 //         beyond the end of the provided buffers. This frame is
