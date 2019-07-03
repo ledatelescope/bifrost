@@ -55,12 +55,12 @@ int HardwareLocality::bind_memory_to_core(int core) {
 }
 #endif // BF_HWLOC_ENABLED
 
-BFstatus BFpacketwriter_impl::send(BFpacketdescription desc,
-                                   BFoffset            seq,
-                                   BFoffset            seq_increment,
-                                   BFoffset            src,
-                                   BFoffset            src_increment,
-                                   BFarray const*      in) {
+BFstatus BFpacketwriter_impl::send(BFheaderinfo   desc,
+                                   BFoffset       seq,
+                                   BFoffset       seq_increment,
+                                   BFoffset       src,
+                                   BFoffset       src_increment,
+                                   BFarray const* in) {
     BF_ASSERT(desc,          BF_STATUS_INVALID_HANDLE);
     BF_ASSERT(in,            BF_STATUS_INVALID_POINTER);
     BF_ASSERT(in->ndim == 1, BF_STATUS_INVALID_SHAPE);
@@ -87,55 +87,55 @@ BFstatus BFpacketwriter_impl::send(BFpacketdescription desc,
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfPacketDescriptionCreate(BFpacketdescription* obj) {
+BFstatus bfHeaderInfoCreate(BFheaderinfo* obj) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    BF_TRY_RETURN_ELSE(*obj = new BFpacketdescription_impl(),
+    BF_TRY_RETURN_ELSE(*obj = new BFheaderinfo_impl(),
                        *obj = 0);
 }
 
-BFstatus bfPacketDescriptionDestroy(BFpacketdescription obj) {
+BFstatus bfHeaderInfoDestroy(BFheaderinfo obj) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     delete obj;
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfPacketDescriptionSetNSrc(BFpacketdescription obj,
-                                    int                 nsrc) {
+BFstatus bfHeaderInfoSetNSrc(BFheaderinfo obj,
+                             int          nsrc) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_nsrc(nsrc);
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfPacketDescriptionSetNChan(BFpacketdescription obj,
-                                     int                 nchan) {
+BFstatus bfHeaderInfoSetNChan(BFheaderinfo obj,
+                              int          nchan) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_nchan(nchan);
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfPacketDescriptionSetChan0(BFpacketdescription obj,
-                                     int                 chan0) {
+BFstatus bfHeaderInfoSetChan0(BFheaderinfo obj,
+                              int          chan0) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_chan0(chan0);
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfPacketDescriptionSetTuning(BFpacketdescription obj,
-                                      int                 tuning) {
+BFstatus bfHeaderInfoSetTuning(BFheaderinfo obj,
+                               int          tuning) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_tuning(tuning);
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfPacketDescriptionSetGain(BFpacketdescription obj,
-                                    uint16_t            gain) {
+BFstatus bfHeaderInfoSetGain(BFheaderinfo obj,
+                             uint16_t     gain) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_gain(gain);
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfPacketDescriptionSetDecimation(BFpacketdescription obj,
-                                          uint16_t            decimation) {
+BFstatus bfHeaderInfoSetDecimation(BFheaderinfo obj,
+                                   uint16_t     decimation) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_decimation(decimation);
     return BF_STATUS_SUCCESS;
@@ -147,12 +147,12 @@ BFstatus bfPacketWriterDestroy(BFpacketwriter obj) {
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfPacketWriterSend(BFpacketwriter      obj,
-                            BFpacketdescription desc,
-                            BFoffset            seq,
-                            BFoffset            seq_increment,
-                            BFoffset            src,
-                            BFoffset            src_increment,
+BFstatus bfPacketWriterSend(BFpacketwriter obj,
+                            BFheaderinfo   desc,
+                            BFoffset       seq,
+                            BFoffset       seq_increment,
+                            BFoffset       src,
+                            BFoffset       src_increment,
                             BFarray const* in) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     return obj->send(desc, seq, seq_increment, src, src_increment, in);

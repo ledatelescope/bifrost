@@ -35,33 +35,33 @@ extern "C" {
 
 #include <bifrost/array.h>
 
-typedef struct BFpacketdescription_impl* BFpacketdescription;
+typedef struct BFheaderinfo_impl* BFheaderinfo;
 
-BFstatus bfPacketDescriptionCreate(BFpacketdescription* obj);
-BFstatus bfPacketDescriptionDestroy(BFpacketdescription obj);
-BFstatus bfPacketDescriptionSetNSrc(BFpacketdescription obj,
-                                    int                 nsrc);
-BFstatus bfPacketDescriptionSetNChan(BFpacketdescription obj,
-                                     int                 nchan);
-BFstatus bfPacketDescriptionSetChan0(BFpacketdescription obj,
-                                     int                 chan0);
-BFstatus bfPacketDescriptionSetTuning(BFpacketdescription obj,
-                                      int                 tuning);
-BFstatus bfPacketDescriptionSetGain(BFpacketdescription obj,
-                                    uint16_t            gain);
-BFstatus bfPacketDescriptionSetDecimation(BFpacketdescription obj,
-                                          uint16_t            decimation);
+BFstatus bfHeaderInfoCreate(BFheaderinfo* obj);
+BFstatus bfHeaderInfoDestroy(BFheaderinfo obj);
+BFstatus bfHeaderInfoSetNSrc(BFheaderinfo obj,
+                             int          nsrc);
+BFstatus bfHeaderInfoSetNChan(BFheaderinfo obj,
+                              int          nchan);
+BFstatus bfHeaderInfoSetChan0(BFheaderinfo obj,
+                              int          chan0);
+BFstatus bfHeaderInfoSetTuning(BFheaderinfo obj,
+                               int          tuning);
+BFstatus bfHeaderInfoSetGain(BFheaderinfo obj,
+                             uint16_t     gain);
+BFstatus bfHeaderInfoSetDecimation(BFheaderinfo obj,
+                                   uint16_t     decimation);
 
 typedef struct BFpacketwriter_impl* BFpacketwriter;
 
 BFstatus bfPacketWriterDestroy(BFpacketwriter obj);
-BFstatus bfPacketWriterSend(BFpacketwriter      obj, 
-                            BFpacketdescription desc,
-                            BFoffset            seq,
-                            BFoffset            seq_increment,
-                            BFoffset            src,
-                            BFoffset            src_increment,
-                            BFarray const*      in);
+BFstatus bfPacketWriterSend(BFpacketwriter obj, 
+                            BFheaderinfo   desc,
+                            BFoffset       seq,
+                            BFoffset       seq_increment,
+                            BFoffset       src,
+                            BFoffset       src_increment,
+                            BFarray const* in);
 
 #ifdef __cplusplus
 } // extern "C"

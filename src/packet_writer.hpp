@@ -152,10 +152,10 @@ public:
     }
 };
 
-class BFpacketdescription_impl {
+class BFheaderinfo_impl {
     PacketDesc         _desc;
 public:
-    inline BFpacketdescription_impl() {
+    inline BFheaderinfo_impl() {
         memset(&_desc, 0, sizeof(PacketDesc));
     }
     inline PacketDesc* get_description()            { return &_desc;                 }
@@ -202,12 +202,12 @@ public:
                            << "core0 : " << _writer->get_core() << "\n";
     }
     virtual ~BFpacketwriter_impl() {}
-    BFstatus send(BFpacketdescription desc,
-                  BFoffset            seq,
-                  BFoffset            seq_increment,
-                  BFoffset            src,
-                  BFoffset            src_increment,
-                  BFarray const*      in);
+    BFstatus send(BFheaderinfo   desc,
+                  BFoffset       seq,
+                  BFoffset       seq_increment,
+                  BFoffset       src,
+                  BFoffset       src_increment,
+                  BFarray const* in);
 };
 
 class BFpacketwriter_generic_impl : public BFpacketwriter_impl {
