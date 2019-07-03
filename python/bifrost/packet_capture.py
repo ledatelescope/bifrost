@@ -29,22 +29,22 @@
 
 from libbifrost import _bf, _check, _get, BifrostObject
 
-class DataCaptureCallback(BifrostObject):
+class PacketCaptureCallback(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(
-            self, _bf.bfDataCaptureCallbackCreate, _bf.bfDataCaptureCallbackDestroy)
+            self, _bf.bfPacketCaptureCallbackCreate, _bf.bfPacketCaptureCallbackDestroy)
     def set_chips(self, fnc):
-        _check(_bf.bfDataCaptureCallbackSetCHIPS(
-            self.obj, _bf.BFdatacapture_chips_sequence_callback(fnc)))
+        _check(_bf.bfPacketCaptureCallbackSetCHIPS(
+            self.obj, _bf.BFpacketcapture_chips_sequence_callback(fnc)))
     def set_cor(self, fnc):
-        _check(_bf.bfDataCaptureCallbackSetCOR(
-            self.obj, _bf.BFdatacapture_cor_sequence_callback(fnc)))
+        _check(_bf.bfPacketCaptureCallbackSetCOR(
+            self.obj, _bf.BFpacketcapture_cor_sequence_callback(fnc)))
     def set_tbn(self, fnc):
-        _check(_bf.bfDataCaptureCallbackSetTBN(
-            self.obj, _bf.BFdatacapture_tbn_sequence_callback(fnc)))
+        _check(_bf.bfPacketCaptureCallbackSetTBN(
+            self.obj, _bf.BFpacketcapture_tbn_sequence_callback(fnc)))
     def set_drx(self, fnc):
-        _check(_bf.bfDataCaptureCallbackSetDRX(
-            self.obj, _bf.BFdatacapture_drx_sequence_callback(fnc)))
+        _check(_bf.bfPacketCaptureCallbackSetDRX(
+            self.obj, _bf.BFpacketcapture_drx_sequence_callback(fnc)))
 
 class UDPCapture(BifrostObject):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
@@ -52,7 +52,7 @@ class UDPCapture(BifrostObject):
         if core is None:
             core = -1
         BifrostObject.__init__(
-            self, _bf.bfUdpCaptureCreate, _bf.bfDataCaptureDestroy,
+            self, _bf.bfUdpCaptureCreate, _bf.bfPacketCaptureDestroy,
             fmt, sock.fileno(), ring.obj, nsrc, src0,
             max_payload_size, buffer_ntime, slot_ntime,
             sequence_callback.obj, core)
@@ -61,13 +61,13 @@ class UDPCapture(BifrostObject):
     def __exit__(self, type, value, tb):
         self.end()
     def recv(self):
-        status = _bf.BFdatacapture_status()
-        _check(_bf.bfDataCaptureRecv(self.obj, status))
+        status = _bf.BFpacketcapture_status()
+        _check(_bf.bfPacketCaptureRecv(self.obj, status))
         return status.value
     def flush(self):
-        _check(_bf.bfDataCaptureFlush(self.obj))
+        _check(_bf.bfPacketCaptureFlush(self.obj))
     def end(self):
-        _check(_bf.bfDataCaptureEnd(self.obj))
+        _check(_bf.bfPacketCaptureEnd(self.obj))
 
 class UDPSniffer(BifrostObject):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
@@ -75,7 +75,7 @@ class UDPSniffer(BifrostObject):
         if core is None:
             core = -1
         BifrostObject.__init__(
-            self, _bf.bfUdpSnifferCreate, _bf.bfDataCaptureDestroy,
+            self, _bf.bfUdpSnifferCreate, _bf.bfPacketCaptureDestroy,
             fmt, sock.fileno(), ring.obj, nsrc, src0,
             max_payload_size, buffer_ntime, slot_ntime,
             sequence_callback.obj, core)
@@ -84,13 +84,13 @@ class UDPSniffer(BifrostObject):
     def __exit__(self, type, value, tb):
         self.end()
     def recv(self):
-        status = _bf.BFdatacapture_status()
-        _check(_bf.bfDataCaptureRecv(self.obj, status))
+        status = _bf.BFpacketcapture_status()
+        _check(_bf.bfPacketCaptureRecv(self.obj, status))
         return status.value
     def flush(self):
-        _check(_bf.bfDataCaptureFlush(self.obj))
+        _check(_bf.bfPacketCaptureFlush(self.obj))
     def end(self):
-        _check(_bf.bfDataCaptureEnd(self.obj))
+        _check(_bf.bfPacketCaptureEnd(self.obj))
 
 class DiskReader(BifrostObject):
     def __init__(self, fmt, fh, ring, nsrc, src0,
@@ -98,7 +98,7 @@ class DiskReader(BifrostObject):
         if core is None:
             core = -1
         BifrostObject.__init__(
-            self, _bf.bfDiskReaderCreate, _bf.bfDataCaptureDestroy,
+            self, _bf.bfDiskReaderCreate, _bf.bfPacketCaptureDestroy,
             fmt, fh.fileno(), ring.obj, nsrc, src0,
             buffer_nframe, slot_nframe,
             sequence_callback.obj, core)
@@ -107,10 +107,10 @@ class DiskReader(BifrostObject):
     def __exit__(self, type, value, tb):
         self.end()
     def recv(self):
-        status = _bf.BFdatacapture_status()
-        _check(_bf.bfDataCaptureRecv(self.obj, status))
+        status = _bf.BFpacketcapture_status()
+        _check(_bf.bfPacketCaptureRecv(self.obj, status))
         return status.value
     def flush(self):
-        _check(_bf.bfDataCaptureFlush(self.obj))
+        _check(_bf.bfPacketCaptureFlush(self.obj))
     def end(self):
-        _check(_bf.bfDataCaptureEnd(self.obj))
+        _check(_bf.bfPacketCaptureEnd(self.obj))

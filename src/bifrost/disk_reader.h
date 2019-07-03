@@ -32,20 +32,20 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-	
+
 #include <bifrost/packet_capture.h>
 #include <bifrost/ring.h>
 
-BFstatus bfDiskReaderCreate(BFdatacapture* obj,
-                            const char*    format,
-                            int            fd,
-                            BFring         ring,
-                            BFsize         nsrc,
-                            BFsize         src0,
-                            BFsize         buffer_ntime,
-                            BFsize         slot_ntime,
-                            BFdatacapture_callback sequence_callback,
-                            int            core);
+BFstatus bfDiskReaderCreate(BFpacketcapture* obj,
+                            const char*      format,
+                            int              fd,
+                            BFring           ring,
+                            BFsize           nsrc,
+                            BFsize           src0,
+                            BFsize           buffer_ntime,
+                            BFsize           slot_ntime,
+                            BFpacketcapture_callback sequence_callback,
+                            int              core);
 
 #ifdef __cplusplus
 } // extern "C"

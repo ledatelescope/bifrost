@@ -104,13 +104,13 @@ public:
 };
 #endif // BF_VMA_ENABLED
 
-class UDPPacketSniffer : public DataCaptureMethod {
+class UDPPacketSniffer : public PacketCaptureMethod {
 #if BF_VMA_ENABLED
 	VMAReceiver            _vma;
 #endif
 public:
 	UDPPacketSniffer(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
-		: DataCaptureMethod(fd, pkt_size_max)
+		: PacketCaptureMethod(fd, pkt_size_max)
 #if BF_VMA_ENABLED
 		, _vma(fd)
 #endif
@@ -133,39 +133,39 @@ public:
 	inline const char* get_name() { return "udp_sniffer"; }
 };
 
-BFstatus bfUdpSnifferCreate(BFdatacapture* obj,
-                            const char*    format,
-                            int            fd,
-                            BFring         ring,
-                            BFsize         nsrc,
-                            BFsize         src0,
-                            BFsize         max_payload_size,
-                            BFsize         buffer_ntime,
-                            BFsize         slot_ntime,
-                            BFdatacapture_callback sequence_callback,
-                            int            core) {
+BFstatus bfUdpSnifferCreate(BFpacketcapture* obj,
+                            const char*      format,
+                            int              fd,
+                            BFring           ring,
+                            BFsize           nsrc,
+                            BFsize           src0,
+                            BFsize           max_payload_size,
+                            BFsize           buffer_ntime,
+                            BFsize           slot_ntime,
+                            BFpacketcapture_callback sequence_callback,
+                            int              core) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
 	
 	UDPPacketSniffer* method = new UDPPacketSniffer(fd, max_payload_size);
-	DataCaptureThread* capture = new DataCaptureThread(method, nsrc, core);
+	PacketCaptureThread* capture = new PacketCaptureThread(method, nsrc, core);
 	
 	if( format == std::string("chips") ) {
-	    BF_TRY_RETURN_ELSE(*obj = new BFdatacapture_chips_impl(capture, ring, nsrc, src0,
+	    BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_chips_impl(capture, ring, nsrc, src0,
 		                                                      buffer_ntime, slot_ntime,
 		                                                      sequence_callback),
 		                   *obj = 0);
     } else if( format == std::string("cor") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFdatacapture_cor_impl(capture, ring, nsrc, src0,
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_cor_impl(capture, ring, nsrc, src0,
                                                              buffer_ntime, slot_ntime,
                                                              sequence_callback),
                            *obj = 0);
     } else if( format == std::string("tbn") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFdatacapture_tbn_impl(capture, ring, nsrc, src0,
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_tbn_impl(capture, ring, nsrc, src0,
 		                                                    buffer_ntime, slot_ntime,
 		                                                    sequence_callback),
 		                   *obj = 0);
 	} else if( format == std::string("drx") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFdatacapture_drx_impl(capture, ring, nsrc, src0,
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_drx_impl(capture, ring, nsrc, src0,
 		                                                    buffer_ntime, slot_ntime,
 		                                                    sequence_callback),
 		                   *obj = 0);

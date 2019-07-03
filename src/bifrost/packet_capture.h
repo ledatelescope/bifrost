@@ -35,9 +35,9 @@ extern "C" {
 
 #include <bifrost/ring.h>
 
-typedef struct BFdatacapture_impl* BFdatacapture;
+typedef struct BFpacketcapture_impl* BFpacketcapture;
 
-typedef enum BFdatacapture_status_ {
+typedef enum BFpacketcapture_status_ {
         BF_CAPTURE_STARTED,
         BF_CAPTURE_ENDED,
         BF_CAPTURE_CONTINUED,
@@ -45,31 +45,36 @@ typedef enum BFdatacapture_status_ {
         BF_CAPTURE_NO_DATA,
         BF_CAPTURE_INTERRUPTED,
         BF_CAPTURE_ERROR
-} BFdatacapture_status;
+} BFpacketcapture_status;
 
-BFstatus bfDataCaptureDestroy(BFdatacapture obj);
-BFstatus bfDataCaptureRecv(BFdatacapture obj, BFdatacapture_status* result);
-BFstatus bfDataCaptureFlush(BFdatacapture obj);
-BFstatus bfDataCaptureEnd(BFdatacapture obj);
-// TODO: bfDataCaptureGetXX
+BFstatus bfPacketCaptureDestroy(BFpacketcapture obj);
+BFstatus bfPacketCaptureRecv(BFpacketcapture         obj,
+                             BFpacketcapture_status* result);
+BFstatus bfPacketCaptureFlush(BFpacketcapture obj);
+BFstatus bfPacketCaptureEnd(BFpacketcapture obj);
+// TODO: bfPacketCaptureGetXX
 
-typedef int (*BFdatacapture_chips_sequence_callback)(BFoffset, int, int, int,
-                                                    BFoffset*, void const**, size_t*);
-typedef int (*BFdatacapture_cor_sequence_callback)(BFoffset, BFoffset, int, int,
-                                                   int, int, void const**, size_t*);
-typedef int (*BFdatacapture_tbn_sequence_callback)(BFoffset, BFoffset, int, int, 
-                                                   void const**, size_t*);
-typedef int (*BFdatacapture_drx_sequence_callback)(BFoffset, BFoffset, int, int, int, 
-                                                   void const**, size_t*);
+typedef int (*BFpacketcapture_chips_sequence_callback)(BFoffset, int, int, int,
+                                                       BFoffset*, void const**, size_t*);
+typedef int (*BFpacketcapture_cor_sequence_callback)(BFoffset, BFoffset, int, int,
+                                                     int, int, void const**, size_t*);
+typedef int (*BFpacketcapture_tbn_sequence_callback)(BFoffset, BFoffset, int, int, 
+                                                     void const**, size_t*);
+typedef int (*BFpacketcapture_drx_sequence_callback)(BFoffset, BFoffset, int, int, int, 
+                                                     void const**, size_t*);
 
-typedef struct BFdatacapture_callback_impl* BFdatacapture_callback;
+typedef struct BFpacketcapture_callback_impl* BFpacketcapture_callback;
 
-BFstatus bfDataCaptureCallbackCreate(BFdatacapture_callback* obj);
-BFstatus bfDataCaptureCallbackDestroy(BFdatacapture_callback obj);
-BFstatus bfDataCaptureCallbackSetCHIPS(BFdatacapture_callback obj, BFdatacapture_chips_sequence_callback callback);
-BFstatus bfDataCaptureCallbackSetCOR(BFdatacapture_callback obj, BFdatacapture_cor_sequence_callback callback);
-BFstatus bfDataCaptureCallbackSetTBN(BFdatacapture_callback obj, BFdatacapture_tbn_sequence_callback callback);
-BFstatus bfDataCaptureCallbackSetDRX(BFdatacapture_callback obj, BFdatacapture_drx_sequence_callback callback);
+BFstatus bfPacketCaptureCallbackCreate(BFpacketcapture_callback* obj);
+BFstatus bfPacketCaptureCallbackDestroy(BFpacketcapture_callback obj);
+BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
+                                         BFpacketcapture_chips_sequence_callback callback);
+BFstatus bfPacketCaptureCallbackSetCOR(BFpacketcapture_callback obj,
+                                       BFpacketcapture_cor_sequence_callback callback);
+BFstatus bfPacketCaptureCallbackSetTBN(BFpacketcapture_callback obj,
+                                       BFpacketcapture_tbn_sequence_callback callback);
+BFstatus bfPacketCaptureCallbackSetDRX(BFpacketcapture_callback obj,
+                                       BFpacketcapture_drx_sequence_callback callback);
 
 #ifdef __cplusplus
 } // extern "C"

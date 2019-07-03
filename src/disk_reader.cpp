@@ -54,10 +54,10 @@ using bifrost::ring::WriteSequence;
 #include <fstream>
 #include <chrono>
 
-class DiskPacketReader : public DataCaptureMethod {
+class DiskPacketReader : public PacketCaptureMethod {
 public:
 	DiskPacketReader(int fd, size_t pkt_size_max=9000)
-	 : DataCaptureMethod(fd, pkt_size_max) {}
+	 : PacketCaptureMethod(fd, pkt_size_max) {}
 	int recv_packet(uint8_t** pkt_ptr, int flags=0) {
 		*pkt_ptr = &_buf[0];
 		return ::read(_fd, &_buf[0], _buf.size());
@@ -65,16 +65,16 @@ public:
 	inline const char* get_name() { return "disk_reader"; }
 };
 
-BFstatus bfDiskReaderCreate(BFdatacapture* obj,
-                            const char*    format,
-                            int            fd,
-                            BFring         ring,
-                            BFsize         nsrc,
-                            BFsize         src0,
-                            BFsize         buffer_ntime,
-                            BFsize         slot_ntime,
-                            BFdatacapture_callback sequence_callback,
-                            int            core) {
+BFstatus bfDiskReaderCreate(BFpacketcapture* obj,
+                            const char*      format,
+                            int              fd,
+                            BFring           ring,
+                            BFsize           nsrc,
+                            BFsize           src0,
+                            BFsize           buffer_ntime,
+                            BFsize           slot_ntime,
+                            BFpacketcapture_callback sequence_callback,
+                            int              core) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
 	
 	size_t max_payload_size = JUMBO_FRAME_SIZE;
@@ -91,25 +91,25 @@ BFstatus bfDiskReaderCreate(BFdatacapture* obj,
 	}
 	
 	DiskPacketReader* method = new DiskPacketReader(fd, max_payload_size);
-	DataCaptureThread* capture = new DataCaptureThread(method, nsrc, core);
+	PacketCaptureThread* capture = new PacketCaptureThread(method, nsrc, core);
 	
 	if( std::string(format).substr(0, 6) == std::string("chips_") ) {
-	    BF_TRY_RETURN_ELSE(*obj = new BFdatacapture_chips_impl(capture, ring, nsrc, src0,
+	    BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_chips_impl(capture, ring, nsrc, src0,
 		                                                       buffer_ntime, slot_ntime,
 		                                                       sequence_callback),
 		                   *obj = 0);
     } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFdatacapture_cor_impl(capture, ring, nsrc, src0,
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_cor_impl(capture, ring, nsrc, src0,
                                                              buffer_ntime, slot_ntime,
                                                              sequence_callback),
                            *obj = 0);
 	} else if( format == std::string("tbn") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFdatacapture_tbn_impl(capture, ring, nsrc, src0,
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_tbn_impl(capture, ring, nsrc, src0,
 		                                                    buffer_ntime, slot_ntime,
 		                                                    sequence_callback),
 		                   *obj = 0);
 	} else if( format == std::string("drx") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFdatacapture_drx_impl(capture, ring, nsrc, src0,
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_drx_impl(capture, ring, nsrc, src0,
 		                                                    buffer_ntime, slot_ntime,
 		                                                    sequence_callback),
 		                   *obj = 0);

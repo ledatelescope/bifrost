@@ -61,14 +61,14 @@ int HardwareLocality::bind_memory_to_core(int core) {
 //         saved, accessible via get_last_frame(), and will be
 //         processed on the next call to run() if possible.
 template<class PDC, class PPC>
-int DataCaptureThread::run(uint64_t seq_beg,
-	                       uint64_t nseq_per_obuf,
-	                       int      nbuf,
-	                       uint8_t* obufs[],
-	                       size_t*  ngood_bytes[],
-	                       size_t*  src_ngood_bytes[],
-	                       PDC*     decode,
-	                       PPC*     process) {
+int PacketCaptureThread::run(uint64_t seq_beg,
+	                         uint64_t nseq_per_obuf,
+	                         int      nbuf,
+	                         uint8_t* obufs[],
+	                         size_t*  ngood_bytes[],
+	                         size_t*  src_ngood_bytes[],
+	                         PDC*     decode,
+	                         PPC*     process) {
     uint64_t seq_end = seq_beg + nbuf*nseq_per_obuf;
 	size_t local_ngood_bytes[2] = {0, 0};
 	int ret;
@@ -132,7 +132,7 @@ int DataCaptureThread::run(uint64_t seq_beg,
 	return ret;
 }
 
-BFdatacapture_status BFdatacapture_impl::recv() {
+BFpacketcapture_status BFpacketcapture_impl::recv() {
     _t0 = std::chrono::high_resolution_clock::now();
 	
 	uint8_t* buf_ptrs[2];
@@ -157,11 +157,11 @@ BFdatacapture_status BFdatacapture_impl::recv() {
 	                          _decoder,
 	                          _processor);
 	BF_PRINTD("OUTSIDE");
-	if( state & DataCaptureThread::CAPTURE_ERROR ) {
+	if( state & PacketCaptureThread::CAPTURE_ERROR ) {
 	    return BF_CAPTURE_ERROR;
-	} else if( state & DataCaptureThread::CAPTURE_INTERRUPTED ) {
+	} else if( state & PacketCaptureThread::CAPTURE_INTERRUPTED ) {
 		return BF_CAPTURE_INTERRUPTED;
-	} else if( state & DataCaptureThread::CAPTURE_INTERRUPTED ) {
+	} else if( state & PacketCaptureThread::CAPTURE_INTERRUPTED ) {
 	    if( _active ) {
     	    return BF_CAPTURE_ENDED;
     	} else {
@@ -184,9 +184,9 @@ BFdatacapture_status BFdatacapture_impl::recv() {
 	const void* hdr=NULL;
 	size_t hdr_size=0;
 	
-	BFdatacapture_status ret;
+	BFpacketcapture_status ret;
 	bool was_active = _active;
-	_active = state & DataCaptureThread::CAPTURE_SUCCESS;
+	_active = state & PacketCaptureThread::CAPTURE_SUCCESS;
 	BF_PRINTD("ACTIVE: " << _active << " WAS ACTIVE: " << was_active);
 	if( _active ) {
 	    BF_PRINTD("START");
@@ -234,60 +234,64 @@ BFdatacapture_status BFdatacapture_impl::recv() {
 	return ret;
 }
 
-BFstatus bfDataCaptureDestroy(BFdatacapture obj) {
+BFstatus bfPacketCaptureDestroy(BFpacketcapture obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	delete obj;
 	return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfDataCaptureRecv(BFdatacapture obj, BFdatacapture_status* result) {
+BFstatus bfPacketCaptureRecv(BFpacketcapture obj,
+                             BFpacketcapture_status* result) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	BF_TRY_RETURN_ELSE(*result = obj->recv(),
 	                   *result = BF_CAPTURE_ERROR);
 }
 
-BFstatus bfDataCaptureFlush(BFdatacapture obj) {
+BFstatus bfPacketCaptureFlush(BFpacketcapture obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	BF_TRY_RETURN(obj->flush());
 }
 
-BFstatus bfDataCaptureEnd(BFdatacapture obj) {
+BFstatus bfPacketCaptureEnd(BFpacketcapture obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	BF_TRY_RETURN(obj->end_writing());
 }
 
-BFstatus bfDataCaptureCallbackCreate(BFdatacapture_callback* obj) {
-	BF_TRY_RETURN_ELSE(*obj = new BFdatacapture_callback_impl(),
-                               *obj = 0);
+BFstatus bfPacketCaptureCallbackCreate(BFpacketcapture_callback* obj) {
+	BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_callback_impl(),
+                       *obj = 0);
 }
 
-BFstatus bfDataCaptureCallbackDestroy(BFdatacapture_callback obj) {
+BFstatus bfPacketCaptureCallbackDestroy(BFpacketcapture_callback obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	delete obj;
 	return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfDataCaptureCallbackSetCHIPS(BFdatacapture_callback obj, BFdatacapture_chips_sequence_callback callback) {
+BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
+                                         BFpacketcapture_chips_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	obj->set_chips(callback);
 	return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfDataCaptureCallbackSetCOR(BFdatacapture_callback obj, BFdatacapture_cor_sequence_callback callback) {
+BFstatus bfPacketCaptureCallbackSetCOR(BFpacketcapture_callback obj,
+                                       BFpacketcapture_cor_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_cor(callback);
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfDataCaptureCallbackSetTBN(BFdatacapture_callback obj, BFdatacapture_tbn_sequence_callback callback) {
+BFstatus bfPacketCaptureCallbackSetTBN(BFpacketcapture_callback obj,
+                                       BFpacketcapture_tbn_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	obj->set_tbn(callback);
 	return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfDataCaptureCallbackSetDRX(BFdatacapture_callback obj, BFdatacapture_drx_sequence_callback callback) {
+BFstatus bfPacketCaptureCallbackSetDRX(BFpacketcapture_callback obj,
+                                       BFpacketcapture_drx_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	obj->set_drx(callback);
 	return BF_STATUS_SUCCESS;
 }
-

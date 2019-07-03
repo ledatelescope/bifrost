@@ -162,13 +162,13 @@ public:
 	}
 };
 
-class DataCaptureMethod {
+class PacketCaptureMethod {
 protected:
     int                    _fd;
     size_t                 _pkt_size_max;
 	AlignedBuffer<uint8_t> _buf;
 public:
-	DataCaptureMethod(int fd, size_t pkt_size_max=9000)
+	PacketCaptureMethod(int fd, size_t pkt_size_max=9000)
 	 : _fd(fd), _pkt_size_max(pkt_size_max), _buf(pkt_size_max) {}
 	virtual int recv_packet(uint8_t** pkt_ptr, int flags=0) {
 	    return 0;
@@ -186,9 +186,9 @@ struct PacketStats {
 	size_t nvalid_bytes;
 };
 
-class DataCaptureThread : public BoundThread {
+class PacketCaptureThread : public BoundThread {
 private:
-    DataCaptureMethod*       _method;
+    PacketCaptureMethod*     _method;
     PacketStats              _stats;
 	std::vector<PacketStats> _src_stats;
 	bool                     _have_pkt;
@@ -203,7 +203,7 @@ public:
 		CAPTURE_NO_DATA     = 1 << 3,
 		CAPTURE_ERROR       = 1 << 4
 	};
-	DataCaptureThread(DataCaptureMethod* method, int nsrc, int core=0)
+	PacketCaptureThread(PacketCaptureMethod* method, int nsrc, int core=0)
      : BoundThread(core), _method(method), _src_stats(nsrc),
 	   _have_pkt(false), _core(core) {
 		this->reset_stats();
@@ -243,61 +243,61 @@ inline uint64_t round_nearest(uint64_t val, uint64_t mult) {
 	return (2*val/mult+1)/2*mult;
 }
 
-class BFdatacapture_callback_impl {
-    BFdatacapture_chips_sequence_callback _chips_callback;
-    BFdatacapture_cor_sequence_callback _cor_callback;
-    BFdatacapture_tbn_sequence_callback _tbn_callback;
-    BFdatacapture_drx_sequence_callback _drx_callback;
+class BFpacketcapture_callback_impl {
+    BFpacketcapture_chips_sequence_callback _chips_callback;
+    BFpacketcapture_cor_sequence_callback _cor_callback;
+    BFpacketcapture_tbn_sequence_callback _tbn_callback;
+    BFpacketcapture_drx_sequence_callback _drx_callback;
 public:
-    BFdatacapture_callback_impl()
+    BFpacketcapture_callback_impl()
      : _chips_callback(NULL), _cor_callback(NULL), _tbn_callback(NULL), _drx_callback(NULL) {}
-    inline void set_chips(BFdatacapture_chips_sequence_callback callback) {
+    inline void set_chips(BFpacketcapture_chips_sequence_callback callback) {
         _chips_callback = callback;
     }
-    inline BFdatacapture_chips_sequence_callback get_chips() {
+    inline BFpacketcapture_chips_sequence_callback get_chips() {
         return _chips_callback;
     }
-    inline void set_cor(BFdatacapture_cor_sequence_callback callback) {
+    inline void set_cor(BFpacketcapture_cor_sequence_callback callback) {
         _cor_callback = callback;
     }
-    inline BFdatacapture_cor_sequence_callback get_cor() {
+    inline BFpacketcapture_cor_sequence_callback get_cor() {
         return _cor_callback;
     }
-    inline void set_tbn(BFdatacapture_tbn_sequence_callback callback) {
+    inline void set_tbn(BFpacketcapture_tbn_sequence_callback callback) {
         _tbn_callback = callback;
     }
-    inline BFdatacapture_tbn_sequence_callback get_tbn() {
+    inline BFpacketcapture_tbn_sequence_callback get_tbn() {
         return _tbn_callback;
     }
-    inline void set_drx(BFdatacapture_drx_sequence_callback callback) {
+    inline void set_drx(BFpacketcapture_drx_sequence_callback callback) {
         _drx_callback = callback;
     }
-    inline BFdatacapture_drx_sequence_callback get_drx() {
+    inline BFpacketcapture_drx_sequence_callback get_drx() {
         return _drx_callback;
     }
 };
 
-class BFdatacapture_impl {
+class BFpacketcapture_impl {
 protected:
-    std::string        _name;
-	DataCaptureThread* _capture;
-	PacketDecoder*     _decoder;
-	PacketProcessor*   _processor;
-	ProcLog            _bind_log;
-	ProcLog            _out_log;
-	ProcLog            _size_log;
-	ProcLog            _stat_log;
-	ProcLog            _perf_log;
-	pid_t              _pid;
+    std::string          _name;
+	PacketCaptureThread* _capture;
+	PacketDecoder*       _decoder;
+	PacketProcessor*     _processor;
+	ProcLog              _bind_log;
+	ProcLog              _out_log;
+	ProcLog              _size_log;
+	ProcLog              _stat_log;
+	ProcLog              _perf_log;
+	pid_t                _pid;
 	
-	int      _nsrc;
-	int      _nseq_per_buf;
-	int      _slot_ntime;
-	BFoffset _seq;
-	int      _chan0;
-	int      _nchan;
-	int      _payload_size;
-	bool     _active;
+	int                  _nsrc;
+	int                  _nseq_per_buf;
+	int                  _slot_ntime;
+	BFoffset             _seq;
+	int                  _chan0;
+	int                  _nchan;
+	int                  _payload_size;
+	bool                 _active;
 
 private:
     std::chrono::high_resolution_clock::time_point _t0;
@@ -372,7 +372,7 @@ private:
 	virtual inline bool has_sequence_changed(const PacketDesc* pkt) { return false; }
 	virtual void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {}
 public:
-	inline BFdatacapture_impl(DataCaptureThread* capture,
+	inline BFpacketcapture_impl(PacketCaptureThread* capture,
 	                          PacketDecoder*     decoder,
 	                          PacketProcessor*   processor,
 				              BFring      ring,
@@ -406,7 +406,7 @@ public:
 		                 "slot_ntime   : %i\n",
 		                 _nsrc, _nseq_per_buf, _slot_ntime);
 	}
-    virtual ~BFdatacapture_impl() {}
+    virtual ~BFpacketcapture_impl() {}
     inline void flush() {
 		while( _bufs.size() ) {
 			this->commit_buf();
@@ -419,14 +419,14 @@ public:
 		this->flush();
 		_oring.close();
 	}
-	BFdatacapture_status recv();
+	BFpacketcapture_status recv();
 };
 
-class BFdatacapture_chips_impl : public BFdatacapture_impl {
+class BFpacketcapture_chips_impl : public BFpacketcapture_impl {
 	ProcLog            _type_log;
 	ProcLog            _chan_log;
 	
-	BFdatacapture_chips_sequence_callback _sequence_callback;
+	BFpacketcapture_chips_sequence_callback _sequence_callback;
 	
 	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
         // TODO: Might be safer to round to nearest here, but the current firmware
@@ -478,14 +478,14 @@ class BFdatacapture_chips_impl : public BFdatacapture_impl {
 		                   << "payload_size : " << _payload_size << "\n";
     }
 public:
-	inline BFdatacapture_chips_impl(DataCaptureThread* capture,
-	                                BFring ring,
-	                                int    nsrc,
-	                                int    src0,
-	                                int    buffer_ntime,
-	                                int    slot_ntime,
-	                                BFdatacapture_callback sequence_callback)
-		: BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+	inline BFpacketcapture_chips_impl(PacketCaptureThread* capture,
+	                                  BFring               ring,
+	                                  int                  nsrc,
+	                                  int                  src0,
+	                                  int                  buffer_ntime,
+	                                  int                  slot_ntime,
+	                                  BFpacketcapture_callback sequence_callback)
+		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
 		  _type_log((std::string(capture->get_name())+"/type").c_str()),
 		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
 		  _sequence_callback(sequence_callback->get_chips()) {
@@ -495,11 +495,11 @@ public:
 	}
 };
 
-class BFdatacapture_cor_impl : public BFdatacapture_impl {
+class BFpacketcapture_cor_impl : public BFpacketcapture_impl {
     ProcLog          _type_log;
     ProcLog          _chan_log;
     
-    BFdatacapture_cor_sequence_callback _sequence_callback;
+    BFpacketcapture_cor_sequence_callback _sequence_callback;
     
     BFoffset _time_tag;
     int      _navg;
@@ -554,14 +554,14 @@ class BFdatacapture_cor_impl : public BFdatacapture_impl {
                            << "payload_size : " << _payload_size << "\n";
     }
 public:
-    inline BFdatacapture_cor_impl(DataCaptureThread* capture,
-                                  BFring ring,
-                                  int    nsrc,
-                                  int    src0,
-                                  int    buffer_ntime,
-                                  int    slot_ntime,
-                                  BFdatacapture_callback sequence_callback)
-        : BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+    inline BFpacketcapture_cor_impl(PacketCaptureThread* capture,
+                                  BFring                 ring,
+                                  int                    nsrc,
+                                  int                    src0,
+                                  int                    buffer_ntime,
+                                  int                    slot_ntime,
+                                  BFpacketcapture_callback sequence_callback)
+        : BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
           _type_log((std::string(capture->get_name())+"/type").c_str()),
           _chan_log((std::string(capture->get_name())+"/chans").c_str()),
           _sequence_callback(sequence_callback->get_cor()) {
@@ -571,11 +571,11 @@ public:
     }
 };
 
-class BFdatacapture_tbn_impl : public BFdatacapture_impl {
+class BFpacketcapture_tbn_impl : public BFpacketcapture_impl {
 	ProcLog          _type_log;
 	ProcLog          _chan_log;
 	
-	BFdatacapture_tbn_sequence_callback _sequence_callback;
+	BFpacketcapture_tbn_sequence_callback _sequence_callback;
 	
 	BFoffset _time_tag;
 	
@@ -624,14 +624,14 @@ class BFdatacapture_tbn_impl : public BFdatacapture_impl {
 				           << "payload_size : " << _payload_size << "\n";
     }
 public:
-	inline BFdatacapture_tbn_impl(DataCaptureThread* capture,
-	                                BFring ring,
-	                                int    nsrc,
-	                                int    src0,
-	                                int    buffer_ntime,
-	                                int    slot_ntime,
-	                             BFdatacapture_callback sequence_callback)
-		: BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+	inline BFpacketcapture_tbn_impl(PacketCaptureThread* capture,
+	                                BFring               ring,
+	                                int                  nsrc,
+	                                int                  src0,
+	                                int                  buffer_ntime,
+	                                int                  slot_ntime,
+	                                BFpacketcapture_callback sequence_callback)
+		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
 		  _type_log((std::string(capture->get_name())+"/type").c_str()),
 		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
 		  _sequence_callback(sequence_callback->get_tbn()) {
@@ -641,11 +641,11 @@ public:
 	}
 };
                                                     
-class BFdatacapture_drx_impl : public BFdatacapture_impl {
+class BFpacketcapture_drx_impl : public BFpacketcapture_impl {
 	ProcLog          _type_log;
 	ProcLog          _chan_log;
 	
-	BFdatacapture_drx_sequence_callback _sequence_callback;
+	BFpacketcapture_drx_sequence_callback _sequence_callback;
 	
 	BFoffset _time_tag;
 	int      _chan1;
@@ -709,14 +709,14 @@ class BFdatacapture_drx_impl : public BFdatacapture_impl {
 					       << "payload_size : " << _payload_size << "\n";
     }
 public:
-	inline BFdatacapture_drx_impl(DataCaptureThread* capture,
-	                                BFring ring,
-	                                int    nsrc,
-	                                int    src0,
-	                                int    buffer_ntime,
-	                                int    slot_ntime,
-	                             BFdatacapture_callback sequence_callback)
-		: BFdatacapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+	inline BFpacketcapture_drx_impl(PacketCaptureThread* capture,
+	                                BFring               ring,
+	                                int                  nsrc,
+	                                int                  src0,
+	                                int                  buffer_ntime,
+	                                int                  slot_ntime,
+	                                BFpacketcapture_callback sequence_callback)
+		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
 		  _type_log((std::string(capture->get_name())+"/type").c_str()),
 		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
 		  _sequence_callback(sequence_callback->get_drx()), 
