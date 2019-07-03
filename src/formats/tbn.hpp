@@ -122,3 +122,19 @@ public:
 	    }
     }
 };
+
+class TBNHeaderFiller : virtual public PacketHeaderFiller {
+public:
+    inline int get_size() { return sizeof(tbn_hdr_type); }
+    inline void operator()(const PacketDesc* hdr_base,
+                           char*             hdr) {
+        tbn_hdr_type* header = reinterpret_cast<tbn_hdr_type*>(hdr);
+        memset(header, 0, sizeof(tbn_hdr_type));
+        
+        header->sync_word   = 0x5CDEC0DE;
+        header->tuning_word = htobe32(hdr_base->tuning);
+        header->tbn_id      = htobe16(hdr_base->src + 1) | 1;
+        header->gain        = htobe16(hdr_base->gain);
+        header->time_tag    = htobe64(hdr_base->seq);
+    }
+};

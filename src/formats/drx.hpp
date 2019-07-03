@@ -128,3 +128,19 @@ public:
 	    }
     }
 };
+
+class DRXHeaderFiller : virtual public PacketHeaderFiller {
+public:
+    inline int get_size() { return sizeof(drx_hdr_type); }
+    inline void operator()(const PacketDesc* hdr_base,
+                           char*             hdr) {
+        drx_hdr_type* header = reinterpret_cast<drx_hdr_type*>(hdr);
+        memset(header, 0, sizeof(drx_hdr_type));
+        
+        header->sync_word   = 0x5CDEC0DE;
+        header->decimation  = htobe16(hdr_base->decimation);
+        header->time_offset = 0;
+        header->time_tag    = htobe64(hdr_base->seq);
+        header->tuning_word = htobe32(hdr_base->tuning);
+    }
+};
