@@ -133,7 +133,9 @@ public:
         
         header->sync_word   = 0x5CDEC0DE;
         header->tuning_word = htobe32(hdr_base->tuning);
-        header->tbn_id      = htobe16(hdr_base->src + 1) | 1;
+        header->tbn_id      = (htobe16(hdr_base->src + 1) & 0xFFC); // ID is the upper 14 bits;
+                                                                        // bit 2 is reserved;
+                                                                        // bit 1 indicates TBW
         header->gain        = htobe16(hdr_base->gain);
         header->time_tag    = htobe64(hdr_base->seq);
     }

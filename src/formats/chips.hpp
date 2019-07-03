@@ -176,8 +176,8 @@ public:
         header->roach    = hdr_base->src + 1;
         header->gbe      = hdr_base->tuning;
         header->nchan    = hdr_base->nchan;
-        header->nsubband = 1;
-        header->subband  = 0;
+        header->nsubband = 1;       // Should be changable?
+        header->subband  = 0;       // Should be changable?
         header->nroach   = hdr_base->nsrc;
         header->chan0    = htons(hdr_base->chan0);
         header->seq      = htobe64(hdr_base->seq + 1);

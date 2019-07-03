@@ -161,7 +161,23 @@ public:
         cor_hdr_type* header = reinterpret_cast<cor_hdr_type*>(hdr);
         memset(header, 0, sizeof(cor_hdr_type));
         
-        // TODO:  Finish this!
-        header->sync_word   = 0x5CDEC0DE;
+        // Find the number of antennas needed to reach this number of baselines
+        int N = (sqrt(8*hdr_base->nsrc+1)-1)/2;
+        
+        // Find the indices of the two stands that form this baseline
+        int a = -1;
+        int b = 2 + 2*(N-1)+1;
+        int c = -2*hdr_base->src;
+        int stand0 = (int) (-b + sqrt(b*b-4*a*c))/(2*a);
+        int stand1 = hdr_base->src - stand0*(2*(N-1)+1-stand0)/2 + stand0;
+        
+        header->sync_word        = 0x5CDEC0DE;
+        header->frame_count_word = 0x02;    // COR packet identifier
+        header->first_chan       = htons(hdr_base->chan0);
+        header->gain             = htons(hdr_base->gain);
+        header->time_tag         = htobe64(hdr_base->seq);
+        header->navg             = htobe32(hdr_base->decimation);
+        header->stand0           = htons(stand0 + 1);
+        header->stand1           = htons(stand1 + 1);
     }
 };
