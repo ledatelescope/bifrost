@@ -47,22 +47,21 @@ BFstatus bfHeaderInfoSetChan0(BFheaderinfo obj,
                               int          chan0);
 BFstatus bfHeaderInfoSetTuning(BFheaderinfo obj,
                                int          tuning);
-BFstatus bfHeaderInfoSetGain(BFheaderinfo obj,
-                             uint16_t     gain);
-BFstatus bfHeaderInfoSetDecimation(BFheaderinfo obj,
-                                   uint16_t     decimation);
+BFstatus bfHeaderInfoSetGain(BFheaderinfo       obj,
+                             unsigned short int gain);
+BFstatus bfHeaderInfoSetDecimation(BFheaderinfo       obj,
+                                   unsigned short int decimation);
 
 typedef struct BFpacketwriter_impl* BFpacketwriter;
 
 BFstatus bfPacketWriterDestroy(BFpacketwriter obj);
+BFstatus bfPacketWriterResetCounter(BFpacketwriter obj);
 BFstatus bfPacketWriterSend(BFpacketwriter obj, 
-                            BFheaderinfo   desc,
+                            BFheaderinfo   info,
                             BFoffset       seq,
                             BFoffset       seq_increment,
-                            BFoffset       seq_stride,
                             BFoffset       src,
                             BFoffset       src_increment,
-                            BFoffset       src_stride,
                             BFarray const* in);
 
 #ifdef __cplusplus

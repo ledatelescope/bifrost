@@ -46,12 +46,15 @@ class TBFHeaderFiller : virtual public PacketHeaderFiller {
 public:
     inline int get_size() { return sizeof(tbf_hdr_type); }
     inline void operator()(const PacketDesc* hdr_base,
+                           BFoffset          framecount,
                            char*             hdr) {
         tbf_hdr_type* header = reinterpret_cast<tbf_hdr_type*>(hdr);
         memset(header, 0, sizeof(tbf_hdr_type));
         
         header->sync_word        = 0x5CDEC0DE;
-        header->frame_count_word = htobe32(0x01);   // bits 1-8 are the COR packet flag
+        // Bits 9-32 are the frame count; bits 1-8 are the TBF packet flag
+        header->frame_count_word = htobe32((framecount & 0xFFFFFF) \
+                                           | ((uint32_t) 0x01 << 24));
         header->first_chan       = htons(hdr_base->src);
         header->time_tag         = htobe64(hdr_base->seq);
     }

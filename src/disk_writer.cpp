@@ -84,9 +84,12 @@ BFstatus bfDiskWriterCreate(BFpacketwriter* obj,
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
         nsamples = 32*nchan;
+    } else if( std::string(format).substr(0, 9) == std::string("subbeam2_") ) {
+        int nchan = std::atoi((std::string(format).substr(9, std::string(format).length())).c_str());
+        nsamples = 4*nchan;
     } else if(std::string(format).substr(0, 4) == std::string("cor_") ) {
         int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
-        nsamples = (8*4*nchan);
+        nsamples = 4*nchan;
     } else if( format == std::string("tbn") ) {
         nsamples = 512;
     } else if( format == std::string("drx") ) {
@@ -103,6 +106,9 @@ BFstatus bfDiskWriterCreate(BFpacketwriter* obj,
                            *obj = 0);
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_chips_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 9) == std::string("subbeam2_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_subbeam2_impl(writer, nsamples),
                            *obj = 0);
     } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_cor_impl(writer, nsamples),

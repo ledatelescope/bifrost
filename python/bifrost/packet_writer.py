@@ -35,23 +35,17 @@ class HeaderInfo(BifrostObject):
         BifrostObject.__init__(
             self, _bf.bfHeaderInfoCreate, _bf.bfHeaderInfoDestroy)
     def set_nsrc(self,  nsrc):
-        _check(_bf.bfHeaderInfoSetNSrc(self.obj,
-                                              nsrc))
+        _check(_bf.bfHeaderInfoSetNSrc(self.obj, nsrc))
     def set_nchan(self, nchan):
-        _check(_bf.bfHeaderInfoSetNChan(self.obj,
-                                               nchan))
+        _check(_bf.bfHeaderInfoSetNChan(self.obj, nchan))
     def set_chan0(self, chan0):
-        _check(_bf.bfHeaderInfoSetChan0(self.obj,
-                                               chan0))
+        _check(_bf.bfHeaderInfoSetChan0(self.obj, chan0))
     def set_tuning(self, tuning):
-        _check(_bf.bfHeaderInfoSetTuning(self.obj,
-                                                tuning))
+        _check(_bf.bfHeaderInfoSetTuning(self.obj, tuning))
     def set_gain(self, gain):
-        _check(_bf.bfHeaderInfoSetGain(self.obj,
-                                              gain))
+        _check(_bf.bfHeaderInfoSetGain(self.obj, gain))
     def set_decimation(self, decimation):
-        _check(_bf.bfHeaderInfoSetDecimation(self.obj,
-                                                    tuning))
+        _check(_bf.bfHeaderInfoSetDecimation(self.obj, decimation))
 
 class UDPTransmit(BifrostObject):
     def __init__(self, fmt, sock, core=None):
@@ -64,15 +58,15 @@ class UDPTransmit(BifrostObject):
         return self
     def __exit__(self, type, value, tb):
         pass
-    def send(self, headerinfo, seq, seq_increment, seq_stride, src, src_increment, src_stride, idata):
+    def reset_counter(self):
+        _check(_bf.bfPacketWriterResetCounter(self.obj))
+    def send(self, headerinfo, seq, seq_increment, src, src_increment, idata):
         _check(_bf.bfPacketWriterSend(self.obj,
                                       headerinfo.obj,
                                       seq,
                                       seq_increment,
-                                      seq_stride,
                                       src,
                                       src_increment,
-                                      src_stride,
                                       asarray(idata).as_BFarray()))
 
 class DiskWriter(BifrostObject):
@@ -86,14 +80,14 @@ class DiskWriter(BifrostObject):
         return self
     def __exit__(self, type, value, tb):
         pass
-    def send(self, headerinfo, seq, seq_increment, seq_stride, src, src_increment, src_stride, idata):
+    def reset_counter(self):
+        _check(_bf.bfPacketWriterResetCounter(self.obj))
+    def send(self, headerinfo, seq, seq_increment, src, src_increment, idata):
         _check(_bf.bfPacketWriterSend(self.obj,
                                       headerinfo.obj,
                                       seq,
                                       seq_increment,
-                                      seq_stride,
                                       src,
                                       src_increment,
-                                      src_stride,
                                       asarray(idata).as_BFarray()))
 

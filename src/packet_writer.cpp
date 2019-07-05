@@ -37,33 +37,41 @@
 #define BF_PRINTD(stmt)
 #endif
 
-BFstatus BFpacketwriter_impl::send(BFheaderinfo   desc,
+BFstatus BFpacketwriter_impl::send(BFheaderinfo   info,
                                    BFoffset       seq,
                                    BFoffset       seq_increment,
-                                   BFoffset       seq_stride,
                                    BFoffset       src,
                                    BFoffset       src_increment,
-                                   BFoffset       src_stride,
                                    BFarray const* in) {
-    BF_ASSERT(desc,          BF_STATUS_INVALID_HANDLE);
+    BF_ASSERT(info,          BF_STATUS_INVALID_HANDLE);
     BF_ASSERT(in,            BF_STATUS_INVALID_POINTER);
-    BF_ASSERT(in->ndim == 1, BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(in->dtype == _dtype,       BF_STATUS_INVALID_DTYPE);
+    BF_ASSERT(in->ndim == 3,             BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(in->shape[2] == _nsamples, BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(is_contiguous(in),  BF_STATUS_UNSUPPORTED_STRIDE);
+    BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM),
+              BF_STATUS_UNSUPPORTED_SPACE);
     
-    PacketDesc* hdr_base = desc->get_description();
+    PacketDesc* hdr_base = info->get_description();
     
+    int i, j;
     int hdr_size = _filler->get_size();
     int data_size = (BF_DTYPE_NBIT(in->dtype)/8) * _nsamples;
-    int npackets = in->shape[0] / _nsamples;
+    int npackets = in->shape[0]*in->shape[1];
     
     char* hdrs;
     hdrs = (char*) malloc(npackets*hdr_size*sizeof(char));
-    for(int i=0; i<npackets; i++) {
-        hdr_base->seq = seq + i*seq_increment/seq_stride;
-        hdr_base->src = src + i*src_increment/src_stride;
-        (*_filler)(hdr_base, hdrs+hdr_size*i);
+    for(i=0; i<in->shape[0]; i++) {
+        hdr_base->seq = seq + i*seq_increment;
+        for(j=0; j<in->shape[1]; j++) {
+            hdr_base->src = src + j*src_increment;
+            (*_filler)(hdr_base, _framecount, hdrs+hdr_size*(i*in->shape[1]+j));
+        }
+        _framecount++;
     }
     
     _writer->send(hdrs, hdr_size, (char*) in->data, data_size, npackets);
+    this->update_stats_log();
     
     free(hdrs);
     return BF_STATUS_SUCCESS;
@@ -109,15 +117,15 @@ BFstatus bfHeaderInfoSetTuning(BFheaderinfo obj,
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfHeaderInfoSetGain(BFheaderinfo obj,
-                             uint16_t     gain) {
+BFstatus bfHeaderInfoSetGain(BFheaderinfo       obj,
+                             unsigned short int gain) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_gain(gain);
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfHeaderInfoSetDecimation(BFheaderinfo obj,
-                                   uint16_t     decimation) {
+BFstatus bfHeaderInfoSetDecimation(BFheaderinfo       obj,
+                                   unsigned short int decimation) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_decimation(decimation);
     return BF_STATUS_SUCCESS;
@@ -129,15 +137,18 @@ BFstatus bfPacketWriterDestroy(BFpacketwriter obj) {
     return BF_STATUS_SUCCESS;
 }
 
+BFstatus bfPacketWriterResetCounter(BFpacketwriter obj) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    BF_TRY_RETURN(obj->reset_counter());
+}
+
 BFstatus bfPacketWriterSend(BFpacketwriter obj,
-                            BFheaderinfo   desc,
+                            BFheaderinfo   info,
                             BFoffset       seq,
                             BFoffset       seq_increment,
-                            BFoffset       seq_stride,
                             BFoffset       src,
                             BFoffset       src_increment,
-                            BFoffset       src_stride,
                             BFarray const* in) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    return obj->send(desc, seq, seq_increment, seq_stride, src, src_increment, src_stride, in);
+    return obj->send(info, seq, seq_increment, src, src_increment, in);
 }

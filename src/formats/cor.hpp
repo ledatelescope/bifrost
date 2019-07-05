@@ -157,6 +157,7 @@ class CORHeaderFiller : virtual public PacketHeaderFiller {
 public:
     inline int get_size() { return sizeof(cor_hdr_type); }
     inline void operator()(const PacketDesc* hdr_base,
+                           BFoffset          framecount,
                            char*             hdr) {
         cor_hdr_type* header = reinterpret_cast<cor_hdr_type*>(hdr);
         memset(header, 0, sizeof(cor_hdr_type));
@@ -172,9 +173,9 @@ public:
         int stand1 = hdr_base->src - stand0*(2*(N-1)+1-stand0)/2 + stand0;
         
         header->sync_word        = 0x5CDEC0DE;
-        header->frame_count_word = htobe32(((hdr_base->tuning & 0xFFFFFF) << 8)\
-                                           | 0x02);   // bits 9-32 are the server identifier
-                                                      // bits 1-8 are the COR packet flag
+        // Bits 9-32 are the server identifier; bits 1-8 are the COR packet flag
+        header->frame_count_word = htobe32((hdr_base->tuning & 0xFFFFFF) \
+                                           | ((uint32_t) 0x02 << 24));
         header->first_chan       = htons(hdr_base->chan0);
         header->gain             = htons(hdr_base->gain);
         header->time_tag         = htobe64(hdr_base->seq);

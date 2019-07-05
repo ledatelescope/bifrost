@@ -127,16 +127,18 @@ class TBNHeaderFiller : virtual public PacketHeaderFiller {
 public:
     inline int get_size() { return sizeof(tbn_hdr_type); }
     inline void operator()(const PacketDesc* hdr_base,
+                           BFoffset          framecount,
                            char*             hdr) {
         tbn_hdr_type* header = reinterpret_cast<tbn_hdr_type*>(hdr);
         memset(header, 0, sizeof(tbn_hdr_type));
         
-        header->sync_word   = 0x5CDEC0DE;
-        header->tuning_word = htobe32(hdr_base->tuning);
-        header->tbn_id      = (htobe16(hdr_base->src + 1) & 0xFFC); // ID is the upper 14 bits;
-                                                                        // bit 2 is reserved;
-                                                                        // bit 1 indicates TBW
-        header->gain        = htobe16(hdr_base->gain);
-        header->time_tag    = htobe64(hdr_base->seq);
+        header->sync_word        = 0x5CDEC0DE;
+        // Bits 9-32 are the frame count; bits 1-8 are zero
+        header->frame_count_word = htobe32((framecount & 0xFFFFFF));
+        header->tuning_word      = htobe32(hdr_base->tuning);
+        // ID is the upper 14 bits; bit 2 is reserved; bit 1 is the TBW flag
+        header->tbn_id           = htons((hdr_base->src + 1) & 0x3FFF);
+        header->gain             = htons(hdr_base->gain);
+        header->time_tag         = htobe64(hdr_base->seq);
     }
 };

@@ -127,12 +127,14 @@ protected:
     std::string         _name;
     PacketWriterThread* _writer;
     PacketHeaderFiller* _filler;
+    int                 _nsamples;
+    BFdtype             _dtype;
     
     ProcLog             _bind_log;
     ProcLog             _stat_log;
     pid_t               _pid;
     
-    int                 _nsamples;
+    BFoffset            _framecount;
 private:
     void update_stats_log() {
         const PacketStats* stats = _writer->get_stats();
@@ -148,22 +150,23 @@ private:
 public:
     inline BFpacketwriter_impl(PacketWriterThread* writer, 
                                PacketHeaderFiller* filler,
-                               int                 nsamples)
+                               int                 nsamples,
+                               BFdtype             dtype)
         : _name(writer->get_name()), _writer(writer), _filler(filler),
+          _nsamples(nsamples), _dtype(dtype),
           _bind_log(_name+"/bind"),
           _stat_log(_name+"/stats"),
-          _nsamples(nsamples) {
+          _framecount(0) {
         _bind_log.update() << "ncore : " << 1 << "\n"
                            << "core0 : " << _writer->get_core() << "\n";
     }
     virtual ~BFpacketwriter_impl() {}
-    BFstatus send(BFheaderinfo   desc,
+    inline void reset_counter() { _framecount = 0; }
+    BFstatus send(BFheaderinfo   info,
                   BFoffset       seq,
                   BFoffset       seq_increment,
-                  BFoffset       seq_stride,
                   BFoffset       src,
                   BFoffset       src_increment,
-                  BFoffset       src_stride,
                   BFarray const* in);
 };
 
@@ -172,7 +175,7 @@ class BFpacketwriter_generic_impl : public BFpacketwriter_impl {
 public:
     inline BFpacketwriter_generic_impl(PacketWriterThread* writer,
                                        int                 nsamples)
-        : BFpacketwriter_impl(writer, nullptr, nsamples),
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_U8),
           _type_log((std::string(writer->get_name())+"/type").c_str()) {
         _filler = new PacketHeaderFiller();
         _type_log.update("type : %s\n", "generic");
@@ -184,10 +187,22 @@ class BFpacketwriter_chips_impl : public BFpacketwriter_impl {
 public:
     inline BFpacketwriter_chips_impl(PacketWriterThread* writer,
                                      int                 nsamples)
-        : BFpacketwriter_impl(writer, nullptr, nsamples),
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI4),
           _type_log((std::string(writer->get_name())+"/type").c_str()) {
         _filler = new CHIPSHeaderFiller();
         _type_log.update("type : %s\n", "chips");
+    }
+};
+
+class BFpacketwriter_subbeam2_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_subbeam2_impl(PacketWriterThread* writer,
+                                        int                 nsamples)
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CF32),
+          _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new CHIPSHeaderFiller();
+        _type_log.update("type : %s\n", "subbeam2");
     }
 };
 
@@ -196,7 +211,7 @@ class BFpacketwriter_cor_impl : public BFpacketwriter_impl {
 public:
     inline BFpacketwriter_cor_impl(PacketWriterThread* writer,
                                    int                 nsamples)
-        : BFpacketwriter_impl(writer, nullptr, nsamples),
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CF32),
           _type_log((std::string(writer->get_name())+"/type").c_str()) {
         _filler = new CORHeaderFiller();
         _type_log.update("type : %s\n", "cor");
@@ -208,7 +223,7 @@ class BFpacketwriter_tbn_impl : public BFpacketwriter_impl {
 public:
     inline BFpacketwriter_tbn_impl(PacketWriterThread* writer,
                                    int                 nsamples)
-     : BFpacketwriter_impl(writer, nullptr, nsamples),
+     : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI8),
        _type_log((std::string(writer->get_name())+"/type").c_str()) {
         _filler = new TBNHeaderFiller();
         _type_log.update("type : %s\n", "tbn");
@@ -220,7 +235,7 @@ class BFpacketwriter_drx_impl : public BFpacketwriter_impl {
 public:
     inline BFpacketwriter_drx_impl(PacketWriterThread* writer,
                                    int                 nsamples)
-     : BFpacketwriter_impl(writer, nullptr, nsamples),
+     : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI4),
        _type_log((std::string(writer->get_name())+"/type").c_str()) {
         _filler = new DRXHeaderFiller();
         _type_log.update("type : %s\n", "drx");
@@ -232,7 +247,7 @@ class BFpacketwriter_tbf_impl : public BFpacketwriter_impl {
 public:
     inline BFpacketwriter_tbf_impl(PacketWriterThread* writer,
                                    int                 nsamples)
-     : BFpacketwriter_impl(writer, nullptr, nsamples),
+     : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI4),
        _type_log((std::string(writer->get_name())+"/type").c_str()) {
         _filler = new TBFHeaderFiller();
         _type_log.update("type : %s\n", "tbf");

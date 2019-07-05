@@ -64,7 +64,7 @@ public:
         memset(mmsg, 0, sizeof(struct mmsghdr)*npackets);
         
         for(int i=0; i<npackets; i++) {
-            mmsg[i].msg_hdr.msg_iov = &iovs[i];
+            mmsg[i].msg_hdr.msg_iov = &iovs[2*i];
             mmsg[i].msg_hdr.msg_iovlen = 2;
             iovs[2*i+0].iov_base = (hdrs + i*hdr_size);
             iovs[2*i+0].iov_len = hdr_size;
@@ -72,7 +72,12 @@ public:
             iovs[2*i+1].iov_len = data_size;
         }
         
-        int nsent = ::sendmmsg(_fd, mmsg, npackets, flags);
+        ssize_t nsent = ::sendmmsg(_fd, mmsg, npackets, flags);
+        /*
+        if( nsent == -1 ) {
+            std::cout << "sendmmsg failed: " << std::strerror(errno) << " with " << hdr_size << " and " << data_size << std::endl;
+        }
+        */
         
         free(mmsg);
         free(iovs);
@@ -94,9 +99,12 @@ BFstatus bfUdpTransmitCreate(BFpacketwriter* obj,
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
         nsamples = 32*nchan;
+    } else if( std::string(format).substr(0, 9) == std::string("subbeam2_") ) {
+        int nchan = std::atoi((std::string(format).substr(9, std::string(format).length())).c_str());
+        nsamples = 4*nchan;
     } else if(std::string(format).substr(0, 4) == std::string("cor_") ) {
         int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
-        nsamples = (8*4*nchan);
+        nsamples = 4*nchan;
     } else if( format == std::string("tbn") ) {
         nsamples = 512;
     } else if( format == std::string("drx") ) {
@@ -113,6 +121,9 @@ BFstatus bfUdpTransmitCreate(BFpacketwriter* obj,
                            *obj = 0);
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_chips_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 9) == std::string("subbeam2_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_subbeam2_impl(writer, nsamples),
                            *obj = 0);
     } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_cor_impl(writer, nsamples),

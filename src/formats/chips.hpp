@@ -169,6 +169,7 @@ class CHIPSHeaderFiller : virtual public PacketHeaderFiller {
 public:
     inline int get_size() { return sizeof(chips_hdr_type); }
     inline void operator()(const PacketDesc* hdr_base,
+                           BFoffset          framecount,
                            char*             hdr) {
         chips_hdr_type* header = reinterpret_cast<chips_hdr_type*>(hdr);
         memset(header, 0, sizeof(chips_hdr_type));
@@ -180,6 +181,6 @@ public:
         header->subband  = 0;       // Should be changable?
         header->nroach   = hdr_base->nsrc;
         header->chan0    = htons(hdr_base->chan0);
-        header->seq      = htobe64(hdr_base->seq + 1);
+        header->seq      = htobe64(hdr_base->seq);
     }
 };

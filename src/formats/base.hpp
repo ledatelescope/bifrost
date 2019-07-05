@@ -103,5 +103,6 @@ class PacketHeaderFiller {
 public:
     virtual inline int get_size() { return 0; }
     virtual inline void operator()(const PacketDesc* hdr_base,
+                                   BFoffset          framecount,
                                    char*             hdr) {}
 };
