@@ -163,14 +163,12 @@ public:
         memset(header, 0, sizeof(cor_hdr_type));
         
         // Find the number of antennas needed to reach this number of baselines
-        int N = (sqrt(8*hdr_base->nsrc+1)-1)/2;
+        int N = (sqrt(8*hdr_base->nsrc+1) - 1) / 2;
         
         // Find the indices of the two stands that form this baseline
-        int a = -1;
         int b = 2 + 2*(N-1)+1;
-        int c = -2*hdr_base->src;
-        int stand0 = (int) (-b + sqrt(b*b-4*a*c))/(2*a);
-        int stand1 = hdr_base->src - stand0*(2*(N-1)+1-stand0)/2 + stand0;
+        int stand0 = (b - sqrt(b*b-8*hdr_base->src)) / 2;
+        int stand1 = hdr_base->src - stand0*(2*(N-1)+1-stand0)/2;
         
         header->sync_word        = 0x5CDEC0DE;
         // Bits 9-32 are the server identifier; bits 1-8 are the COR packet flag
