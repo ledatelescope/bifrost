@@ -64,6 +64,69 @@ public:
     virtual const char* get_name()     { return "generic_writer"; }
 };
 
+class DiskPacketWriter : public PacketWriterMethod {
+public:
+    DiskPacketWriter(int fd)
+     : PacketWriterMethod(fd) {}
+    ssize_t send_packets(char* hdrs, 
+                         int   hdr_size,
+                         char* data, 
+                         int   data_size, 
+                         int   npackets,
+                         int   flags=0) {
+        ssize_t status, nsent = 0;
+        for(int i=0; i<npackets; i++) {
+            status = ::write(_fd, hdrs+hdr_size*i, hdr_size);
+            if( status != hdr_size ) continue;
+            status = ::write(_fd, data+data_size*i, data_size);
+            if( status != data_size) continue;
+            nsent += 1;
+        }
+        return nsent;
+    }
+    inline const char* get_name() { return "disk_writer"; }
+};
+
+class UDPPacketSender : public PacketWriterMethod {
+public:
+    UDPPacketSender(int fd)
+     : PacketWriterMethod(fd) {}
+    ssize_t send_packets(char* hdrs, 
+                         int   hdr_size,
+                         char* data, 
+                         int   data_size, 
+                         int   npackets,
+                         int   flags=0) {
+        struct mmsghdr *mmsg = NULL;
+        struct iovec *iovs = NULL;
+        mmsg = (struct mmsghdr *) malloc(sizeof(struct mmsghdr)*npackets);
+        iovs = (struct iovec *) malloc(sizeof(struct iovec)*2*npackets);
+        memset(mmsg, 0, sizeof(struct mmsghdr)*npackets);
+        
+        for(int i=0; i<npackets; i++) {
+            mmsg[i].msg_hdr.msg_iov = &iovs[2*i];
+            mmsg[i].msg_hdr.msg_iovlen = 2;
+            iovs[2*i+0].iov_base = (hdrs + i*hdr_size);
+            iovs[2*i+0].iov_len = hdr_size;
+            iovs[2*i+1].iov_base = (data + i*data_size);
+            iovs[2*i+1].iov_len = data_size;
+        }
+        
+        ssize_t nsent = ::sendmmsg(_fd, mmsg, npackets, flags);
+        /*
+        if( nsent == -1 ) {
+            std::cout << "sendmmsg failed: " << std::strerror(errno) << " with " << hdr_size << " and " << data_size << std::endl;
+        }
+        */
+        
+        free(mmsg);
+        free(iovs);
+        
+        return nsent;
+    }
+    inline const char* get_name() { return "udp_transmit"; }
+};
+
 struct PacketStats {
     size_t ninvalid;
     size_t ninvalid_bytes;
@@ -253,3 +316,64 @@ public:
         _type_log.update("type : %s\n", "tbf");
     }
 };
+
+BFstatus BFpacketwriter_create(BFpacketwriter* obj,
+                               const char*     format,
+                               int             fd,
+                               int             core,
+                               bool            disk_based) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
+    
+    int nsamples = 0;
+    if(std::string(format).substr(0, 8) == std::string("generic_") ) {
+        nsamples = std::atoi((std::string(format).substr(8, std::string(format).length())).c_str());
+    } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
+        int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
+        nsamples = 32*nchan;
+    } else if( std::string(format).substr(0, 9) == std::string("subbeam2_") ) {
+        int nchan = std::atoi((std::string(format).substr(9, std::string(format).length())).c_str());
+        nsamples = 4*nchan;
+    } else if(std::string(format).substr(0, 4) == std::string("cor_") ) {
+        int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
+        nsamples = 4*nchan;
+    } else if( format == std::string("tbn") ) {
+        nsamples = 512;
+    } else if( format == std::string("drx") ) {
+        nsamples = 4096;
+    } else if( format == std::string("tbf") ) {
+        nsamples = 6144;
+    }
+    
+    PacketWriterMethod* method;
+    if( disk_based ) {
+        method = new DiskPacketWriter(fd);
+    } else {
+        method = new UDPPacketSender(fd);
+    }
+    PacketWriterThread* writer = new PacketWriterThread(method, core);
+    
+    if( std::string(format).substr(0, 8) == std::string("generic_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_generic_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_chips_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 9) == std::string("subbeam2_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_subbeam2_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_cor_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( format == std::string("tbn") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_tbn_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( format == std::string("drx") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_drx_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( format == std::string("tbf") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_tbf_impl(writer, nsamples),
+                           *obj = 0);
+    } else {
+        return BF_STATUS_UNSUPPORTED;
+    }
+}

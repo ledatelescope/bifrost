@@ -47,47 +47,35 @@ class HeaderInfo(BifrostObject):
     def set_decimation(self, decimation):
         _check(_bf.bfHeaderInfoSetDecimation(self.obj, decimation))
 
-class UDPTransmit(BifrostObject):
+class _WriterBase(BifrostObject):
+    def __enter__(self):
+        return self
+    def __exit__(self, type, value, tb):
+        pass
+    def reset_counter(self):
+        _check(_bf.bfPacketWriterResetCounter(self.obj))
+    def send(self, headerinfo, seq, seq_increment, src, src_increment, idata):
+        _check(_bf.bfPacketWriterSend(self.obj,
+                                      headerinfo.obj,
+                                      seq,
+                                      seq_increment,
+                                      src,
+                                      src_increment,
+                                      asarray(idata).as_BFarray()))
+
+class UDPTransmit(_WriterBase):
     def __init__(self, fmt, sock, core=None):
         if core is None:
             core = -1
         BifrostObject.__init__(
             self, _bf.bfUdpTransmitCreate, _bf.bfPacketWriterDestroy,
             fmt, sock.fileno(), core)
-    def __enter__(self):
-        return self
-    def __exit__(self, type, value, tb):
-        pass
-    def reset_counter(self):
-        _check(_bf.bfPacketWriterResetCounter(self.obj))
-    def send(self, headerinfo, seq, seq_increment, src, src_increment, idata):
-        _check(_bf.bfPacketWriterSend(self.obj,
-                                      headerinfo.obj,
-                                      seq,
-                                      seq_increment,
-                                      src,
-                                      src_increment,
-                                      asarray(idata).as_BFarray()))
+   
 
-class DiskWriter(BifrostObject):
+class DiskWriter(_WriterBase):
     def __init__(self, fmt, fh, core=None):
         if core is None:
             core = -1
         BifrostObject.__init__(
             self, _bf.bfDiskWriterCreate, _bf.bfPacketWriterDestroy,
             fmt, fh.fileno(), core)
-    def __enter__(self):
-        return self
-    def __exit__(self, type, value, tb):
-        pass
-    def reset_counter(self):
-        _check(_bf.bfPacketWriterResetCounter(self.obj))
-    def send(self, headerinfo, seq, seq_increment, src, src_increment, idata):
-        _check(_bf.bfPacketWriterSend(self.obj,
-                                      headerinfo.obj,
-                                      seq,
-                                      seq_increment,
-                                      src,
-                                      src_increment,
-                                      asarray(idata).as_BFarray()))
-

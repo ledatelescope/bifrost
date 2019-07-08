@@ -131,6 +131,20 @@ BFstatus bfHeaderInfoSetDecimation(BFheaderinfo       obj,
     return BF_STATUS_SUCCESS;
 }
 
+BFstatus bfDiskWriterCreate(BFpacketwriter* obj,
+                            const char*     format,
+                            int             fd,
+                            int             core) {
+    return BFpacketwriter_create(obj, format, fd, core, true);
+}
+
+BFstatus bfUdpTransmitCreate(BFpacketwriter* obj,
+                             const char*     format,
+                             int             fd,
+                             int             core) {
+    return BFpacketwriter_create(obj, format, fd, core, false);
+}
+
 BFstatus bfPacketWriterDestroy(BFpacketwriter obj) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     delete obj;
