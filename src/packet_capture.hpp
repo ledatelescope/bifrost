@@ -39,11 +39,19 @@ using bifrost::ring::WriteSequence;
 #include "formats/formats.hpp"
 #include "hw_locality.hpp"
 
+#include <arpa/inet.h>  // For ntohs
+#include <sys/socket.h> // For recvfrom
+
+#include <queue>
+#include <memory>
+#include <stdexcept>
 #include <cstdlib>      // For posix_memalign
 #include <cstring>      // For memcpy, memset
 #include <cstdint>
 
-#include <queue>
+#include <sys/types.h>
+#include <unistd.h>
+#include <fstream>
 #include <chrono>
 
 #ifndef BF_HWLOC_ENABLED
@@ -144,6 +152,123 @@ public:
 	}
 	virtual const char* get_name() { return "generic_capture"; }
 	inline const size_t get_max_size() {return _pkt_size_max; }
+};
+
+class DiskPacketReader : public PacketCaptureMethod {
+public:
+    DiskPacketReader(int fd, size_t pkt_size_max=9000)
+     : PacketCaptureMethod(fd, pkt_size_max) {}
+    int recv_packet(uint8_t** pkt_ptr, int flags=0) {
+        *pkt_ptr = &_buf[0];
+        return ::read(_fd, &_buf[0], _buf.size());
+    }
+    inline const char* get_name() { return "disk_reader"; }
+};
+
+// TODO: The VMA API is returning unaligned buffers, which prevents use of SSE
+#ifndef BF_VMA_ENABLED
+#define BF_VMA_ENABLED 0
+//#define BF_VMA_ENABLED 1
+#endif
+
+#if BF_VMA_ENABLED
+#include <mellanox/vma_extra.h>
+class VMAReceiver {
+    int           _fd;
+    vma_api_t*    _api;
+    vma_packet_t* _pkt;
+    inline void clean_cache() {
+        if( _pkt ) {
+            _api->free_packets(_fd, _pkt, 1);
+            _pkt = 0;
+        }
+    }
+public:
+    VMAReceiver(int fd)
+        : _fd(fd), _api(vma_get_api()), _pkt(0) {}
+    VMAReceiver(VMAReceiver const& other)
+        : _fd(other._fd), _api(other._api), _pkt(0) {}
+    VMAReceiver& operator=(VMAReceiver const& other) {
+        if( &other != this ) {
+            this->clean_cache();
+            _fd  = other._fd;
+            _api = other._api;
+        }
+        return *this;
+    }
+    ~VMAReceiver() { this->clean_cache(); }
+    inline int recv_packet(uint8_t* buf, size_t bufsize, uint8_t** pkt_ptr, int flags=0) {
+        this->clean_cache();
+        int ret = _api->recvfrom_zcopy(_fd, buf, bufsize, &flags, 0, 0);
+        if( ret < 0 ) {
+            return ret;
+        }
+        if( flags & MSG_VMA_ZCOPY ) {
+            _pkt = &((vma_packets_t*)buf)->pkts[0];
+            *pkt_ptr = (uint8_t*)_pkt->iov[0].iov_base;
+        } else {
+            *pkt_ptr = buf;
+        }
+        return ret;
+    }
+    inline operator bool() const { return _api != NULL; }
+};
+#endif // BF_VMA_ENABLED
+
+class UDPPacketReceiver : public PacketCaptureMethod {
+#if BF_VMA_ENABLED
+    VMAReceiver            _vma;
+#endif
+public:
+    UDPPacketReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
+        : PacketCaptureMethod(fd, pkt_size_max)
+#if BF_VMA_ENABLED
+        , _vma(fd)
+#endif
+    {}
+    inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
+#if BF_VMA_ENABLED
+        if( _vma ) {
+            *pkt_ptr = 0;
+            return _vma.recv_packet(&_buf[0], _buf.size(), pkt_ptr, flags);
+        } else {
+#endif
+            *pkt_ptr = &_buf[0];
+            return ::recvfrom(_fd, &_buf[0], _buf.size(), flags, 0, 0);
+#if BF_VMA_ENABLED
+        }
+#endif
+    }
+    inline const char* get_name() { return "udp_capture"; }
+};
+
+class UDPPacketSniffer : public PacketCaptureMethod {
+#if BF_VMA_ENABLED
+    VMAReceiver            _vma;
+#endif
+public:
+    UDPPacketSniffer(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
+        : PacketCaptureMethod(fd, pkt_size_max)
+#if BF_VMA_ENABLED
+        , _vma(fd)
+#endif
+    {}
+    inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
+#if BF_VMA_ENABLED
+        if( _vma ) {
+            *pkt_ptr = 0;
+            int rc = _vma.recv_packet(&_buf[0], _buf.size(), pkt_ptr, flags) - 28;
+            *pkt_ptr = *(pkt_ptr + 28);
+            return rc;
+        } else {
+#endif
+            *pkt_ptr = &_buf[28];   // Offset for the IP+UDP headers
+            return ::recvfrom(_fd, &_buf[0], _buf.size(), flags, 0, 0) - 28;
+#if BF_VMA_ENABLED
+        }
+#endif
+    }
+    inline const char* get_name() { return "udp_sniffer"; }
 };
 
 struct PacketStats {
@@ -695,3 +820,78 @@ public:
 		_type_log.update("type : %s\n", "drx");
 	}
 };
+
+typedef enum BFiomethod_ {
+    BF_IO_DISK = 1,
+    BF_IO_UDP = 2,
+    BF_IO_SNIFFER = 3
+} BFiomethod;
+
+BFstatus BFpacketcapture_create(BFpacketcapture* obj,
+                                const char*      format,
+                                int              fd,
+                                BFring           ring,
+                                BFsize           nsrc,
+                                BFsize           src0,
+                                BFsize           buffer_ntime,
+                                BFsize           slot_ntime,
+                                BFpacketcapture_callback sequence_callback,
+                                int              core,
+                                BFiomethod       backend) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
+    
+    size_t max_payload_size = JUMBO_FRAME_SIZE;
+    if( std::string(format).substr(0, 5) == std::string("chips") ) {
+        if( backend == BF_IO_DISK ) {
+            // Need to know how much to read at a time
+            int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
+            max_payload_size = sizeof(chips_hdr_type) + 32*nchan;
+        }
+    } else if(std::string(format).substr(0, 3) == std::string("cor") ) {
+        if( backend == BF_IO_DISK ) {
+            // Need to know how much to read at a time
+            int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
+            max_payload_size = sizeof(cor_hdr_type) + (8*4*nchan);
+        }
+    } else if( format == std::string("tbn") ) {
+        max_payload_size = TBN_FRAME_SIZE;
+    } else if( format == std::string("drx") ) {
+        max_payload_size = DRX_FRAME_SIZE;
+    }
+    
+    PacketCaptureMethod* method;
+    if( backend == BF_IO_DISK ) {
+        method = new DiskPacketReader(fd, max_payload_size);
+    } else if( backend == BF_IO_UDP ) {
+        method = new UDPPacketReceiver(fd, max_payload_size);
+    } else if( backend == BF_IO_SNIFFER ) {
+        method = new UDPPacketSniffer(fd, max_payload_size);
+    } else {
+        return BF_STATUS_UNSUPPORTED;
+    }
+    PacketCaptureThread* capture = new PacketCaptureThread(method, nsrc, core);
+    
+    if( std::string(format).substr(0, 5) == std::string("chips") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_chips_impl(capture, ring, nsrc, src0,
+                                                               buffer_ntime, slot_ntime,
+                                                               sequence_callback),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 3) == std::string("cor") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_cor_impl(capture, ring, nsrc, src0,
+                                                             buffer_ntime, slot_ntime,
+                                                             sequence_callback),
+                           *obj = 0);
+    } else if( format == std::string("tbn") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_tbn_impl(capture, ring, nsrc, src0,
+                                                            buffer_ntime, slot_ntime,
+                                                            sequence_callback),
+                           *obj = 0);
+    } else if( format == std::string("drx") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_drx_impl(capture, ring, nsrc, src0,
+                                                            buffer_ntime, slot_ntime,
+                                                            sequence_callback),
+                           *obj = 0);
+    } else {
+        return BF_STATUS_UNSUPPORTED;
+    }
+}

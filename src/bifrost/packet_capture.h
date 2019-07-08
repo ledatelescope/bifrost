@@ -35,24 +35,7 @@ extern "C" {
 
 #include <bifrost/ring.h>
 
-typedef struct BFpacketcapture_impl* BFpacketcapture;
-
-typedef enum BFpacketcapture_status_ {
-        BF_CAPTURE_STARTED,
-        BF_CAPTURE_ENDED,
-        BF_CAPTURE_CONTINUED,
-        BF_CAPTURE_CHANGED,
-        BF_CAPTURE_NO_DATA,
-        BF_CAPTURE_INTERRUPTED,
-        BF_CAPTURE_ERROR
-} BFpacketcapture_status;
-
-BFstatus bfPacketCaptureDestroy(BFpacketcapture obj);
-BFstatus bfPacketCaptureRecv(BFpacketcapture         obj,
-                             BFpacketcapture_status* result);
-BFstatus bfPacketCaptureFlush(BFpacketcapture obj);
-BFstatus bfPacketCaptureEnd(BFpacketcapture obj);
-// TODO: bfPacketCaptureGetXX
+// Callback setup
 
 typedef int (*BFpacketcapture_chips_sequence_callback)(BFoffset, int, int, int,
                                                        BFoffset*, void const**, size_t*);
@@ -75,6 +58,59 @@ BFstatus bfPacketCaptureCallbackSetTBN(BFpacketcapture_callback obj,
                                        BFpacketcapture_tbn_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetDRX(BFpacketcapture_callback obj,
                                        BFpacketcapture_drx_sequence_callback callback);
+
+// Capture setup
+
+typedef struct BFpacketcapture_impl* BFpacketcapture;
+
+typedef enum BFpacketcapture_status_ {
+        BF_CAPTURE_STARTED,
+        BF_CAPTURE_ENDED,
+        BF_CAPTURE_CONTINUED,
+        BF_CAPTURE_CHANGED,
+        BF_CAPTURE_NO_DATA,
+        BF_CAPTURE_INTERRUPTED,
+        BF_CAPTURE_ERROR
+} BFpacketcapture_status;
+
+BFstatus bfDiskReaderCreate(BFpacketcapture* obj,
+                            const char*      format,
+                            int              fd,
+                            BFring           ring,
+                            BFsize           nsrc,
+                            BFsize           src0,
+                            BFsize           buffer_ntime,
+                            BFsize           slot_ntime,
+                            BFpacketcapture_callback sequence_callback,
+                            int              core);
+BFstatus bfUdpCaptureCreate(BFpacketcapture* obj,
+                            const char*      format,
+                            int              fd,
+                            BFring           ring,
+                            BFsize           nsrc,
+                            BFsize           src0,
+                            BFsize           max_payload_size,
+                            BFsize           buffer_ntime,
+                            BFsize           slot_ntime,
+                            BFpacketcapture_callback sequence_callback,
+                            int              core);
+BFstatus bfUdpSnifferCreate(BFpacketcapture* obj,
+                            const char*      format,
+                            int              fd,
+                            BFring           ring,
+                            BFsize           nsrc,
+                            BFsize           src0,
+                            BFsize           max_payload_size,
+                            BFsize           buffer_ntime,
+                            BFsize           slot_ntime,
+                            BFpacketcapture_callback sequence_callback,
+                            int              core);
+BFstatus bfPacketCaptureDestroy(BFpacketcapture obj);
+BFstatus bfPacketCaptureRecv(BFpacketcapture         obj,
+                             BFpacketcapture_status* result);
+BFstatus bfPacketCaptureFlush(BFpacketcapture obj);
+BFstatus bfPacketCaptureEnd(BFpacketcapture obj);
+// TODO: bfPacketCaptureGetXX
 
 #ifdef __cplusplus
 } // extern "C"
