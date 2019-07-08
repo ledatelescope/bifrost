@@ -29,6 +29,7 @@
 #pragma once
 
 #include "assert.hpp"
+#include <bifrost/io.h>
 #include <bifrost/packet_capture.h>
 #include <bifrost/Ring.hpp>
 using bifrost::ring::RingWrapper;
@@ -820,12 +821,6 @@ public:
 		_type_log.update("type : %s\n", "drx");
 	}
 };
-
-typedef enum BFiomethod_ {
-    BF_IO_DISK = 1,
-    BF_IO_UDP = 2,
-    BF_IO_SNIFFER = 3
-} BFiomethod;
 
 BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                 const char*      format,

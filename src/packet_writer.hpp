@@ -27,6 +27,7 @@
  */
 
 #include "assert.hpp"
+#include <bifrost/io.h>
 #include <bifrost/packet_writer.h>
 #include "proclog.hpp"
 #include "formats/formats.hpp"
@@ -321,7 +322,7 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
                                const char*     format,
                                int             fd,
                                int             core,
-                               bool            disk_based) {
+                               BFiomethod      backend) {
     BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
     
     int nsamples = 0;
@@ -345,10 +346,12 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     }
     
     PacketWriterMethod* method;
-    if( disk_based ) {
+    if( backend == BF_IO_DISK ) {
         method = new DiskPacketWriter(fd);
-    } else {
+    } else if( backend == BF_IO_UDP ) {
         method = new UDPPacketSender(fd);
+    } else {
+        return BF_STATUS_UNSUPPORTED;
     }
     PacketWriterThread* writer = new PacketWriterThread(method, core);
     

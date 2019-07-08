@@ -135,14 +135,14 @@ BFstatus bfDiskWriterCreate(BFpacketwriter* obj,
                             const char*     format,
                             int             fd,
                             int             core) {
-    return BFpacketwriter_create(obj, format, fd, core, true);
+    return BFpacketwriter_create(obj, format, fd, core, BF_IO_DISK);
 }
 
 BFstatus bfUdpTransmitCreate(BFpacketwriter* obj,
                              const char*     format,
                              int             fd,
                              int             core) {
-    return BFpacketwriter_create(obj, format, fd, core, false);
+    return BFpacketwriter_create(obj, format, fd, core, BF_IO_UDP);
 }
 
 BFstatus bfPacketWriterDestroy(BFpacketwriter obj) {
