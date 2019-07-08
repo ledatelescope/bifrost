@@ -55,13 +55,13 @@ BFstatus bfHeaderInfoSetDecimation(BFheaderinfo       obj,
 typedef struct BFpacketwriter_impl* BFpacketwriter;
 
 BFstatus bfDiskWriterCreate(BFpacketwriter* obj,
-                            const char*    format,
-                            int            fd,
-                            int            core);
+                            const char*     format,
+                            int             fd,
+                            int             core);
 BFstatus bfUdpTransmitCreate(BFpacketwriter* obj,
-                             const char*    format,
-                             int            fd,
-                             int            core);
+                             const char*     format,
+                             int             fd,
+                             int             core);
 BFstatus bfPacketWriterDestroy(BFpacketwriter obj);
 BFstatus bfPacketWriterResetCounter(BFpacketwriter obj);
 BFstatus bfPacketWriterSend(BFpacketwriter obj, 
