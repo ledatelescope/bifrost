@@ -78,7 +78,7 @@ public:
 	                        + (server - 1);
 	    pkt->chan0        = be16toh(pkt_hdr->first_chan) \
 	                        - nchan_pkt * (server - 1);
-        pkt->nchan        = nchan_pkt * nserver;            // Stores the total number of channels
+        pkt->nchan        = nchan_pkt;
 	    pkt->tuning       = (nserver << 8) | (server - 1);  // Stores the number of servers and 
                                                             // the server that sent this packet
 	    pkt->gain         = be16toh(pkt_hdr->gain);
@@ -130,8 +130,7 @@ public:
 	    
 	    // Convenience
 	    int bl_server = pkt->src;
-	    int nserver = (pkt->tuning >> 8) & 0xFF;
-        int nchan = pkt->nchan/nserver;
+	    int nchan = pkt->nchan;
 	    
 	    int chan = 0;
         for( ; chan<nchan; ++chan ) {

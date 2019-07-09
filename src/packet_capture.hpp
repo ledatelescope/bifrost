@@ -628,7 +628,7 @@ class BFpacketcapture_cor_impl : public BFpacketcapture_impl {
             int status = (*_sequence_callback)(*seq0,
                                                *time_tag,
                                                _chan0,
-                                               _nchan,
+                                               _nchan*((pkt->tuning >> 8) & 0xFF),
                                                _navg,
                                                _nsrc/((pkt->tuning >> 8) & 0xFF),
                                                hdr,
@@ -645,7 +645,7 @@ class BFpacketcapture_cor_impl : public BFpacketcapture_impl {
         }
         
         _chan_log.update() << "chan0        : " << _chan0 << "\n"
-                           << "nchan        : " << _nchan << "\n"
+                           << "nchan        : " << _nchan*((pkt->tuning >> 8) & 0xFF) << "\n"
                            << "payload_size : " << _payload_size << "\n";
     }
 public:
