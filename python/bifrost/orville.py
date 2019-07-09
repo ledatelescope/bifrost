@@ -195,8 +195,6 @@ class Orville(BifrostObject):
         _check( _bf.bfOrvilleExecute(self.obj,
                                      asarray(idata).as_BFarray(),
                                      asarray(self._subgrid).as_BFarray()) )
-        junk = self._subgrid.copy(space='system')
-        print junk.max()
         
         if self._subgrid.shape[0] > 1:
             # W project
@@ -219,8 +217,6 @@ class Orville(BifrostObject):
             self._subgrid = self._subgrid.reshape(-1,self._gridsize,self._gridsize)
             self._fft.execute(self._subgrid, self._subgrid, inverse=False)
             self._subgrid = self._subgrid.reshape(self._nplane,self._ntimechan,self._npol,self._gridsize,self._gridsize)
-            junk = self._subgrid.copy(space='system')
-            print 'post-W', junk.max()
             
             # Stack
             reduce(self._subgrid, self._stcgrid, op='sum')
@@ -237,16 +233,12 @@ class Orville(BifrostObject):
             self._fft = Fft()
             self._fft.init(self._stcgrid, self._stcgrid, axes=(1,2))
             self._fft.execute(self._stcgrid, self._stcgrid, inverse=True)
-        junk = self._stcgrid.copy(space='system')
-        print 'post-IFFT', junk.max()
-        
+            
         ## Correct for the kernel
         map('img(c,i,j) /= corr(i)*corr(j)',
             {'img':self._stcgrid, 'corr':self._img_correction},
             axis_names=('c','i','j'), shape=self._stcgrid.shape)
-        junk = self._stcgrid.copy(space='system')
-        print 'post-corr', junk.max()
-        
+            
         # Shift and accumulate onto odata
         oshape = odata.shape
         odata = odata.reshape(-1,odata.shape[-2],odata.shape[-1])
