@@ -530,6 +530,9 @@ void Socket::multibind(sockaddr_storage local_address,
     this->open(local_address.ss_family);
     
     // Validate
+    if( reinterpret_cast<sockaddr_in*>(&local_address)->sin_family != AF_INET ) {
+        throw Socket::Error("Only IPv4 is supported with multicast receive");
+    }
     if( _type == SOCK_STREAM ) {
         throw Socket::Error("SOCK_STREAM is not supported with multicast receive");
     }
