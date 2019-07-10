@@ -65,17 +65,17 @@ BFstatus bfAddressIsMulticast(BFaddress addr, int* multicast) {
     BF_ASSERT(addr, BF_STATUS_INVALID_HANDLE);
     BF_ASSERT(multicast,  BF_STATUS_INVALID_POINTER);
     
-    // Only IPv4 for now
     unsigned family;
     bfAddressGetFamily(addr, &family);
     
-    *multicast = 0;
     if( family == AF_INET ) {
         sockaddr_in *sa4 = reinterpret_cast<sockaddr_in*>(addr);
         if( ((sa4->sin_addr.s_addr & 0xFF) >= 224) \
             && ((sa4->sin_addr.s_addr & 0xFF) < 240) ) {
             *multicast = 1;
         }
+    } else {
+        *multicast = 0;
     }
     return BF_STATUS_SUCCESS;
 }

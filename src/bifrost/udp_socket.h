@@ -42,7 +42,6 @@ BFstatus bfUdpSocketDestroy(BFudpsocket obj);
 BFstatus bfUdpSocketConnect(BFudpsocket obj, BFaddress remote_addr);
 BFstatus bfUdpSocketBind(   BFudpsocket obj, BFaddress local_addr);
 BFstatus bfUdpSocketSniff(  BFudpsocket obj, BFaddress local_addr);
-BFstatus bfUdpSocketMultibind(   BFudpsocket obj, BFaddress local_addr);
 BFstatus bfUdpSocketShutdown(BFudpsocket obj); // Unblocks recv in another thread
 BFstatus bfUdpSocketClose(BFudpsocket obj);
 BFstatus bfUdpSocketSetTimeout(BFudpsocket obj, double secs);

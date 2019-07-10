@@ -191,8 +191,6 @@ public:
 	          int              max_conn_queue=DEFAULT_MAX_CONN_QUEUE);
 	inline void sniff(sockaddr_storage local_address,
 	          int              max_conn_queue=DEFAULT_MAX_CONN_QUEUE);
-    inline void multibind(sockaddr_storage local_address,
-              int              max_conn_queue=DEFAULT_MAX_CONN_QUEUE);
 	// Client initialisation
 	inline void connect(sockaddr_storage remote_address);
 	// Accept incoming SOCK_STREAM connection requests
@@ -463,15 +461,51 @@ void Socket::bind(sockaddr_storage local_address,
 	#warning "Kernel version does not support SO_REUSEPORT; multithreaded send/recv will not be possible"
 #endif
 	
-	check_error(::bind(_fd, (struct sockaddr*)&local_address, sizeof(local_address)),
-                "bind socket");
-    if( _type == SOCK_STREAM ) {
-	    check_error(::listen(_fd, max_conn_queue),
-	                "set socket to listen");
-	    _mode = Socket::MODE_LISTENING;
+    // Determine multicast status...
+    int multicast = 0;
+    if( local_address.ss_family == AF_INET ) {
+        sockaddr_in *sa4 = reinterpret_cast<sockaddr_in*>(&local_address);
+        if( ((sa4->sin_addr.s_addr & 0xFF) >= 224) \
+            && ((sa4->sin_addr.s_addr & 0xFF) < 240) ) {
+            multicast = 1;
+        }
     }
-    else {
-	    _mode = Socket::MODE_BOUND;
+    
+    // ... and work accordingly
+    if( !multicast ) {
+        // Normal address
+        check_error(::bind(_fd, (struct sockaddr*)&local_address, sizeof(local_address)),
+                    "bind socket");
+        if( _type == SOCK_STREAM ) {
+            check_error(::listen(_fd, max_conn_queue),
+                        "set socket to listen");
+            _mode = Socket::MODE_LISTENING;
+        }
+        else {
+            _mode = Socket::MODE_BOUND;
+        }
+    } else {
+        // Multicast address
+        // Setup the INADDR_ANY socket base to bind to
+        struct sockaddr_in base_address;
+        memset(&base_address, 0, sizeof(sockaddr_in));
+        base_address.sin_family = reinterpret_cast<sockaddr_in*>(&local_address)->sin_family;
+        base_address.sin_addr.s_addr = htonl(INADDR_ANY);
+        base_address.sin_port = htons(reinterpret_cast<sockaddr_in*>(&local_address)->sin_port);
+        check_error(::bind(_fd, (struct sockaddr*)&local_address, sizeof(local_address)),
+                    "bind socket");
+        
+        if( _type == SOCK_STREAM ) {
+            throw Socket::Error("SOCK_STREAM is not supported with multicast receive");
+        } else {
+            // Deal with joining the multicast group
+            struct ip_mreq mreq;
+            memset(&mreq, 0, sizeof(ip_mreq));
+            mreq.imr_multiaddr.s_addr = reinterpret_cast<sockaddr_in*>(&local_address)->sin_addr.s_addr;
+            mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+            this->set_option(IP_ADD_MEMBERSHIP, mreq, IPPROTO_IP);
+            _mode = Socket::MODE_BOUND;
+        }
     }
 }
 void Socket::sniff(sockaddr_storage local_address,
@@ -521,37 +555,6 @@ void Socket::sniff(sockaddr_storage local_address,
     
     // Make the socket promiscuous
     this->set_promiscuous(true);
-}
-void Socket::multibind(sockaddr_storage local_address,
-                      int              max_conn_queue) {
-    if( _mode != Socket::MODE_CLOSED ) {
-        throw Socket::Error("Socket is already open");
-    }
-    this->open(local_address.ss_family);
-    
-    // Validate
-    if( reinterpret_cast<sockaddr_in*>(&local_address)->sin_family != AF_INET ) {
-        throw Socket::Error("Only IPv4 is supported with multicast receive");
-    }
-    if( _type == SOCK_STREAM ) {
-        throw Socket::Error("SOCK_STREAM is not supported with multicast receive");
-    }
-    
-    // Setup the INADDR_ANY socket base to bind to
-    struct sockaddr_in base_address;
-    memset(&base_address, 0, sizeof(sockaddr_in));
-    base_address.sin_family = reinterpret_cast<sockaddr_in*>(&local_address)->sin_family;
-    base_address.sin_addr.s_addr = htonl(INADDR_ANY);
-    base_address.sin_port = htons(reinterpret_cast<sockaddr_in*>(&local_address)->sin_port);
-    this->bind(*reinterpret_cast<sockaddr_storage*>(&base_address), max_conn_queue);
-    
-    // Deal with joining the multicast group
-    struct ip_mreq mreq;
-    memset(&mreq, 0, sizeof(ip_mreq));
-    mreq.imr_multiaddr.s_addr = reinterpret_cast<sockaddr_in*>(&local_address)->sin_addr.s_addr;
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
-    this->set_option(IP_ADD_MEMBERSHIP, mreq, IPPROTO_IP);
-    _mode = Socket::MODE_BOUND;
 }
 // TODO: Add timeout support? Bit of a pain to implement.
 void Socket::connect(sockaddr_storage remote_address) {

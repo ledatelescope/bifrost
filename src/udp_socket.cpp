@@ -60,11 +60,6 @@ BFstatus bfUdpSocketSniff(  BFudpsocket obj, BFaddress local_addr) {
 	BF_ASSERT(local_addr, BF_STATUS_INVALID_ARGUMENT);
 	BF_TRY_RETURN(obj->sniff(*(sockaddr_storage*)local_addr));
 }
-BFstatus bfUdpSocketMultibind(  BFudpsocket obj, BFaddress local_addr) {
-    BF_ASSERT(obj,        BF_STATUS_INVALID_HANDLE);
-    BF_ASSERT(local_addr, BF_STATUS_INVALID_ARGUMENT);
-    BF_TRY_RETURN(obj->multibind(*(sockaddr_storage*)local_addr));
-}
 BFstatus bfUdpSocketShutdown(BFudpsocket obj) {
 	BF_ASSERT(obj,        BF_STATUS_INVALID_HANDLE);
 	BF_TRY_RETURN(obj->shutdown());
