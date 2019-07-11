@@ -30,21 +30,26 @@
 from libbifrost import _bf, _check, _get, BifrostObject
 
 class PacketCaptureCallback(BifrostObject):
+    _ref_cache = {}
     def __init__(self):
         BifrostObject.__init__(
             self, _bf.bfPacketCaptureCallbackCreate, _bf.bfPacketCaptureCallbackDestroy)
     def set_chips(self, fnc):
+        self._ref_cache['chips'] = _bf.BFpacketcapture_chips_sequence_callback(fnc))
         _check(_bf.bfPacketCaptureCallbackSetCHIPS(
-            self.obj, _bf.BFpacketcapture_chips_sequence_callback(fnc)))
+               self.obj, self._ref_cache['chips'])
     def set_cor(self, fnc):
+        self._ref_cache['cor'] = _bf.BFpacketcapture_cor_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetCOR(
-            self.obj, _bf.BFpacketcapture_cor_sequence_callback(fnc)))
+               self.obj, self._ref_cache['cor']))
     def set_tbn(self, fnc):
+        self._ref_cache['tbn'] = _bf.BFpacketcapture_tbn_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetTBN(
-            self.obj, _bf.BFpacketcapture_tbn_sequence_callback(fnc)))
+               self.obj, self._ref_cache['tbn']))
     def set_drx(self, fnc):
+        self._ref_cache['drx'] = _bf.BFpacketcapture_drx_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetDRX(
-            self.obj, _bf.BFpacketcapture_drx_sequence_callback(fnc)))
+            self.obj, self._ref_cache['drx']))
 
 class _CaptureBase(BifrostObject):
     def __enter__(self):
