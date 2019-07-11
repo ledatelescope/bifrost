@@ -629,7 +629,7 @@ class BFpacketcapture_cor_impl : public BFpacketcapture_impl {
                                                *time_tag,
                                                _chan0,
                                                _nchan*((pkt->tuning >> 8) & 0xFF),
-                                               _navg,
+                                                _navg,
                                                _nsrc/((pkt->tuning >> 8) & 0xFF),
                                                hdr,
                                                hdr_size);
@@ -868,23 +868,23 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
     
     if( std::string(format).substr(0, 5) == std::string("chips") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_chips_impl(capture, ring, nsrc, src0,
-                                                               buffer_ntime, slot_ntime,
-                                                               sequence_callback),
+                                                                 buffer_ntime, slot_ntime,
+                                                                 sequence_callback),
                            *obj = 0);
     } else if( std::string(format).substr(0, 3) == std::string("cor") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_cor_impl(capture, ring, nsrc, src0,
-                                                             buffer_ntime, slot_ntime,
-                                                             sequence_callback),
+                                                               buffer_ntime, slot_ntime,
+                                                               sequence_callback),
                            *obj = 0);
     } else if( format == std::string("tbn") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_tbn_impl(capture, ring, nsrc, src0,
-                                                            buffer_ntime, slot_ntime,
-                                                            sequence_callback),
+                                                               buffer_ntime, slot_ntime,
+                                                               sequence_callback),
                            *obj = 0);
     } else if( format == std::string("drx") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_drx_impl(capture, ring, nsrc, src0,
-                                                            buffer_ntime, slot_ntime,
-                                                            sequence_callback),
+                                                               buffer_ntime, slot_ntime,
+                                                               sequence_callback),
                            *obj = 0);
     } else {
         return BF_STATUS_UNSUPPORTED;

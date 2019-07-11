@@ -114,6 +114,45 @@ int PacketCaptureThread::run(uint64_t seq_beg,
 	return ret;
 }
 
+BFstatus bfPacketCaptureCallbackCreate(BFpacketcapture_callback* obj) {
+    BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_callback_impl(),
+                       *obj = 0);
+}
+
+BFstatus bfPacketCaptureCallbackDestroy(BFpacketcapture_callback obj) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    delete obj;
+    return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
+                                         BFpacketcapture_chips_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_chips(callback);
+    return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketCaptureCallbackSetCOR(BFpacketcapture_callback obj,
+                                       BFpacketcapture_cor_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_cor(callback);
+    return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketCaptureCallbackSetTBN(BFpacketcapture_callback obj,
+                                       BFpacketcapture_tbn_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_tbn(callback);
+    return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketCaptureCallbackSetDRX(BFpacketcapture_callback obj,
+                                       BFpacketcapture_drx_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_drx(callback);
+    return BF_STATUS_SUCCESS;
+}
+
 BFpacketcapture_status BFpacketcapture_impl::recv() {
     _t0 = std::chrono::high_resolution_clock::now();
 	
@@ -308,43 +347,4 @@ BFstatus bfPacketCaptureFlush(BFpacketcapture obj) {
 BFstatus bfPacketCaptureEnd(BFpacketcapture obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	BF_TRY_RETURN(obj->end_writing());
-}
-
-BFstatus bfPacketCaptureCallbackCreate(BFpacketcapture_callback* obj) {
-	BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_callback_impl(),
-                       *obj = 0);
-}
-
-BFstatus bfPacketCaptureCallbackDestroy(BFpacketcapture_callback obj) {
-	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-	delete obj;
-	return BF_STATUS_SUCCESS;
-}
-
-BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
-                                         BFpacketcapture_chips_sequence_callback callback) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-	obj->set_chips(callback);
-	return BF_STATUS_SUCCESS;
-}
-
-BFstatus bfPacketCaptureCallbackSetCOR(BFpacketcapture_callback obj,
-                                       BFpacketcapture_cor_sequence_callback callback) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    obj->set_cor(callback);
-    return BF_STATUS_SUCCESS;
-}
-
-BFstatus bfPacketCaptureCallbackSetTBN(BFpacketcapture_callback obj,
-                                       BFpacketcapture_tbn_sequence_callback callback) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-	obj->set_tbn(callback);
-	return BF_STATUS_SUCCESS;
-}
-
-BFstatus bfPacketCaptureCallbackSetDRX(BFpacketcapture_callback obj,
-                                       BFpacketcapture_drx_sequence_callback callback) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-	obj->set_drx(callback);
-	return BF_STATUS_SUCCESS;
 }
