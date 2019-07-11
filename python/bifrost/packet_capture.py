@@ -35,9 +35,9 @@ class PacketCaptureCallback(BifrostObject):
         BifrostObject.__init__(
             self, _bf.bfPacketCaptureCallbackCreate, _bf.bfPacketCaptureCallbackDestroy)
     def set_chips(self, fnc):
-        self._ref_cache['chips'] = _bf.BFpacketcapture_chips_sequence_callback(fnc))
+        self._ref_cache['chips'] = _bf.BFpacketcapture_chips_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetCHIPS(
-               self.obj, self._ref_cache['chips'])
+               self.obj, self._ref_cache['chips']))
     def set_cor(self, fnc):
         self._ref_cache['cor'] = _bf.BFpacketcapture_cor_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetCOR(
