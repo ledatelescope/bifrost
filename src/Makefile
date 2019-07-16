@@ -64,7 +64,7 @@ NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS_VALID), \
 endif
 
 CXXFLAGS  += -std=c++11 -fPIC -fopenmp
-NVCCFLAGS += -std=c++11 -Xcompiler "-fPIC" $(NVCC_GENCODE)
+NVCCFLAGS += -std=c++11 -Xcompiler "-fPIC" $(NVCC_GENCODE) -DBF_GPU_SHAREDMEM=$(GPU_SHAREDMEM)
 
 #NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
 #NVCCFLAGS += --expt-relaxed-constexpr
