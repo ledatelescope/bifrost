@@ -534,15 +534,15 @@ BFstatus bfRomeinSetPositions(BFromein       plan,
     BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
     BF_ASSERT(positions,            BF_STATUS_INVALID_POINTER);
     BF_ASSERT(positions->ndim >= 4, BF_STATUS_INVALID_SHAPE  );
-    if( plan->polmajor() ) {
-        BF_ASSERT(positions->shape[positions->ndim-3] == plan->npol(),      BF_STATUS_INVALID_SHAPE  );
-        BF_ASSERT(positions->shape[positions->ndim-2] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE  );
-    } else {
-        BF_ASSERT(positions->shape[positions->ndim-3] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE  );
-        BF_ASSERT(positions->shape[positions->ndim-2] == plan->npol(),      BF_STATUS_INVALID_SHAPE  );
-    }
-    BF_ASSERT(positions->shape[positions->ndim-1] == 3,                 BF_STATUS_INVALID_SHAPE  );
+    BF_ASSERT(positions->shape[0] == 3,                                     BF_STATUS_INVALID_SHAPE  );
     BF_ASSERT(space_accessible_from(positions->space,   BF_SPACE_CUDA), BF_STATUS_INVALID_SPACE);
+    if( plan->polmajor() ) {
+        BF_ASSERT(positions->shape[positions->ndim-2] == plan->npol(),      BF_STATUS_INVALID_SHAPE  );
+        BF_ASSERT(positions->shape[positions->ndim-1] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE  );
+    } else {
+        BF_ASSERT(positions->shape[positions->ndim-2] == plan->nbaseline(), BF_STATUS_INVALID_SHAPE  );
+        BF_ASSERT(positions->shape[positions->ndim-1] == plan->npol(),      BF_STATUS_INVALID_SHAPE  );
+    }
     
     BF_TRY_RETURN(plan->set_positions(positions));
 }
