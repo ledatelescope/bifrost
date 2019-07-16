@@ -81,9 +81,9 @@ class RomeinTest(unittest.TestCase):
 
         return grid
         
-    def _create_illum(self, illum_size, data_size, ntime, npol, nchan):
+    def _create_illum(self, illum_size, data_size, ntime, npol, nchan, dtype=numpy.complex64):
         illum_shape = (ntime,nchan,npol,data_size,illum_size,illum_size)
-        illum = numpy.ones(shape=illum_shape,dtype=numpy.complex64)
+        illum = numpy.ones(shape=illum_shape,dtype=dtype)
         illum = numpy.copy(illum,order='C')
         illum = bifrost.ndarray(illum)
         
@@ -122,17 +122,17 @@ class RomeinTest(unittest.TestCase):
             
         return data
         
-    def run_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype='cf32'):
+    def run_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype=numpy.complex64, otype=numpy.complex64):
         
         gridshape = (ntime,nchan,npol,grid_size,grid_size)
         ishape = (ntime,nchan,npol,data_size)
         illum_shape = (ntime,nchan,npol,data_size,illum_size,illum_size)
 
         # Create grid and illumination pattern
-        grid = numpy.zeros(shape=gridshape,dtype=numpy.complex64)
+        grid = numpy.zeros(shape=gridshape,dtype=otype)
         grid = numpy.copy(grid,order='C')
         grid = bifrost.ndarray(grid)
-        illum = self._create_illum(illum_size, data_size, ntime, npol, nchan)
+        illum = self._create_illum(illum_size, data_size, ntime, npol, nchan, dtype=otype)
         
         # Create data
         data = self._create_data(data_size, ntime, nchan, npol, dtype=dtype)
@@ -163,7 +163,7 @@ class RomeinTest(unittest.TestCase):
             print("#### DIFFERENCE: %f ####"%diff)
             raise ValueError("Large difference between naive romein and CUDA implementation.")
             
-    def run_kernel_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype='cf32'):
+    def run_kernel_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype=numpy.complex64):
         TEST_SCALE = 2.0
         
         gridshape = (ntime,nchan,npol,grid_size,grid_size)
@@ -212,7 +212,7 @@ class RomeinTest(unittest.TestCase):
             print("#### DIFFERENCE: %f ####"%diff)
             raise ValueError("Large difference between naive romein and CUDA implementation.")
             
-    def run_positions_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype='cf32'):
+    def run_positions_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype=numpy.complex64):
         TEST_OFFSET = 1
         
         gridshape = (ntime,nchan,npol,grid_size,grid_size)
@@ -277,6 +277,8 @@ class RomeinTest(unittest.TestCase):
         self.run_test(grid_size=64, illum_size=5, data_size=256, ntime=16, npol=2, nchan=4,polmajor=True) 
     def test_ntime_32_nchan2_npol2_gridsize32_illumsize3_datasize256(self):
         self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2,polmajor=False)
+    def test_ntime_32_nchan2_npol2_gridsize32_illumsize3_datasize256_out_cf64(self):
+        self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2,polmajor=False,otype=numpy.complex128)
     def test_ntime_32_nchan2_npol2_gridsize32_illumsize3_datasize256_ci4(self):
         self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2,polmajor=False, dtype='ci4')
     def test_ntime_32_nchan2_npol2_gridsize32_illumsize3_datasize256_ci8(self):
