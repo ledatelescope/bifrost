@@ -30,7 +30,6 @@ from __future__ import print_function
 import unittest
 import numpy
 import bifrost
-from bifrost.romein import romein_float
 from bifrost.romein import Romein
 import matplotlib.pyplot as plt
 
