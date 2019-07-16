@@ -80,7 +80,33 @@ class RomeinTest(unittest.TestCase):
                                 grid[t,c,p,y,x] += datapoint * illump
 
         return grid
-
+        
+    def _create_illum(self, illum_size, data_size, ntime, npol, nchan):
+        illum_shape = (ntime,nchan,npol,data_size,illum_size,illum_size)
+        illum = numpy.ones(shape=illum_shape,dtype=numpy.complex64)
+        illum = numpy.copy(illum,order='C')
+        illum = bifrost.ndarray(illum)
+        
+        return illum
+        
+    def _create_locs(self, data_size, ntime, nchan, npol, loc_min, loc_max):
+        ishape = (ntime,nchan,npol,data_size)
+        xlocs = numpy.random.uniform(loc_min, loc_max, size=ishape)
+        ylocs = numpy.random.uniform(loc_min, loc_max, size=ishape)
+        zlocs = numpy.random.uniform(loc_min, loc_max, size=ishape)
+        xlocs = numpy.copy(xlocs.astype(numpy.int32),order='C')
+        ylocs = numpy.copy(ylocs.astype(numpy.int32),order='C')
+        zlocs = numpy.copy(zlocs.astype(numpy.int32),order='C')
+        xlocs = bifrost.ndarray(xlocs)
+        ylocs = bifrost.ndarray(ylocs)
+        zlocs = bifrost.ndarray(zlocs)
+        locs = numpy.stack((xlocs, ylocs, zlocs))
+        #locs = numpy.transpose(locs,(1,2,3,4,0))
+        locs = numpy.copy(locs.astype(numpy.int32),order='C')
+        locs = bifrost.ndarray(locs)
+        
+        return locs
+        
     def _create_data(self, data_size, ntime, nchan, npol, dtype=numpy.complex64):
         ishape = (ntime,nchan,npol,data_size)
         data = numpy.zeros(shape=ishape,dtype=numpy.complex64)
@@ -106,32 +132,18 @@ class RomeinTest(unittest.TestCase):
         grid = numpy.zeros(shape=gridshape,dtype=numpy.complex64)
         grid = numpy.copy(grid,order='C')
         grid = bifrost.ndarray(grid)
+        illum = self._create_illum(illum_size, data_size, ntime, npol, nchan)
         
-        illum = numpy.ones(shape=illum_shape,dtype=numpy.complex64)
-        illum = numpy.copy(illum,order='C')
-        illum = bifrost.ndarray(illum)
-
         # Create data
         data = self._create_data(data_size, ntime, nchan, npol, dtype=dtype)
-
-        xlocs = numpy.random.uniform(illum_size, grid_size-illum_size,size=ishape)
-        ylocs = numpy.random.uniform(illum_size, grid_size-illum_size,size=ishape)
-        zlocs = numpy.random.uniform(illum_size, grid_size-illum_size,size=ishape)
-        xlocs = numpy.copy(xlocs.astype(numpy.int32),order='C')
-        ylocs = numpy.copy(ylocs.astype(numpy.int32),order='C')
-        zlocs = numpy.copy(zlocs.astype(numpy.int32),order='C')
-        xlocs = bifrost.ndarray(xlocs)
-        ylocs = bifrost.ndarray(ylocs)
-        zlocs = bifrost.ndarray(zlocs)
-        locs = numpy.stack((xlocs, ylocs, zlocs))
-        #locs = numpy.transpose(locs,(1,2,3,4,0))
-        locs = numpy.copy(locs.astype(numpy.int32),order='C')
-        locs = bifrost.ndarray(locs)
-
+        
+        # Create the locations
+        locs = self._create_locs(data_size, ntime, nchan, npol, illum_size, grid_size-illum_size)
+        
+        # Grid using a naive method
         gridnaive = self.naive_romein(gridshape,illum,data,locs[0,:],locs[1,:],locs[2,:],ntime,npol,nchan,data_size)
 
         # Transpose for non pol-major kernels
-        
         if not polmajor:
             data=data.transpose((0,1,3,2)).copy()
             locs=locs.transpose((0,1,2,4,3)).copy()
@@ -140,22 +152,115 @@ class RomeinTest(unittest.TestCase):
         grid = grid.copy(space='cuda')
         data = data.copy(space='cuda')
         illum = illum.copy(space='cuda')
-        xlocs = xlocs.copy(space='cuda')
-        ylocs = ylocs.copy(space='cuda')
-        zlocs = zlocs.copy(space='cuda')
         locs = locs.copy(space='cuda')
         self.romein.init(locs,illum, grid_size,polmajor=polmajor)
         self.romein.execute(data,grid)
         grid = grid.copy(space="system")
-
-        #if polmajor:
         
-        #else:
-         #   gridnaive = self.naive_romein(gridshape,illum,data,locs[0,:],locs[1,:],locs[2,:],ntime,npol,nchan,data_size)
+        # Compare the two methods
         diff = numpy.mean(abs(grid.flatten()-gridnaive.flatten()))
         if diff > 0.1:
             print("#### DIFFERENCE: %f ####"%diff)
             raise ValueError("Large difference between naive romein and CUDA implementation.")
+            
+    def run_kernel_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype='cf32'):
+        TEST_SCALE = 2.0
+        
+        gridshape = (ntime,nchan,npol,grid_size,grid_size)
+        ishape = (ntime,nchan,npol,data_size)
+        illum_shape = (ntime,nchan,npol,data_size,illum_size,illum_size)
+
+        # Create grid and illumination pattern
+        grid = numpy.zeros(shape=gridshape,dtype=numpy.complex64)
+        grid = numpy.copy(grid,order='C')
+        grid = bifrost.ndarray(grid)
+        illum = self._create_illum(illum_size, data_size, ntime, npol, nchan)
+        
+        # Create data
+        data = self._create_data(data_size, ntime, nchan, npol, dtype=dtype)
+        
+        # Create the locations
+        locs = self._create_locs(data_size, ntime, nchan, npol, illum_size, grid_size-illum_size)
+        
+        # Grid using a naive method
+        gridnaive = self.naive_romein(gridshape,illum*TEST_SCALE,data,locs[0,:],locs[1,:],locs[2,:],ntime,npol,nchan,data_size)
+        
+        # Transpose for non pol-major kernels
+        if not polmajor:
+            data=data.transpose((0,1,3,2)).copy()
+            locs=locs.transpose((0,1,2,4,3)).copy()
+            illum=illum.transpose((0,1,3,2,4,5)).copy()            
+        
+        grid = grid.copy(space='cuda')
+        data = data.copy(space='cuda')
+        illum = illum.copy(space='cuda')
+        locs = locs.copy(space='cuda')
+        self.romein.init(locs,illum, grid_size,polmajor=polmajor)
+        
+        # Scale
+        illum = illum.copy(space='system')
+        illum *= TEST_SCALE
+        illum = illum.copy(space='cuda')
+        
+        self.romein.set_kernels(illum)
+        self.romein.execute(data,grid)
+        grid = grid.copy(space="system")
+        
+        # Compare the two methods
+        diff = numpy.mean(abs(grid.flatten()-gridnaive.flatten()))
+        if diff > 0.1:
+            print("#### DIFFERENCE: %f ####"%diff)
+            raise ValueError("Large difference between naive romein and CUDA implementation.")
+            
+    def run_positions_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype='cf32'):
+        TEST_OFFSET = 1
+        
+        gridshape = (ntime,nchan,npol,grid_size,grid_size)
+        ishape = (ntime,nchan,npol,data_size)
+        illum_shape = (ntime,nchan,npol,data_size,illum_size,illum_size)
+
+        # Create grid and illumination pattern
+        grid = numpy.zeros(shape=gridshape,dtype=numpy.complex64)
+        grid = numpy.copy(grid,order='C')
+        grid = bifrost.ndarray(grid)
+        illum = self._create_illum(illum_size, data_size, ntime, npol, nchan)
+        
+        # Create data
+        data = self._create_data(data_size, ntime, nchan, npol, dtype=dtype)
+        
+        # Create the locations
+        locs = self._create_locs(data_size, ntime, nchan, npol, illum_size, grid_size-illum_size)
+        
+        # Grid using a naive method
+        gridnaive = self.naive_romein(gridshape,illum,data,locs[0,:]+TEST_OFFSET,locs[1,:]+TEST_OFFSET,locs[2,:]+TEST_OFFSET,ntime,npol,nchan,data_size)
+        
+        # Transpose for non pol-major kernels
+        if not polmajor:
+            data=data.transpose((0,1,3,2)).copy()
+            locs=locs.transpose((0,1,2,4,3)).copy()
+            illum=illum.transpose((0,1,3,2,4,5)).copy()            
+        
+        grid = grid.copy(space='cuda')
+        data = data.copy(space='cuda')
+        illum = illum.copy(space='cuda')
+        locs = locs.copy(space='cuda')
+        self.romein.init(locs,illum, grid_size,polmajor=polmajor)
+        
+        # Offset
+        locs = locs.copy(space='system')
+        locs += TEST_OFFSET
+        locs = locs.copy(space='cuda')
+        
+        self.romein.set_positions(locs)
+        self.romein.execute(data,grid)
+        grid = grid.copy(space="system")
+        
+        # Compare the two methods
+        diff = numpy.mean(abs(grid.flatten()-gridnaive.flatten()))
+        if diff > 0.1:
+            print("#### DIFFERENCE: %f ####"%diff)
+            raise ValueError("Large difference between naive romein and CUDA implementation.")
+            
     def test_ntime8_nchan2_npol3_gridsize64_illumsize3_datasize256_pm(self):
         self.run_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2,polmajor=True)
     def test_ntime8_nchan2_npol3_gridsize64_illumsize3_datasize256(self):
@@ -180,4 +285,13 @@ class RomeinTest(unittest.TestCase):
         self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2,polmajor=False, dtype='ci16')
     def test_ntime_32_nchan2_npol2_gridsize32_illumsize3_datasize256_ci32(self):
         self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2,polmajor=False, dtype='ci32')
+    def test_set_kernels_pm(self):
+        self.run_kernel_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2,polmajor=True)
+    def test_set_kernels(self):
+        self.run_kernel_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2,polmajor=False)
+    def test_set_positions_pm(self):
+        self.run_positions_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2,polmajor=True)
+    def test_set_positions(self):
+        self.run_positions_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2,polmajor=False)
+
 
