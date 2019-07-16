@@ -50,38 +50,3 @@ class Romein(BifrostObject):
                                     asarray(odata).as_BFarray()) )
         return odata
 
-
-def romein_float(data,
-                 grid,
-                 kernel,
-                 xlocs,
-                 ylocs,
-                 zlocs,
-                 kern_size,
-                 grid_size,
-                 data_size,
-                 nbatch):
-    """ 
-        Convolves data onto grid using kernel.
-    
-        Kernel size is same for all data. I want to
-        extend it to different kernels for w-projection
-        effects etc.
-    """
-    grid_array = asarray(grid).as_BFarray() 
-    data_array = asarray(data).as_BFarray() 
-    illum_array = asarray(kernel).as_BFarray() 
-    xlocs_array = asarray(xlocs).as_BFarray() 
-    ylocs_array = asarray(ylocs).as_BFarray() 
-    zlocs_array = asarray(zlocs).as_BFarray() 
-    _check(_bf.romein_float(data_array,
-                            grid_array,
-                            illum_array,
-                            xlocs_array,
-                            ylocs_array,
-                            zlocs_array,
-                            kern_size,
-                            grid_size,
-                            data_size,
-                            nbatch))
-    return grid
