@@ -31,6 +31,9 @@ import unittest
 import numpy
 import bifrost
 from bifrost.romein import Romein
+from bifrost.quantize import quantize
+from bifrost.unpack import unpack
+from bifrost.DataType import ci4
 import matplotlib.pyplot as plt
 
 class RomeinTest(unittest.TestCase):
@@ -50,6 +53,12 @@ class RomeinTest(unittest.TestCase):
                      nchan,
                      ndata):
         
+        # Unpack the ci4 data to ci8, if needed
+        if data.dtype == ci4:
+            data_unpacked = bifrost.ndarray(shape=data.shape, dtype='ci8')
+            unpack(data, data_unpacked)
+            data = data_unpacked
+            
         #Excruciatingly slow, but it's just for testing purposes...
         #Could probably use a blas based function for simplicity.
         grid = numpy.zeros(shape=grid_shape,dtype=numpy.complex64)
@@ -57,8 +66,10 @@ class RomeinTest(unittest.TestCase):
             for c in numpy.arange(nchan):
                 for p in numpy.arange(npol):
                     for d in numpy.arange(ndata):
-
                         datapoint = data[t,c,p,d]
+                        if data.dtype != numpy.complex64:
+                            datapoint = numpy.complex64(datapoint[0]+1j*datapoint[1])
+                            
                         #if(d==128):
                         #    print(datapoint)
                         x_s = xlocs[t,c,p,d]
@@ -70,8 +81,22 @@ class RomeinTest(unittest.TestCase):
 
         return grid
 
-    
-    def run_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor):
+    def _create_data(self, data_size, ntime, nchan, npol, dtype=numpy.complex64):
+        ishape = (ntime,nchan,npol,data_size)
+        data = numpy.zeros(shape=ishape,dtype=numpy.complex64)
+        data_i = numpy.zeros(shape=(ntime,nchan,npol,data_size,2), dtype=numpy.complex64)
+        data_i[:,:,:,:,0] = numpy.random.normal(0,1.0,size=(ntime,nchan,npol,data_size))
+        data_i[:,:,:,:,1] = numpy.random.normal(0,1.0,size=(ntime,nchan,npol,data_size))
+        data = 7*numpy.copy(data,order='C')
+        data = bifrost.ndarray(data_i[...,0] + 1j * data_i[...,1])
+        if dtype not in (numpy.complex64, 'cf32'):
+            data_quantized = bifrost.ndarray(shape=data.shape, dtype=dtype)
+            quantize(data, data_quantized)
+            data = data_quantized
+            
+        return data
+        
+    def run_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype='cf32'):
         
         gridshape = (ntime,nchan,npol,grid_size,grid_size)
         ishape = (ntime,nchan,npol,data_size)
@@ -87,13 +112,7 @@ class RomeinTest(unittest.TestCase):
         illum = bifrost.ndarray(illum)
 
         # Create data
-
-        data = numpy.zeros(shape=ishape,dtype=numpy.complex64)
-        data_i = numpy.zeros(shape=(ntime,nchan,npol,data_size,2), dtype=numpy.complex64)
-        data_i[:,:,:,:,0] = numpy.random.normal(0,1.0,size=(ntime,nchan,npol,data_size))
-        data_i[:,:,:,:,1] = numpy.random.normal(0,1.0,size=(ntime,nchan,npol,data_size))
-        data = numpy.copy(data,order='C')
-        data = bifrost.ndarray(data_i[...,0] + 1j * data_i[...,1])
+        data = self._create_data(data_size, ntime, nchan, npol, dtype=dtype)
 
         xlocs = numpy.random.uniform(illum_size, grid_size-illum_size,size=ishape)
         ylocs = numpy.random.uniform(illum_size, grid_size-illum_size,size=ishape)
@@ -153,7 +172,12 @@ class RomeinTest(unittest.TestCase):
         self.run_test(grid_size=64, illum_size=5, data_size=256, ntime=16, npol=2, nchan=4,polmajor=True) 
     def test_ntime_32_nchan2_npol2_gridsize32_illumsize3_datasize256(self):
         self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2,polmajor=False)
+    def test_ntime_32_nchan2_npol2_gridsize32_illumsize3_datasize256_ci4(self):
+        self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2,polmajor=False, dtype='ci4')
+    def test_ntime_32_nchan2_npol2_gridsize32_illumsize3_datasize256_ci8(self):
+        self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2,polmajor=False, dtype='ci8')
+    def test_ntime_32_nchan2_npol2_gridsize32_illumsize3_datasize256_ci16(self):
+        self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2,polmajor=False, dtype='ci16')
+    def test_ntime_32_nchan2_npol2_gridsize32_illumsize3_datasize256_ci32(self):
+        self.run_test(grid_size=32, illum_size=3, data_size=256, ntime=32, npol=2, nchan=2,polmajor=False, dtype='ci32')
 
-
-
-        
