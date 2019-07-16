@@ -288,8 +288,7 @@ inline void launch_romein_kernel(int      nbaseline,
                     &d_in,
                     &d_out};
     size_t loc_size = 2 * nbaseline * npol * sizeof(int);
-    size_t shared_mem_size = 16384; //Just keep this vanilla for now
-    if(loc_size <= shared_mem_size) {
+    if(loc_size <= GPU_SHAREDMEM) {
 	BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)romein_kernel_sloc<InType,OutType>,
 						 grid, block,
 						 &args[0], 2*nbaseline*npol*sizeof(int), stream),
