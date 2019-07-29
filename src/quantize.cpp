@@ -35,6 +35,8 @@
 #include <iostream>
 
 #ifdef BF_CUDA_ENABLED
+#include "cuda.hpp"
+#include "trace.hpp"
 #include <guantize.hu>
 #endif
 
@@ -280,12 +282,16 @@ BFstatus bfQuantize(BFarray const* in,
 	
 #ifdef BF_CUDA_ENABLED
 #define CALL_FOREACH_SIMPLE_GPU_QUANTIZE(itype,stype,otype) \
+	{ \
+	BF_TRACE(); \
+	BF_TRACE_STREAM(g_cuda_stream); \
 	launch_foreach_simple_gpu((itype*)in->data, \
 	                          (otype*)out->data, \
 	                          nelement, \
 	                          GuantizeFunctor<itype,stype,otype> \
 	                          (scale,byteswap_in,byteswap_out), \
-	                          (cudaStream_t)0)
+	                          g_cuda_stream); \
+	} while(0)
 #endif
 	
 	// **TODO: Need CF32 --> CI* separately to support conjugation
@@ -297,12 +303,14 @@ BFstatus bfQuantize(BFarray const* in,
 			BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
 #ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				BF_TRACE();
+				BF_TRACE_STREAM(g_cuda_stream);
 				launch_foreach_simple_gpu_1bit((float*)in->data, \
 				                               (int8_t*)out->data, \
 				                               nelement, \
 				                               GuantizeFunctor<float,float,uint8_t> \
 				                               (scale,byteswap_in,byteswap_out), \
-				                               (cudaStream_t)0);
+				                               g_cuda_stream);
 			} else {
 				foreach_simple_cpu_1bit((float*)in->data, \
 				                        (int8_t*)out->data, \
@@ -324,12 +332,14 @@ BFstatus bfQuantize(BFarray const* in,
 			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
 #ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				BF_TRACE();
+				BF_TRACE_STREAM(g_cuda_stream);
 				launch_foreach_simple_gpu_2bit((float*)in->data, \
 				                               (int8_t*)out->data, \
 				                               nelement, \
 				                               GuantizeFunctor<float,float,uint8_t> \
 				                               (scale,byteswap_in,byteswap_out), \
-				                               (cudaStream_t)0);
+				                               g_cuda_stream);
 			} else {
 				foreach_simple_cpu_2bit((float*)in->data, \
 				                        (int8_t*)out->data, \
@@ -351,12 +361,14 @@ BFstatus bfQuantize(BFarray const* in,
 			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
 #ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
+				BF_TRACE();
+				BF_TRACE_STREAM(g_cuda_stream);
 				launch_foreach_simple_gpu_4bit((float*)in->data, \
 				                               (int8_t*)out->data, \
 				                               nelement, \
 				                               GuantizeFunctor<float,float,uint8_t> \
 				                               (scale,byteswap_in,byteswap_out), \
-				                               (cudaStream_t)0);
+				                               g_cuda_stream);
 			} else {
 				foreach_simple_cpu_4bit((float*)in->data, \
 				                        (int8_t*)out->data, \
