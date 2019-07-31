@@ -145,25 +145,32 @@ protected:
     int                    _fd;
     size_t                 _pkt_size_max;
 	AlignedBuffer<uint8_t> _buf;
+    BFiomethod             _io_method;
 public:
-	PacketCaptureMethod(int fd, size_t pkt_size_max=9000)
-	 : _fd(fd), _pkt_size_max(pkt_size_max), _buf(pkt_size_max) {}
+	PacketCaptureMethod(int fd, size_t pkt_size_max=9000, BFiomethod io_method=BF_IO_GENERIC)
+	 : _fd(fd), _pkt_size_max(pkt_size_max), _buf(pkt_size_max), _io_method(io_method) {}
 	virtual int recv_packet(uint8_t** pkt_ptr, int flags=0) {
 	    return 0;
 	}
 	virtual const char* get_name() { return "generic_capture"; }
-	inline const size_t get_max_size() {return _pkt_size_max; }
+	inline const size_t get_max_size() { return _pkt_size_max; }
+	inline const BFiomethod get_io_method() { return _io_method; }
+	virtual inline BFoffset seek(BFoffset offset, BFiowhence whence=BF_WHENCE_CUR) { return 0; }
+	inline BFoffset tell() { return this->seek(0, BF_WHENCE_CUR); }
 };
 
 class DiskPacketReader : public PacketCaptureMethod {
 public:
     DiskPacketReader(int fd, size_t pkt_size_max=9000)
-     : PacketCaptureMethod(fd, pkt_size_max) {}
+     : PacketCaptureMethod(fd, pkt_size_max, BF_IO_DISK) {}
     int recv_packet(uint8_t** pkt_ptr, int flags=0) {
         *pkt_ptr = &_buf[0];
         return ::read(_fd, &_buf[0], _buf.size());
     }
     inline const char* get_name() { return "disk_reader"; }
+    inline BFoffset seek(BFoffset offset, BFiowhence whence=BF_WHENCE_CUR) {
+        return ::lseek64(_fd, offset, whence);
+    }
 };
 
 // TODO: The VMA API is returning unaligned buffers, which prevents use of SSE
@@ -222,7 +229,7 @@ class UDPPacketReceiver : public PacketCaptureMethod {
 #endif
 public:
     UDPPacketReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
-        : PacketCaptureMethod(fd, pkt_size_max)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_UDP)
 #if BF_VMA_ENABLED
         , _vma(fd)
 #endif
@@ -249,7 +256,7 @@ class UDPPacketSniffer : public PacketCaptureMethod {
 #endif
 public:
     UDPPacketSniffer(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
-        : PacketCaptureMethod(fd, pkt_size_max)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_SNIFFER)
 #if BF_VMA_ENABLED
         , _vma(fd)
 #endif
@@ -314,7 +321,10 @@ public:
 	        PPC*     process);
 	inline const char* get_name() { return _method->get_name(); }
 	inline const size_t get_max_size() { return _method->get_max_size(); }
+	inline const BFiomethod get_io_method() { return _method->get_io_method(); }
 	inline const int get_core() { return _core; }
+	inline BFoffset seek(BFoffset offset, BFiowhence whence=BF_WHENCE_CUR) { return _method->seek(offset, whence); }
+	inline BFoffset tell() { return _method->tell(); }
     inline const PacketDesc* get_last_packet() const {
 		return _have_pkt ? &_pkt : NULL;
 	}
@@ -340,12 +350,14 @@ inline uint64_t round_nearest(uint64_t val, uint64_t mult) {
 
 class BFpacketcapture_callback_impl {
     BFpacketcapture_chips_sequence_callback _chips_callback;
-    BFpacketcapture_cor_sequence_callback _cor_callback;
-    BFpacketcapture_tbn_sequence_callback _tbn_callback;
-    BFpacketcapture_drx_sequence_callback _drx_callback;
+    BFpacketcapture_cor_sequence_callback   _cor_callback;
+    BFpacketcapture_vdif_sequence_callback  _vdif_callback;
+    BFpacketcapture_tbn_sequence_callback   _tbn_callback;
+    BFpacketcapture_drx_sequence_callback   _drx_callback;
 public:
     BFpacketcapture_callback_impl()
-     : _chips_callback(NULL), _cor_callback(NULL), _tbn_callback(NULL), _drx_callback(NULL) {}
+     : _chips_callback(NULL), _cor_callback(NULL), _vdif_callback(NULL),
+       _tbn_callback(NULL), _drx_callback(NULL) {}
     inline void set_chips(BFpacketcapture_chips_sequence_callback callback) {
         _chips_callback = callback;
     }
@@ -357,6 +369,12 @@ public:
     }
     inline BFpacketcapture_cor_sequence_callback get_cor() {
         return _cor_callback;
+    }
+    inline void set_vdif(BFpacketcapture_vdif_sequence_callback callback) {
+        _vdif_callback = callback;
+    }
+    inline BFpacketcapture_vdif_sequence_callback get_vdif() {
+        return _vdif_callback;
     }
     inline void set_tbn(BFpacketcapture_tbn_sequence_callback callback) {
         _tbn_callback = callback;
@@ -510,6 +528,18 @@ public:
 			this->end_sequence();
 		}
 	}
+	inline BFoffset seek(BFoffset offset, BFiowhence whence=BF_WHENCE_CUR) {
+        BF_ASSERT(_capture->get_io_method() == BF_IO_DISK, BF_STATUS_UNSUPPORTED);
+        std::cout << "Here with " << offset << " and " << whence << " from " << _capture->tell() << std::endl;
+        BFoffset moved = _capture->seek(offset, whence);
+        std::cout << "-> Moved to " << moved << std::endl;
+        this->flush();
+        return moved;
+    }
+    inline BFoffset tell() {
+        BF_ASSERT(_capture->get_io_method() == BF_IO_DISK, BF_STATUS_UNSUPPORTED);
+        return _capture->tell();
+    }
 	inline void end_writing() {
 		this->flush();
 		_oring.close();
@@ -663,6 +693,91 @@ public:
         _decoder = new CORDecoder(nsrc, src0);
         _processor = new CORProcessor();
         _type_log.update("type : %s\n", "cor");
+    }
+};
+
+class BFpacketcapture_vdif_impl : public BFpacketcapture_impl {
+    ProcLog          _type_log;
+    ProcLog          _chan_log;
+    
+    BFpacketcapture_vdif_sequence_callback _sequence_callback;
+    
+    BFoffset _time_tag;
+    int      _tuning;
+    int      _sample_rate;
+    
+    void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
+        _seq          = round_nearest(pkt->seq, _nseq_per_buf);
+        this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
+    }
+    void on_sequence_active(const PacketDesc* pkt) {
+        if( pkt ) {
+            //cout << "Latest time_tag, tuning = " << pkt->time_tag << ", " << pkt->tuning << endl;
+        }
+        else {
+            //cout << "No latest packet" << endl;
+        }
+    }
+    inline bool has_sequence_changed(const PacketDesc* pkt) {
+        return ((pkt->chan0 != _chan0) \
+                || (pkt->nchan != _nchan) \
+                || (pkt->tuning != _tuning));
+    }
+    void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+        *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+        *time_tag = pkt->time_tag;
+        _chan0 = pkt->chan0;
+        _nchan = pkt->nchan;
+        _tuning = pkt->tuning;
+        _sample_rate = pkt->sync;
+        _payload_size = pkt->payload_size;
+        
+        int ref_epoch  = (_tuning >> 16) & 0xFF;
+        int bit_depth  = (_tuning >> 8) & 0xFF;
+        int is_complex = (_tuning & 1);
+        
+        if( _sequence_callback ) {
+            int status = (*_sequence_callback)(*seq0,
+                                               *time_tag,
+                                               ref_epoch,
+                                               _sample_rate,
+                                               _chan0,
+                                               bit_depth,
+                                               is_complex,
+                                               _nsrc,
+                                               hdr,
+                                               hdr_size);
+            if( status != 0 ) {
+                // TODO: What to do here? Needed?
+                throw std::runtime_error("BAD HEADER CALLBACK STATUS");
+            }
+        } else {
+            // Simple default for easy testing
+            *time_tag = *seq0;
+            *hdr      = NULL;
+            *hdr_size = 0;
+        }
+        
+        _chan_log.update() << "nchan        : " << _chan0 << "\n"
+                           << "bitdepth     : " << bit_depth << "\n"
+                           << "complex      : " << is_complex << "\n"
+                           << "payload_size : " << (_payload_size*8) << "\n";
+    }
+public:
+    inline BFpacketcapture_vdif_impl(PacketCaptureThread* capture,
+                                     BFring                 ring,
+                                     int                    nsrc,
+                                     int                    src0,
+                                     int                    buffer_ntime,
+                                     int                    slot_ntime,
+                                     BFpacketcapture_callback sequence_callback)
+        : BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+          _type_log((std::string(capture->get_name())+"/type").c_str()),
+          _chan_log((std::string(capture->get_name())+"/chans").c_str()),
+          _sequence_callback(sequence_callback->get_vdif()) {
+        _decoder = new VDIFDecoder(nsrc, src0);
+        _processor = new VDIFProcessor();
+        _type_log.update("type : %s\n", "vdif");
     }
 };
 
@@ -848,6 +963,12 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
             int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
             max_payload_size = sizeof(cor_hdr_type) + (8*4*nchan);
         }
+    } else if(std::string(format).substr(0, 4) == std::string("vdif") ) {
+        if( backend == BF_IO_DISK ) {
+            // Need to know how much to read at a time
+            int nchan = std::atoi((std::string(format).substr(5, std::string(format).length())).c_str());
+            max_payload_size = nchan;
+        }
     } else if( format == std::string("tbn") ) {
         max_payload_size = TBN_FRAME_SIZE;
     } else if( format == std::string("drx") ) {
@@ -875,6 +996,11 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_cor_impl(capture, ring, nsrc, src0,
                                                                buffer_ntime, slot_ntime,
                                                                sequence_callback),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 4) == std::string("vdif") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_vdif_impl(capture, ring, nsrc, src0,
+                                                                buffer_ntime, slot_ntime,
+                                                                sequence_callback),
                            *obj = 0);
     } else if( format == std::string("tbn") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_tbn_impl(capture, ring, nsrc, src0,

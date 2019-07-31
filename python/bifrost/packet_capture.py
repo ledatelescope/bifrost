@@ -29,6 +29,8 @@
 
 from libbifrost import _bf, _check, _get, BifrostObject
 
+import ctypes
+
 class PacketCaptureCallback(BifrostObject):
     _ref_cache = {}
     def __init__(self):
@@ -42,6 +44,10 @@ class PacketCaptureCallback(BifrostObject):
         self._ref_cache['cor'] = _bf.BFpacketcapture_cor_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetCOR(
                self.obj, self._ref_cache['cor']))
+    def set_vdif(self, fnc):
+        self._ref_cache['vdif'] = _bf.BFpacketcapture_vdif_sequence_callback(fnc)
+        _check(_bf.bfPacketCaptureCallbackSetVDIF(
+               self.obj, self._ref_cache['vdif']))
     def set_tbn(self, fnc):
         self._ref_cache['tbn'] = _bf.BFpacketcapture_tbn_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetTBN(
@@ -97,3 +103,11 @@ class DiskReader(_CaptureBase):
             fmt, fh.fileno(), ring.obj, nsrc, src0,
             buffer_nframe, slot_nframe,
             sequence_callback.obj, core)
+    def seek(self, offset, whence=_bf.BF_WHENCE_CUR):
+        position = ctypes.c_ulong(0)
+        _check(_bf.bfPacketCaptureSeek(self.obj, offset, whence, position))
+        return position.value
+    def tell(self):
+        position = ctypes.c_ulong(0)
+        _check(_bf.bfPacketCaptureTell(self.obj, position))
+        return position.value

@@ -30,6 +30,7 @@
 
 #include "chips.hpp"
 #include "cor.hpp"
+#include "vdif.hpp"
 #include "drx.hpp"
 #include "tbn.hpp"
 #include "tbf.hpp"

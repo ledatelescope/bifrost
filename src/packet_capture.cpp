@@ -139,6 +139,13 @@ BFstatus bfPacketCaptureCallbackSetCOR(BFpacketcapture_callback obj,
     return BF_STATUS_SUCCESS;
 }
 
+BFstatus bfPacketCaptureCallbackSetVDIF(BFpacketcapture_callback obj,
+                                        BFpacketcapture_vdif_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_vdif(callback);
+    return BF_STATUS_SUCCESS;
+}
+
 BFstatus bfPacketCaptureCallbackSetTBN(BFpacketcapture_callback obj,
                                        BFpacketcapture_tbn_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
@@ -340,8 +347,18 @@ BFstatus bfPacketCaptureRecv(BFpacketcapture obj,
 }
 
 BFstatus bfPacketCaptureFlush(BFpacketcapture obj) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    BF_TRY_RETURN(obj->flush());
+}
+
+BFstatus bfPacketCaptureSeek(BFpacketcapture obj, BFoffset offset, BFiowhence whence, BFoffset* position) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-	BF_TRY_RETURN(obj->flush());
+	BF_TRY_RETURN(*position = obj->seek(offset, whence));
+}
+
+BFstatus bfPacketCaptureTell(BFpacketcapture obj, BFoffset* position) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    BF_TRY_RETURN(*position = obj->tell());
 }
 
 BFstatus bfPacketCaptureEnd(BFpacketcapture obj) {

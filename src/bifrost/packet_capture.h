@@ -41,6 +41,8 @@ typedef int (*BFpacketcapture_chips_sequence_callback)(BFoffset, int, int, int,
                                                        BFoffset*, void const**, size_t*);
 typedef int (*BFpacketcapture_cor_sequence_callback)(BFoffset, BFoffset, int, int,
                                                      int, int, void const**, size_t*);
+typedef int (*BFpacketcapture_vdif_sequence_callback)(BFoffset, BFoffset, int, int, int,
+                                                     int, int, int, void const**, size_t*);
 typedef int (*BFpacketcapture_tbn_sequence_callback)(BFoffset, BFoffset, int, int, 
                                                      void const**, size_t*);
 typedef int (*BFpacketcapture_drx_sequence_callback)(BFoffset, BFoffset, int, int, int, 
@@ -54,6 +56,8 @@ BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
                                          BFpacketcapture_chips_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetCOR(BFpacketcapture_callback obj,
                                        BFpacketcapture_cor_sequence_callback callback);
+BFstatus bfPacketCaptureCallbackSetVDIF(BFpacketcapture_callback obj,
+                                        BFpacketcapture_vdif_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetTBN(BFpacketcapture_callback obj,
                                        BFpacketcapture_tbn_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetDRX(BFpacketcapture_callback obj,
@@ -109,6 +113,12 @@ BFstatus bfPacketCaptureDestroy(BFpacketcapture obj);
 BFstatus bfPacketCaptureRecv(BFpacketcapture         obj,
                              BFpacketcapture_status* result);
 BFstatus bfPacketCaptureFlush(BFpacketcapture obj);
+BFstatus bfPacketCaptureSeek(BFpacketcapture obj,
+                             BFoffset        offset,
+                             BFiowhence      whence,
+                             BFoffset*       position);
+BFstatus bfPacketCaptureTell(BFpacketcapture obj,
+                             BFoffset*       position);
 BFstatus bfPacketCaptureEnd(BFpacketcapture obj);
 // TODO: bfPacketCaptureGetXX
 

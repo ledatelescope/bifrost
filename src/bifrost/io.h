@@ -29,15 +29,24 @@
 #ifndef BF_IO_H_INCLUDE_GUARD_
 #define BF_IO_H_INCLUDE_GUARD_
 
+#include <unistd.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef enum BFiomethod_ {
+    BF_IO_GENERIC = 0,
     BF_IO_DISK    = 1,
     BF_IO_UDP     = 2,
     BF_IO_SNIFFER = 3
 } BFiomethod;
+
+typedef enum BFiowhence_ {
+    BF_WHENCE_SET = SEEK_SET,
+    BF_WHENCE_CUR = SEEK_CUR,
+    BF_WHENCE_END = SEEK_END
+} BFiowhence;
 
 #ifdef __cplusplus
 } // extern "C"
