@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2017, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2017, The University of New Mexico. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,12 +27,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*! \file reduce.h
- *  \brief Defines functions for reducing ND-arrays using sum/min/max/etc.
- */
-
-#ifndef BF_REDUCE_H_INCLUDE_GUARD_
-#define BF_REDUCE_H_INCLUDE_GUARD_
+#ifndef BF_FIR_H_INCLUDE_GUARD_
+#define BF_FIR_H_INCLUDE_GUARD_
 
 #include <bifrost/common.h>
 #include <bifrost/memory.h>
@@ -41,23 +38,27 @@
 extern "C" {
 #endif
 
-typedef enum BFreduce_op_ {
-	BF_REDUCE_SUM,          // sum(x)
-	BF_REDUCE_MEAN,         // sum(x) / n
-	BF_REDUCE_MIN,          // min(x)
-	BF_REDUCE_MAX,          // max(x)
-	BF_REDUCE_STDERR,       // sum(x) / sqrt(n)
-	BF_REDUCE_POWER_SUM,    // sum(|x|^2)
-	BF_REDUCE_POWER_MEAN,   // sum(|x|^2) / n
-	BF_REDUCE_POWER_MIN,    // min(|x|^2)
-	BF_REDUCE_POWER_MAX,    // max(|x|^2)
-	BF_REDUCE_POWER_STDERR, // sum(|x|^2) / sqrt(n)
-} BFreduce_op;
+typedef struct BFfir_impl* BFfir;
 
-BFstatus bfReduce(BFarray const* in, BFarray const* out, BFreduce_op op);
+BFstatus bfFirCreate(BFfir* plan);
+BFstatus bfFirInit(BFfir          plan,
+                   BFarray const* coeffs,
+                   BFsize         decim,
+                   BFspace        space,
+                   void*          plan_storage,
+                   BFsize*        plan_storage_size);
+BFstatus bfFirSetStream(BFfir       plan,
+                        void const* stream);
+BFstatus bfFirSetCoeffs(BFfir          plan, 
+                        BFarray const* coeffs);
+BFstatus bfFirResetState(BFfir plan);
+BFstatus bfFirExecute(BFfir          plan,
+                      BFarray const* in,
+                      BFarray const* out);
+BFstatus bfFirDestroy(BFfir plan);
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif // BF_REDUCE_H_INCLUDE_GUARD_
+#endif // BF_FIR_H_INCLUDE_GUARD_

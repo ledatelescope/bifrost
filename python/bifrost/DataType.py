@@ -132,9 +132,10 @@ class DataType(object):
             self._kind, self._nbit, self._veclen = t
         else:
             t = np.dtype(t) # Raises TypeError if t is invalid
-            if t.ndim == 0:
+            ndim = getattr(t, 'ndim', len(t.shape))
+            if ndim == 0:
                 self._veclen = 1
-            elif t.ndim == 1:
+            elif ndim == 1:
                 self._veclen = t.shape[0]
                 t = t.base
             else:

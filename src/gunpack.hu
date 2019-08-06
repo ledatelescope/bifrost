@@ -1,5 +1,7 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2017, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2017, The University of New Mexico. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,39 +27,33 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+ 
+#ifndef BF_GUNPACK_HU_INCLUDE_GUARD_
+#define BF_GUNPACK_HU_INCLUDE_GUARD_
 
-/*! \file reduce.h
- *  \brief Defines functions for reducing ND-arrays using sum/min/max/etc.
- */
+template<typename IType, typename OType>
+struct GunpackFunctor {
+	bool byte_reverse;
+	bool align_msb;
+	bool conjugate;
+	GunpackFunctor(bool byte_reverse_, bool align_msb_, bool conjugate_);
+	__device__ void operator()(IType ival, OType& oval);
+};
 
-#ifndef BF_REDUCE_H_INCLUDE_GUARD_
-#define BF_REDUCE_H_INCLUDE_GUARD_
+template<typename T, typename U, typename Func, typename Size>
+void launch_foreach_simple_gpu(T const*     in,
+                               U*           out,
+                               Size         nelement,
+                               Func         func,
+                               cudaStream_t stream=0);
 
-#include <bifrost/common.h>
-#include <bifrost/memory.h>
-#include <bifrost/array.h>
+template<typename T, typename U, typename V, typename Func, typename Size>
+void launch_foreach_promote_gpu(T const*     in,
+                                U*           tmp,
+                                V*           out,
+                                Size         nelement,
+                                Func         func,
+                                cudaStream_t stream=0);
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#endif // BF_GUNPACK_HU_INCLUDE_GUARD_
 
-typedef enum BFreduce_op_ {
-	BF_REDUCE_SUM,          // sum(x)
-	BF_REDUCE_MEAN,         // sum(x) / n
-	BF_REDUCE_MIN,          // min(x)
-	BF_REDUCE_MAX,          // max(x)
-	BF_REDUCE_STDERR,       // sum(x) / sqrt(n)
-	BF_REDUCE_POWER_SUM,    // sum(|x|^2)
-	BF_REDUCE_POWER_MEAN,   // sum(|x|^2) / n
-	BF_REDUCE_POWER_MIN,    // min(|x|^2)
-	BF_REDUCE_POWER_MAX,    // max(|x|^2)
-	BF_REDUCE_POWER_STDERR, // sum(|x|^2) / sqrt(n)
-} BFreduce_op;
-
-BFstatus bfReduce(BFarray const* in, BFarray const* out, BFreduce_op op);
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
-#endif // BF_REDUCE_H_INCLUDE_GUARD_

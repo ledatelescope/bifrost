@@ -216,14 +216,14 @@ def _getStatistics(blockList, prevList):
             output[pid]['tx' ] = {'good':0, 'missing':0, 'invalid':0, 'late':0, 'drate':0.0, 'prate':0.0, 'gloss':0.0, 'closs':0.0}
             output[pid]['cmd'] = _getCommandLine(pid)
         ### Actual data
-        output[pid][type]['good'   ] = curr['good'   ]
-        output[pid][type]['missing'] = curr['missing']
-        output[pid][type]['invalid'] = curr['invalid']
-        output[pid][type]['late'   ] = curr['late'   ]
-        output[pid][type]['drate'  ] = max([0.0, drate])
-        output[pid][type]['prate'  ] = max([0.0, prate])
-        output[pid][type]['gloss'  ] = max([0.0, min([gloss, 100.0])])
-        output[pid][type]['closs'  ] = max([0.0, min([closs, 100.0])])
+        output[pid][type]['good'   ] += curr['good'   ]
+        output[pid][type]['missing'] += curr['missing']
+        output[pid][type]['invalid'] += curr['invalid']
+        output[pid][type]['late'   ] += curr['late'   ]
+        output[pid][type]['drate'  ] += max([0.0, drate])
+        output[pid][type]['prate'  ] += max([0.0, prate])
+        output[pid][type]['gloss'  ] = max([output[pid][type]['gloss'  ], min([gloss, 100.0])])
+        output[pid][type]['closs'  ] = max([output[pid][type]['closs'  ], min([closs, 100.0])])
 
     # Done
     return output

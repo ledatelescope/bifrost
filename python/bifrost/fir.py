@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
 
-# Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,26 +27,27 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check
-from bifrost import asarray
+from libbifrost import _bf, _check, _get, BifrostObject, _string2space
+from ndarray import asarray, zeros
 
-REDUCE_MAP = {
-    'sum':       _bf.BF_REDUCE_SUM,
-    'mean':      _bf.BF_REDUCE_MEAN,
-    'min':       _bf.BF_REDUCE_MIN,
-    'max':       _bf.BF_REDUCE_MAX,
-    'stderr':    _bf.BF_REDUCE_STDERR,
-    'pwrsum':    _bf.BF_REDUCE_POWER_SUM,
-    'pwrmean':   _bf.BF_REDUCE_POWER_MEAN,
-    'pwrmin':    _bf.BF_REDUCE_POWER_MIN,
-    'pwrmax':    _bf.BF_REDUCE_POWER_MAX,
-    'pwrstderr': _bf.BF_REDUCE_POWER_STDERR,
-}
+import ctypes
+import numpy as np
 
-def reduce(idata, odata, op='sum'):
-    if op not in REDUCE_MAP:
-        raise ValueError("Invalid reduce op: " + str(op))
-    op = REDUCE_MAP[op]
-    _check(_bf.bfReduce(asarray(idata).as_BFarray(),
-                        asarray(odata).as_BFarray(),
-                        op))
+class Fir(BifrostObject):
+    def __init__(self):
+        BifrostObject.__init__(self, _bf.bfFirCreate, _bf.bfFirDestroy)
+    def init(self, coeffs, decim=1, space='cuda'):
+        space = _string2space(space)
+        psize = None
+        _check( _bf.bfFirInit(self.obj, asarray(coeffs).as_BFarray(), decim, space, 0, psize) )
+    def set_coeffs(self, coeffs):
+        _check( _bf.bfFirSetCoeffs(self.obj, 
+                                   asarray(coeffs).as_BFarray()) )
+    def reset_state(self):
+        _check( _bf.bfFirResetState(self.obj) )
+    def execute(self, idata, odata):
+        # TODO: Work out how to integrate CUDA stream
+        _check( _bf.bfFirExecute(self.obj,
+                                 asarray(idata).as_BFarray(),
+                                 asarray(odata).as_BFarray()) )
+        return odata
