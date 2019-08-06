@@ -96,7 +96,8 @@ class PipelineTestCPU(unittest.TestCase):
             data = read_sigproc([self.fil_file], gulp_nframe)
             data = CallbackBlock(data, check_sequence, check_data)
             pipeline.run()
-    def run_test_simple_copy(self, guarantee, test_views=False):
+    def run_test_simple_copy(self, guarantee, test_views=False,
+                             gulp_nframe_inc=0):
         def check_sequence(seq):
             hdr = seq.header
             tensor = hdr['_tensor']
@@ -121,10 +122,19 @@ class PipelineTestCPU(unittest.TestCase):
                 data = bf.views.reinterpret_axis(data, 'chan', label='freq', scale=[433.968, -0.062], units='MHz')
                 data = bf.views.astype(data, 'i16')
                 data = bf.views.astype(data, 'u16')
+                data = bf.views.add_axis(data, -1, 'phony_axis', scale=(0,1), units="imaginary")
+                data = bf.views.delete_axis(data, 'phony_axis')
+                data = bf.views.add_axis(data, 0, 'phony_axis')
+                data = bf.views.delete_axis(data, 'phony_axis')
                 data = bf.views.custom(
                     data, lambda hdr: rename_sequence(hdr, hdr['name']))
-            for _ in xrange(20):
-                data = copy(data, guarantee=guarantee)
+            for i in xrange(20):
+                if gulp_nframe_inc != 0:
+                    data = copy(data, guarantee=guarantee,
+                                gulp_nframe=gulp_nframe+i*gulp_nframe_inc)
+                else:
+                    data = copy(data, guarantee=guarantee)
+            data = copy(data, guarantee=guarantee, gulp_nframe=gulp_nframe)
             ref = {}
             data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
             pipeline.run()
@@ -134,6 +144,12 @@ class PipelineTestCPU(unittest.TestCase):
         self.run_test_simple_copy(guarantee=True)
     def test_simple_copy_unguaranteed(self):
         self.run_test_simple_copy(guarantee=False)
+    def test_simple_copy_mixed_gulp_nframe(self):
+        self.run_test_simple_copy(guarantee=True, gulp_nframe_inc=1)
+        self.run_test_simple_copy(guarantee=True, gulp_nframe_inc=3)
+    def test_simple_copy_mixed_gulp_nframe_unguaranteed(self):
+        self.run_test_simple_copy(guarantee=False, gulp_nframe_inc=1)
+        self.run_test_simple_copy(guarantee=False, gulp_nframe_inc=3)
     def test_simple_views(self):
         self.run_test_simple_copy(guarantee=True, test_views=True)
     def test_simple_views_unguaranteed(self):

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 #
@@ -28,19 +29,14 @@
 # TODO: Some of this code has gotten a bit hacky
 #         Also consider merging some of the logic into the backend
 
-from libbifrost import _bf, _check, _get, _string2space, _space2string, _fast_call, _fast_get, _check_fast
+from libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string
 from DataType import DataType
 from ndarray import ndarray, _address_as_buffer
 from copy import copy, deepcopy
 
 import ctypes
+import string
 import numpy as np
-
-GLOBAL_BFrspan = _bf.BFrspan
-GLOBAL_BFwspan = _bf.BFwspan
-GLOBAL_BFspan_info = _bf.BFspan_info
-GLOBAL_BFspan = _bf.BFspan
-GLOBAL_BFsequence = _bf.BFsequence
 
 try:
     import simplejson as json
@@ -48,7 +44,10 @@ except ImportError:
     print "WARNING: Install simplejson for better performance"
     import json
 
-BF_RING_SPAN_GET_INFO = _bf.bfRingSpanGetInfo
+def _slugify(name):
+    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+    valid_chars = frozenset(valid_chars)
+    return ''.join([c for c in name if c in valid_chars])
 
 # TODO: Should probably move this elsewhere (e.g., utils)
 def split_shape(shape):
@@ -75,42 +74,54 @@ def ring_view(ring, header_transform):
     new_ring.header_transform = header_transform
     return new_ring
 
-class Ring(object):
+class Ring(BifrostObject):
     instance_count = 0
-    def __init__(self, space='system', name=None, owner=None):
+    def __init__(self, space='system', name=None, owner=None, core=None):
+        # If this is non-None, then the object is wrapping a base Ring instance
+        self.base = None
         self.space = space
         if name is None:
             name = 'ring_%i' % Ring.instance_count
             Ring.instance_count += 1
-        self.obj = _get(_bf.RingCreate(name=name, space=_string2space(self.space)), retarg=0)
+        name = _slugify(name)
+        BifrostObject.__init__(self, _bf.bfRingCreate, _bf.bfRingDestroy,
+                               name, _string2space(self.space))
+        if core is not None:
+            try:
+                _check( _bf.bfRingSetAffinity(self.obj, 
+                                              core) )
+            except RuntimeError:
+                pass
         self.owner = owner
         self.header_transform = None
-        # If this is non-None, then the object is wrapping a base Ring instance
-        self.base = None
     def __del__(self):
-        if (hasattr(self, "base") and self.base is None and
-            hasattr(self, "obj") and bool(self.obj)):
-            _bf.RingDestroy(self.obj)
+        if self.base is not None:
+            BifrostObject.__del__(self)
     def view(self):
         new_ring = copy(self)
         new_ring.base = self
         return new_ring
     def resize(self, contiguous_bytes, total_bytes=None, nringlet=1):
-        _check( _bf.RingResize(self.obj,
-                               contiguous_bytes,
-                               total_bytes,
-                               nringlet) )
+        _check( _bf.bfRingResize(self.obj,
+                                 contiguous_bytes,
+                                 total_bytes,
+                                 nringlet) )
     @property
     def name(self):
-        return _get(_bf.RingGetName(self.obj))
+        return _get(_bf.bfRingGetName, self.obj)
+    @property
+    def core(self):
+        return _get(_bf.bfRingGetAffinity, self.obj)
     def begin_writing(self):
         return RingWriter(self)
     def _begin_writing(self):
-        _check( _bf.RingBeginWriting(self.obj) )
+        _check( _bf.bfRingBeginWriting(self.obj) )
     def end_writing(self):
-        _check( _bf.RingEndWriting(self.obj) )
+        _check( _bf.bfRingEndWriting(self.obj) )
     def open_sequence(self, name, guarantee=True):
         return ReadSequence(self, name=name, guarantee=guarantee)
+    def open_sequence_at(self, time_tag, guarantee=True):
+        return ReadSequence(self, which='at', time_tag=time_tag, guarantee=guarantee)
     def open_latest_sequence(self, guarantee=True):
         return ReadSequence(self, which='latest', guarantee=guarantee)
     def open_earliest_sequence(self, guarantee=True):
@@ -131,9 +142,10 @@ class RingWriter(object):
         return self
     def __exit__(self, type, value, tb):
         self.ring.end_writing()
-    def begin_sequence(self, header, buf_nframe):
+    def begin_sequence(self, header, gulp_nframe, buf_nframe):
         return WriteSequence(ring=self.ring,
                              header=header,
+                             gulp_nframe=gulp_nframe,
                              buf_nframe=buf_nframe)
 
 class SequenceBase(object):
@@ -144,25 +156,25 @@ class SequenceBase(object):
         self._tensor = None
     @property
     def _base_obj(self):
-        return ctypes.cast(self.obj, GLOBAL_BFsequence)
+        return ctypes.cast(self.obj, _bf.BFsequence)
     @property
     def ring(self):
         return self._ring
     @property
     def name(self):
-        return _get(_bf.RingSequenceGetName(self._base_obj))
+        return _get(_bf.bfRingSequenceGetName, self._base_obj)
     @property
     def time_tag(self):
-        return _get(_bf.RingSequenceGetTimeTag(self._base_obj))
+        return _get(_bf.bfRingSequenceGetTimeTag, self._base_obj)
     @property
     def nringlet(self):
-        return _get(_bf.RingSequenceGetNRinglet(self._base_obj))
+        return _get(_bf.bfRingSequenceGetNRinglet, self._base_obj)
     @property
     def header_size(self):
-        return _get(_bf.RingSequenceGetHeaderSize(self._base_obj))
+        return _get(_bf.bfRingSequenceGetHeaderSize, self._base_obj)
     @property
     def _header_ptr(self):
-        return _get(_bf.RingSequenceGetHeader(self._base_obj))
+        return _get(_bf.bfRingSequenceGetHeader, self._base_obj)
     @property
     def tensor(self): # TODO: This shouldn't be public
         if self._tensor is not None:
@@ -201,14 +213,13 @@ class SequenceBase(object):
         return self._header
 
 class WriteSequence(SequenceBase):
-    def __init__(self, ring, header, buf_nframe):
+    def __init__(self, ring, header, gulp_nframe, buf_nframe):
         SequenceBase.__init__(self, ring)
         self._header = header
         # This allows passing DataType instances instead of string types
         header['_tensor']['dtype'] = str(header['_tensor']['dtype'])
         header_str = json.dumps(header)
         header_size = len(header_str)
-        gulp_nframe = header['gulp_nframe']
         tensor = self.tensor
         # **TODO: Consider moving this into bfRingSequenceBegin
         self.ring.resize(gulp_nframe * tensor['frame_nbyte'],
@@ -216,40 +227,44 @@ class WriteSequence(SequenceBase):
                          tensor['nringlet'])
         offset_from_head = 0
         # TODO: How to allow time_tag to be optional? Probably need to plumb support through to backend.
-        self.obj = _get(_bf.RingSequenceBegin(ring=ring.obj,
-                                              name=header['name'],
-                                              time_tag=header['time_tag'],
-                                              header_size=header_size,
-                                              header=header_str,
-                                              nringlet=tensor['nringlet'],
-                                              offset_from_head=offset_from_head), retarg=0)
+        self.obj = _bf.BFwsequence()
+        _check(_bf.bfRingSequenceBegin(
+            self.obj,
+            ring.obj,
+            header['name'],
+            header['time_tag'],
+            header_size,
+            header_str,
+            tensor['nringlet'],
+            offset_from_head))
     def __enter__(self):
         return self
     def __exit__(self, type, value, tb):
         self.end()
     def end(self):
         offset_from_head = 0
-        _check(_bf.RingSequenceEnd(self.obj, offset_from_head))
-    def reserve(self, nframe):
-        return WriteSpan(self.ring, self, nframe)
+        _check(_bf.bfRingSequenceEnd(self.obj, offset_from_head))
+    def reserve(self, nframe, nonblocking=False):
+        return WriteSpan(self.ring, self, nframe, nonblocking)
 
 class ReadSequence(SequenceBase):
-    def __init__(self, ring, which='specific', name="",
+    def __init__(self, ring, which='specific', name="", time_tag=None,
                  other_obj=None, guarantee=True,
                  header_transform=None):
         SequenceBase.__init__(self, ring)
         self._ring = ring
         # A function for transforming the header before it's read
         self.header_transform = header_transform
+        self.obj = _bf.BFrsequence()
         if which == 'specific':
-            self.obj = _get(_bf.RingSequenceOpen(ring=ring.obj,
-                                                 name=name, guarantee=guarantee), retarg=0)
+            _check(_bf.bfRingSequenceOpen(self.obj, ring.obj, name, guarantee))
+        elif which == 'at':
+            assert(time_tag is not None)
+            _check(_bf.bfRingSequenceOpenAt(self.obj, ring.obj, time_tag, guarantee))
         elif which == 'latest':
-            self.obj = _get(_bf.RingSequenceOpenLatest(ring=ring.obj,
-                                                       guarantee=guarantee), retarg=0)
+            _check(_bf.bfRingSequenceOpenLatest(self.obj, ring.obj, guarantee))
         elif which == 'earliest':
-            self.obj = _get(_bf.RingSequenceOpenEarliest(ring=ring.obj,
-                                                         guarantee=guarantee), retarg=0)
+            _check(_bf.bfRingSequenceOpenEarliest(self.obj, ring.obj, guarantee))
         else:
             raise ValueError("Invalid 'which' parameter; must be one of: 'specific', 'latest', 'earliest'")
 
@@ -258,9 +273,9 @@ class ReadSequence(SequenceBase):
     def __exit__(self, type, value, tb):
         self.close()
     def close(self):
-        _check(_bf.RingSequenceClose(self.obj))
+        _check(_bf.bfRingSequenceClose(self.obj))
     def increment(self):
-        _check(_bf.RingSequenceNext(self.obj))
+        _check(_bf.bfRingSequenceNext(self.obj))
         # Must invalidate cached header and tensor because this is now
         #   a new sequence.
         self._header = None
@@ -316,11 +331,11 @@ class SpanBase(object):
         self.writeable = writeable
         self._data = None
     def _set_base_obj(self, obj):
-        self._base_obj = ctypes.cast(obj, GLOBAL_BFspan)
+        self._base_obj = ctypes.cast(obj, _bf.BFspan)
         self._cache_info()
     def _cache_info(self):
-        self._info = GLOBAL_BFspan_info()
-        _check_fast(BF_RING_SPAN_GET_INFO.func(self._base_obj, self._info))
+        self._info = _bf.BFspan_info()
+        _check(_bf.bfRingSpanGetInfo(self._base_obj, self._info))
     @property
     def ring(self):
         return self._ring
@@ -343,6 +358,15 @@ class SpanBase(object):
         return self._sequence.tensor['frame_nbyte']
     @property
     def frame_offset(self):
+        
+        # ***TODO: I think _info.offset could potentially not be a multiple
+        #            of frame_nbyte, because it's set to _tail when data are
+        #            skipped (this should be tested with a pipeline that uses
+        #            varying gulp_nframe). If this is the case, then we should
+        #            round up to a multiple of frame_nbyte.
+        #            However, this should only be done for ReadSpans, as
+        #              WriteSpans should always be aligned with a frame.
+        
         # **TODO: Change back-end to use long instead of uint64_t
         byte_offset = int(self._info.offset)
         assert(byte_offset % self.frame_nbyte == 0)
@@ -392,7 +416,6 @@ class SpanBase(object):
         data_ptr = self._data_ptr
 
         space = self.ring.space
-
         # **TODO: Need to integrate support for endianness and conjugatedness
         #         Also need support in headers for units of the actual values,
         #           in addition to the axis scales.
@@ -409,11 +432,12 @@ class WriteSpan(SpanBase):
     def __init__(self,
                  ring,
                  sequence,
-                 nframe):
+                 nframe,
+                 nonblocking=False):
         SpanBase.__init__(self, ring, sequence, writeable=True)
         nbyte = nframe * self._sequence.tensor['frame_nbyte']
-        self.obj = GLOBAL_BFwspan()
-        _check_fast(_bf.RingSpanReserve.func( self.obj, ring.obj, nbyte))
+        self.obj = _bf.BFwspan()
+        _check(_bf.bfRingSpanReserve(self.obj, ring.obj, nbyte, nonblocking))
         self._set_base_obj(self.obj)
         # Note: We default to 0 instead of nframe so that we don't accidentally
         #         commit bogus data if a block throws an exception.
@@ -421,6 +445,7 @@ class WriteSpan(SpanBase):
         # TODO: Why do exceptions here not show up properly?
         #raise ValueError("SHOW ME THE ERROR")
     def commit(self, nframe):
+        assert(nframe <= self.nframe)
         self.commit_nframe = nframe
     def __enter__(self):
         return self
@@ -428,23 +453,26 @@ class WriteSpan(SpanBase):
         self.close()
     def close(self):
         commit_nbyte = self.commit_nframe * self._sequence.tensor['frame_nbyte']
-        _check_fast(_bf.RingSpanCommit.func( self.obj, commit_nbyte))
+        _check(_bf.bfRingSpanCommit(self.obj, commit_nbyte))
 
 class ReadSpan(SpanBase):
     def __init__(self, sequence, frame_offset, nframe):
         SpanBase.__init__(self, sequence.ring, sequence, writeable=False)
         tensor = sequence.tensor
-        self.obj = GLOBAL_BFrspan()
-        _check_fast(_bf.RingSpanAcquire.func(self.obj,
-                   sequence.obj,
-                   frame_offset * tensor['frame_nbyte'],
-                   nframe * tensor['frame_nbyte']))
+        self.obj = _bf.BFrspan()
+        _check(_bf.bfRingSpanAcquire(
+            self.obj,
+            sequence.obj,
+            frame_offset * tensor['frame_nbyte'],
+            nframe * tensor['frame_nbyte']))
         self._set_base_obj(self.obj)
         self.nframe_skipped = min(self.frame_offset - frame_offset, nframe)
         self.requested_frame_offset = frame_offset
     @property
     def nframe_overwritten(self):
-        nbyte_overwritten = int(_fast_get(_bf.RingSpanGetSizeOverwritten, self.obj))
+        nbyte_overwritten = ctypes.c_ulong()
+        _check(_bf.bfRingSpanGetSizeOverwritten(self.obj, nbyte_overwritten))
+        nbyte_overwritten = nbyte_overwritten.value
         assert(nbyte_overwritten  % self.frame_nbyte == 0)
         return nbyte_overwritten // self.frame_nbyte
     def __enter__(self):
@@ -452,4 +480,4 @@ class ReadSpan(SpanBase):
     def __exit__(self, type, value, tb):
         self.release()
     def release(self):
-        _check_fast(_bf.RingSpanRelease.func( self.obj))
+        _check(_bf.bfRingSpanRelease(self.obj))

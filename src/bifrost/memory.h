@@ -44,7 +44,7 @@ extern "C" {
   #define BF_ALIGNMENT 4096//512
 #endif
 
-typedef enum {
+typedef enum BFspace_ {
 	BF_SPACE_AUTO         = 0,
 	BF_SPACE_SYSTEM       = 1, // aligned_alloc
 	BF_SPACE_CUDA         = 2, // cudaMalloc
@@ -56,6 +56,8 @@ BFstatus bfMalloc(void** ptr, BFsize size, BFspace space);
 BFstatus bfFree(void* ptr, BFspace space);
 
 BFstatus bfGetSpace(const void* ptr, BFspace* space);
+
+const char* bfGetSpaceString(BFspace space);
 
 // Note: This is sync wrt host but async wrt device
 BFstatus bfMemcpy(void*       dst,

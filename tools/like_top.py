@@ -36,6 +36,7 @@ import curses
 import getopt
 import socket
 import traceback
+import subprocess
 try:
     import cStringIO as StringIO
 except ImportError:
@@ -74,7 +75,6 @@ def parseOptions(args):
         # Print help information and exit:
         print str(err) # will print something like "option -a not recognized"
         usage(exitCode=2)
-
     # Work through opts
     for opt, value in opts:
         if opt in ('-h', '--help'):
@@ -208,6 +208,43 @@ def _getMemoryAndSwapUsage():
     return data
 
 
+def _getGpuMemoryUsage():
+    """
+    Grab nvidia-smi output and return a dictionary of the memory usage.
+    """
+    
+    data = {'devCount':0, 'memTotal':0, 'memUsed':0, 'memFree':0, 'pwrDraw':0.0, 'pwrLimit':0.0, 'load':0.0}
+    
+    q_flag   = '--query-gpu=memory.used,memory.total,memory.free,power.draw,power.limit,utilization.gpu'
+    fmt_flag = '--format=csv,noheader,nounits'
+    try:
+        p = subprocess.Popen(['nvidia-smi', q_flag, fmt_flag], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, err = p.communicate()
+    except (OSError, ValueError) as e:
+        pass
+    else:
+        # Parse the ouptut and turn everything into something useful, if possible
+        lines = output.split('\n')[:-1]
+        for line in lines:
+            used, total, free, draw, limit, load = line.split(',')
+            data['devCount'] += 1
+            data['memTotal'] += int(total, 10)*1024
+            data['memUsed']  += int(used, 10)*1024
+            data['memFree']  += int(free, 10)*1024
+            try:
+                data['pwrDraw'] += float(draw)
+                data['pwrLimit'] += float(limit)
+            except ValueError:
+                pass
+            try:
+                data['load'] += float(load)
+            except ValueError:
+                pass
+        # Convert the load to an average
+        data['load'] /= data['devCount']
+    return data
+
+
 def _getCommandLine(pid):
     """
     Given a PID, use the /proc interface to get the full command line for 
@@ -216,7 +253,6 @@ def _getCommandLine(pid):
     """
 
     cmd = ''
-
     try:
         with open('/proc/%i/cmdline' % pid, 'r') as fh:
             cmd = fh.read()
@@ -260,6 +296,7 @@ def main(args):
     tLastPoll = 0.0
     sort_key = 'process'
     sort_rev = True
+    display_gpu = False
 
     try:
         while True:
@@ -301,7 +338,12 @@ def main(args):
                 load = _getLoadAverage()
                 cpu  = _getProcessorUsage()
                 mem  = _getMemoryAndSwapUsage()
-
+                gpu  = _getGpuMemoryUsage()
+                
+                ## Determine if we have GPU data to display
+                if gpu['devCount'] > 0:
+                    display_gpu = True
+                    
                 ## Find all running processes
                 pidDirs = glob.glob(os.path.join(BIFROST_STATS_BASE_DIR, '*'))
                 pidDirs.sort()
@@ -352,11 +394,21 @@ def main(args):
             output = 'CPU(s):%5.1f%%us,%5.1f%%sy,%5.1f%%ni,%5.1f%%id,%5.1f%%wa,%5.1f%%hi,%5.1f%%si,%5.1f%%st\n' % (100.0*c['user'], 100.0*c['sys'], 100.0*c['nice'], 100.0*c['idle'], 100.0*c['wait'], 100.0*c['irq'], 100.0*c['sirq'], 100.0*c['steal'])
             k = _addLine(scr, k, 0, output, std)
             ### General - memory
-            output = 'Mem:  %9ik total, %9ik used, %9ik free, %9ik buffers\n' % (mem['memTotal'], mem['memUsed'], mem['memFree'], mem['buffers'])
+            output = 'Mem:    %9ik total, %9ik used, %9ik free, %9ik buffers\n' % (mem['memTotal'], mem['memUsed'], mem['memFree'], mem['buffers'])
             k = _addLine(scr, k, 0, output, std)
             ### General - swap
-            output = 'Swap: %9ik total, %9ik used, %9ik free, %9ik cached\n' % (mem['swapTotal'], mem['swapUsed'], mem['swapFree'], mem['cached'])
+            output = 'Swap:   %9ik total, %9ik used, %9ik free, %9ik cached\n' % (mem['swapTotal'], mem['swapUsed'], mem['swapFree'], mem['cached'])
             k = _addLine(scr, k, 0, output, std)
+            ### General - GPU, if avaliable
+            if display_gpu:
+                if gpu['pwrLimit'] != 0.0:
+                    if gpu['load'] != 0.0:
+                        output = 'GPU(s): %9ik total, %9ik used, %9ik free, %5.1f%%us, %.0f/%.0fW\n' % (gpu['memTotal'], gpu['memUsed'], gpu['memFree'], gpu['load'], gpu['pwrDraw'], gpu['pwrLimit'])
+                    else:
+                        output = 'GPU(s): %9ik total, %9ik used, %9ik free, %.0f/%.0fW\n' % (gpu['memTotal'], gpu['memUsed'], gpu['memFree'], gpu['pwrDraw'], gpu['pwrLimit'])
+                else:
+                    output = 'GPU(s): %9ik total, %9ik used, %9ik free, %i device(s)\n' % (gpu['memTotal'], gpu['memUsed'], gpu['memFree'], gpu['devCount'])
+                k = _addLine(scr, k, 0, output, std)
             ### Header
             k = _addLine(scr, k, 0, ' ', std)
             output = '%6s  %15s  %4s  %5s  %7s  %7s  %7s  %7s  Cmd' % ('PID', 'Block', 'Core', '%CPU', 'Total', 'Acquire', 'Process', 'Reserve')
@@ -409,7 +461,7 @@ def main(args):
     curses.echo()
     curses.nocbreak()
     curses.endwin()
-
+    
     # Final reporting
     try:
         ## Error
@@ -423,3 +475,4 @@ def main(args):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
+    

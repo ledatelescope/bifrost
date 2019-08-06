@@ -7,26 +7,21 @@ INC_DIR = src
 SRC_DIR = src
 
 BIFROST_PYTHON_DIR = python
-BIFROST_PYTHON_VERSION_FILE = $(BIFROST_PYTHON_DIR)/bifrost/version.py
 
-all: libbifrost $(BIFROST_PYTHON_VERSION_FILE) python
+all: libbifrost python
 .PHONY: all
 
 libbifrost:
 	$(MAKE) -C $(SRC_DIR) all
 .PHONY: libbifrost
 
-$(BIFROST_PYTHON_VERSION_FILE): config.mk
-	@echo "__version__ = \"$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR).$(LIBBIFROST_PATCH)\"" > $@
-
 test:
 	#$(MAKE) -C $(SRC_DIR) test
-	cd test && python -m unittest discover
+	cd test && ./download_test_data.sh ; python -m unittest discover
 .PHONY: test
 clean:
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) clean || true
 	$(MAKE) -C $(SRC_DIR) clean
-	rm -f $(BIFROST_PYTHON_VERSION_FILE)
 .PHONY: clean
 install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) install
@@ -36,6 +31,7 @@ uninstall:
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ)
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN)
 	rm -rf $(INSTALL_INC_DIR)/bifrost/
+	$(MAKE) -C $(BIFROST_PYTHON_DIR) uninstall
 .PHONY: uninstall
 
 doc: $(INC_DIR)/bifrost/*.h Doxyfile

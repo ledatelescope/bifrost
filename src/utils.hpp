@@ -38,12 +38,58 @@
 #include <algorithm>
 #include <stdexcept>
 #include <cstring> // For ::memcpy
+#include <cassert>
 
 #define BF_DTYPE_IS_COMPLEX(dtype) bool((dtype) & BF_DTYPE_COMPLEX_BIT)
+#define BF_DTYPE_VECTOR_LENGTH(dtype) \
+	((((dtype) & BF_DTYPE_VECTOR_BITS) >> BF_DTYPE_VECTOR_BIT0) + 1)
+#define BF_DTYPE_VECTOR_LENGTH_MAX \
+	((BF_DTYPE_VECTOR_BITS + 1) >> BF_DTYPE_VECTOR_BIT0)
+#define BF_DTYPE_SET_VECTOR_LENGTH(dtype, veclen) \
+	BFdtype((dtype & ~BF_DTYPE_VECTOR_BITS) | \
+	        ((veclen - 1) << BF_DTYPE_VECTOR_BIT0))
 // **TODO: Add support for string type that encodes up to 255 bytes
 #define BF_DTYPE_NBIT(dtype) \
-	(((dtype) & BF_DTYPE_NBIT_BITS) * (BF_DTYPE_IS_COMPLEX(dtype)+1))
+	(((dtype) & BF_DTYPE_NBIT_BITS) * \
+	 (BF_DTYPE_IS_COMPLEX(dtype)+1) * \
+	 (BF_DTYPE_VECTOR_LENGTH(dtype)))
 #define BF_DTYPE_NBYTE(dtype) (BF_DTYPE_NBIT(dtype)/8)
+
+inline BFdtype same_sized_storage_dtype(BFdtype dtype) {
+	int nbit = BF_DTYPE_NBIT(dtype);
+	return BFdtype(nbit | BF_DTYPE_STORAGE_TYPE);
+	/*
+	// Returns a vector type with the same size, for efficient load/store
+	int nbyte = BF_DTYPE_NBYTE(dtype);
+	int basetype;
+	if(      nbyte % 4 == 0 ) basetype = BF_DTYPE_U32;
+	else if( nbyte % 2 == 0 ) basetype = BF_DTYPE_U16;
+	else                      basetype = BF_DTYPE_U8;
+	int veclen = nbyte / BF_DTYPE_NBYTE(basetype);
+	assert(veclen <= BF_DTYPE_VECTOR_LENGTH_MAX);
+	return BF_DTYPE_SET_VECTOR_LENGTH(basetype, veclen);
+	*/
+}
+
+// Note: Does not support in-place execution
+inline void invert_permutation(int ndim,
+                               int const* in,
+                               int*       out) {
+	for( int d=0; d<ndim; ++d ) {
+		out[in[d]] = d;
+	}
+}
+
+inline void merge_last_dim_into_dtype(BFarray const* in,
+                                      BFarray*       out) {
+	::memcpy(out, in, sizeof(BFarray));
+	int ndim = in->ndim;
+	int veclen = BF_DTYPE_VECTOR_LENGTH(in->dtype);
+	veclen *= in->shape[ndim-1];
+	assert(veclen <= BF_DTYPE_VECTOR_LENGTH_MAX);
+	out->dtype = BF_DTYPE_SET_VECTOR_LENGTH(out->dtype, veclen);
+	--(out->ndim);
+}
 
 // TODO: Check that these wrap/overflow properly
 inline BFoffset round_up(BFoffset val, BFoffset mult) {
@@ -177,16 +223,6 @@ inline BFbool space_accessible_from(BFspace space, BFspace from) {
 #endif
 }
 
-inline int get_dtype_nbyte(BFdtype dtype) {
-	int  nbit    = dtype & BF_DTYPE_NBIT_BITS;
-	bool complex = dtype & BF_DTYPE_COMPLEX_BIT;
-	if( complex ) {
-		nbit *= 2;
-	}
-	//assert(nbit % 8 == 0);
-	return nbit / 8;
-}
-
 inline bool shapes_equal(const BFarray* a,
                          const BFarray* b) {
 	if( a->ndim != b->ndim ) {
@@ -216,7 +252,7 @@ inline bool is_contiguous(const BFarray* array) {
 	//if( array->ndim == 0 ) {
 	//	return true;
 	//}
-	BFsize logical_size = get_dtype_nbyte(array->dtype);
+	BFsize logical_size = BF_DTYPE_NBYTE(array->dtype);
 	for( int d=0; d<array->ndim; ++d ) {
 		logical_size *= array->shape[d];
 	}
@@ -257,6 +293,48 @@ inline void squeeze_contiguous_dims(BFarray const* in,
 	out->ndim = odim;
 }
 */
+inline void print_array(BFarray const* a, const char* name=0) {
+	std::cout << "Array<(";
+	if( name ) {
+		std::cout << "name=" << name << ", ";
+	}
+	std::cout << "shape=(";
+	for( int d=0; d<a->ndim; ++d ) {
+		std::cout << a->shape[d] << ",";
+	}
+	std::cout << "), strides=(";
+	for( int d=0; d<a->ndim; ++d ) {
+		std::cout << a->strides[d] << ",";
+	}
+	std::cout << ")>" << std::endl;
+}
+// Supports in == out
+inline void remove_dim(BFarray const* in,
+                       BFarray*       out,
+                       int            dim) {
+	::memcpy(out, in, sizeof(BFarray));
+	for( int d=dim; d<in->ndim; ++d ) {
+		out->shape[d]   = in->shape[d+1];
+		out->strides[d] = in->strides[d+1];
+	}
+	--(out->ndim);
+}
+// Supports in == out
+inline void split_dim(BFarray const* in,
+                      BFarray*       out,
+                      int            dim,
+                      int            n) {
+	::memcpy(out, in, sizeof(BFarray));
+	for( int d=in->ndim; d-->dim+1; ) {
+		out->shape[d+1]   = in->shape[d];
+		out->strides[d+1] = in->strides[d];
+	}
+	out->shape[dim+1]   = n;
+	out->shape[dim]     = in->shape[dim] / n;
+	out->strides[dim+1] = in->strides[dim];
+	out->strides[dim]   = in->strides[dim] * n;
+	++out->ndim;
+}
 // Merges together dimensions, keeping only those with the corresponding bit
 //   set in keep_mask.
 inline void flatten(BFarray const* in,

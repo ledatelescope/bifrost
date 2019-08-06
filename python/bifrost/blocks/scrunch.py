@@ -26,6 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # TODO: This is a bit hacky and inflexible, and has no CUDA backend yet
+#         **DEPRECATE it in favour of ReduceBlock
 
 from __future__ import absolute_import
 

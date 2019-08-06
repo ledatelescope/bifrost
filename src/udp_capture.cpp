@@ -174,7 +174,7 @@ public:
 	~AlignedBuffer() {
 		this->free();
 	}
-	inline void swap(AlignedBuffer const& other) {
+	inline void swap(AlignedBuffer & other) {
 		std::swap(_buf,       other._buf);
 		std::swap(_size,      other._size);
 		std::swap(_alignment, other._alignment);
@@ -612,7 +612,7 @@ class BFudpcapture_impl {
 		_seq += _nseq_per_buf;
 	}
 	inline void begin_sequence() {
-		BFoffset    seq0 = _seq + _nseq_per_buf*_bufs.size();
+		BFoffset    seq0 = _seq;// + _nseq_per_buf*_bufs.size();
 		const void* hdr;
 		size_t      hdr_size;
 		BFoffset    time_tag;

@@ -185,9 +185,11 @@ void launch_fdmt_init_kernel(int            ntime,
 	                &d_out,
 	                &ostride,
 	                &obatchstride};
-	cudaLaunchKernel((void*)fdmt_init_kernel<InType,OutType>,
-	                 grid, block,
-	                 &args[0], 0, stream);
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaLaunchKernel((void*)fdmt_init_kernel<InType,OutType>,
+		                 grid, block,
+		                 &args[0], 0, stream),
+		BF_STATUS_INTERNAL_ERROR);
 }
 
 template<typename DType>
@@ -223,9 +225,11 @@ void launch_fdmt_exec_kernel(int          ntime,
 	                &d_out,
 	                &ostride,
 	                &obatchstride};
-	cudaLaunchKernel((void*)fdmt_exec_kernel<DType>,
-	                 grid, block,
-	                 &args[0], 0, stream);
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaLaunchKernel((void*)fdmt_exec_kernel<DType>,
+		                 grid, block,
+		                 &args[0], 0, stream),
+		BF_STATUS_INTERNAL_ERROR);
 }
 /*
 **** 4096
@@ -638,8 +642,8 @@ public:
 		                    BF_STATUS_UNSUPPORTED_STRIDE);
 		BF_ASSERT_EXCEPTION(out->strides[ndim-2] % out->strides[ndim-1] == 0,
 		                    BF_STATUS_UNSUPPORTED_STRIDE);
-		size_t istride =  in->strides[ndim-2] / in->strides[ndim-1];
-		size_t ostride = out->strides[ndim-2] / in->strides[ndim-1];
+		size_t istride =  in->strides[ndim-2] /  in->strides[ndim-1];
+		size_t ostride = out->strides[ndim-2] / out->strides[ndim-1];
 		BF_ASSERT_EXCEPTION( in->strides[in->ndim-2] > 0, BF_STATUS_UNSUPPORTED_STRIDE);
 		BF_ASSERT_EXCEPTION(out->strides[in->ndim-2] > 0, BF_STATUS_UNSUPPORTED_STRIDE);
 		
@@ -650,8 +654,8 @@ public:
 			                    BF_STATUS_UNSUPPORTED_STRIDE);
 			BF_ASSERT_EXCEPTION(out->strides[ndim-3] % out->strides[ndim-1] == 0,
 			                    BF_STATUS_UNSUPPORTED_STRIDE);
-			ibatchstride =  in->strides[ndim-3] / in->strides[ndim-1];
-			obatchstride = out->strides[ndim-3] / in->strides[ndim-1];
+			ibatchstride =  in->strides[ndim-3] /  in->strides[ndim-1];
+			obatchstride = out->strides[ndim-3] / out->strides[ndim-1];
 		}
 		
 		BF_ASSERT_EXCEPTION(in->strides[ndim-1] == BF_DTYPE_NBYTE(in->dtype),
@@ -702,19 +706,15 @@ public:
 				ostride_cur += reverse_time ? +1 : -1;
 				obatchstride_cur = obatchstride;
 			}
-			//cudaDeviceSynchronize(); // HACK TESTING
 			launch_fdmt_exec_kernel(ntime, nrow, nbatch, (step==nstep-1), reverse_time,
 			                        _d_step_delays  + step*_plan_stride,
 			                        _d_step_srcrows + step*_plan_stride,
 			                        d_ibuf, _buffer_stride, _batch_stride,
 			                        d_obuf, ostride_cur, obatchstride_cur,
 			                        _stream);
-			//cudaDeviceSynchronize(); // HACK TESTING
-			//BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 			std::swap(d_ibuf, d_obuf);
 		}
 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
-		//cudaDeviceSynchronize(); // HACK TESTING
 	}
 	void set_stream(cudaStream_t stream) {
 		_stream = stream;
@@ -787,6 +787,8 @@ BFstatus bfFdmtExecute(BFfdmt         plan,
 		in  =  &in_flattened;
 		BF_ASSERT(in_flattened.ndim == out_flattened.ndim,
 		          BF_STATUS_INTERNAL_ERROR);
+		// TODO: Use streams to support multiple non-contiguous batch dims
+		//         (Like in linalg.cu)
 		BF_ASSERT(in_flattened.ndim == 3, BF_STATUS_UNSUPPORTED_SHAPE);
 		BF_ASSERT_EXCEPTION(in_flattened.shape[0] == out_flattened.shape[0],
 		                    BF_STATUS_INVALID_SHAPE);

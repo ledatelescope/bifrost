@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from setuptools import setup, find_packages
+import sys
 
 # Parse version file to extract __version__ value
 bifrost_version_file = 'bifrost/version.py'
@@ -41,12 +42,14 @@ try:
                 __version__ = ''.join([c for c in __version__
                                        if c.isalnum() or c in ".-_"])
 except IOError:
+    if 'clean' in sys.argv[1:]:
+        sys.exit(0)
     print "*************************************************************************"
     print "Please run `make` from the root of the source tree to generate version.py"
     print "*************************************************************************"
     raise
 
-setup(name='Bifrost',
+setup(name='bifrost',
       version=__version__,
       description='Pipeline processing framework',
       author='Ben Barsdell',

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
@@ -73,7 +73,7 @@ public:
 	                       BFring_impl*      ring)
 		: _lock(lock), _ring(ring) {
 		++_ring->_nrealloc_pending;
-		_ring->_realloc_condition.wait(_lock, [&]() {
+		_ring->_realloc_condition.wait(_lock, [this]() {
 			return (_ring->_nwrite_open == 0 &&
 			        _ring->_nread_open == 0);
 		});
@@ -89,10 +89,10 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	: _name(name), _space(space), _buf(nullptr),
 	  _ghost_span(0), _span(0), _stride(0), _nringlet(0), _offset0(0),
 	  _tail(0), _head(0), _reserve_head(0),
-	  _ghost_dirty(false),
+	  _ghost_dirty_beg(_ghost_span),
 	  _writing_begun(false), _writing_ended(false), _eod(0),
 	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0),
-	  _core(-1) {
+	  _core(-1), _size_log(std::string("rings/")+name) {
 
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM       ||
@@ -104,6 +104,9 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM,
 	                    BF_STATUS_INVALID_ARGUMENT);
 #endif
+	
+	// Create the ProcLog entry for this ring
+	_write_proclog_entry();
 }
 BFring_impl::~BFring_impl() {
 	// TODO: Should check if anything is still open here?
@@ -135,6 +138,9 @@ void BFring_impl::resize(BFsize contiguous_span,
 	//new_ghost_span = round_up(new_ghost_span, bfGetAlignment());
 	//new_span       = round_up(new_span,       bfGetAlignment());
 	new_span = std::max(new_span, bfGetAlignment());
+	// **TODO: See if can avoid doing this, so that ghost-region memcpys can
+	//           be avoided if user chooses gulp sizes in whole multiplies
+	//           regardless of whether they are powers of two or not.
 	// Note: This is critical to enable safe overflowing/wrapping of offsets
 	new_span = round_up_pow2(new_span);
 	// This is just to ensure nice indexing
@@ -190,7 +196,9 @@ void BFring_impl::resize(BFsize contiguous_span,
 		bfMemcpy2D(new_buf + new_span + _ghost_span, new_stride, _space,
 		           _buf + _ghost_span,                  _stride, _space,
 		           std::min(new_ghost_span, _span) - _ghost_span, _nringlet);
-		_ghost_dirty = true; // TODO: Is this the right thing to do?
+		//_ghost_dirty = true; // TODO: Is this the right thing to do?
+		//_ghost_dirty_beg = new_ghost_span; // TODO: Is this the right thing to do?
+		_ghost_dirty_beg = 0; // TODO: Is this the right thing to do?
 		bfFree(_buf, _space);
 		bfStreamSynchronize();
 	}
@@ -199,6 +207,9 @@ void BFring_impl::resize(BFsize contiguous_span,
 	_span       = new_span;
 	_stride     = new_stride;
 	_nringlet   = new_nringlet;
+	
+	// Update the ProcLog entry for this ring
+	_write_proclog_entry();
 }
 void BFring_impl::begin_writing() {
 	lock_guard_type lock(_mutex);
@@ -245,10 +256,9 @@ void BFring_impl::_ghost_write(BFoffset offset, BFsize span) {
 		// The write went into the ghost region, so copy to the ghosted part
 		this->_copy_from_ghost(0, buf_offset_end);
 	}
-	else if( buf_offset_beg < (BFoffset)_ghost_span ) {
+	if( buf_offset_beg < (BFoffset)_ghost_span ) {
 		// The write touched the ghosted front of the buffer
-		_ghost_dirty = true;
-		// TODO: Implement fine-grained dirty region tracking
+		_ghost_dirty_beg = std::min(_ghost_dirty_beg, buf_offset_beg);
 	}
 }
 void BFring_impl::_ghost_read(BFoffset offset, BFsize span) {
@@ -256,10 +266,13 @@ void BFring_impl::_ghost_read(BFoffset offset, BFsize span) {
 	BFoffset buf_offset_end = _buf_offset(offset + span);
 	if( buf_offset_end < buf_offset_beg ) {
 		// The read will enter the ghost region, so copy from the ghosted part
-		if( _ghost_dirty ) {
-			this->_copy_to_ghost(0, _ghost_span);
-			_ghost_dirty = false;
-		}
+		buf_offset_end = std::min(buf_offset_end, (BFoffset)_ghost_span);
+		BFsize dirty_span =
+			std::max((BFdelta)buf_offset_end - (BFdelta)_ghost_dirty_beg,
+			         BFdelta(0));
+		this->_copy_to_ghost(_ghost_dirty_beg, dirty_span);
+		// Note: This is actually _decreasing_ the amount that is marked dirty
+		_ghost_dirty_beg += dirty_span;
 	}
 }
 void BFring_impl::_copy_to_ghost(BFoffset buf_offset, BFsize span) {
@@ -318,10 +331,21 @@ BFsequence_sptr BFring_impl::_get_sequence_by_name(const char* name) {
 BFsequence_sptr BFring_impl::open_sequence_by_name(const char* name,
                                                    bool with_guarantee,
                                                    std::unique_ptr<Guarantee>& guarantee) {
+	// Note: Guarantee uses locks, so must be kept outside the lock scope here
+	std::unique_ptr<Guarantee> scoped_guarantee;
+	if( with_guarantee ) {
+		// Ensure a guarantee is held while waiting for sequence to exist
+		scoped_guarantee = new_guarantee(this);
+	}
 	unique_lock_type lock(_mutex);
 	BFsequence_sptr sequence = this->_get_sequence_by_name(name);
-	guarantee = new_guarantee(
-		this, this->_get_start_of_sequence_within_ring(sequence));
+	if( scoped_guarantee ) {
+		// Move guarantee to start of sequence
+		scoped_guarantee->move_nolock(
+			this->_get_start_of_sequence_within_ring(sequence));
+	}
+	// Transfer ownership to the caller
+	guarantee = std::move(scoped_guarantee);
 	return sequence;
 }
 
@@ -345,10 +369,21 @@ BFsequence_sptr BFring_impl::_get_sequence_at(BFoffset time_tag) {
 BFsequence_sptr BFring_impl::open_sequence_at(BFoffset time_tag,
                                               bool with_guarantee,
                                               std::unique_ptr<Guarantee>& guarantee) {
+	// Note: Guarantee uses locks, so must be kept outside the lock scope here
+	std::unique_ptr<Guarantee> scoped_guarantee;
+	if( with_guarantee ) {
+		// Ensure a guarantee is held while waiting for sequence to exist
+		scoped_guarantee = new_guarantee(this);
+	}
 	unique_lock_type lock(_mutex);
 	BFsequence_sptr sequence = this->_get_sequence_at(time_tag);
-	guarantee = new_guarantee(
-		this, this->_get_start_of_sequence_within_ring(sequence));
+	if( scoped_guarantee ) {
+		// Move guarantee to start of sequence
+		scoped_guarantee->move_nolock(
+			this->_get_start_of_sequence_within_ring(sequence));
+	}
+	// Transfer ownership to the caller
+	guarantee = std::move(scoped_guarantee);
 	return sequence;
 }
 bool BFring_impl::_sequence_still_within_ring(BFsequence_sptr sequence) const {
@@ -358,7 +393,7 @@ bool BFring_impl::_sequence_still_within_ring(BFsequence_sptr sequence) const {
 
 BFsequence_sptr BFring_impl::_get_earliest_or_latest_sequence(unique_lock_type& lock, bool latest) const {
 	// Wait until a sequence has been opened or writing has ended
-	_sequence_condition.wait(lock, [&]() {
+	_sequence_condition.wait(lock, [this]() {
 			return !_sequence_queue.empty() || _writing_ended;
 		});
 	BF_ASSERT_EXCEPTION(!(_sequence_queue.empty() && !_writing_ended), BF_STATUS_INVALID_STATE);
@@ -398,7 +433,7 @@ BFsequence_sptr BFring_impl::open_earliest_or_latest_sequence(bool with_guarante
 	std::unique_ptr<Guarantee> scoped_guarantee;
 	if( with_guarantee ) {
 		// Ensure a guarantee is held while waiting for sequence to exist
-		scoped_guarantee = new_guarantee(this, _tail);
+		scoped_guarantee = new_guarantee(this);
 	}
 	unique_lock_type lock(_mutex);
 	BFsequence_sptr sequence = this->_get_earliest_or_latest_sequence(lock, latest);
@@ -441,6 +476,21 @@ void BFring_impl::finish_sequence(BFsequence_sptr sequence,
 	_read_condition.notify_all();
 }
 
+void BFring_impl::_write_proclog_entry() {
+	char cinfo[32]="";
+	#if BF_NUMA_ENABLED
+	snprintf(cinfo, 31, "binding   : %i\n", _core);
+	#endif
+	_size_log.update("space     : %s\n"
+	                 "%s"
+	                 "alignment : %llu\n"
+	                 "ghost     : %llu\n"
+	                 "span      : %llu\n"
+	                 "stride    : %llu\n"
+	                 "nringlet  : %llu\n", 
+	                 bfGetSpaceString(_space), cinfo, bfGetAlignment(), _span, _ghost_span, _stride, _nringlet);
+}
+
 BFsequence_impl::BFsequence_impl(BFring      ring,
                                  const char* name,
                                  BFoffset    time_tag,
@@ -459,22 +509,30 @@ BFsequence_impl::BFsequence_impl(BFring      ring,
 void BFsequence_impl::set_next(BFsequence_sptr next) {
 	_next = next;
 }
-void BFring_impl::_pull_tail(unique_lock_type& lock) {
+bool BFring_impl::_advance_reserve_head(unique_lock_type& lock, BFsize size,
+                                        bool nonblocking) {
 	// This waits until all guarantees have caught up to the new valid
 	//   buffer region defined by _reserve_head, and then pulls the tail
 	//   along to ensure it is within a distance of _span from _reserve_head.
-	// This must be done whenever _reserve_head is increased.
 	
 	// Note: By using _span, this correctly handles ring resizes that occur
 	//         while waiting on the condition.
 	// TODO: This enables guaranteed reads to "cover for" unguaranteed
 	//         siblings that would be too slow on their own. Is this actually
 	//         a problem, and if so is there any way around it?
-	_write_condition.wait(lock, [&]() {
-			return ((_guarantees.empty() ||
-			         BFoffset(_reserve_head - _get_earliest_guarantee()) <= _span) &&
-			        _nrealloc_pending == 0);
-		});
+	_reserve_head += size;
+	auto postcondition_predicate = [this]() {
+		return ((_guarantees.empty() ||
+		         BFoffset(_reserve_head - _get_earliest_guarantee()) <= _span) &&
+		        _nrealloc_pending == 0);
+	};
+	if( !nonblocking ) {
+		_write_condition.wait(lock, postcondition_predicate);
+	} else if( !postcondition_predicate() ) {
+		// Revert and return failure
+		_reserve_head -= size;
+		return false;
+	}
 	
 	BFoffset cur_span = _reserve_head - _tail;
 	if( cur_span > _span ) {
@@ -496,14 +554,16 @@ void BFring_impl::_pull_tail(unique_lock_type& lock) {
 			_sequence_queue.pop();
 		}
 	}
+	return true;
 }
 
-void BFring_impl::reserve_span(BFsize size, BFoffset* begin, void** data) {
+void BFring_impl::reserve_span(BFsize size, BFoffset* begin, void** data,
+                               bool nonblocking) {
 	unique_lock_type lock(_mutex);
 	BF_ASSERT_EXCEPTION(size <= _ghost_span, BF_STATUS_INVALID_ARGUMENT);
 	*begin = _reserve_head;
-	_reserve_head += size;
-	this->_pull_tail(lock); // Must be called whenever _reserve_head is increased
+	BF_ASSERT_EXCEPTION(this->_advance_reserve_head(lock, size, nonblocking),
+	                    BF_STATUS_WOULD_BLOCK);
 	++_nwrite_open;
 	*data = _buf_pointer(*begin);
 }
@@ -556,12 +616,13 @@ void BFring_impl::commit_span(BFoffset begin, BFsize reserve_size, BFsize commit
 	_realloc_condition.notify_all();
 }
 
-BFwspan_impl::BFwspan_impl(BFring      ring,
-                           BFsize      size)
+BFwspan_impl::BFwspan_impl(BFring ring,
+                           BFsize size,
+                           bool   nonblocking)
 	: BFspan_impl(ring, size),
 	  _begin(0),
 	  _commit_size(size), _data(nullptr) {
-	this->ring()->reserve_span(size, &_begin, &_data);
+	this->ring()->reserve_span(size, &_begin, &_data, nonblocking);
 }
 BFwspan_impl* BFwspan_impl::commit(BFsize size) {
 	BF_ASSERT_EXCEPTION(size <= this->size(), BF_STATUS_INVALID_ARGUMENT);
@@ -598,11 +659,12 @@ void BFring_impl::acquire_span(BFrsequence rsequence,
 		BFoffset guarantee_begin = rsequence->guarantee()->offset();
 		BFdelta distance_from_guarantee = BFdelta(requested_begin -
 		                                          guarantee_begin);
-		bool acquire_is_within_guarantee = (distance_from_guarantee >= 0);
-		// Note: We enforce this because it (probably) never makes sense to
-		//         try to acquire a span outside the guarantee.
-		BF_ASSERT_EXCEPTION(acquire_is_within_guarantee,
-		                    BF_STATUS_INVALID_ARGUMENT);
+		// Note: Triggered dumps may open a guaranteed sequence that has
+		//         already been partially overwritten. In such cases, the
+		//         user may reasonably request spans at the beginning of the
+		//         sequence that actually lie outside of the guarantee
+		//         (i.e., distance_from_guarantee < 0), and so an error should
+		//         _not_ be returned in this scenario (just a zero-size span).
 		if( distance_from_guarantee > 0 ) {
 			// Move the guarantee forward to the beginning of this span to
 			//   allow writers to make progress.

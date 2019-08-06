@@ -45,9 +45,17 @@ from .unpack import unpack, UnpackBlock
 from .quantize import quantize, QuantizeBlock
 from .wav import read_wav, WavSourceBlock
 from .wav import write_wav, WavSinkBlock
-from .serialize import serialize, SerializeBlock
+from .serialize import serialize, SerializeBlock, deserialize, DeserializeBlock
+from .reduce import reduce, ReduceBlock
+from .correlate import correlate, CorrelateBlock
+from .convert_visibilities import convert_visibilities, ConvertVisibilitiesBlock
 
 try: # Avoid error if portaudio library not installed
     from .audio import read_audio, AudioSourceBlock
+except:
+    pass
+
+try: # Avoid error if psrdada library not installed
+    from .psrdada import read_psrdada_buffer, PsrDadaSourceBlock
 except:
     pass

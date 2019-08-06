@@ -31,11 +31,8 @@ RUN pip --no-cache-dir install \
         contextlib2 \
         simplejson \
         pint \
+        git+https://github.com/davidjamesca/ctypesgen.git@3d2d9803339503d2988382aa861b47a6a4872c32 \
         graphviz
-
-RUN git clone https://github.com/MatthieuDartiailh/pyclibrary.git && \
-    cd pyclibrary && \
-    python setup.py install
 
 ENV TERM xterm
 

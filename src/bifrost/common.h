@@ -34,9 +34,6 @@
 #ifndef BF_COMMON_H_INCLUDE_GUARD_
 #define BF_COMMON_H_INCLUDE_GUARD_
 
-#include <stddef.h>
-#include <stdint.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -46,36 +43,37 @@ typedef int                BFbool;
 //typedef int                BFenum;
 typedef float              BFcomplex[2];
 typedef float              BFreal;
-typedef uint64_t           BFsize; // TODO: Check this on TK1 (32 bit)
-//typedef unsigned long      BFsize;
+//typedef uint64_t           BFsize; // TODO: Check this on TK1 (32 bit)
+typedef unsigned long      BFsize;
 //typedef size_t             BFsize;
-//typedef unsigned long long BFoffset;
-typedef uint64_t BFoffset;
+typedef unsigned long long BFoffset;
+//typedef uint64_t BFoffset;
 //typedef unsigned char      BFoffset; // HACK TESTING correct offset wrapping
 typedef   signed long long BFdelta;
 
-typedef enum {
+typedef enum BFstatus_ {
 	BF_STATUS_SUCCESS                                  = 0,
 	BF_STATUS_END_OF_DATA                              = 1,
-	BF_STATUS_INVALID_POINTER                          = 2,
-	BF_STATUS_INVALID_HANDLE                           = 3,
-	BF_STATUS_INVALID_ARGUMENT                         = 4,
-	BF_STATUS_INVALID_STATE                            = 5,
-	BF_STATUS_INVALID_SPACE                            = 6,
-	BF_STATUS_INVALID_SHAPE                            = 7,
-	BF_STATUS_INVALID_STRIDE                           = 8,
-	BF_STATUS_INVALID_DTYPE                            = 9,
-	BF_STATUS_MEM_ALLOC_FAILED                         = 16,
-	BF_STATUS_MEM_OP_FAILED                            = 17,
-	BF_STATUS_UNSUPPORTED                              = 18,
-	BF_STATUS_UNSUPPORTED_SPACE                        = 19,
-	BF_STATUS_UNSUPPORTED_SHAPE                        = 20,
-	BF_STATUS_UNSUPPORTED_STRIDE                       = 21,
-	BF_STATUS_UNSUPPORTED_DTYPE                        = 22,
-	BF_STATUS_FAILED_TO_CONVERGE                       = 30,
-	BF_STATUS_INSUFFICIENT_STORAGE                     = 31,
-	BF_STATUS_DEVICE_ERROR                             = 32,
-	BF_STATUS_INTERNAL_ERROR                           = 33
+	BF_STATUS_WOULD_BLOCK                              = 2,
+	BF_STATUS_INVALID_POINTER                          = 8,
+	BF_STATUS_INVALID_HANDLE                           = 9,
+	BF_STATUS_INVALID_ARGUMENT                         = 10,
+	BF_STATUS_INVALID_STATE                            = 11,
+	BF_STATUS_INVALID_SPACE                            = 12,
+	BF_STATUS_INVALID_SHAPE                            = 13,
+	BF_STATUS_INVALID_STRIDE                           = 14,
+	BF_STATUS_INVALID_DTYPE                            = 15,
+	BF_STATUS_MEM_ALLOC_FAILED                         = 32,
+	BF_STATUS_MEM_OP_FAILED                            = 33,
+	BF_STATUS_UNSUPPORTED                              = 48,
+	BF_STATUS_UNSUPPORTED_SPACE                        = 49,
+	BF_STATUS_UNSUPPORTED_SHAPE                        = 50,
+	BF_STATUS_UNSUPPORTED_STRIDE                       = 51,
+	BF_STATUS_UNSUPPORTED_DTYPE                        = 52,
+	BF_STATUS_FAILED_TO_CONVERGE                       = 64,
+	BF_STATUS_INSUFFICIENT_STORAGE                     = 65,
+	BF_STATUS_DEVICE_ERROR                             = 66,
+	BF_STATUS_INTERNAL_ERROR                           = 99
 } BFstatus;
 
 

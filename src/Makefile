@@ -29,11 +29,16 @@ ifndef NOCUDA
   map.o \
   trace.o \
   linalg.o \
-  linalg_kernels.o
+  linalg_kernels.o \
+  reduce.o \
+  fir.o \
+  guantize.o \
+  gunpack.o
 endif
 
 JIT_SOURCES ?= \
   Complex.hpp.jit \
+  Vector.hpp.jit \
   IndexArray.cuh.jit \
   ArrayIndexer.cuh.jit \
   ShapeIndexer.cuh.jit \

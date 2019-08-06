@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
@@ -31,6 +31,7 @@
 
 #include <bifrost/ring.h>
 #include "assert.hpp"
+#include "proclog.hpp"
 
 #include <stdexcept>
 #include <vector>
@@ -77,7 +78,7 @@ class BFring_impl {
 	BFoffset       _head;
 	BFoffset       _reserve_head;
 	
-	bool           _ghost_dirty;
+	BFoffset       _ghost_dirty_beg;
 	
 	bool     _writing_begun;
 	bool     _writing_ended;
@@ -98,8 +99,9 @@ class BFring_impl {
 	BFsize         _nread_open;
 	BFsize         _nwrite_open;
 	BFsize         _nrealloc_pending;
-	
-	int _core;
+
+	int            _core;    	
+	ProcLog        _size_log;
 	
 	std::queue<BFsequence_sptr>           _sequence_queue;
 	std::map<std::string,BFsequence_sptr> _sequence_map;
@@ -115,7 +117,7 @@ class BFring_impl {
 	void _ghost_read( BFoffset offset, BFsize size);
 	void _copy_to_ghost(  BFoffset buf_offset, BFsize span);
 	void _copy_from_ghost(BFoffset buf_offset, BFsize span);
-	void _pull_tail(unique_lock_type& lock);
+	bool _advance_reserve_head(unique_lock_type& lock, BFsize size, bool nonblocking);
 	inline void _add_guarantee(BFoffset offset) {
 		auto iter = _guarantees.find(offset);
 		if( iter == _guarantees.end() ) {
@@ -138,7 +140,6 @@ class BFring_impl {
 	inline BFoffset _get_earliest_guarantee() {
 		return _guarantees.begin()->first;
 	}
-
 	
 	bool _sequence_still_within_ring(BFsequence_sptr sequence) const;
 	BFoffset _get_start_of_sequence_within_ring(BFsequence_sptr sequence) const;
@@ -166,6 +167,8 @@ class BFring_impl {
 	BFring_impl& operator=(BFring_impl const& ) = delete;
 	BFring_impl(BFring_impl&& )                 = delete;
 	BFring_impl& operator=(BFring_impl&& )      = delete;
+	
+	void _write_proclog_entry();
 public:
 	BFring_impl(const char* name,
 	            BFspace space);
@@ -211,7 +214,7 @@ public:
 	                               BFsize      nringlet,
 	                               BFoffset    offset_from_head=0);
 	
-	void reserve_span(BFsize size, BFoffset* begin, void** data);
+	void reserve_span(BFsize size, BFoffset* begin, void** data, bool nonblocking);
 	void commit_span(BFoffset begin, BFsize reserve_size, BFsize commit_size);
 	
 	void acquire_span(BFrsequence sequence,
@@ -228,15 +231,18 @@ public:
 class Guarantee {
 	BFring   _ring;
 	BFoffset _offset;
-	void create()  { _ring->_add_guarantee(_offset); }
+	void create(BFoffset offset)  {
+		_offset = offset;
+		_ring->_add_guarantee(_offset);
+	}
 	void destroy() { _ring->_remove_guarantee(_offset); }
 public:
 	Guarantee(Guarantee const& ) = delete;
 	Guarantee& operator=(Guarantee const& ) = delete;
-	Guarantee(BFring ring, BFoffset offset)
-		: _ring(ring), _offset(offset) {
+	explicit Guarantee(BFring ring)
+		: _ring(ring) {
 		BFring_impl::lock_guard_type lock(_ring->_mutex);
-		this->create();
+		this->create(_ring->_tail);
 	}
 	~Guarantee() {
 		BFring_impl::lock_guard_type lock(_ring->_mutex);
@@ -244,14 +250,13 @@ public:
 	}
 	void move_nolock(BFoffset offset) {
 		this->destroy();
-		_offset = offset;
-		this->create();
+		this->create(offset);
 	}
 	BFoffset offset() const { return _offset; }
 };
-inline std::unique_ptr<Guarantee> new_guarantee(BFring ring, BFoffset offset) {
+inline std::unique_ptr<Guarantee> new_guarantee(BFring ring) {
 	// TODO: Use std::make_unique here (requires C++14)
-	return std::unique_ptr<Guarantee>(new Guarantee(ring, offset));
+	return std::unique_ptr<Guarantee>(new Guarantee(ring));
 }
 
 class BFsequence_impl {
@@ -410,8 +415,9 @@ class BFwspan_impl : public BFspan_impl {
 	BFwspan_impl(BFwspan_impl&& )                 = delete;
 	BFwspan_impl& operator=(BFwspan_impl&& )      = delete;
 public:
-	BFwspan_impl(BFring      ring,
-	             BFsize      size);
+	BFwspan_impl(BFring ring,
+	             BFsize size,
+	             bool   nonblocking);
 	~BFwspan_impl();
 	BFwspan_impl* commit(BFsize size);
 	inline virtual void*           data()     const { return _data; }

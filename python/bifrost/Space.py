@@ -26,7 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from bifrost.libbifrost import _bf
-GLOBAL_BFspace = _bf.BFspace
 
 SPACEMAP_TO_STR = {_bf.BF_SPACE_AUTO:         'auto',
                    _bf.BF_SPACE_SYSTEM:       'system',
@@ -47,7 +46,7 @@ class Space(object):
                              'cuda', 'cuda_host', 'cuda_managed']):
                 raise ValueError('Invalid space: %s' % s)
             self._space = s
-        elif isinstance(s, GLOBAL_BFspace) or isinstance(s, int):
+        elif isinstance(s, _bf.BFspace) or isinstance(s, int):
             if s not in SPACEMAP_TO_STR:
                 raise KeyError("Invalid space: " + s +
                                ". Valid spaces: " + str(SPACEMAP_TO_STR.keys()))

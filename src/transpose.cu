@@ -28,6 +28,7 @@
  */
 
 #include <bifrost/transpose.h>
+#include <bifrost/map.h>
 #include "assert.hpp"
 #include "utils.hpp"
 #include "trace.hpp"
@@ -42,6 +43,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <limits>
+#include <sstream>
 
 template<int N> struct aligned_type     { typedef char  type; };
 template<>      struct aligned_type< 2> { typedef short type; };
@@ -91,10 +93,6 @@ BFstatus transpose(int           ndim,
 	//            ifastdim, islowdim,
 	//            ofastdim, oslowdim);
 	if( ifastdim == islowdim ) {//ofastdim ) {
-		// TODO: Use plain permute-copy kernel
-		std::printf("PLAIN PERMUTATIONS NOT IMPLEMENTED YET (%i %i)\n",
-		            islowdim, ifastdim);//oslowdim);
-		//return -1;
 		return BF_STATUS_UNSUPPORTED;
 	}
 	long width       = sizes[ifastdim];
@@ -123,6 +121,11 @@ BFstatus transpose(int           ndim,
 	cumushapez[ndimz-1] = 1;
 	for( int d=ndimz-2; d>=0; --d ) {
 		cumushapez[d] = cumushapez[d+1]*shapez[d+1];
+	}
+	for( int d=MAX_NDIM-1; d>ndimz-2; --d ) {
+		// WAR to avoid uninitialized values going through int_fastdiv
+		//   via SmallArray, which triggers errors when run through valgrind.
+		cumushapez[d] = 1;
 	}
 	
 	dim3 grid, block;
@@ -296,6 +299,192 @@ BFstatus transpose(int            ndim,
 }
 } // namespace typed
 
+// This is for when the fastest-changing dim is not transposed
+BFstatus transpose_simple(BFarray const* in,
+                          BFarray const* out,
+                          int     const* axes) {
+	BF_ASSERT(BF_MAX_DIMS <= 16, BF_STATUS_INTERNAL_ERROR);
+	// Minor HACK to avoid using stringstream (which was inexplicably
+	//   segfaulting whenever I used it :|).
+	static const char* hex_digits = "0123456789ABCDEF";
+	int ndim = in->ndim;
+	
+	int axes_inverted[BF_MAX_DIMS];
+	invert_permutation(ndim, axes, axes_inverted);
+	axes = axes_inverted;
+	
+	std::string func_str;
+	func_str += "out = in(i";
+	func_str += hex_digits[axes[0]];
+	for( int d=1; d<ndim; ++d ) {
+		func_str += ", i";
+		func_str += hex_digits[axes[d]];
+	}
+	func_str += ")";
+	// Minor HACK to avoid heap allocations
+	char const* axis_names[] = {
+		"i0", "i1", "i2", "i3", "i4", "i5", "i6", "i7",
+		"i8", "i9", "iA", "iB", "iC", "iD", "iE", "iF"
+	};
+	BFarray in_mutable, out_mutable;
+	::memcpy( &in_mutable,  in, sizeof(BFarray));
+	::memcpy(&out_mutable, out, sizeof(BFarray));
+	in_mutable.immutable = true;
+	in_mutable.dtype  = same_sized_storage_dtype(in_mutable.dtype);
+	out_mutable.dtype = same_sized_storage_dtype(out_mutable.dtype);
+	in = &in_mutable;
+	out = &out_mutable;
+	int narg = 2;
+	BFarray const* args[] = {in, out};
+	char const* arg_names[] = {"in", "out"};
+	char const* func = func_str.c_str();
+	char const* extra_code = 0;
+	return bfMap(ndim, out->shape, axis_names, narg, args, arg_names,
+	             "transpose_simple", func, extra_code, 0, 0);
+}
+
+// This is for when the fastest-changing input dim is small and should
+//   be processed whole by each thread using vector loads.
+BFstatus transpose_vector_read(BFarray const* in,
+                               BFarray const* out,
+                               int     const* axes) {
+	BF_ASSERT(BF_MAX_DIMS <= 16, BF_STATUS_INTERNAL_ERROR);
+	// Minor HACK to avoid using stringstream (which was inexplicably
+	//   segfaulting whenever I used it :|).
+	static const char* hex_digits = "0123456789ABCDEF";
+	int ndim = in->ndim;
+	BF_ASSERT(in->shape[ndim-1] <= 16, BF_STATUS_INTERNAL_ERROR);
+	int K = in->shape[ndim-1];
+	
+	int axes_inverted[BF_MAX_DIMS];
+	invert_permutation(ndim, axes, axes_inverted);
+	axes = axes_inverted;
+	
+	int odim = axes[ndim-1];
+	std::string in_inds_str = "i";
+	in_inds_str += hex_digits[axes[0]];
+	std::string out_inds_str = (odim == 0) ? "k" : "i0";
+	for( int d=1; d<ndim; ++d ) {
+		if( d < ndim-1 ) {
+			in_inds_str += ", i";
+			in_inds_str += hex_digits[axes[d]];
+		}
+		out_inds_str += ", ";
+		if( d == odim ) {
+			out_inds_str += "k";
+		} else {
+			out_inds_str += "i";
+			out_inds_str += hex_digits[d];
+		}
+	}
+	std::string func_str;
+	func_str += "enum { K = " + std::to_string(K) + " };\n";
+	func_str +=
+		"in_type ivals = in(" + in_inds_str + ");\n"
+		"#pragma unroll\n"
+		"for( int k=0; k<K; ++k ) {\n"
+		"    out(" + out_inds_str + ") = ivals[k];\n"
+		"}\n";
+	// Minor HACK to avoid heap allocations
+	char const* axis_names[] = {
+		"i0", "i1", "i2", "i3", "i4", "i5", "i6", "i7",
+		"i8", "i9", "iA", "iB", "iC", "iD", "iE", "iF"
+	};
+	BFarray in_mutable, out_mutable;
+	::memcpy( &in_mutable,  in, sizeof(BFarray));
+	::memcpy(&out_mutable, out, sizeof(BFarray));
+	in_mutable.immutable = true;
+	in_mutable.dtype  = same_sized_storage_dtype(in_mutable.dtype);
+	out_mutable.dtype = same_sized_storage_dtype(out_mutable.dtype);
+	merge_last_dim_into_dtype(&in_mutable, &in_mutable);
+	in  = &in_mutable;
+	out = &out_mutable;
+	int narg = 2;
+	BFarray const* args[] = {in, out};
+	char const* arg_names[] = {"in", "out"};
+	char const* func = func_str.c_str();
+	char const* extra_code = 0;
+	long shape[BF_MAX_DIMS];
+	::memcpy(shape, out->shape, ndim*sizeof(long));
+	shape[odim] = 1; // This dim is processed sequentially by each thread
+	return bfMap(ndim, shape, axis_names, narg, args, arg_names,
+	             "transpose_vector_read", func, extra_code, 0, 0);
+}
+
+// This is for when the fastest-changing output dim is small and should
+//   be processed whole by each thread using vector stores.
+BFstatus transpose_vector_write(BFarray const* in,
+                                BFarray const* out,
+                                int     const* axes) {
+	BF_ASSERT(BF_MAX_DIMS <= 16, BF_STATUS_INTERNAL_ERROR);
+	// Minor HACK to avoid using stringstream (which was inexplicably
+	//   segfaulting whenever I used it :|).
+	static const char* hex_digits = "0123456789ABCDEF";
+	int ndim = in->ndim;
+	BF_ASSERT(out->shape[ndim-1] <= 16, BF_STATUS_INTERNAL_ERROR);
+	int K = out->shape[ndim-1];
+	
+	int axes_inverted[BF_MAX_DIMS];
+	invert_permutation(ndim, axes, axes_inverted);
+	axes = axes_inverted;
+	
+	int idim = ndim - 1;
+	std::string in_inds_str;
+	if( idim == axes[0] ) {
+		in_inds_str = "k";
+	} else {
+		in_inds_str = "i";
+		in_inds_str += hex_digits[axes[0]];
+	}
+	std::string out_inds_str = "i0";
+	for( int d=1; d<ndim; ++d ) {
+		in_inds_str += ", ";
+		if( axes[d] == idim ) {
+			in_inds_str += "k";
+		} else {
+			in_inds_str += "i";
+			in_inds_str += hex_digits[axes[d]];
+		}
+		if( d < ndim-1 ) {
+			out_inds_str += ", i";
+			out_inds_str += hex_digits[d];
+		}
+	}
+	std::string func_str;
+	func_str += "enum { K = " + std::to_string(K) + " };\n";
+	func_str +=
+		"out_type ovals;\n"
+		"#pragma unroll\n"
+		"for( int k=0; k<K; ++k ) {\n"
+		"    ovals[k] = in(" + in_inds_str + ");\n"
+		"}\n"
+		"out(" + out_inds_str + ") = ovals;\n";
+	// Minor HACK to avoid heap allocations
+	char const* axis_names[] = {
+		"i0", "i1", "i2", "i3", "i4", "i5", "i6", "i7",
+		"i8", "i9", "iA", "iB", "iC", "iD", "iE", "iF"
+	};
+	long shape[BF_MAX_DIMS];
+	::memcpy(shape, out->shape, ndim*sizeof(long));
+	shape[idim] = 1; // This dim is processed sequentially by each thread
+	BFarray in_mutable, out_mutable;
+	::memcpy( &in_mutable,  in, sizeof(BFarray));
+	::memcpy(&out_mutable, out, sizeof(BFarray));
+	in_mutable.immutable = true;
+	in_mutable.dtype  = same_sized_storage_dtype(in_mutable.dtype);
+	out_mutable.dtype = same_sized_storage_dtype(out_mutable.dtype);
+	merge_last_dim_into_dtype(&out_mutable, &out_mutable);
+	in  = &in_mutable;
+	out = &out_mutable;
+	int narg = 2;
+	BFarray const* args[] = {in, out};
+	char const* arg_names[] = {"in", "out"};
+	char const* func = func_str.c_str();
+	char const* extra_code = 0;
+	return bfMap(ndim, shape, axis_names, narg, args, arg_names,
+	             "transpose_vector_write", func, extra_code, 0, 0);
+}
+
 BFstatus bfTranspose(BFarray const* in,
                      BFarray const* out,
                      int     const* axes) {
@@ -321,6 +510,17 @@ BFstatus bfTranspose(BFarray const* in,
 		          BF_STATUS_INVALID_SHAPE);
 	}
 	
+	// Special cases to be handled with different kernels
+	int ifastdim = ndim-1;
+	int ofastdim = axes_actual[ndim-1];
+	if( ifastdim == ofastdim ) {
+		return transpose_simple(in, out, axes_actual);
+	} else if( in->shape[ofastdim] <= 16 ) { // TODO: Tune this heuristic
+		return transpose_vector_write(in, out, axes_actual);
+	} else if( in->shape[ifastdim] <= 16 ) { // TODO: Tune this heuristic
+		return transpose_vector_read(in, out, axes_actual);
+	}
+	
 	switch( element_size ) {
 #define DEFINE_TYPE_CASE(N)	  \
 	case N: return typed::transpose(ndim, \
@@ -340,7 +540,7 @@ BFstatus bfTranspose(BFarray const* in,
 		DEFINE_TYPE_CASE(13); DEFINE_TYPE_CASE(14);
 		DEFINE_TYPE_CASE(15); DEFINE_TYPE_CASE(16);
 #undef DEFINE_TYPE_CASE
-	default: BF_FAIL("Valid bfTranspose element size",
+	default: BF_FAIL("Supported bfTranspose element size",
 	                 BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 }

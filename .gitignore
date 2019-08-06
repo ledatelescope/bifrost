@@ -1,7 +1,9 @@
 doc
 version.py
+*_generated.py
 .log*.txt
 test/data/
+*.bin
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -12,6 +14,7 @@ __pycache__/
 *.o*
 *.lo
 *.la
+*.a
 
 # Backup files
 *~

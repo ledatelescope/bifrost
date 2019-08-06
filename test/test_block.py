@@ -784,8 +784,6 @@ class TestNumpySourceBlock(unittest.TestCase):
 
         Pipeline(blocks).main()
         self.assertEqual(self.occurences, 1)
-    @unittest.skip("TODO: Sometimes fails due to name clash because block.py "
-                   "generates sequence name as: str(int(time.time()*1000))")
     def test_output_change(self):
         """Change the output of the source, and expect new sequence"""
         self.occurences = 0

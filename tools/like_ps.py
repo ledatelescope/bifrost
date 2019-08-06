@@ -35,6 +35,7 @@ import time
 import getopt
 import subprocess
 
+os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
 
 
@@ -134,6 +135,29 @@ def _getCommandLine(pid):
     return cmd
 
 
+def _getBestSize(value):
+    """
+    Give a size in bytes, convert it into a nice, human-readable value 
+    with units.
+    """
+    
+    if value >= 1024.0**4:
+        value = value / 1024.0**4
+        unit = 'TB'
+    elif value >= 1024.0**3:
+        value = value / 1024.0**3
+        unit = 'GB'
+    elif value >= 1024.0**2:
+        value = value / 1024.0**2
+        unit = 'MB'
+    elif value >= 1024.0:
+        value = value / 1024.0
+        unit = 'kB'
+    else:
+        unit = 'B'
+    return value, unit
+
+
 def main(args):
     config = parseOptions(args)
 
@@ -159,7 +183,15 @@ def main(args):
         print "  Thread Count: %i" % details['threads']
         print "  Rings:"
         rings = []
+        ring_details = {}
         for block in contents.keys():
+            if block == 'rings':
+                for ring in contents[block].keys():
+                    ring_details[ring] = {}
+                    for key in contents[block][ring]:
+                        ring_details[ring][key] = contents[block][ring][key]
+                continue
+                
             for log in contents[block].keys():
                 if log not in ('in', 'out'):
                     continue
@@ -169,9 +201,17 @@ def main(args):
                         if value not in rings:
                             rings.append( value )
         for i,ring in enumerate(rings):
-            print "    %i: %s" % (i, ring)
+            try:
+                dtls = ring_details[ring]
+                sz, un = _getBestSize(dtls['stride']*dtls['nringlet'])
+                print "    %i: %s on %s of size %.1f %s" % (i, ring, dtls['space'], sz, un)
+            except KeyError:
+                print "    %i: %s" % (i, ring)
         print "  Blocks:"
         for block in contents.keys():
+            if block == 'rings':
+                continue
+                
             rins, routs = [], []
             for log in contents[block].keys():
                 if log not in ('in', 'out'):
@@ -196,4 +236,4 @@ def main(args):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-
+    

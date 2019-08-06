@@ -158,15 +158,17 @@ def _header_write(f, key, value, fmt=None):
 
 def _header_read(f):
     length = struct.unpack('=i', f.read(4))[0]
-    if length <= 0 or length >= 80:
+    if length < 0 or length >= 80:
         return None
     s = f.read(length)
     return s
 
 def write_header(hdr, f):
-    #f.write("HEADER_START")
     _header_write_string(f, "HEADER_START")
     for key, val in hdr.items():
+        if val is None:
+            # Do not write keys with no value
+            continue
         if key in _string_values:
             _header_write_string(f, key)
             _header_write_string(f, val)
@@ -293,6 +295,9 @@ class SigprocFile(object):
             self.dtype = None
         self.frame_size = self.frame_shape[0] * self.frame_shape[1]
         #self.frame_nbyte = self.frame_size*self.dtype().itemsize
+        self.buf = np.empty(4096, np.uint8)
+        self.frame_nbit  = self.frame_size * self.nbit
+        self.frame_nbyte = self.frame_nbit // 8
         return self
     def close(self):
         self.f.close()
@@ -337,11 +342,19 @@ class SigprocFile(object):
             if nframe * self.frame_size * self.nbit % 8 != 0:
                 raise ValueError("No. frames must correspond to whole number of bytes " +
                                  "(idx=%i, nbit=%i)" % (nframe, self.nbit))
-            data = np.fromfile(self.f, np.uint8,
-                               nframe * self.frame_size * self.nbit // 8)
-            if data.size * 8 % (self.frame_size * self.nbit) != 0:
+            #data = np.fromfile(self.f, np.uint8,
+            #                   nframe * self.frame_size * self.nbit // 8)
+            #requested_nbyte = nframe * self.frame_nbyte
+            requested_nbyte = nframe * self.frame_nbyte * self.nbit // 8
+            if self.buf.nbytes != requested_nbyte:
+                self.buf.resize(requested_nbyte)
+            nbyte = self.f.readinto(self.buf)
+            if nbyte * 8 % self.frame_nbit != 0:
                 raise IOError("File read returned incomplete frame (truncated file?)")
-            nframe = data.size * 8 // (self.frame_size * self.nbit)
+            if nbyte < self.buf.nbytes:
+                self.buf.resize(nbyte)
+            nframe = nbyte * 8 // (self.frame_size * self.nbit)
+            data = self.buf
             data = unpack(data, self.nbit)
             data = data.reshape((nframe,) + self.frame_shape)
         else:

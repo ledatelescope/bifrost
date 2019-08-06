@@ -33,12 +33,33 @@
 
   TODO: Try 2D tex fetch
 
+  TODO: dp4a version:
+          Preprocess by reordering:
+             < [time,  chan,stand,pol,cpx]   int8_t
+             > [time/4,chan,stand,pol,cpx,4] int8_t
+             = [time/4,chan,stand,pol]       int2
+           Kernel should the be mostly unchanged, just using dp4a instead of fma 
+             dp4a: int32.mad(schar4, schar4)
+             Need to use extra regs to store -imag sums
+               Probably need separate kernel implems for this reason :/
+                 UNLESS can implement special JonesMat<dp4a> that does this
+                   automatically and has a conversion to JonesMat<float>.
+
 Cmn = Amk Akn^H
 m is the fast dim of C (and A)
   This means the conjugated dim is the slow dim
     cublasCherk does not support conjugating, so we're stuck with this
 */
-
+/*
+template<>
+class Complex<Dp4a> {
+	int real;
+	int imag_pos;
+	int imag_neg;
+public:
+	Complex& mad(
+};
+*/
 #include "utils.hpp"
 #include "Complex.hpp"
 #include "Jones.hpp"
@@ -48,6 +69,16 @@ m is the fast dim of C (and A)
 
 #define BF_USE_DIAGONAL_KERNEL 1
 //#define BF_USE_DIAGONAL_KERNEL 0
+
+template<typename T>
+inline __device__
+T shfl_warp_sync(T var, int srcLane, int width=warpSize) {
+#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
+	return __shfl_sync(0xFFFFFFFF, var, srcLane, width);
+#else
+	return __shfl(var, srcLane, width);
+#endif
+}
 
 inline __host__ __device__
 int project_triangular(int i, int j) {
@@ -97,13 +128,13 @@ inline void bf_cherk_N_diagonal_kernel_compute(int tm,
 	JonesVec<float> B[N_REG];
 #pragma unroll
 	for( int rm=0; rm<M_REG; ++rm ) {
-		A[rm] = JonesVec<float>(__shfl(data, (tm*M_REG + rm)*2 + 0),
-		                        __shfl(data, (tm*M_REG + rm)*2 + 1));
+		A[rm] = JonesVec<float>(shfl_warp_sync(data, (tm*M_REG + rm)*2 + 0),
+		                        shfl_warp_sync(data, (tm*M_REG + rm)*2 + 1));
 	}
 #pragma unroll
 	for( int rn=0; rn<N_REG; ++rn ) {
-		B[rn] = JonesVec<float>(__shfl(data, (tn*N_REG + rn)*2 + 0),
-		                        __shfl(data, (tn*N_REG + rn)*2 + 1));
+		B[rn] = JonesVec<float>(shfl_warp_sync(data, (tn*N_REG + rn)*2 + 0),
+		                        shfl_warp_sync(data, (tn*N_REG + rn)*2 + 1));
 	}
 #pragma unroll
 	for( int rn=0; rn<N_REG; ++rn ) {
@@ -113,10 +144,9 @@ inline void bf_cherk_N_diagonal_kernel_compute(int tm,
 		}
 	}
 	
-	// Note: Only the first 16 threads will write out C_extra
-	JonesVec<float> A_extra(__shfl(data, tm0_extra*2 + 0),
-	                        __shfl(data, tm0_extra*2 + 1));
-	Complex<float> B_extra = __shfl(data, tn0_extra);
+	JonesVec<float> A_extra(shfl_warp_sync(data, tm0_extra*2 + 0),
+	                        shfl_warp_sync(data, tm0_extra*2 + 1));
+	Complex<float> B_extra = shfl_warp_sync(data, tn0_extra);
 	C_extra.x.mad(A_extra.x, B_extra.conj());
 	C_extra.y.mad(A_extra.y, B_extra.conj());
 }
@@ -136,14 +166,17 @@ void bf_cherk_N_diagonal_kernel(int N,
                                 int A_nbit,
                                 int A_stride,
                                 int A_batchstride,
+                                int A_offset,
                                 float beta,
                                 float4* __restrict__ d_C,
                                 int C_stride,
                                 int C_batchstride) {
 	int M = N;
 	enum {
-		NBUF   = 4, // Must be 4
+		NBUF = 4, // Must be 4
 	};
+	int Kres = K % NBUF;
+	K -= Kres;
 	int bid = blockIdx.x;
 	int tid = threadIdx.x + threadIdx.y * M_THREAD;
 	int bm, bn;
@@ -170,7 +203,7 @@ void bf_cherk_N_diagonal_kernel(int N,
 	// Buffers for input row(=col) data, stored in regs and accessed via shfl
 	Complex<float> data[NBUF];
 	
-	int input_offset0 = bm*(M_THREAD*M_REG)*2 + tid;
+	int input_offset0 = A_offset + bm*(M_THREAD*M_REG)*2 + tid;
 	
 #define CHERK_LOAD(buf, k) \
 	data[buf] = \
@@ -192,28 +225,36 @@ void bf_cherk_N_diagonal_kernel(int N,
 				C[rn][rm] = JonesMat<float>(0);
 			}
 		}
-		CHERK_LOAD(0, 0);
-		CHERK_LOAD(1, 1);
-		for( int k=0; k<K-NBUF; k+=NBUF ) {
+		if( K >= 4 ) {
+			CHERK_LOAD(0, 0);
+			CHERK_LOAD(1, 1);
+			for( int k=0; k<K-NBUF; k+=NBUF ) {
+				__syncthreads();
+				CHERK_COMPUTE(0);
+				CHERK_COMPUTE(1);
+				CHERK_LOAD(2, k+2);
+				CHERK_LOAD(3, k+3);
+				__syncthreads();
+				CHERK_COMPUTE(2);
+				CHERK_COMPUTE(3);
+				CHERK_LOAD(0, k+4);
+				CHERK_LOAD(1, k+5);
+			}
 			__syncthreads();
 			CHERK_COMPUTE(0);
 			CHERK_COMPUTE(1);
-			CHERK_LOAD(2, k+2);
-			CHERK_LOAD(3, k+3);
+			CHERK_LOAD(2, K-2);
+			CHERK_LOAD(3, K-1);
 			__syncthreads();
 			CHERK_COMPUTE(2);
 			CHERK_COMPUTE(3);
-			CHERK_LOAD(0, k+4);
-			CHERK_LOAD(1, k+5);
 		}
-		__syncthreads();
-		CHERK_COMPUTE(0);
-		CHERK_COMPUTE(1);
-		CHERK_LOAD(2, K-2);
-		CHERK_LOAD(3, K-1);
-		__syncthreads();
-		CHERK_COMPUTE(2);
-		CHERK_COMPUTE(3);
+		for( int k=K; k<K+Kres; ++k ) {
+			__syncthreads();
+			CHERK_LOAD(0, k);
+			__syncthreads();
+			CHERK_COMPUTE(0);
+		}
 #undef CHERK_COMPUTE
 #undef CHERK_LOAD
 		
@@ -305,6 +346,7 @@ void bf_cherk_N_offdiagonal_kernel(int N,
                                    int A_nbit,
                                    int A_stride,
                                    int A_batchstride,
+                                   int A_offset,
                                    float beta,
                                    float4* __restrict__ d_C,
                                    int C_stride,
@@ -313,6 +355,8 @@ void bf_cherk_N_offdiagonal_kernel(int N,
 		NBUF   = 4,// Must be 4
 		NARRAY = 2 // Must be 2
 	};
+	int Kres = K % NBUF;
+	K -= Kres;
 	int bid = blockIdx.x;
 	int tid = threadIdx.x + threadIdx.y * M_THREAD;
 	int bm, bn;
@@ -326,11 +370,11 @@ void bf_cherk_N_offdiagonal_kernel(int N,
 	
 	__shared__ JonesVec<float> smem[NBUF][NARRAY][M_REG][M_THREAD];
 	
-	int input_offset0;
+	int input_offset0 = A_offset;
 	if( tid < M_THREAD*M_REG ) {
-		input_offset0 = bm*(M_THREAD*M_REG) + tid;
+		input_offset0 += bm*(M_THREAD*M_REG) + tid;
 	} else {
-		input_offset0 = bn*(M_THREAD*N_REG) + (tid - M_THREAD*M_REG);
+		input_offset0 += bn*(M_THREAD*N_REG) + (tid - M_THREAD*M_REG);
 	}
 	
 	// Note: This load is not bounds-checked, but it doesn't matter when using
@@ -355,28 +399,36 @@ void bf_cherk_N_offdiagonal_kernel(int N,
 				C[rn][rm] = JonesMat<float>(0);
 			}
 		}
-		CHERK_LOAD(0, 0);
-		CHERK_LOAD(1, 1);
-		for( int k=0; k<K-NBUF; k+=NBUF ) {
+		if( K >= 4 ) {
+			CHERK_LOAD(0, 0);
+			CHERK_LOAD(1, 1);
+			for( int k=0; k<K-NBUF; k+=NBUF ) {
+				__syncthreads();
+				CHERK_COMPUTE(0);
+				CHERK_COMPUTE(1);
+				CHERK_LOAD(2, k+2);
+				CHERK_LOAD(3, k+3);
+				__syncthreads();
+				CHERK_COMPUTE(2);
+				CHERK_COMPUTE(3);
+				CHERK_LOAD(0, k+4);
+				CHERK_LOAD(1, k+5);
+			}
 			__syncthreads();
 			CHERK_COMPUTE(0);
 			CHERK_COMPUTE(1);
-			CHERK_LOAD(2, k+2);
-			CHERK_LOAD(3, k+3);
+			CHERK_LOAD(2, K-2);
+			CHERK_LOAD(3, K-1);
 			__syncthreads();
 			CHERK_COMPUTE(2);
 			CHERK_COMPUTE(3);
-			CHERK_LOAD(0, k+4);
-			CHERK_LOAD(1, k+5);
 		}
-		__syncthreads();
-		CHERK_COMPUTE(0);
-		CHERK_COMPUTE(1);
-		CHERK_LOAD(2, K-2);
-		CHERK_LOAD(3, K-1);
-		__syncthreads();
-		CHERK_COMPUTE(2);
-		CHERK_COMPUTE(3);
+		for( int k=K; k<K+Kres; ++k ) {
+			__syncthreads();
+			CHERK_LOAD(0, k);
+			__syncthreads();
+			CHERK_COMPUTE(0);
+		}
 #undef CHERK_COMPUTE
 #undef CHERK_LOAD
 		
@@ -435,12 +487,22 @@ void bf_cherk_N(int N, int K, int nbatch,
                 int C_batchstride,
                 cudaStream_t stream) {
 	// Note: The kernel operates on 2 elements at a time and requires alignment
-	BF_ASSERT_EXCEPTION(K             % 4 == 0, BF_STATUS_UNSUPPORTED_SHAPE);
 	BF_ASSERT_EXCEPTION(N             % 2 == 0, BF_STATUS_UNSUPPORTED_SHAPE);
 	BF_ASSERT_EXCEPTION(A_stride      % 2 == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT_EXCEPTION(A_batchstride % 2 == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT_EXCEPTION(C_stride      % 2 == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT_EXCEPTION(C_batchstride % 2 == 0, BF_STATUS_UNSUPPORTED_STRIDE);
+	enum { TEX_ALIGNMENT = 512 };
+	
+	// WAR for texture alignment constraint. This rounds the pointer down
+	//   to the alignment (which should always be safe because cudaMalloc
+	//   returns aligned pointers) and passes the offset to the kernel.
+	int A_byte_offset = ((uintptr_t)A_ptr -
+	                     (uintptr_t)A_ptr / TEX_ALIGNMENT * TEX_ALIGNMENT);
+	A_ptr = (uint8_t*)A_ptr - A_byte_offset;
+	
+	BF_ASSERT_EXCEPTION((uintptr_t)A_ptr % TEX_ALIGNMENT == 0,
+	                    BF_STATUS_UNSUPPORTED_STRIDE);
 	// TODO: Assert supported limits on N and K based on texture constraints
 	
 	// Note: The kernel is 2x vectorized (i.e., operates on Jones vectors)
@@ -449,12 +511,6 @@ void bf_cherk_N(int N, int K, int nbatch,
 	A_batchstride /= 2;
 	C_stride /= 2;
 	C_batchstride /= 2;
-	
-	size_t A_nelement_total = std::max(A_stride * K,
-	                                   A_batchstride * nbatch);
-	size_t texture_element_limit = 1 << 27;
-	BF_ASSERT_EXCEPTION(A_nelement_total <= texture_element_limit,
-	                    BF_STATUS_UNSUPPORTED_SHAPE);
 	
 	cudaChannelFormatKind channel_format;
 	cudaTextureReadMode   tex_read_mode;
@@ -475,6 +531,17 @@ void bf_cherk_N(int N, int K, int nbatch,
 	BF_ASSERT_EXCEPTION(C_type == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
 	int A_nbit = BF_DTYPE_NBIT(A_type) / 2;
 	
+	int element_bytes = 2 * BF_DTYPE_NBYTE(A_type);
+	BF_ASSERT_EXCEPTION(A_byte_offset % element_bytes == 0,
+	                    BF_STATUS_UNSUPPORTED_STRIDE);
+	int A_offset = A_byte_offset / element_bytes;
+	
+	size_t A_nelement_total =
+		std::max(A_stride * K, A_batchstride * nbatch) + A_offset;
+	size_t texture_element_limit = 1 << 27;
+	BF_ASSERT_EXCEPTION(A_nelement_total <= texture_element_limit,
+	                    BF_STATUS_UNSUPPORTED_SHAPE);
+	
 	// Create texture object
 	cudaResourceDesc resDesc;
 	memset(&resDesc, 0, sizeof(resDesc));
@@ -486,14 +553,14 @@ void bf_cherk_N(int N, int K, int nbatch,
 	resDesc.res.linear.desc.z = A_nbit;
 	resDesc.res.linear.desc.w = A_nbit;
 	resDesc.res.linear.sizeInBytes = A_nelement_total * 4 * (A_nbit / 8);
+	
 	cudaTextureDesc texDesc;
 	memset(&texDesc, 0, sizeof(texDesc));
 	texDesc.readMode = tex_read_mode;
 	cudaTextureObject_t A_tex = 0;
-	cudaCreateTextureObject(&A_tex, &resDesc, &texDesc, NULL);
-	
-	cuda::child_stream stream0(stream);
-	cuda::child_stream stream1(stream);
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaCreateTextureObject(&A_tex, &resDesc, &texDesc, NULL),
+		BF_STATUS_INTERNAL_ERROR);
 	
 	enum {
 		M_THREAD = 8,
@@ -513,16 +580,23 @@ void bf_cherk_N(int N, int K, int nbatch,
 	size_t nblock = nblock_m * (nblock_m + 1) / 2;
 #endif
 	dim3 grid(nblock, std::min(nbatch, 65535));
+	if( nblock > 0 ) {
+		// TODO: Replace with cudaLaunchKernel
+		bf_cherk_N_offdiagonal_kernel<M_THREAD, N_THREAD, M_REG, N_REG>
+			<<<grid, block, 0, stream>>>
+			(N, K, nbatch,
+			 alpha,
+			 A_tex, A_nbit, A_stride, A_batchstride, A_offset,
+			 beta,
+			 (float4*)C_ptr, C_stride, C_batchstride);
+		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+	}
 	
-	// TODO: Replace with cudaLaunchKernel
-	bf_cherk_N_offdiagonal_kernel<M_THREAD, N_THREAD, M_REG, N_REG>
-		<<<grid, block, 0, stream0>>>
-		(N, K, nbatch,
-		 alpha,
-		 A_tex, A_nbit, A_stride, A_batchstride,
-		 beta,
-		 (float4*)C_ptr, C_stride, C_batchstride);
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaDestroyTextureObject(A_tex),
+		BF_STATUS_INTERNAL_ERROR);
 	
+#if BF_USE_DIAGONAL_KERNEL
 	// Note: The second texture has 2x the elements because each is only
 	//         a 2-vector instead of a 4-vector.
 	// TODO: This condition is not currently included in the linalg.cu dispatch
@@ -531,6 +605,7 @@ void bf_cherk_N(int N, int K, int nbatch,
 	//         2D textures, so that it becomes very rare to run into it.
 	BF_ASSERT_EXCEPTION(A_nelement_total*2 <= texture_element_limit,
 	                    BF_STATUS_UNSUPPORTED_SHAPE);
+	A_offset *= 2;
 	// Create texture object
 	cudaResourceDesc resDesc2;
 	memset(&resDesc2, 0, sizeof(resDesc2));
@@ -546,24 +621,27 @@ void bf_cherk_N(int N, int K, int nbatch,
 	memset(&texDesc2, 0, sizeof(texDesc2));
 	texDesc2.readMode = tex_read_mode;
 	cudaTextureObject_t A_tex2 = 0;
-	cudaCreateTextureObject(&A_tex2, &resDesc2, &texDesc2, NULL);
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaCreateTextureObject(&A_tex2, &resDesc2, &texDesc2, NULL),
+		BF_STATUS_INTERNAL_ERROR);
 	
 	// TODO: Clean this up a bit
 	grid.x = nblock_m;
 	enum { N_THREAD_DIAG = 4 };
 	block.y = N_THREAD_DIAG;
-#if BF_USE_DIAGONAL_KERNEL
 	bf_cherk_N_diagonal_kernel<M_THREAD, N_THREAD_DIAG, 2, 2>
-		<<<grid, block, 0, stream1>>>
+		<<<grid, block, 0, stream>>>
 		(N, K, nbatch,
 		 alpha,
-		 A_tex2, A_nbit, A_stride, A_batchstride,
+		 A_tex2, A_nbit, A_stride, A_batchstride, A_offset,
 		 beta,
 		 (float4*)C_ptr, C_stride, C_batchstride);
-#endif // BF_USE_DIAGONAL_KERNEL
+	BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 	
-	cudaDestroyTextureObject(A_tex2);
-	cudaDestroyTextureObject(A_tex);
+	BF_CHECK_CUDA_EXCEPTION(
+		cudaDestroyTextureObject(A_tex2),
+		BF_STATUS_INTERNAL_ERROR);
+#endif // BF_USE_DIAGONAL_KERNEL
 }
 
 template<int SIZE> struct shflable_type {};
@@ -790,11 +868,11 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
 			break;
 		}
 #if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
-		case BF_DTYPE_CF16: {
-			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
-				JonesVec<FourBit>, JonesVec<half>, Complex<float>);
-			break;
-		}
+		//case BF_DTYPE_CF16: {
+		//	LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
+		//		JonesVec<FourBit>, JonesVec<half>, Complex<float>);
+		//	break;
+		//}
 #endif
 		case BF_DTYPE_CF32: {
 			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
@@ -815,11 +893,11 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
 			break;
 		}
 #if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
-		case BF_DTYPE_CF16: {
-			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
-				JonesVec<int8_t>, JonesVec<half>, Complex<float>);
-			break;
-		}
+		//case BF_DTYPE_CF16: {
+		//	LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
+		//		JonesVec<int8_t>, JonesVec<half>, Complex<float>);
+		//	break;
+		//}
 #endif
 		case BF_DTYPE_CF32: {
 			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(

@@ -116,6 +116,31 @@ struct __attribute__((aligned(sizeof(R)*4))) JonesVec_<R,false> : public JonesVe
 	inline __host__ __device__ JonesVec_& mad( JonesVec_ v, JonesMat<R> m);
 	inline __host__ __device__ JonesVec_& msub(JonesVec_ v, JonesMat<R> m);
 };
+// Special cases for 4+4-bit storage with JonesVec<FourBit>
+template<>
+struct __attribute__((packed,aligned(2))) JonesVec_<FourBit,true> : public JonesVecBase<FourBit,true> {
+	typedef signed char real_type;
+	typedef FourBit     complex_type;
+	inline __host__ __device__ JonesVec_() : JonesVecBase<FourBit,true>() {}
+#ifdef __CUDACC__
+	// Note: Use float4 to ensure vectorized load/store
+	// Note: This assumes that the real component is stored in the high 4 bits (big endian)
+	inline __host__ __device__ operator float4() const { return make_float4(this->x.real_imag>>4,(this->x.real_imag<<4)>>4,
+	                                                                        this->y.real_imag>>4,(this->y.real_imag<<4)>>4); }
+#endif
+};
+template<>
+struct __attribute__((packed,aligned(2))) JonesVec_<FourBit,false> : public JonesVecBase<FourBit,false> {
+	typedef signed char real_type;
+	typedef FourBit     complex_type;
+	inline __host__ __device__ JonesVec_() : JonesVecBase<FourBit,false>() {}
+#ifdef __CUDACC__
+	// Note: Use float4 to ensure vectorized load/store
+	// Note: This assumes that the real component is stored in the high 4 bits (big endian)
+	inline __host__ __device__ operator float4() const { return make_float4(this->x.real_imag>>4,(this->x.real_imag<<4)>>4,
+	                                                                        this->y.real_imag>>4,(this->y.real_imag<<4)>>4); }
+#endif
+};
 // TODO: Should allow template type somehow (without C++11?)
 //typedef JonesVec_<float,true>  JonesColVec;
 //typedef JonesVec_<float,false> JonesRowVec;
@@ -350,9 +375,9 @@ inline __host__ __device__ JonesVec_<R,true> operator*(R const& r, JonesVec_<R,t
 template<typename R>
 inline __host__ __device__ JonesVec_<R,true> operator*(JonesVec_<R,true> const& v, R const& r) { return r * v; }
 template<typename R>
-inline __host__ __device__ JonesVec_<R,false> operator*(JonesVec_<R,false> const& v, R const& r) { JonesVec_<R,false> c = v; return c *= r; }
+inline __host__ __device__ JonesVec_<R,false> operator*(R const& r, JonesVec_<R,false> const& v) { JonesVec_<R,false> c = v; return c *= r; }
 template<typename R>
-inline __host__ __device__ JonesVec_<R,false> operator*(R const& r, JonesVec_<R,false> const& v) { return r * v; }
+inline __host__ __device__ JonesVec_<R,false> operator*(JonesVec_<R,false> const& v, R const& r) { return r * v; }
 /*
 template<typename R>
 inline __host__ __device__ JonesMat operator*(JonesVec const& a, JonesVec_<R,false> const& b) {

@@ -26,4 +26,5 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from .basic_views import astype, split_axis, merge_axes, rename_axis, \
-    expand_dims, custom, reinterpret_axis, reverse_scale
+    delete_axis, add_axis, \
+    custom, reinterpret_axis, reverse_scale

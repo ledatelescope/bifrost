@@ -61,6 +61,7 @@ class ModResizeAsciiBlock(SinkBlock):
         span = span_generator.next()
         text_file = open(self.filename, 'a')
         np.savetxt(text_file, span.data_view(np.float32).reshape((1,-1)))
+        text_file.close()
 
 class TestLateResize(unittest.TestCase):
     """Test late resizing of a ring in a pipeline"""

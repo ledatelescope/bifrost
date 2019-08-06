@@ -28,8 +28,23 @@
 
 #pragma once
 
+#include <string>
+#include <sstream>
+
 //const char* dtype2ctype_string(BFdtype dtype);
-inline const char* dtype2ctype_string(BFdtype dtype) {
+//inline const char* dtype2ctype_string(BFdtype dtype) {
+inline std::string dtype2ctype_string(BFdtype dtype) {
+	if( BF_DTYPE_VECTOR_LENGTH(dtype) > 1 ) {
+		std::stringstream ss;
+		ss << "Vector<"
+		   << dtype2ctype_string(BFdtype(dtype & ~BF_DTYPE_VECTOR_BITS))
+		   << ", " << BF_DTYPE_VECTOR_LENGTH(dtype) << ">";
+		return ss.str();
+	} else if( (dtype & BF_DTYPE_TYPE_BITS) == BF_DTYPE_STORAGE_TYPE ) {
+		std::stringstream ss;
+		ss << "typename StorageType<" << BF_DTYPE_NBYTE(dtype) << ">::type";
+		return ss.str();
+	}
 	switch( dtype ) {
 	case BF_DTYPE_I8:    return "signed char";
 	case BF_DTYPE_I16:   return "short";
@@ -41,14 +56,15 @@ inline const char* dtype2ctype_string(BFdtype dtype) {
 	case BF_DTYPE_U64:   return "unsigned long long";
 	case BF_DTYPE_F32:   return "float";
 	case BF_DTYPE_F64:   return "double";
-	case BF_DTYPE_F128:  return "long double";
-	case BF_DTYPE_CI8:   return "Complex<signed char>";//complex<signed char>";
-	case BF_DTYPE_CI16:  return "Complex<short>";//complex<short>";
+	//case BF_DTYPE_F128:  return "long double"; // TODO: This doesn't seem to work properly in CUDA
+	case BF_DTYPE_CI4:   return "Complex<FourBit>";
+	case BF_DTYPE_CI8:   return "Complex<signed char>";
+	case BF_DTYPE_CI16:  return "Complex<short>";
 	//case BF_DTYPE_CI32:  return "complex<int>";
 	//case BF_DTYPE_CI64:  return "complex<long long>";
 	case BF_DTYPE_CF32:  return "Complex<float>";//complex<float>";
 	case BF_DTYPE_CF64:  return "Complex<double>";
 	//case BF_DTYPE_CF128: return "complex<long double>";
-	default: return 0;
+	default: return "";
 	}
 }

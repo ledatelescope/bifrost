@@ -261,7 +261,7 @@ class WriteSpan : public detail::Span {
 	WriteSpan& operator=(WriteSpan const&);
 public:
 	//inline WriteSpan(WriteSequence& sequence, BFsize size)
-	inline WriteSpan(RingWriter& oring, BFsize size)
+	inline WriteSpan(RingWriter& oring, BFsize size, bool nonblocking=false)
 		: _obj(0),
 		  //_sequence(sequence),
 		  //_commit_size(size) {
@@ -269,7 +269,8 @@ public:
 		check( bfRingSpanReserve(&_obj,
 		                         //sequence._obj,
 		                         oring.ring()._obj,
-		                         size) );
+		                         size,
+		                         nonblocking) );
 		this->set_base_obj((BFspan)_obj);
 	}
 	inline ~WriteSpan() {

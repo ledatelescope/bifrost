@@ -3,7 +3,7 @@ sudo: required
 language: python
 
 python:
-    - "2.7"
+    - 2.7
     # PyPy versions
     - pypy-5.4.1
 
@@ -20,9 +20,16 @@ addons:
             - software-properties-common
             - exuberant-ctags
             - python-dev
-            - gfortran
 
-install:
+jobs:
+    include:
+        - stage: docker and deploy docs
+          python: 2.7
+          script:
+            - make docker-cpu
+            - bash ./.travis_deploy_docs.sh
+
+script:
     - sudo pip --no-cache-dir install \
         setuptools \
         numpy \
@@ -31,22 +38,20 @@ install:
         simplejson \
         pint \
         graphviz \
-        git+https://github.com/MatthieuDartiailh/pyclibrary.git \
+        git+https://github.com/davidjamesca/ctypesgen.git@3d2d9803339503d2988382aa861b47a6a4872c32 \
         coveralls \
         codecov
     - sudo make -j NOCUDA=1
     - sudo make install
-
-
-script:
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
-    - cd test
-    - sudo -E bash ./travis.sh
+    - cd test && sudo -E bash ./travis.sh && cd ..
+
 env:
     global:
         - ENCRYPTION_LABEL: "886f75ecbd69"
         - COMMIT_AUTHOR_EMAIL: "travis@ledatelescope.github.io"
 
 after_success:
+    - cd test
     - coveralls
     - codecov

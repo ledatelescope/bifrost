@@ -41,7 +41,7 @@ typedef struct BFudpcapture_impl* BFudpcapture;
 typedef int (*BFudpcapture_sequence_callback)(BFoffset, int, int, int,
                                               BFoffset*, void const**, size_t*);
 
-typedef enum {
+typedef enum BFudpcapture_status_ {
 	BF_CAPTURE_STARTED,
 	BF_CAPTURE_ENDED,
 	BF_CAPTURE_CONTINUED,

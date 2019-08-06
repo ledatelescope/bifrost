@@ -37,7 +37,7 @@ import numpy as np
 class TransposeBlock(TransformBlock):
     def __init__(self, iring, axes, *args, **kwargs):
         super(TransposeBlock, self).__init__(iring, *args, **kwargs)
-        self.axes = axes
+        self.specified_axes = axes
         self.space = self.orings[0].space
     def on_sequence(self, iseq):
         ihdr = iseq.header
@@ -52,10 +52,14 @@ class TransposeBlock(TransformBlock):
         #        self.axes += [-1] # Make time the fastest dim
         #    else: # Time was not the slowest dim
         #        self.axes = [-1] + self.axes # Make time the slowest dim
-        for d in xrange(len(self.axes)):
-            if isinstance(self.axes[d], basestring):
-                # Look up axis by label
-                self.axes[d] = itensor['labels'].index(self.axes[d])
+        # Allow axes to be specified by label
+        if 'labels' in itensor:
+            labels = itensor['labels']
+            self.axes = [labels.index(ax) if isinstance(ax, basestring)
+                         else ax
+                         for ax in self.specified_axes]
+        else:
+            self.axes = self.specified_axes
         ohdr = deepcopy(ihdr)
         otensor = ohdr['_tensor']
         # Permute metadata of axes

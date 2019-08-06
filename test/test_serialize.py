@@ -25,6 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# TODO: Add tests for data streams spanning multiple files
+
 import unittest
 import bifrost as bf
 
@@ -64,6 +66,10 @@ def rename_sequence(hdr, name):
     hdr['name'] = name
     return hdr
 
+def rename_sequence(hdr, name):
+    hdr['name'] = name
+    return hdr
+
 class SerializeTest(unittest.TestCase):
     def setUp(self):
         self.fil_file = "./data/2chan16bitNoDM.fil"
@@ -77,21 +83,31 @@ class SerializeTest(unittest.TestCase):
         self.basename = os.path.basename(self.fil_file)
         self.basepath = os.path.join(self.temp_path, self.basename)
         self.gulp_nframe = 101
-    def test_serialize_with_name_no_ringlets(self):
+    def run_test_serialize_with_name_no_ringlets(self, gulp_nframe_inc=0):
         with bf.Pipeline() as pipeline:
-            data = read_sigproc([self.fil_file], self.gulp_nframe)
-            data = serialize(data, self.temp_path)
+            data = read_sigproc([self.fil_file], self.gulp_nframe, core=0)
+            for i in xrange(5):
+                if gulp_nframe_inc != 0:
+                    data = copy(data,
+                                gulp_nframe=self.gulp_nframe+i*gulp_nframe_inc)
+                else:
+                    data = copy(data)
+            data = serialize(data, self.temp_path, core=0)
             with TemporaryDirectory(self.temp_path):
                 pipeline.run()
                 # Note: SerializeBlock uses os.path.basename if path is given
                 hdrpath = self.basepath + '.bf.json'
-                datpath = self.basepath + '.' + '0' * 12 + '.bf.dat'
+                datpath = self.basepath + '.bf.' + '0' * 12 + '.dat'
                 self.assertTrue(os.path.exists(hdrpath))
                 self.assertTrue(os.path.exists(datpath))
                 self.assertEqual(os.path.getsize(datpath), self.data_size)
                 with open(datpath, 'rb') as f:
                     data = f.read()
                     self.assertEqual(data, self.data)
+    def test_serialize_with_name_no_ringlets(self):
+        self.run_test_serialize_with_name_no_ringlets()
+        self.run_test_serialize_with_name_no_ringlets(gulp_nframe_inc=1)
+        self.run_test_serialize_with_name_no_ringlets(gulp_nframe_inc=3)
     def test_serialize_with_time_tag_no_ringlets(self):
         with bf.Pipeline() as pipeline:
             data = read_sigproc([self.fil_file], self.gulp_nframe)
@@ -104,7 +120,7 @@ class SerializeTest(unittest.TestCase):
                 basepath = os.path.join(self.temp_path,
                                         '%020i' % self.time_tag)
                 hdrpath = basepath + '.bf.json'
-                datpath = basepath + '.' + '0' * 12 + '.bf.dat'
+                datpath = basepath + '.bf.' + '0' * 12 + '.dat'
                 self.assertTrue(os.path.exists(hdrpath))
                 self.assertTrue(os.path.exists(datpath))
                 self.assertEqual(os.path.getsize(datpath), self.data_size)
@@ -123,8 +139,54 @@ class SerializeTest(unittest.TestCase):
                 pipeline.run()
                 # Note: SerializeBlock uses os.path.basename if path is given
                 hdrpath  = self.basepath + '.bf.json'
-                datpath0 = self.basepath + '.' + '0' * 12 + '.0.bf.dat'
-                datpath1 = self.basepath + '.' + '0' * 12 + '.1.bf.dat'
+                datpath0 = self.basepath + '.bf.' + '0' * 12 + '.0.dat'
+                datpath1 = self.basepath + '.bf.' + '0' * 12 + '.1.dat'
+                self.assertTrue(os.path.exists(hdrpath))
+                self.assertTrue(os.path.exists(datpath0))
+                self.assertTrue(os.path.exists(datpath1))
+                self.assertEqual(os.path.getsize(datpath0),
+                                 self.data_size // 2)
+                self.assertEqual(os.path.getsize(datpath1),
+                                 self.data_size // 2)
+    def test_deserialize_no_ringlets(self):
+        with TemporaryDirectory(self.temp_path):
+            with bf.Pipeline() as pipeline:
+                data = read_sigproc([self.fil_file], self.gulp_nframe)
+                serialize(data, self.temp_path)
+                pipeline.run()
+                datpath = self.basepath + '.bf.' + '0' * 12 + '.dat'
+            with bf.Pipeline() as pipeline:
+                data = deserialize([self.basepath + '.bf'], self.gulp_nframe)
+                # Note: Must rename the sequence to avoid overwriting the input
+                #         file.
+                data = bf.views.custom(
+                    data, lambda hdr: rename_sequence(hdr, hdr['name'] + '.2'))
+                serialize(data, self.temp_path)
+                pipeline.run()
+                datpath = self.basepath + '.2.bf.' + '0' * 12 + '.dat'
+                with open(datpath, 'rb') as f:
+                    data = f.read()
+                    self.assertEqual(len(data), len(self.data))
+                    self.assertEqual(data, self.data)
+    def test_deserialize_with_ringlets(self):
+        with TemporaryDirectory(self.temp_path):
+            with bf.Pipeline() as pipeline:
+                data = read_sigproc([self.fil_file], self.gulp_nframe)
+                data = transpose(data, ['freq', 'time', 'pol'])
+                serialize(data, self.temp_path)
+                pipeline.run()
+                datpath = self.basepath + '.bf.' + '0' * 12 + '.dat'
+            with bf.Pipeline() as pipeline:
+                data = deserialize([self.basepath + '.bf'], self.gulp_nframe)
+                # Note: Must rename the sequence to avoid overwriting the input
+                #         file.
+                data = bf.views.custom(
+                    data, lambda hdr: rename_sequence(hdr, hdr['name'] + '.2'))
+                serialize(data, self.temp_path)
+                pipeline.run()
+                hdrpath  = self.basepath + '.2.bf.json'
+                datpath0 = self.basepath + '.2.bf.' + '0' * 12 + '.0.dat'
+                datpath1 = self.basepath + '.2.bf.' + '0' * 12 + '.1.dat'
                 self.assertTrue(os.path.exists(hdrpath))
                 self.assertTrue(os.path.exists(datpath0))
                 self.assertTrue(os.path.exists(datpath1))

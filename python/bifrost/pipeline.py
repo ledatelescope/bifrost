@@ -364,34 +364,45 @@ class Block(BlockScope):
     def begin_writing(self, exit_stack, orings):
         return [exit_stack.enter_context(oring.begin_writing())
                 for oring in orings]
-    def begin_sequences(self, exit_stack, orings, oheaders, igulp_nframes):
+    def begin_sequences(self, exit_stack, orings, oheaders,
+                        igulp_nframes, istride_nframes):
+        # Note: The gulp_nframe that is set in the output header does not
+        #         include the overlap (i.e., it's based on stride not gulp).
+        ostride_nframes = self._define_output_nframes(istride_nframes)
+        for ohdr, ostride_nframe in zip(oheaders, ostride_nframes):
+            ohdr['gulp_nframe'] = ostride_nframe
         ogulp_nframes = self._define_output_nframes(igulp_nframes)
-        for ohdr, ogulp_nframe in zip(oheaders, ogulp_nframes):
-            ohdr['gulp_nframe'] = ogulp_nframe
         # Note: This always specifies buffer_factor=1 on the assumption that
         #         additional buffering is defined by the reader(s) rather
         #         than the writer.
         obuf_nframes = [1 * ogulp_nframe for ogulp_nframe in ogulp_nframes]
         oseqs = [exit_stack.enter_context(oring.begin_sequence(ohdr,
+                                                               ogulp_nframe,
                                                                obuf_nframe))
-                 for (oring, ohdr, obuf_nframe)
-                 in zip(orings, oheaders, obuf_nframes)]
+                 for (oring, ohdr, ogulp_nframe, obuf_nframe)
+                 in zip(orings, oheaders, ogulp_nframes, obuf_nframes)]
 
         # Synchronize all blocks here to ensure no sequence race conditions
         self.pipeline.block_init_queue.put((self, True))
         self.pipeline.all_blocks_finished_initializing_event.wait()
 
-        return oseqs
+        ogulp_overlaps = [ogulp_nframe - ostride_nframe
+                          for ogulp_nframe, ostride_nframe
+                          in zip(ogulp_nframes, ostride_nframes)]
+        return oseqs, ogulp_overlaps
     def reserve_spans(self, exit_stack, oseqs, igulp_nframes=[]):
         ogulp_nframes = self._define_output_nframes(igulp_nframes)
         return [exit_stack.enter_context(oseq.reserve(ogulp_nframe))
                 for (oseq, ogulp_nframe) in zip(oseqs, ogulp_nframes)]
-    def commit_spans(self, ospans, ostrides):
+    def commit_spans(self, ospans, ostrides_actual, ogulp_overlaps):
         # Allow returning None to indicate complete consumption
-        if ostrides is None:
-            ostrides = [ospan.nframe for ospan in ospans]
-        ostrides = [ostride if ostride is not None else ospan.nframe
-                    for (ostride, ospan) in zip(ostrides, ospans)]
+        if ostrides_actual is None:
+            ostrides = [None] * len(ospans)
+        # Note: If ospan.nframe < ogulp_overlap, no frames will be committed
+        ostrides = [ostride if ostride is not None
+                    else max(ospan.nframe - ogulp_overlap, 0)
+                    for (ostride, ospan, ogulp_overlap)
+                    in zip(ostrides_actual, ospans, ogulp_overlaps)]
         for ospan, ostride in zip(ospans, ostrides):
             ospan.commit(ostride)
     def _define_output_nframes(self, input_nframes):
@@ -433,10 +444,13 @@ class SourceBlock(Block):
                     if 'time_tag' not in ohdr:
                         ohdr['time_tag'] = self._seq_count
                     if 'name' not in ohdr:
-                        ohdr['name'] = '<unnamed-%i>' % self._seq_count
+                        ohdr['name'] = 'unnamed-sequence-%i' % self._seq_count
                 self._seq_count += 1
                 with ExitStack() as oseq_stack:
-                    oseqs = self.begin_sequences(oseq_stack, orings, oheaders, igulp_nframes=[])
+                    oseqs, ogulp_overlaps = self.begin_sequences(
+                        oseq_stack, orings, oheaders,
+                        igulp_nframes=[],
+                        istride_nframes=[])
                     while not self.shutdown_event.is_set():
                         prev_time = time.time()
                         with ExitStack() as ospan_stack:
@@ -444,11 +458,11 @@ class SourceBlock(Block):
                             cur_time = time.time()
                             reserve_time = cur_time - prev_time
                             prev_time = cur_time
-                            ostrides = self.on_data(ireader, ospans)
+                            ostrides_actual = self.on_data(ireader, ospans)
                             bf.device.stream_synchronize()
-                            self.commit_spans(ospans, ostrides)
+                            self.commit_spans(ospans, ostrides_actual, ogulp_overlaps)
                             # TODO: Is this an OK way to detect end-of-data?
-                            if any([ostride == 0 for ostride in ostrides]):
+                            if any([ostride == 0 for ostride in ostrides_actual]):
                                 break
                         cur_time = time.time()
                         process_time = cur_time - prev_time
@@ -510,23 +524,21 @@ class MultiTransformBlock(Block):
                 break
             for i, iseq in enumerate(iseqs):
                 self.sequence_proclogs[i].update(iseq.header)
-            oheaders, islices = self._on_sequence(iseqs)
+            oheaders = self._on_sequence(iseqs)
             for ohdr in oheaders:
                 if 'time_tag' not in ohdr:
                     ohdr['time_tag'] = self._seq_count
             self._seq_count += 1
 
-            # Allow passing None to mean slice(gulp_nframe)
-            if islices is None:
-                islices = [None] * len(self.irings)
-            default_igulp_nframes = [self.gulp_nframe or iseq.header['gulp_nframe']
-                                    for iseq in iseqs]
-            islices = [islice or slice(igulp_nframe)
-                       for (islice, igulp_nframe) in
-                       zip(islices, default_igulp_nframes)]
+            igulp_nframes = [self.gulp_nframe or iseq.header['gulp_nframe']
+                             for iseq in iseqs]
+            igulp_overlaps = self._define_input_overlap_nframe(iseqs)
+            istride_nframes = igulp_nframes[:]
+            igulp_nframes = [igulp_nframe + nframe_overlap
+                             for igulp_nframe, nframe_overlap
+                             in zip(igulp_nframes, igulp_overlaps)]
 
-            islices = [_span_slice(slice_) for slice_ in islices]
-            for iseq, islice in zip(iseqs, islices):
+            for iseq, igulp_nframe in zip(iseqs, igulp_nframes):
                 if self.buffer_factor is None:
                     src_block = iseq.ring.owner
                     if src_block is not None and self.is_fused_with(src_block):
@@ -535,41 +547,47 @@ class MultiTransformBlock(Block):
                         buffer_factor = None
                 else:
                     buffer_factor = self.buffer_factor
-                iseq.resize(gulp_nframe=(islice.stop - islice.start),
+                iseq.resize(gulp_nframe=igulp_nframe,
                             buf_nframe=self.buffer_nframe,
                             buffer_factor=buffer_factor)
 
-            igulp_nframes = [islice.stop - islice.start for islice in islices]
+            # TODO: Ever need to specify starting offset?
+            iframe0s = [0 for _ in igulp_nframes]
 
             force_skip = False
 
             with ExitStack() as oseq_stack:
-                oseqs = self.begin_sequences(oseq_stack, orings, oheaders, igulp_nframes)
+                oseqs, ogulp_overlaps = self.begin_sequences(
+                    oseq_stack, orings, oheaders,
+                    igulp_nframes, istride_nframes)
                 if self.shutdown_event.is_set():
                     break
                 prev_time = time.time()
-                for ispans in izip(*[iseq.read(islice.stop - islice.start,
-                                               islice.step,
-                                               islice.start)
-                                    for (iseq, islice)
-                                    in zip(iseqs, islices)]):
+                for ispans in izip(*[iseq.read(igulp_nframe,
+                                               istride_nframe,
+                                               iframe0)
+                                    for (iseq, igulp_nframe, istride_nframe, iframe0)
+                                    in zip(iseqs, igulp_nframes, istride_nframes, iframe0s)]):
                     if self.shutdown_event.is_set():
                         return
 
                     if any([ispan.nframe_skipped for ispan in ispans]):
                         # There were skipped (overwritten) frames
                         with ExitStack() as ospan_stack:
-                            iskip_slices = [slice(islice.start,
-                                                  islice.start + ispan.nframe_skipped,
-                                                  islice.step)
-                                            for islice, ispan in
-                                            zip(islices, ispans)]
+                            iskip_slices = [slice(iframe0,
+                                                  iframe0 + ispan.nframe_skipped,
+                                                  istride_nframe)
+                                            for iframe0, istride_nframe, ispan in
+                                            zip(iframe0s, istride_nframes, ispans)]
                             iskip_nframes = [ispan.nframe_skipped
                                              for ispan in ispans]
+                            # ***TODO: Need to loop over multiple ospans here,
+                            #            because iskip_nframes can be
+                            #            arbitrarily large!
                             ospans = self.reserve_spans(ospan_stack, oseqs, iskip_nframes)
-                            ostrides = self._on_skip(iskip_slices, ospans)
+                            ostrides_actual = self._on_skip(iskip_slices, ospans)
                             bf.device.stream_synchronize()
-                            self.commit_spans(ospans, ostrides)
+                            self.commit_spans(ospans, ostrides_actual, ogulp_overlaps)
 
                     if all([ispan.nframe == 0 for ispan in ispans]):
                         # No data to see here, move right along
@@ -590,7 +608,7 @@ class MultiTransformBlock(Block):
                             # *TODO: See if can fuse together multiple on_data calls here before
                             #          calling stream_synchronize().
                             #        Consider passing .data instead of rings here
-                            ostrides = self._on_data(ispans, ospans)
+                            ostrides_actual = self._on_data(ispans, ospans)
                             bf.device.stream_synchronize()
 
                         any_frames_overwritten = any([ispan.nframe_overwritten
@@ -602,13 +620,13 @@ class MultiTransformBlock(Block):
                             force_skip = any_frames_overwritten
                             iskip_slices = [slice(ispan.frame_offset,
                                                   ispan.frame_offset + ispan.nframe_overwritten,
-                                                  islice.step)
-                                            for ispan, islice
-                                            in zip(ispans, islices)]
-                            ostrides = self._on_skip(iskip_slices, ospans)
+                                                  istride_nframe)
+                                            for ispan, istride_nframe
+                                            in zip(ispans, istride_nframes)]
+                            ostrides_actual = self._on_skip(iskip_slices, ospans)
                             bf.device.stream_synchronize()
 
-                        self.commit_spans(ospans, ostrides)
+                        self.commit_spans(ospans, ostrides_actual, ogulp_overlaps)
                     cur_time = time.time()
                     process_time = cur_time - prev_time
                     prev_time = cur_time
@@ -627,12 +645,19 @@ class MultiTransformBlock(Block):
         return self.on_data(ispans, ospans)
     def _on_skip(self, islices, ospans):
         return self.on_skip(islices, ospans)
+    def _define_input_overlap_nframe(self, iseqs):
+        return self.define_input_overlap_nframe(iseqs)
+    def define_input_overlap_nframe(self, iseqs):
+        """Return no. input frames that should overlap between successive spans
+        for each input sequence.
+        """
+        return [0] * len(self.irings)
     def define_output_nframes(self, input_nframes):
         """Return output nframe for each output, given input_nframes.
         """
         return input_nframes
     def on_sequence(self, iseqs):
-        """Return: oheaders (one per output) and islices (one per input)
+        """Return: oheaders (one per output)
         """
         raise NotImplementedError
     def on_sequence_end(self, iseqs):
@@ -656,6 +681,12 @@ class TransformBlock(MultiTransformBlock):
     def define_valid_input_spaces(self):
         """Return set of valid spaces (or 'any') for the input"""
         return 'any'
+    def _define_input_overlap_nframe(self, iseqs):
+        return [self.define_input_overlap_nframe(iseqs[0])]
+    def define_input_overlap_nframe(self, iseq):
+        """Return no. input frames that should overlap between successive spans.
+        """
+        return 0
     def _define_output_nframes(self, input_nframes):
         output_nframe = self.define_output_nframes(input_nframes[0])
         return [output_nframe]
@@ -664,15 +695,9 @@ class TransformBlock(MultiTransformBlock):
         """
         return input_nframe
     def _on_sequence(self, iseqs):
-        ret = self.on_sequence(iseqs[0])
-        if isinstance(ret, tuple):
-            ohdr, islice = ret
-        else:
-            ohdr = ret
-            islice = None
-        return [ohdr], [islice]
+        return [self.on_sequence(iseqs[0])]
     def on_sequence(self, iseq):
-        """Return oheader or (oheader, islice)"""
+        """Return oheader"""
         raise NotImplementedError
     def _on_sequence_end(self, iseqs):
         return [self.on_sequence_end(iseqs[0])]
@@ -711,11 +736,17 @@ class SinkBlock(MultiTransformBlock):
     def define_valid_input_spaces(self):
         """Return set of valid spaces (or 'any') for the input"""
         return 'any'
+    def _define_input_overlap_nframe(self, iseqs):
+        return [self.define_input_overlap_nframe(iseqs[0])]
+    def define_input_overlap_nframe(self, iseq):
+        """Return no. input frames that should overlap between successive spans.
+        """
+        return 0
     def _define_output_nframes(self, input_nframes):
         return []
     def _on_sequence(self, iseqs):
-        islice = self.on_sequence(iseqs[0])
-        return [], [islice]
+        self.on_sequence(iseqs[0])
+        return []
     def on_sequence(self, iseq):
         """Return islice or None to use simple striding"""
         raise NotImplementedError

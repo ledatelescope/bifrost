@@ -32,90 +32,82 @@
 #                     meaningless error:
 #  ArgumentError: argument 1: <type 'exceptions.TypeError'>: expected LP_s
 #    instance instead of LP_s
-#  E.g., _bf.RingSequenceGetName(<BFspan>) [should be <BFsequence>]
+#  E.g., _bf.bfRingSequenceGetName(<BFspan>) [should be <BFsequence>]
 
 import ctypes
+import libbifrost_generated as _bf
+bf = _bf # Public access to library
 
-def _load_bifrost_lib():
-    import os
-    import glob
+# Internal helpers below
 
-    library_name = "libbifrost.so"
-    api_prefix   = "bf"
-    header_paths = ["/usr/local/include/bifrost",
-                    "../src/bifrost"] # TODO: Remove this one?
-    include_env  = 'BIFROST_INCLUDE_PATH'
-    # PYCLIBRARY ISSUE
-    # TODO: Would it make sense to build this into PyCLibrary?
-    library_env  = 'LD_LIBRARY_PATH'
-    home_dir     = os.path.expanduser("~")
-    parser_cache = os.path.join(home_dir, ".cache/bifrost.parse")
+class BifrostObject(object):
+    """Base class for simple objects with create/destroy functions"""
+    def __init__(self, constructor, destructor, *args):
+        self.obj = destructor.argtypes[0]()
+        _check(constructor(ctypes.byref(self.obj), *args))
+        self._destructor = destructor
+    def _destroy(self):
+        if self.obj:
+            _check(self._destructor(self.obj))
+            self.obj.values = 0
+    def __del__(self):
+        self._destroy()
+    def __enter__(self):
+        return self
+    def __exit__(self, type, value, tb):
+        self._destroy()
 
-    def _get_env_paths(env):
-        paths = os.getenv(env)
-        if paths is None:
-            return []
-        return [p for p in paths.split(':')
-                if len(p.strip())]
-
-    import pyclibrary
-    from pyclibrary import CParser, CLibrary
-
+def _array(size_or_vals, dtype=None):
     import ctypes
-    # PYCLIBRARY ISSUE Should these be built in? Optional extra?
-    # Note: This is needed because pyclibrary starts with only
-    #         the fundamental types (short, int, float etc.).
-    # extra_types = {}
-    # extra_types = {'uint64_t': ctypes.c_uint64}
-    extra_types = {
-         'uint8_t': ctypes.c_uint8,
-          'int8_t': ctypes.c_int8,
-        'uint16_t': ctypes.c_uint16,
-         'int16_t': ctypes.c_int16,
-        'uint32_t': ctypes.c_uint32,
-         'int32_t': ctypes.c_int32,
-        'uint64_t': ctypes.c_uint64,
-         'int64_t': ctypes.c_int64,
-          'size_t': ctypes.c_ulong
-    }
-
+    if size_or_vals is None:
+        return None
     try:
-        pyclibrary.auto_init(extra_types=extra_types)
-    except RuntimeError:
-        pass # WAR for annoying "Can only initialise the parser once"
-    header_paths = _get_env_paths(include_env) + header_paths
-    valid_header_paths = [p for p in header_paths if os.path.exists(p)]
+        _ = iter(size_or_vals)
+    except TypeError:
+        # Not iterable, so assume it's the size and create an empty array
+        size = size_or_vals
+        return (dtype * size)()
+    else:
+        # Iterable, so convert it to a ctypes array
+        vals = size_or_vals
+        if len(vals) == 0:
+            return None
+        if dtype is None:
+            # Try to deduce type
+            if isinstance(vals[0], int):
+                dtype = ctypes.c_int
+            elif isinstance(vals[0], float):
+                dtype = ctypes.c_double
+            elif isinstance(vals[0], basestring):
+                dtype = ctypes.c_char_p
+            elif isinstance(vals[0], _bf.BFarray):
+                dtype = ctypes.POINTER(_bf.BFarray)
+                vals = [ctypes.pointer(val) for val in vals]
+            # else:
+            #    dtype = type(vals[0])
+            else:
+                raise TypeError("Cannot deduce C type from ", type(vals[0]))
+        return (dtype * len(vals))(*vals)
 
-    # HACK TODO: Decide on what to do here
-    valid_header_paths = valid_header_paths[:1]
-    if len(valid_header_paths) == 0:
-        raise ValueError("No valid Bifrost header paths found. Run make "
-                         "install or set BIFROST_INCLUDE_PATH.")
-    header_path = valid_header_paths[0]
-    headers = glob.glob(os.path.join(header_path, '*.h'))
+def _check(status):
+    if __debug__:
+        if status != _bf.BF_STATUS_SUCCESS:
+            if status is None:
+                raise RuntimeError("WTF, status is None")
+            if status == _bf.BF_STATUS_END_OF_DATA:
+                raise StopIteration()
+            elif status == _bf.BF_STATUS_WOULD_BLOCK:
+                raise IOError('BF_STATUS_WOULD_BLOCK')
+            else:
+                status_str = _bf.bfGetStatusString(status)
+                raise RuntimeError(status_str)
+    else:
+        if status == _bf.BF_STATUS_END_OF_DATA:
+            raise StopIteration()
+        elif status == _bf.BF_STATUS_WOULD_BLOCK:
+            raise IOError('BF_STATUS_WOULD_BLOCK')
+    return status
 
-    pyclibrary.utils.add_header_locations(valid_header_paths)
-    try:
-        _parser = CParser(headers, cache=unicode(parser_cache, "utf-8"))
-    except AttributeError:
-        # PYCLIBRARY ISSUE WAR for "'tuple' has no attribute 'endswith'" bug
-        raise ValueError("Could not find Bifrost headers.\nSearch paths: " +
-                         str(header_paths))
-    pyclibrary.utils.add_library_locations(_get_env_paths(library_env))
-    lib = CLibrary(library_name, _parser, prefix=api_prefix)
-    return lib
-
-_bf = _load_bifrost_lib() # Internal access to library
-bf = _bf                  # External access to library
-
-GLOBAL_BFarray = _bf.BFarray
-
-BF_STATUS_SUCCESS = _bf.BF_STATUS_SUCCESS
-LUT = {'auto':         _bf.BF_SPACE_AUTO,
-       'system':       _bf.BF_SPACE_SYSTEM,
-       'cuda':         _bf.BF_SPACE_CUDA,
-       'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
-       'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
 DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
                                         ctypes.c_char,
                                         ctypes.c_char_p,
@@ -143,115 +135,29 @@ DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
                                         ctypes.c_void_p,
                                         ctypes.c_wchar,
                                         ctypes.c_wchar_p]}
-
-# Internal helper functions below
-
-def _array(size_or_vals, dtype=None):
-    from pyclibrary import build_array
-    import ctypes
-    if size_or_vals is None:
-        return None
-    try:
-        _ = iter(size_or_vals)
-    except TypeError:
-        # Not iterable, so assume it's the size and create an empty array
-        size = size_or_vals
-        return build_array(_bf, dtype, size=size)
-    else:
-        # Iterable, so convert it to a ctypes array
-        vals = size_or_vals
-        if len(vals) == 0:
-            return None
-        if dtype is None:
-            # Try to deduce type
-            if isinstance(vals[0], int):
-                dtype = ctypes.c_int
-            elif isinstance(vals[0], float):
-                dtype = ctypes.c_double
-            elif isinstance(vals[0], basestring):
-                dtype = ctypes.c_char_p
-            elif isinstance(vals[0], GLOBAL_BFarray):
-                # Note: PyCLibrary does this automatically for scalar args,
-                #         but we must do it manually here for arrays.
-                dtype = ctypes.POINTER(GLOBAL_BFarray)
-                vals = [ctypes.pointer(val) for val in vals]
-            # else:
-            #    dtype = type(vals[0])
-            else:
-                raise TypeError("Cannot deduce C type from ", type(vals[0]))
-        return build_array(_bf, dtype, size=len(vals), vals=vals)
-
-GLOBAL_BF_STATUS_END_OF_DATA = _bf.BF_STATUS_END_OF_DATA
-
-def _check(f):
-    status, args = f
-    if __debug__:
-        if status != BF_STATUS_SUCCESS:
-            if status is None:
-                raise RuntimeError("WTF, status is None")
-            if status == GLOBAL_BF_STATUS_END_OF_DATA:
-                raise StopIteration()
-            else:
-                status_str, _ = _bf.GetStatusString(status)
-                raise RuntimeError(status_str)
-    else:
-        if status == GLOBAL_BF_STATUS_END_OF_DATA:
-            raise StopIteration()
-    return f
-
-def _get(f, retarg=-1):
-    status, args = _check(f)
-    return list(args)[retarg]
-
-def _retval(f):
-    ret, args = f
-    return ret
-
-# Note: These are much faster than _check and _get above, but less convenient
-def _check_fast(status):
-    if __debug__:
-        if status != BF_STATUS_SUCCESS:
-            if status is None:
-                raise RuntimeError("WTF, status is None")
-            if status == GLOBAL_BF_STATUS_END_OF_DATA:
-                raise StopIteration()
-            else:
-                status_str, _ = _bf.GetStatusString(status)
-                raise RuntimeError(status_str)
-    else:
-        if status == GLOBAL_BF_STATUS_END_OF_DATA:
-            raise StopIteration()
-    return status
-
-def _fast_call(f, *args):
-    return _check( (f.func(*args), None) )
-
-def _fast_get(f, *args):
-    """Calls the getter function f and returns the value from the last arg"""
-    # TODO: Is there a proper way to do this that supports general types?
-    ff = f.func
+def _get(func, *args):
     retarg = -1
-    dtype = DEREF[ff.argtypes[retarg]]
-    ret_val = dtype()
-    args = args + (ctypes.byref(ret_val),)
-    _check( (ff(*args), None) )
-    return ret_val.value
+    dtype = DEREF[func.argtypes[retarg]]
+    ret = dtype()
+    args += (ctypes.byref(ret),)
+    _check(func(*args))
+    return ret.value
 
+STRING2SPACE = {'auto':         _bf.BF_SPACE_AUTO,
+                'system':       _bf.BF_SPACE_SYSTEM,
+                'cuda':         _bf.BF_SPACE_CUDA,
+                'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
+                'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
 def _string2space(s):
-    if __debug__:
-        if s not in LUT:
-            raise KeyError("Invalid space '" + str(s) +
-                           "'.\nValid spaces: " + str(LUT.keys()))
-    return LUT[s]
+    if s not in STRING2SPACE:
+        raise KeyError("Invalid space '" + str(s) +
+                       "'.\nValid spaces: " + str(LUT.keys()))
+    return STRING2SPACE[s]
 
-GLOBAL_BF_SPACE_AUTO = _bf.BF_SPACE_AUTO
-GLOBAL_BF_SPACE_SYSTEM = _bf.BF_SPACE_SYSTEM
-GLOBAL_BF_SPACE_CUDA = _bf.BF_SPACE_CUDA
-GLOBAL_BF_SPACE_CUDA_HOST = _bf.BF_SPACE_CUDA_HOST
-GLOBAL_BF_SPACE_CUDA_MANAGED = _bf.BF_SPACE_CUDA_MANAGED
+SPACE2STRING = {_bf.BF_SPACE_AUTO:         'auto',
+                _bf.BF_SPACE_SYSTEM:       'system',
+                _bf.BF_SPACE_CUDA:         'cuda',
+                _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
+                _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
 def _space2string(i):
-    return {GLOBAL_BF_SPACE_AUTO:         'auto',
-            GLOBAL_BF_SPACE_SYSTEM:       'system',
-            GLOBAL_BF_SPACE_CUDA:         'cuda',
-            GLOBAL_BF_SPACE_CUDA_HOST:    'cuda_host',
-            GLOBAL_BF_SPACE_CUDA_MANAGED: 'cuda_managed'}[i]
+    return SPACE2STRING[i]

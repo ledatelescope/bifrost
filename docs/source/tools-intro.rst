@@ -13,14 +13,24 @@ Bifrost bridges the two languages using some clever python libraries, a
 customized numpy array class, and enforcing some pipeline friendly
 design choices.
 
-NVProf
-------
+NVIDIA Profiler
+---------------
 
-If you add  TRACE=1 to ``user.mk`` and recompile bifrost, you can enable performance
-profiling support via ``nvprof``:
+The NVIDIA Profiler and Visual Profiler tools (part of the CUDA Toolkit)
+can be used to profile and visualize Bifrost pipelines. Applications can
+be launched directly from the Visual Profiler (nvvp), or a profile can
+first be generated using the nvprof command line tool:
 
 .. code::
-    $ nvprof -o pipeline_name.nvpro python [pipeline_name.py
+
+    $ nvprof -o my_pipeline.nvprof python my_pipeline.py
+
+The generated .nvprof file can then be imported into the Visual Profiler
+for visualisation and analysis.
+
+To obtain a more detailed profile of pipeline execution, rebuild the bifrost library
+with the setting TRACE=1 (either by changing ``user.mk`` or by passing it as an
+argument to the ``make`` command).
 
 
 Pipeline in /dev/shm
@@ -29,7 +39,7 @@ Pipeline in /dev/shm
 Details about the currently running bifrost pipeline are available in the ``/dev/shm`` directory.
 They are mapped into a directory structure (use the linux ``tree`` utility to view it):
 
-.. code:: 
+.. code::
 
     dancpr@bldcpr:/bldata/bifrost/tools$ tree /dev/shm/bifrost
     /dev/shm/bifrost
@@ -63,7 +73,8 @@ like_top.py
 The main performance monitoring tools is ``like_top.py``. This is, as the name suggests, like the linux utility ``top``.
 
 
-..code:: python
+..code::
+
     like_top.py - bldcpr - load average: 0.59, 0.14, 0.05
     Processes: 516 total, 1 running
     CPU(s):  1.9%us,  1.4%sy,  0.0%ni, 84.5%id, 12.1%wa,  0.0%hi,  0.0%si,  0.0%st

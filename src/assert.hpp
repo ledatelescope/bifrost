@@ -43,12 +43,20 @@ public:
 	BFstatus status() const { return _status; }
 };
 
+namespace {
+inline bool should_report_error(BFstatus err) {
+	return (err != BF_STATUS_END_OF_DATA &&
+	        err != BF_STATUS_WOULD_BLOCK);
+}
+}
+
 #include <iostream>
 using std::cout;
 using std::endl;
 #if defined(BF_DEBUG) && BF_DEBUG
 	#define BF_REPORT_ERROR(err) do { \
-		if( bfGetDebugEnabled() ) { \
+		if( bfGetDebugEnabled() && \
+		    should_report_error(err) ) { \
 			std::cerr << __FILE__ << ":" << __LINE__ \
 			          << " error " << err << ": " \
 			          << bfGetStatusString(err) << std::endl; \
@@ -60,8 +68,9 @@ using std::endl;
 			          << " " #x << " = " << (x) << std::endl; \
 		} \
 		} while(0)
-	#define BF_REPORT_PREDFAIL(pred) do { \
-		if( bfGetDebugEnabled() ) { \
+	#define BF_REPORT_PREDFAIL(pred, err) do { \
+		if( bfGetDebugEnabled() && \
+		    should_report_error(err) ) { \
 			std::cerr << __FILE__ << ":" << __LINE__ \
 			          << " Condition failed: " \
 			          << #pred << std::endl; \
@@ -70,7 +79,7 @@ using std::endl;
 #else
 	#define BF_REPORT_ERROR(err)
 	#define BF_DEBUG_PRINT(x)
-	#define BF_REPORT_PREDFAIL(pred)
+	#define BF_REPORT_PREDFAIL(pred, err)
 #endif // BF_DEBUG
 #define BF_REPORT_INTERNAL_ERROR(msg) do { \
 		std::cerr << __FILE__ << ":" << __LINE__ \
@@ -79,18 +88,18 @@ using std::endl;
 	} while(0)
 
 #define BF_FAIL(msg, err) do { \
-		BF_REPORT_PREDFAIL(msg); \
+		BF_REPORT_PREDFAIL(msg, err); \
 		BF_REPORT_ERROR(err); \
 		return (err); \
 	} while(0)
 #define BF_FAIL_EXCEPTION(msg, err) do { \
-		BF_REPORT_PREDFAIL(msg); \
+		BF_REPORT_PREDFAIL(msg, err); \
 		BF_REPORT_ERROR(err); \
 		throw BFexception(err); \
 	} while(0)
 #define BF_ASSERT(pred, err) do { \
 		if( !(pred) ) { \
-			BF_REPORT_PREDFAIL(pred); \
+			BF_REPORT_PREDFAIL(pred, err); \
 			BF_REPORT_ERROR(err); \
 			return (err); \
 		} \
@@ -99,9 +108,7 @@ using std::endl;
 		try { code; } \
 		catch( BFexception const& err ) { \
 			onfail; \
-			if( err.status() != BF_STATUS_END_OF_DATA ) { \
-				BF_REPORT_ERROR(err.status()); \
-			} \
+			BF_REPORT_ERROR(err.status()); \
 			return err.status(); \
 		} \
 		catch(std::bad_alloc const& err) { \
@@ -128,10 +135,8 @@ using std::endl;
 #define BF_ASSERT_EXCEPTION(pred, err) \
 	do { \
 		if( !(pred) ) { \
-			if( err != BF_STATUS_END_OF_DATA ) { \
-				BF_REPORT_PREDFAIL(pred); \
-				BF_REPORT_ERROR(err); \
-			} \
+			BF_REPORT_PREDFAIL(pred, err); \
+			BF_REPORT_ERROR(err); \
 			throw BFexception(err); \
 		} \
 	} while(0)
@@ -144,11 +149,19 @@ using std::endl;
 	} \
 } while(0)
 
+#define BF_CHECK_EXCEPTION(call) do { \
+	BFstatus status = call; \
+	if( status != BF_STATUS_SUCCESS ) { \
+		BF_REPORT_ERROR(status); \
+		throw BFexception(status); \
+	} \
+} while(0)
+
 class NoDebugScope {
 	bool _enabled_before;
+public:
 	NoDebugScope(NoDebugScope const&) = delete;
 	NoDebugScope& operator=(NoDebugScope const&) = delete;
-public:
 	NoDebugScope() : _enabled_before(bfGetDebugEnabled()) {
 		bfSetDebugEnabled(false);
 	}
@@ -157,4 +170,4 @@ public:
 	}
 };
 // Disables debug-printing in the current scope
-#define BF_DISABLE_DEBUG() NoDebugScope _bf_no_debug_scope;
+#define BF_DISABLE_DEBUG() NoDebugScope _bf_no_debug_scope

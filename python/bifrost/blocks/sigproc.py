@@ -31,6 +31,7 @@ from bifrost.pipeline import SourceBlock, SinkBlock
 import bifrost.sigproc2 as sigproc
 from bifrost.DataType import DataType
 from bifrost.units import convert_units
+from numpy import transpose
 
 from copy import deepcopy
 import os
@@ -164,10 +165,10 @@ class SigprocSinkBlock(SinkBlock):
         ihdr = iseq.header
         itensor = ihdr['_tensor']
 
-        axnames = tuple(itensor['labels'])
-        shape   = itensor['shape']
-        scales  = itensor['scales']
-        units   = itensor['units']
+        axnames = list(itensor['labels'])
+        shape   = list(itensor['shape'])
+        scales  = list(itensor['scales'])
+        units   = list(itensor['units'])
         ndim    = len(shape)
         dtype   = DataType(itensor['dtype'])
 
@@ -220,7 +221,8 @@ class SigprocSinkBlock(SinkBlock):
                 sigproc.write_header(sigproc_hdr, self.ofile)
             elif ndim == 4:
                 if axnames[-4] != 'beam':
-                    raise ValueError("Expected first axis to be 'beam'")
+                    raise ValueError("Expected first axis to be 'beam'"
+                                     " got '%s'" % axnames[-4])
                 nbeam = shape[-4]
                 sigproc_hdr['nbeams'] = nbeam
                 filenames = [filename + '.%06iof.%06i.fil' % (b + 1, nbeam)
@@ -232,7 +234,20 @@ class SigprocSinkBlock(SinkBlock):
             else:
                 raise ValueError("Too many dimensions")
 
-        elif ndim >= 2 and axnames[-2:] == ('time', 'pol'):
+        elif ndim >= 2 and 'time' in axnames and 'pol' in axnames:
+            pol_axis = axnames.index('pol')
+            if pol_axis != ndim - 1:
+                # Need to move pol axis
+                # Note: We support this because it tends to be convenient
+                #         for rest of the pipeline to operate with pol being
+                #         the first dim, and doing the transpose on the fly
+                #         inside this block is unlikely to cost much relative
+                #         to disk perf (and it's free if npol==1).
+                axnames.append(axnames[pol_axis]); del axnames[pol_axis]
+                shape.append(shape[pol_axis]);     del shape[pol_axis]
+                scales.append(scales[pol_axis]);   del scales[pol_axis]
+                units.append(units[pol_axis]);     del units[pol_axis]
+            self.pol_axis = pol_axis
             self.data_format = 'timeseries'
             assert(dtype.is_real)
             sigproc_hdr['data_type'] = 2
@@ -257,8 +272,9 @@ class SigprocSinkBlock(SinkBlock):
                 self.ofile = open(filename, 'wb')
                 sigproc.write_header(sigproc_hdr, self.ofile)
             elif ndim == 3:
-                if axnames[-3] != 'dispersion measure':
-                    raise ValueError("Expected first axis to be 'dispersion measure'")
+                if axnames[-3] != 'dispersion':
+                    raise ValueError("Expected first axis to be 'dispersion'"
+                                     " got '%s'" % axnames[-3])
                 ndm = shape[-3]
                 dm0 = scales[-3][0]
                 ddm = scales[-3][1]
@@ -295,7 +311,10 @@ class SigprocSinkBlock(SinkBlock):
 
         else:
             raise ValueError("Axis labels do not correspond to a known data format: " +
-                             str(axnames))
+                             str(axnames) + "\nKnown formats are:" +
+                             "\n  [time, pol, freq]\n  [beam, time, pol]\n" +
+                             "  [time, pol]\n  [dispersion, time, pol]\n" +
+                             "  [pol, freq, phase]")
 
     def on_sequence_end(self, iseq):
         if hasattr(self, 'ofile'):
@@ -313,7 +332,13 @@ class SigprocSinkBlock(SinkBlock):
                 for b in xrange(idata.shape[0]):
                     idata[b].tofile(self.ofiles[b])
         elif self.data_format == 'timeseries':
-            if len(idata.shape) == 2:
+            ndim = len(idata.shape)
+            if self.pol_axis != ndim - 1:
+                perm = list(xrange(ndim))
+                del perm[self.pol_axis]
+                perm.append(self.pol_axis);
+                idata = transpose(idata, perm)
+            if ndim == 2:
                 idata.tofile(self.ofile)
             else:
                 for d in xrange(idata.shape[0]):

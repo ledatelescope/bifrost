@@ -25,20 +25,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _fast_call, _check_fast
+from libbifrost import _bf, _check, _get
 
 def set_device(device):
     if isinstance(device, int):
-        _check(_bf.DeviceSet(device))
+        _check(_bf.bfDeviceSet(device))
     else:
-        _check(_bf.DeviceSetById(device))
+        _check(_bf.bfDeviceSetById(device))
 def get_device():
-    return _get(_bf.DeviceGet())
+    return _get(_bf.bfDeviceGet)
 
 # TODO: set/get_stream
 
 def stream_synchronize():
-    _check_fast(_bf.StreamSynchronize.func())
+    _check(_bf.bfStreamSynchronize())
 
 def set_devices_no_spin_cpu():
     """Sets a flag on all GPU devices that tells them not to spin the CPU when
@@ -46,4 +46,4 @@ def set_devices_no_spin_cpu():
 
     This function must be called _before_ any GPU devices are
     initialized (i.e., at the start of the process)."""
-    _check(_bf.DevicesSetNoSpinCPU())
+    _check(_bf.bfDevicesSetNoSpinCPU())

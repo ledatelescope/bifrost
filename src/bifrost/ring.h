@@ -178,7 +178,7 @@ BFstatus bfRingSequenceGetHeader(BFsequence sequence, const void** hdr);
 BFstatus bfRingSequenceGetHeaderSize(BFsequence sequence, BFsize* size);
 BFstatus bfRingSequenceGetNRinglet(BFsequence sequence, BFsize* nringlet);
 
-typedef struct {
+typedef struct BFsequence_info_ {
 	BFring      ring;
 	const char* name;
 	BFoffset    time_tag;
@@ -190,10 +190,10 @@ typedef struct {
 BFstatus bfRingSequenceGetInfo(BFsequence sequence, BFsequence_info* sequence_info);
 
 // Write span
-BFstatus bfRingSpanReserve(BFwspan*    span,
-                           //BFwsequence sequence,
-                           BFring      ring,
-                           BFsize      size);
+BFstatus bfRingSpanReserve(BFwspan* span,
+                           BFring   ring,
+                           BFsize   size,
+                           BFbool   nonblocking);
 BFstatus bfRingSpanCommit(BFwspan span,
                           BFsize  size);
 // Read span
@@ -216,7 +216,7 @@ BFstatus bfRingSpanGetStride(BFspan span, BFsize* val);
 BFstatus bfRingSpanGetOffset(BFspan span, BFsize* val);
 BFstatus bfRingSpanGetNRinglet(BFspan span, BFsize* val);
 
-typedef struct {
+typedef struct BFspan_info_ {
 	BFring      ring;
 	void*       data;
 	BFsize      size;

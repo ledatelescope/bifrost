@@ -40,12 +40,6 @@ cf32: 32+32-bit complex floating point
 
 from libbifrost import _bf
 import numpy as np
-GLOBAL_BF_DTYPE_TYPE_BITS = _bf.BF_DTYPE_TYPE_BITS
-GLOBAL_BF_DTYPE_COMPLEX_BIT = _bf.BF_DTYPE_COMPLEX_BIT
-GLOBAL_BF_DTYPE_FLOAT_TYPE = _bf.BF_DTYPE_FLOAT_TYPE
-GLOBAL_BF_DTYPE_UINT_TYPE = _bf.BF_DTYPE_UINT_TYPE
-GLOBAL_BF_DTYPE_INT_TYPE = _bf.BF_DTYPE_INT_TYPE
-GLOBAL_BFdtype = _bf.BFdtype
 
 # Custom dtypes to represent additional complex types
 # Note: These can be constructed using tuples
@@ -77,6 +71,39 @@ TYPEMAP = {
     'cf': {16: _bf.BF_DTYPE_CF16,  32: _bf.BF_DTYPE_CF32,
            64: _bf.BF_DTYPE_CF64, 128: _bf.BF_DTYPE_CF128}
 }
+KINDMAP = {
+    _bf.BF_DTYPE_INT_TYPE:   'i',
+    _bf.BF_DTYPE_UINT_TYPE:  'u',
+    _bf.BF_DTYPE_FLOAT_TYPE: 'f'
+}
+NUMPY_TYPEMAP = {
+    'i':  {  8: np.int8,  16: np.int16,
+             32: np.int32, 64: np.int64},
+    'u':  {  8: np.uint8,  16: np.uint16,
+             32: np.uint32, 64: np.uint64},
+    'f':  {16: np.float16,  32: np.float32,
+           64: np.float64, 128: np.float128},
+    # HACK: These are just types that match the storage size;
+    #         they should not be used for computation.
+    # HACK TESTING to support 'packed' arrays
+    #   (TODO: Do same for 'i' and 'u' if happy with this)
+    'ci': { 1: np.int8,  2: np.int8,
+            4: ci4,      8: ci8,
+            16: ci16,    32: ci32,
+            64: ci64},
+    # HACK: cf16 used as WAR for missing np.complex32
+    'cf': {16: cf16,           32: np.complex64,
+           64: np.complex128, 128: np.complex256}
+}
+
+def is_vector_structure(dtype):
+    if dtype.names is None:
+        return False
+    ndim = len(dtype.names)
+    vector_field_names = tuple('f%i' % i for i in xrange(ndim))
+    return (dtype.kind == 'V' and
+            dtype.names == vector_field_names and
+            all([dtype[i] == dtype[0] for i in xrange(1, ndim)]))
 
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
@@ -87,26 +114,38 @@ class DataType(object):
                     break
             self._kind =     t[:i]
             self._nbit = int(t[i:])
-        elif isinstance(t, GLOBAL_BFdtype): # Note: This is actually just a c_int
+            self._veclen = 1 # TODO: Consider supporting this as part of string
+        elif isinstance(t, _bf.BFdtype): # Note: This is actually just a c_int
             t = int(t)
             self._nbit = t & BF_DTYPE_NBIT_BITS
-            kindmap = {GLOBAL_BF_DTYPE_INT_TYPE:   'i',
-                       GLOBAL_BF_DTYPE_UINT_TYPE:  'u',
-                       GLOBAL_BF_DTYPE_FLOAT_TYPE: 'f'}
-            is_complex = bool(t & GLOBAL_BF_DTYPE_COMPLEX_BIT)
-            self._kind = kindmap[t & GLOBAL_BF_DTYPE_TYPE_BITS]
+            is_complex = bool(t & _bf.BF_DTYPE_COMPLEX_BIT)
+            self._kind = KINDMAP[t & _bf.BF_DTYPE_TYPE_BITS]
             if is_complex:
                 self._kind = 'c' + self._kind
+            self._veclen = 1 + ((t & _bf.BF_DTYPE_VECTOR_BITS)
+                                >> _bf.BF_DTYPE_VECTOR_BIT0)
         elif isinstance(t, DataType):
             self._nbit = t._nbit
             self._kind = t._kind
+            self._veclen = t._veclen
         elif isinstance(t, tuple):
-            self._kind, self._nbit = t
+            self._kind, self._nbit, self._veclen = t
         else:
             t = np.dtype(t) # Raises TypeError if t is invalid
+            ndim = getattr(t, 'ndim', len(t.shape))
+            if ndim == 0:
+                self._veclen = 1
+            elif ndim == 1:
+                self._veclen = t.shape[0]
+                t = t.base
+            else:
+                raise TypeError("Unsupported Numpy dtype: " + str(t))
             self._nbit = t.itemsize * 8
-            if t.kind not in ['i', 'u', 'f', 'c', 'V', 'b']:
+            if t.kind not in set(['i', 'u', 'f', 'c', 'V', 'b']):
                 raise TypeError('Unsupported data type: %s' % str(t))
+            if is_vector_structure(t): # Field structure representing vector
+                self._veclen = len(t.names)
+                t = t[0]
             self._kind = t.kind
             if t.kind == 'c':
                 self._nbit /= 2   # Bifrost convention is nbit per real component
@@ -124,34 +163,29 @@ class DataType(object):
                 self._kind = 'u'
     def __eq__(self, other):
         return (self._kind == other._kind and
-                self._nbit == other._nbit)
+                self._nbit == other._nbit and
+                self._veclen == other._veclen)
     def __ne__(self, other):
         return not (self == other)
     def as_BFdtype(self):
-        return TYPEMAP[self._kind][self._nbit]
+        base = TYPEMAP[self._kind][self._nbit]
+        return base | ((self._veclen - 1) << _bf.BF_DTYPE_VECTOR_BIT0)
     def as_numpy_dtype(self):
-        typemap = {
-            'i':  {  8: np.int8,  16: np.int16,
-                    32: np.int32, 64: np.int64},
-            'u':  {  8: np.uint8,  16: np.uint16,
-                    32: np.uint32, 64: np.uint64},
-            'f':  {16: np.float16,  32: np.float32,
-                   64: np.float64, 128: np.float128},
-            # HACK: These are just types that match the storage size;
-            #         they should not be used for computation.
-            # HACK TESTING to support 'packed' arrays
-            #   (TODO: Do same for 'i' and 'u' if happy with this)
-            'ci': { 1: np.int8,  2: np.int8,
-                    4: ci4,      8: ci8,
-                   16: ci16,    32: ci32,
-                   64: ci64},
-            # HACK: cf16 used as WAR for missing np.complex32
-            'cf': {16: cf16,           32: np.complex64,
-                   64: np.complex128, 128: np.complex256}
-        }
-        return np.dtype(typemap[self._kind][self._nbit])
+        base = np.dtype(NUMPY_TYPEMAP[self._kind][self._nbit])
+        if self._veclen == 1:
+            return base
+        else:
+            #return np.dtype((base, self._veclen))
+            # WAR for vector types not working as expected when passed to
+            #   np.view (the shape gets merged into the ndarray's shape instead
+            #   of remaining part of the dtype). We return a structure type
+            #   with fields representing a vector instead.
+            return np.dtype(','.join((str(base),)*self._veclen))
     def __str__(self):
-        return '%s%i' % (self._kind, self._nbit)
+        if self._veclen == 1:
+            return '%s%i' % (self._kind, self._nbit)
+        else:
+            return '%s%i[%i]' % (self._kind, self._nbit, self._veclen)
     @property
     def is_complex(self):
         return self._kind[0] == 'c'
@@ -175,29 +209,31 @@ class DataType(object):
             return self
         kind = 'cf' if self.is_complex else 'f'
         nbit = 32 if self._nbit <= 24 else 64
-        return DataType((kind, nbit))
+        return DataType((kind, nbit, self._veclen))
     def as_integer(self, nbit=None):
         if nbit is None:
             nbit = self._nbit
         kind = self._kind
         if self.is_floating_point:
             kind = kind.replace('f', 'i')
-        return DataType((kind, nbit))
+        return DataType((kind, nbit, self._veclen))
     def as_real(self):
         if self.is_complex:
-            return DataType((self._kind[1:], self._nbit))
+            return DataType((self._kind[1:], self._nbit, self._veclen))
         else:
             return self
     def as_complex(self):
         if self.is_complex:
             return self
         else:
-            return DataType(('c' + self._kind, self._nbit))
+            return DataType(('c' + self._kind, self._nbit, self._veclen))
     def as_nbit(self, nbit):
-        return DataType((self._kind, nbit))
+        return DataType((self._kind, nbit, self._veclen))
+    def as_vector(self, veclen):
+        return DataType((self._kind, self._nbit, veclen))
     @property
     def itemsize_bits(self):
-        return self._nbit * (1 + self.is_complex)
+        return self._nbit * (1 + self.is_complex) * self._veclen
     @property
     def itemsize(self):
         item_nbit = self.itemsize_bits

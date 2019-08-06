@@ -1,0 +1,243 @@
+/*
+ * Copyright (c) 2017, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
+ * Copyright (c) 2017, The University of New Mexico. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ * * Neither the name of The Bifrost Authors nor the names of its
+ *   contributors may be used to endorse or promote products derived
+ *   from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef BF_UNPACK_GPU_HU_INCLUDE_GUARD_
+#define BF_UNPACK_GPU_HU_INCLUDE_GUARD_
+
+#include <stddef.h>
+#include <stdint.h>
+
+// sign_extend == true  => output has same value as input  (slower)
+// sign_extend == false => output is scaled by 2**(8-nbit) (faster)
+
+template<int NBIT, typename K, typename T>
+inline __device__ void rshift_subwords_gpu(T& val) {
+	for( int k=0; k<(int)(sizeof(T)/sizeof(K)); ++k ) {
+		((K*)&val)[k] >>= NBIT;
+	}
+}
+
+template<typename K, typename T>
+inline __device__ void conjugate_subwords_gpu(T& val) {
+	for( int k=1; k<(int)(sizeof(T)/sizeof(K)); k+=2 ) {
+		K& val_imag = ((K*)&val)[k];
+		val_imag = -val_imag;
+	}
+}
+
+// Simple minimum
+template<typename T, typename U>
+inline __host__ __device__
+T min_gpu(T x, U y) {
+	if( x < y ) {
+		return x;
+	} else {
+		return (T) y;
+	}
+}
+
+// Simple maximum
+template<typename T, typename U>
+inline __host__ __device__
+T max_gpu(T x, U y) {
+	if( x > y ) {
+		return x;
+	} else {
+		return (T) y;
+	}
+}
+
+// Type value limits - maximum
+template<typename T>
+inline __host__ __device__
+T maxval_gpu() {
+	return T(0);
+}
+// Signed
+template<>
+inline __host__ __device__
+int8_t maxval_gpu() {
+	return (int8_t) 127;
+}
+template<>
+inline __host__ __device__
+int16_t maxval_gpu() {
+	return (int16_t) 32767;
+}
+template<>
+inline __host__ __device__
+int32_t maxval_gpu() {
+	return (int32_t) 2147483647;
+}
+template<>
+inline __host__ __device__
+int64_t maxval_gpu() {
+	return (int64_t) 9223372036854775807LL;
+}
+// Unsigned
+template<>
+inline __host__ __device__
+uint8_t maxval_gpu() {
+	return (uint8_t) 255;
+}
+template<>
+inline __host__ __device__
+uint16_t maxval_gpu() {
+	return (uint16_t) 65535;
+}
+template<>
+inline __host__ __device__
+uint32_t maxval_gpu() {
+	return (uint32_t) 4294967295;
+}
+template<>
+inline __host__ __device__
+uint64_t maxval_gpu() {
+	return (uint64_t) 18446744073709551615LL;
+}
+
+// Type value limits - minimum
+template<typename T>
+inline __host__ __device__
+T minval_gpu() {
+	return -maxval_gpu<T>();
+}
+// Unsigned
+template<>
+inline __host__ __device__
+uint8_t minval_gpu() {
+	return (uint8_t) 0;
+}
+template<>
+inline __host__ __device__
+uint16_t minval_gpu() {
+	return (uint16_t) 0;
+}
+template<>
+inline __host__ __device__
+uint32_t minval_gpu() {
+	return (uint32_t) 0;
+}
+template<>
+inline __host__ __device__
+uint64_t minval_gpu() {
+	return (uint64_t) 0;
+}
+
+inline __host__ __device__
+void byteswap_impl_gpu(uint64_t value, uint64_t* result) {
+	*result =
+		((value & 0xFF00000000000000u) >> 56u) |
+		((value & 0x00FF000000000000u) >> 40u) |
+		((value & 0x0000FF0000000000u) >> 24u) |
+		((value & 0x000000FF00000000u) >>  8u) |
+		((value & 0x00000000FF000000u) <<  8u) |
+		((value & 0x0000000000FF0000u) << 24u) |
+		((value & 0x000000000000FF00u) << 40u) |
+		((value & 0x00000000000000FFu) << 56u);
+}
+
+inline __host__ __device__
+void byteswap_impl_gpu(uint32_t value, uint32_t* result) {
+	*result =
+		((value & 0xFF000000u) >> 24u) |
+		((value & 0x00FF0000u) >>  8u) |
+		((value & 0x0000FF00u) <<  8u) |
+		((value & 0x000000FFu) << 24u);
+}
+
+inline __host__ __device__
+void byteswap_impl_gpu(uint16_t value, uint16_t* result) {
+	*result =
+		((value & 0xFF00u) >> 8u) |
+		((value & 0x00FFu) << 8u);
+}
+
+template<typename T, typename U>
+inline __host__ __device__
+T type_pun_gpu(U x) {
+	union {
+		T t;
+		U u;
+	} punner;
+	punner.u = x;
+	return punner.t;
+}
+
+// Byte swapping functions
+template<typename T>
+inline __host__ __device__
+void byteswap_gpu(T value, T* result) {
+	*result = value;
+}
+// 64-bit
+template<>
+inline __host__ __device__
+void byteswap_gpu(uint64_t value, uint64_t* result) {
+	return byteswap_impl_gpu(type_pun_gpu<uint64_t>(value), (uint64_t*)result);
+}
+template<>
+inline __host__ __device__
+void byteswap_gpu(int64_t value, int64_t* result) {
+	return byteswap_impl_gpu(type_pun_gpu<uint64_t>(value), (uint64_t*)result);
+}
+template<>
+inline __host__ __device__
+void byteswap_gpu(double value, double* result) {
+	return byteswap_impl_gpu(type_pun_gpu<uint64_t>(value), (uint64_t*)result);
+}
+// 32-bit
+template<>
+inline __host__ __device__
+void byteswap_gpu(uint32_t value, uint32_t* result) {
+	return byteswap_impl_gpu(type_pun_gpu<uint64_t>(value), (uint32_t*)result);
+}
+template<>
+inline __host__ __device__
+void byteswap_gpu(int32_t value, int32_t* result) {
+	return byteswap_impl_gpu(type_pun_gpu<uint64_t>(value), (uint32_t*)result);
+}
+template<>
+inline __host__ __device__
+void byteswap_gpu(float value, float* result) {
+	return byteswap_impl_gpu(type_pun_gpu<uint64_t>(value), (uint32_t*)result);
+}
+// 16-bit
+template<>
+inline __host__ __device__
+void byteswap_gpu(uint16_t value, uint16_t* result) {
+	return byteswap_impl_gpu(type_pun_gpu<uint64_t>(value), (uint16_t*)result);
+}
+inline __host__ __device__
+void byteswap_gpu(int16_t value, int16_t* result) {
+	return byteswap_impl_gpu(type_pun_gpu<uint64_t>(value), (uint16_t*)result);
+}
+
+#endif // BF_UNPACK_GPU_HU_INCLUDE_GUARD_

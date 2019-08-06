@@ -38,10 +38,6 @@ import bifrost
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
-import matplotlib
-# Use a graphical backend which supports threading
-matplotlib.use('Agg')
-from matplotlib import pyplot as plt
 
 class Pipeline(object):
     """Class which connects blocks linearly, with
@@ -316,8 +312,8 @@ class MultiTransformBlock(object):
                     self.rings[ring_name].resize(self.gulp_size[ring_name])
 
                 with nested(*[out_ring.begin_sequence(
-                        str(int(time.time() * 1000)),
-                        int(time.time() * 1000),
+                        str(int(time.time() * 1000000)),
+                        int(time.time() * 1000000),
                         header=json.dumps(self.header[ring_name]),
                         nringlet=1)
                               for out_ring, ring_name in self.izip(out_rings, args)]) as out_sequences:
@@ -575,6 +571,7 @@ class WriteAsciiBlock(SinkBlock):
                 data_accumulate = unpacked_data[0]
         text_file = open(self.filename, 'a')
         np.savetxt(text_file, data_accumulate.reshape((1, -1)))
+        text_file.close()
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
@@ -838,6 +835,10 @@ class WaterfallBlock(object):
         @param[in] waterfall_matrix x axis is frequency and
             y axis is time. Values should be power.
             """
+        import matplotlib
+        # Use a graphical backend which supports threading
+        matplotlib.use('Agg')
+        from matplotlib import pyplot as plt
         plt.ioff()
         print "Interactive mode off"
         print waterfall_matrix.shape

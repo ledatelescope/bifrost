@@ -37,4 +37,4 @@ def transpose(dst, src, axes=None):
     src_bf = asarray(src).as_BFarray()
     array_type = ctypes.c_int * src.ndim
     axes_array = array_type(*axes)
-    _check(_bf.Transpose(src_bf, dst_bf, axes_array))
+    _check(_bf.bfTranspose(src_bf, dst_bf, axes_array))

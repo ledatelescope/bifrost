@@ -73,12 +73,9 @@ A simple pipeline would be a source block (e.g. file read), connected to
 a task block (compute average), connected to a sink block (plot time
 series of moving averaged data).
 
-Ring concepts
--------------
 
-Sequence
-^^^^^^^^
+More
+----
 
-Span
-^^^^
-
+Further explanation of Bifrost's concepts is detailed
+in the paper: https://arxiv.org/abs/1708.00720
