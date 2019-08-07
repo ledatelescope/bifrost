@@ -34,7 +34,6 @@ from bifrost.romein import Romein
 from bifrost.quantize import quantize
 from bifrost.unpack import unpack
 from bifrost.DataType import ci4
-import matplotlib.pyplot as plt
 
 class RomeinTest(unittest.TestCase):
     def setUp(self):
