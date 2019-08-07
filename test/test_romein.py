@@ -51,7 +51,8 @@ class RomeinTest(unittest.TestCase):
                      ntime,
                      npol,
                      nchan,
-                     ndata):
+                     ndata,
+                     dtype=numpy.complex64):
         
         # Unpack the ci4 data to ci8, if needed
         if data.dtype == ci4:
@@ -61,15 +62,18 @@ class RomeinTest(unittest.TestCase):
             
         #Excruciatingly slow, but it's just for testing purposes...
         #Could probably use a blas based function for simplicity.
-        grid = numpy.zeros(shape=grid_shape,dtype=numpy.complex64)
+        grid = numpy.zeros(shape=grid_shape,dtype=dtype)
         for t in numpy.arange(ntime):
             for c in numpy.arange(nchan):
                 for p in numpy.arange(npol):
                     for d in numpy.arange(ndata):
                         datapoint = data[t,c,p,d]
-                        if data.dtype != numpy.complex64:
-                            datapoint = numpy.complex64(datapoint[0]+1j*datapoint[1])
-                            
+                        if data.dtype != dtype:
+                            try:
+                                datapoint = dtype(datapoint[0]+1j*datapoint[1])
+                            except IndexError:
+                                datapoint = dtype(datapoint)
+                                
                         #if(d==128):
                         #    print(datapoint)
                         x_s = xlocs[t,c,p,d]
@@ -141,7 +145,7 @@ class RomeinTest(unittest.TestCase):
         locs = self._create_locs(data_size, ntime, nchan, npol, illum_size, grid_size-illum_size)
         
         # Grid using a naive method
-        gridnaive = self.naive_romein(gridshape,illum,data,locs[0,:],locs[1,:],locs[2,:],ntime,npol,nchan,data_size)
+        gridnaive = self.naive_romein(gridshape,illum,data,locs[0,:],locs[1,:],locs[2,:],ntime,npol,nchan,data_size,otype)
 
         # Transpose for non pol-major kernels
         if not polmajor:
@@ -158,7 +162,10 @@ class RomeinTest(unittest.TestCase):
         grid = grid.copy(space="system")
         
         # Compare the two methods
-        numpy.testing.assert_allclose(grid, gridnaive, 1e-4, 1e-5)
+        numpy.testing.assert_allclose(grid,
+                                      gridnaive,
+                                      (1e-10 if otype == numpy.complex128 else 1e-4),
+                                      (1e-11 if otype == numpy.complex128 else 1e-5))
         
     def run_kernel_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype=numpy.complex64):
         TEST_SCALE = 2.0
