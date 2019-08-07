@@ -158,11 +158,8 @@ class RomeinTest(unittest.TestCase):
         grid = grid.copy(space="system")
         
         # Compare the two methods
-        diff = numpy.mean(abs(grid.flatten()-gridnaive.flatten()))
-        if diff > 0.1:
-            print("#### DIFFERENCE: %f ####"%diff)
-            raise ValueError("Large difference between naive romein and CUDA implementation.")
-            
+        numpy.testing.assert_allclose(grid, gridnaive, 1e-4, 1e-5)
+        
     def run_kernel_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype=numpy.complex64):
         TEST_SCALE = 2.0
         
@@ -207,11 +204,8 @@ class RomeinTest(unittest.TestCase):
         grid = grid.copy(space="system")
         
         # Compare the two methods
-        diff = numpy.mean(abs(grid.flatten()-gridnaive.flatten()))
-        if diff > 0.1:
-            print("#### DIFFERENCE: %f ####"%diff)
-            raise ValueError("Large difference between naive romein and CUDA implementation.")
-            
+        numpy.testing.assert_allclose(grid, gridnaive, 1e-4, 1e-5)
+        
     def run_positions_test(self, grid_size, illum_size, data_size, ntime, npol, nchan, polmajor, dtype=numpy.complex64):
         TEST_OFFSET = 1
         
@@ -256,11 +250,8 @@ class RomeinTest(unittest.TestCase):
         grid = grid.copy(space="system")
         
         # Compare the two methods
-        diff = numpy.mean(abs(grid.flatten()-gridnaive.flatten()))
-        if diff > 0.1:
-            print("#### DIFFERENCE: %f ####"%diff)
-            raise ValueError("Large difference between naive romein and CUDA implementation.")
-            
+        numpy.testing.assert_allclose(grid, gridnaive, 1e-4, 1e-5)
+        
     def test_ntime8_nchan2_npol3_gridsize64_illumsize3_datasize256_pm(self):
         self.run_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2,polmajor=True)
     def test_ntime8_nchan2_npol3_gridsize64_illumsize3_datasize256(self):
