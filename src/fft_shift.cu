@@ -31,8 +31,8 @@ __host__ BFstatus fft_shift_2di(BFarray const *grid, int size, int batch_no){
 
     void const * dptr = grid->data;
     
-    int gs = 32;
-    int bs = size/gs;
+    int gs = std::min(size, 32);
+    int bs = std::max(size/gs, 1);
     dim3 dimGrid(bs,bs);
     dim3 dimBlock(gs,gs);
     cuda::child_stream stream(g_cuda_stream);
@@ -48,10 +48,23 @@ __host__ BFstatus fft_shift_2di(BFarray const *grid, int size, int batch_no){
 
 
 __host__ BFstatus fft_shift_2d(BFarray const *grid, int size, int batch_no){
-
     // Assume square matrix for simplicity...
     BF_TRACE();
+    
+    BF_ASSERT(grid,                         BF_STATUS_INVALID_POINTER);
+    BF_ASSERT(grid->ndim >= 3,              BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(grid->shape[grid->ndim-2] \
+              == grid->shape[grid->ndim-1], BF_STATUS_INVALID_SHAPE);
+    BF_ASSERT(grid->shape[grid->ndim-1] \
+              == size,                      BF_STATUS_INVALID_SHAPE);
     BF_ASSERT(space_accessible_from(grid->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
+    
+    // Check leading dimensions
+    int nb = 1;
+    for(int i=0; i<grid->ndim-2; ++i) {
+        nb *= grid->shape[i];
+    }
+    BF_ASSERT(nb == batch_no, BF_STATUS_INVALID_SHAPE);
 
     switch(grid->dtype) {
     case BF_DTYPE_I8:   return fft_shift_2di<int8_t>(grid, size, batch_no);
