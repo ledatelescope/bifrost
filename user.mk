@@ -1,6 +1,6 @@
-CXX           ?= g++
+CXX           ?= /opt/gcc-4.9.4/bin/g++ 
 NVCC          ?= nvcc
-LINKER        ?= g++
+LINKER        ?= /opt/gcc-4.9.4/bin/g++
 CPPFLAGS      ?=
 CXXFLAGS      ?= -O3 -Wall -pedantic
 NVCCFLAGS     ?= -O3 -Xcompiler "-Wall" #-Xptxas -v
@@ -11,7 +11,7 @@ PYINSTALLFLAGS ?=
 
 #GPU_ARCHS     ?= 30 32 35 37 50 52 53 # Nap time!
 #GPU_ARCHS     ?= 35 52
-GPU_ARCHS     ?= 35 61
+GPU_ARCHS     ?= 61
 
 CUDA_HOME     ?= /usr/local/cuda
 CUDA_LIBDIR   ?= $(CUDA_HOME)/lib
@@ -19,6 +19,11 @@ CUDA_LIBDIR64 ?= $(CUDA_HOME)/lib64
 CUDA_INCDIR   ?= $(CUDA_HOME)/include
 
 ALIGNMENT ?= 4096 # Memory allocation alignment
+
+PSRHOME  ?= /home/dada/linux_64
+
+#NOUDPSOCKET = 1  # Disable UDP code compilation
+#BUILDDP4A   = 1  # Build beanfarmer + xcorr_lite
 
 #NODEBUG    = 1 # Disable debugging mode (use this for production releases)
 #TRACE      = 1 # Enable tracing mode (generates annotations for use with nvprof/nvvp)
