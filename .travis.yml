@@ -27,6 +27,7 @@ jobs:
           python: 2.7
           script:
             - make docker-cpu
+            - make docker
             - bash ./.travis_deploy_docs.sh
 
 script:
