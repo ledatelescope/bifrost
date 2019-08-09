@@ -12,6 +12,7 @@ def compute_xcorr_cpu(d):
 N = 12
 F = 2
 T = 16
+reset = 0
 
 # Create complex data
 d = np.random.randint(64, size=(F, N, T, 2), dtype='int8')
@@ -20,7 +21,7 @@ xcorr = np.zeros((F, N, N*2), dtype='int32')
 d_gpu     = bf.ndarray(d, dtype='i8', space='cuda')
 xcorr_gpu = bf.ndarray(xcorr, dtype='i32', space='cuda')
 
-_bf.XcorrLite(d_gpu.as_BFarray(), xcorr_gpu.as_BFarray(), np.int32(N), np.int32(F), np.int32(T))
+_bf.XcorrLite(d_gpu.as_BFarray(), xcorr_gpu.as_BFarray(), np.int32(reset))
 
 xcorr_gpu = np.array(xcorr_gpu.copy('system'))
 xcorr_cpu = compute_xcorr_cpu(d)
