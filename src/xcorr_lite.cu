@@ -62,7 +62,7 @@ extern "C" {
         }
 
     __global__ void xcorrDp4aKernel
-        (int *data, int *xcorr, int N, int F, int T)
+        (int *data, int *xcorr, int N, int F, int T, int reset)
         {
         int x, y; // x not used
         int idx, ia, ib;
@@ -78,6 +78,10 @@ extern "C" {
         idx = 2*y + N*2*x + chan_offset_out; // Compute index for output array
     
         for (int t = 0; t < T/2; t++) {
+            if (reset != 0) {
+                xcorr[idx]   = 0;
+                xcorr[idx+1] = 0;
+            }
             ia  = ant_offset*x + chan_offset_in + t;
             ib  = ant_offset*y + chan_offset_in + t;
         
@@ -86,7 +90,7 @@ extern "C" {
         }
         }
         
-    void launch_xcorr_lite(int *data, int *xcorr, int N, int F, int T) {
+    void launch_xcorr_lite(int *data, int *xcorr, int N, int F, int T, int reset) {
         dim3 blockSize, gridSize;
         gridSize.x = F;
         gridSize.y = 1;
@@ -96,16 +100,20 @@ extern "C" {
         blockSize.y = N;
         blockSize.z = 1;
         
-        xcorrDp4aKernel<<< gridSize, blockSize >>>(data, xcorr, N, F, T);
+        xcorrDp4aKernel<<< gridSize, blockSize >>>(data, xcorr, N, F, T, reset);
     }
         
 
-    BFstatus XcorrLite(BFarray *bf_data, BFarray *bf_xcorr, int N, int F, int T)
+    BFstatus XcorrLite(BFarray *bf_data, BFarray *bf_xcorr, int reset)
     {
         int* data = (int *)bf_data->data;
         int* xcorr = (int *)bf_xcorr->data;
 
-        launch_xcorr_lite(data, xcorr, N, F, T);
+        int N = bf_data->shape[1];
+        int F = bf_data->shape[0];
+        int T = bf_data->shape[2];
+
+        launch_xcorr_lite(data, xcorr, N, F, T, reset);
         
         BF_CHECK_CUDA(cudaGetLastError(), BF_STATUS_DEVICE_ERROR);
         return BF_STATUS_SUCCESS;
