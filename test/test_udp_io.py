@@ -43,47 +43,47 @@ class UDPIOTest(unittest.TestCase):
         t = np.arange(128*4096*2)
         w = 0.01
         self.s0 = 6*np.cos(w * t, dtype='float32') \
-                  + 5j*np.sin(w * t, dtype='float32')
-
+                + 5j*np.sin(w * t, dtype='float32')
+        
     def test_write_tbn(self):
-         desc = HeaderInfo()
-         desc.set_chan0(1)
-         desc.set_decimation(500)
-         
-         addr = Address('127.0.0.1', 7147)
-         sock = UDPSocket()
-         sock.connect(addr)
-         op = UDPTransmit('tbn', sock)
-         
-         # Reorder as packets, stands, time
-         data = self.s0.reshape(512,32,-1)
-         data = data.transpose(2,1,0).copy()
-         # Convert to ci8 for TBN
-	 data_q = bf.ndarray(shape=data.shape, dtype='ci8')
-         quantize(data, data_q)
-
-         # Go!
-         desc.set_nsrc(data_q.shape[1])
-         op.send(desc, 0, 1, 0, 1, data_q)
-	 sock.close()
-         
+        desc = HeaderInfo()
+        desc.set_chan0(1)
+        desc.set_decimation(500)
+        
+        addr = Address('127.0.0.1', 7147)
+        sock = UDPSocket()
+        sock.connect(addr)
+        op = UDPTransmit('tbn', sock)
+        
+        # Reorder as packets, stands, time
+        data = self.s0.reshape(512,32,-1)
+        data = data.transpose(2,1,0).copy()
+        # Convert to ci8 for TBN
+        data_q = bf.ndarray(shape=data.shape, dtype='ci8')
+        quantize(data, data_q)
+        
+        # Go!
+        desc.set_nsrc(data_q.shape[1])
+        op.send(desc, 0, 1, 0, 1, data_q)
+        sock.close()
+        
     def test_write_drx(self):
-         desc = HeaderInfo()
-         desc.set_chan0(1)
-         desc.set_decimation(10)
-
-         addr = Address('127.0.0.1', 7147)
-         sock = UDPSocket()
-         sock.connect(addr)
-         op = UDPTransmit('drx', sock)
-
-         # Reorder as packets, beams, time
-         data = self.s0.reshape(4096,4,-1)
-         data = data.transpose(2,1,0).copy()
-         # Convert to ci4 for DRX
-         data_q = bf.ndarray(shape=data.shape, dtype='ci4')
-         quantize(data, data_q)
-
-         # Go!
-         desc.set_nsrc(data_q.shape[1])
-         op.send(desc, 0, 1, 0, 1, data_q)
+        desc = HeaderInfo()
+        desc.set_chan0(1)
+        desc.set_decimation(10)
+        
+        addr = Address('127.0.0.1', 7147)
+        sock = UDPSocket()
+        sock.connect(addr)
+        op = UDPTransmit('drx', sock)
+        
+        # Reorder as packets, beams, time
+        data = self.s0.reshape(4096,4,-1)
+        data = data.transpose(2,1,0).copy()
+        # Convert to ci4 for DRX
+        data_q = bf.ndarray(shape=data.shape, dtype='ci4')
+        quantize(data, data_q)
+        
+        # Go!
+        desc.set_nsrc(data_q.shape[1])
+        op.send(desc, 0, 1, 0, 1, data_q)

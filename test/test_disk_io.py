@@ -41,52 +41,58 @@ class DiskIOTest(unittest.TestCase):
         t = np.arange(128*4096*2)
         w = 0.01
         self.s0 = 6*np.cos(w * t, dtype='float32') \
-                  + 5j*np.sin(w * t, dtype='float32')
-
+                + 5j*np.sin(w * t, dtype='float32')
+        # Filename cache so we can cleanup later
+        self._cache = []
+    def _open(self, filename, mode):
+        fh = open(filename, mode)
+        if filename not in self._cache:
+            self._cache.append(filename)
+        return fh
     def test_write_tbn(self):
-         desc = HeaderInfo()
-         desc.set_chan0(1)
-         desc.set_decimation(500)
-          
-         fh = open('test_tbn.dat', 'wb')
-         op = DiskWriter('tbn', fh)
-         
-         # Reorder as packets, stands, time
-         data = self.s0.reshape(512,32,-1)
-         data = data.transpose(2,1,0).copy()
-         # Convert to ci8 for TBN
-	 data_q = bf.ndarray(shape=data.shape, dtype='ci8')
-         quantize(data, data_q)
-
-         # Go!
-         desc.set_nsrc(data_q.shape[1])
-         op.send(desc, 0, 1, 0, 1, data_q)
-	 fh.close()
-         
-         self.assertEqual(os.path.getsize('test_tbn.dat'), \
-                          1048*data_q.shape[0]*data_q.shape[1])
-         os.unlink('test_tbn.dat')
-
+        desc = HeaderInfo()
+        desc.set_chan0(1)
+        desc.set_decimation(500)
+        
+        fh = self._open('test_tbn.dat', 'wb')
+        op = DiskWriter('tbn', fh)
+        
+        # Reorder as packets, stands, time
+        data = self.s0.reshape(512,32,-1)
+        data = data.transpose(2,1,0).copy()
+        # Convert to ci8 for TBN
+        data_q = bf.ndarray(shape=data.shape, dtype='ci8')
+        quantize(data, data_q)
+        
+        # Go!
+        desc.set_nsrc(data_q.shape[1])
+        op.send(desc, 0, 1, 0, 1, data_q)
+        fh.close()
+        
+        self.assertEqual(os.path.getsize('test_tbn.dat'), \
+                        1048*data_q.shape[0]*data_q.shape[1])
     def test_write_drx(self):
-         desc = HeaderInfo()
-         desc.set_chan0(1)
-         desc.set_decimation(10)
-
-         fh = open('test_drx.dat', 'wb')
-         op = DiskWriter('drx', fh)
-
-         # Reorder as packets, beams, time
-         data = self.s0.reshape(4096,4,-1)
-         data = data.transpose(2,1,0).copy()
-         # Convert to ci4 for DRX
-         data_q = bf.ndarray(shape=data.shape, dtype='ci4')
-         quantize(data, data_q)
-
-         # Go!
-         desc.set_nsrc(data_q.shape[1])
-         op.send(desc, 0, 1, 0, 1, data_q)
-         fh.close()
-
-         self.assertEqual(os.path.getsize('test_drx.dat'), \
-                          4128*data_q.shape[0]*data_q.shape[1])
-         os.unlink('test_drx.dat')
+        desc = HeaderInfo()
+        desc.set_chan0(1)
+        desc.set_decimation(10)
+        
+        fh = self._open('test_drx.dat', 'wb')
+        op = DiskWriter('drx', fh)
+        
+        # Reorder as packets, beams, time
+        data = self.s0.reshape(4096,4,-1)
+        data = data.transpose(2,1,0).copy()
+        # Convert to ci4 for DRX
+        data_q = bf.ndarray(shape=data.shape, dtype='ci4')
+        quantize(data, data_q)
+        
+        # Go!
+        desc.set_nsrc(data_q.shape[1])
+        op.send(desc, 0, 1, 0, 1, data_q)
+        fh.close()
+        
+        self.assertEqual(os.path.getsize('test_drx.dat'), \
+                        4128*data_q.shape[0]*data_q.shape[1])
+    def tearDown(self):
+        for filename in self._cache:
+            os.unlink(filename)
