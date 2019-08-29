@@ -44,9 +44,9 @@ typedef int (*BFpacketcapture_cor_sequence_callback)(BFoffset, BFoffset, int, in
 typedef int (*BFpacketcapture_vdif_sequence_callback)(BFoffset, BFoffset, int, int, int,
                                                      int, int, int, void const**, size_t*);
 typedef int (*BFpacketcapture_tbn_sequence_callback)(BFoffset, BFoffset, int, int, 
-                                                     void const**, size_t*);
+                                                     int, void const**, size_t*);
 typedef int (*BFpacketcapture_drx_sequence_callback)(BFoffset, BFoffset, int, int, int, 
-                                                     void const**, size_t*);
+                                                     int, void const**, size_t*);
 
 typedef struct BFpacketcapture_callback_impl* BFpacketcapture_callback;
 

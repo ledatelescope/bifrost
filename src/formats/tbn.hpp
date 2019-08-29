@@ -42,7 +42,32 @@ struct tbn_hdr_type {
 	uint64_t time_tag;
 };
 
+class TBNCache {
+    uint64_t _timestamp_last = 0;
+    int      _pid_last = -1000;
+    uint16_t _decimation = 1;
+    bool     _active = false;
+public:
+    TBNCache() {}
+    inline uint16_t get_decimation() { return _decimation; }
+    inline bool update(int      packet_id,
+                       uint64_t timestamp) {
+        if( !_active ) {
+            if( packet_id == _pid_last ) {
+                _decimation = ((timestamp - _timestamp_last) / 512);
+                _active = true;
+            } else if( _pid_last == -1000 ) {
+                _pid_last = packet_id;
+                _timestamp_last = timestamp;
+            }
+        }
+        return _active;
+    }
+};
+
 class TBNDecoder : virtual public PacketDecoder {
+    TBNCache* _cache;
+    
     inline bool valid_packet(const PacketDesc* pkt) const {
 	    return (pkt->sync       == 0x5CDEC0DE &&
 	            pkt->src        >= 0 &&
@@ -52,7 +77,10 @@ class TBNDecoder : virtual public PacketDecoder {
                 pkt->valid_mode == 0);
     }
 public:
-    TBNDecoder(int nsrc, int src0) : PacketDecoder(nsrc, src0) {}
+    TBNDecoder(int nsrc, int src0)
+      : PacketDecoder(nsrc, src0) {
+        _cache = new TBNCache();
+    }
     inline bool operator()(const uint8_t* pkt_ptr,
 	                       int            pkt_size,
 	                       PacketDesc*    pkt) const {
@@ -64,16 +92,20 @@ public:
 	    int                 pld_size = pkt_size - sizeof(tbn_hdr_type);
 	    pkt->sync         = pkt_hdr->sync_word;
 	    pkt->time_tag     = be64toh(pkt_hdr->time_tag);
-	    pkt->seq          = pkt->time_tag / 1960 / 512;
 	    pkt->nsrc         = _nsrc;
 	    pkt->src          = (be16toh(pkt_hdr->tbn_id) & 1023) - 1 - _src0;
 	    pkt->tuning       = be32toh(pkt_hdr->tuning_word);
-	    pkt->decimation   = 1960;
 	    pkt->valid_mode   = (be16toh(pkt_hdr->tbn_id) >> 15) & 1;
 	    pkt->gain         = (be16toh(pkt_hdr->gain));
 	    pkt->payload_size = pld_size;
 	    pkt->payload_ptr  = pkt_pld;
-	    return this->valid_packet(pkt);
+        bool valid        = this->valid_packet(pkt);
+        if( valid ) {
+            valid &= _cache->update(pkt->src, pkt->time_tag);
+            pkt->decimation = _cache->get_decimation();
+            pkt->seq        = pkt->time_tag / pkt->decimation / 512;
+        }
+	    return valid;
     }
 };
 

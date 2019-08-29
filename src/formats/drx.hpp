@@ -67,6 +67,9 @@ public:
 	    int pkt_id        = pkt_hdr->frame_count_word & 0xFF;
 	    pkt->beam         = (pkt_id & 0x7) - 1;
 	    int pkt_tune      = ((pkt_id >> 3) & 0x7) - 1;
+        if( _nsrc == 2 ) {
+            pkt_tune = 0;
+        }
 	    int pkt_pol       = ((pkt_id >> 7) & 0x1);
 	    pkt_id            = (pkt_tune << 1) | pkt_pol;
 	    pkt->sync         = pkt_hdr->sync_word;
