@@ -109,6 +109,10 @@ ifndef NOCUDA
   LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt
 endif
 
+ifndef NOMAPCACHE
+  CPPFLAGS  += -DBF_MAPCACHE_ENABLED=1
+endif
+
 ifndef ANY_ARCH
   CXXFLAGS  += -march=native
   NVCCFLAGS += -Xcompiler "-march=native"

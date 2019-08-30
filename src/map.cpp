@@ -398,6 +398,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	return BF_STATUS_SUCCESS;
 }
 
+#if BF_MAPCACHE_ENABLED
 class DiskCacheMgr {
 	static constexpr const char* _cachedir = "/dev/shm/bifrost_cache/";
 	std::string                  _vinfofile = std::string(_cachedir)+"map.ver";
@@ -621,6 +622,7 @@ public:
         _loaded = false;
     }
 };
+#endif
 
 BFstatus bfMap(int                  ndim,
                long const*          shape,
@@ -695,7 +697,9 @@ BFstatus bfMap(int                  ndim,
 	}
 	std::string cache_key = cache_key_ss.str();
 	
-	DiskCacheMgr::get().load(&kernel_cache);
+#if BF_MAPCACHE_ENABLED
+    DiskCacheMgr::get().load(&kernel_cache);
+#endif
 	
 	if( !kernel_cache.contains(cache_key) ) {
 		std::string ptx;
@@ -724,7 +728,9 @@ BFstatus bfMap(int                  ndim,
 		BF_TRY(kernel.set(kernel_name.c_str(), ptx.c_str()));
 		kernel_cache.insert(cache_key,
 		                    std::make_pair(kernel, basic_indexing_only));
+#if BF_MAPCACHE_ENABLED
 		DiskCacheMgr::get().save(cache_key, kernel_name, ptx, basic_indexing_only);
+#endif
 		//std::cout << "INSERTING INTO CACHE" << std::endl;
 	} else {
 		//std::cout << "FOUND IN CACHE" << std::endl;
@@ -791,6 +797,10 @@ BFstatus bfMap(int                  ndim,
 }
 
 BFstatus bfMapClearCache() {
+#if BF_MAPCACHE_ENABLED
     DiskCacheMgr::get().clear();
     return BF_STATUS_SUCCESS;
+#else
+    return BF_STATUS_UNSUPPORTED;
+#endif
 }

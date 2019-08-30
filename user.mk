@@ -23,6 +23,7 @@ ALIGNMENT ?= 4096 # Memory allocation alignment
 #NODEBUG    = 1 # Disable debugging mode (use this for production releases)
 #TRACE      = 1 # Enable tracing mode (generates annotations for use with nvprof/nvvp)
 #NOCUDA     = 1 # Disable CUDA support
+#NOMAPCACHE = 1 # Disable the map function disk cache
 #ANY_ARCH   = 1 # Disable native architecture compilation
 #CUDA_DEBUG = 1 # Enable CUDA debugging (nvcc -G)
 #NUMA       = 1 # Enable use of numa library for setting affinity of ring memory
