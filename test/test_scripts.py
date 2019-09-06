@@ -35,6 +35,7 @@ import sys
 
 TEST_DIR = os.path.dirname(__file__)
 TOOLS_DIR = os.path.join(TEST_DIR, '..', 'tools')
+TESTBENCH_DIR = os.path.join(TEST_DIR, '..', 'testbench')
 modInfoBuild = imp.find_module('bifrost', [os.path.join(TEST_DIR, '..', 'python')])
 BIFROST_DIR =  os.path.abspath(modInfoBuild[1])
 
@@ -51,7 +52,7 @@ _LINT_RE = re.compile('(?P<module>.*?)\:(?P<line>\d+)\: \[(?P<type>.*?)\] (?P<in
 class ScriptTest(unittest.TestCase):
     def _test_script(self, filename):
         self.assertTrue(os.path.exists(filename))
-        out, err = lint.py_run("%s -E --init-hook='import sys; sys.path=[%s]; sys.path.insert(0, \"%s\")'" % (filename, ",".join(['"%s"' % p for p in sys.path]), os.path.dirname(MODULE_BUILD)), return_std=True)
+        out, err = lint.py_run("%s -E --init-hook='import sys; sys.path=[%s]; sys.path.insert(0, \"%s\")'" % (filename, ",".join(['"%s"' % p for p in sys.path]), os.path.dirname(BIFROST_DIR)), return_std=True)
         out_lines = out.read().split('\n')
         err_lines = err.read().split('\n')
         out.close()
@@ -66,6 +67,7 @@ class ScriptTest(unittest.TestCase):
             if mtch is not None:
                 line_no, type, info = mtch.group('line'), mtch.group('type'), mtch.group('info')
                 self.assertEqual(type, None, "%s:%s - %s" % (os.path.basename(filename), line_no, info))
+                
     def test_getirq(self):
         self._test_script(os.path.join(TOOLS_DIR, 'getirq.py'))
     def test_getsiblings(self):
@@ -82,5 +84,24 @@ class ScriptTest(unittest.TestCase):
         self._test_script(os.path.join(TOOLS_DIR, 'pipeline2dot.py'))
     def test_setirq(self):
         self._test_script(os.path.join(TOOLS_DIR, 'setirq.py'))
-
-
+        
+    def test_download_breakthrough_listen_data(self):
+        self._test_script(os.path.join(TESTBENCH_DIR, 'download_breakthrough_listen_data.py')
+    def test_generate_test_data(self):
+        self._test_script(os.path.join(TESTBENCH_DIR, 'generate_test_data.py')
+    def test_gpuspec_simple(self):
+        self._test_script(os.path.join(TESTBENCH_DIR, 'gpuspec_simple.py')
+    def test_test_fdmt(self):
+        self._test_script(os.path.join(TESTBENCH_DIR, 'test_fdmt.py')
+    def test_test_fft_detect(self):
+        self._test_script(os.path.join(TESTBENCH_DIR, 'test_fft_detect.py')
+    def test_test_fft(self):
+        self._test_script(os.path.join(TESTBENCH_DIR, 'test_fft.py')
+    def test_test_file_read_write(self):
+        self._test_script(os.path.join(TESTBENCH_DIR, ' test_file_read_write.py')
+    def test_test_guppi(self):
+        self._test_script(os.path.join(TESTBENCH_DIR, 'test_guppi.py')
+    def test_test_guppi_reader(self):
+        self._test_script(os.path.join(TESTBENCH_DIR, 'test_guppi_reader.py')
+    def test_your_first_block(self):
+        self._test_script(os.path.join(TESTBENCH_DIR, 'your_first_block.py')
