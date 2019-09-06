@@ -50,7 +50,7 @@ from bifrost.proclog import load_by_pid
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
 
 
-def _getTransmitReceive():
+def get_transmit_receive():
     """
     Read in the /dev/bifrost ProcLog data and return block-level information 
     about udp* blocks.
@@ -89,7 +89,7 @@ def _getTransmitReceive():
     return blockList
 
 
-def _getCommandLine(pid):
+def get_command_line(pid):
     """
     Given a PID, use the /proc interface to get the full command line for 
     the process.  Return an empty string if the PID doesn't have an entry in
@@ -108,7 +108,7 @@ def _getCommandLine(pid):
     return cmd
 
 
-def _getStatistics(blockList, prevList):
+def get_statistics(blockList, prevList):
     """
     Given a list of running blocks and a previous version of that, compute 
     basic statistics for the UDP blocks.
@@ -173,7 +173,7 @@ def _getStatistics(blockList, prevList):
             output[pid] = {}
             output[pid]['rx' ] = {'good':0, 'missing':0, 'invalid':0, 'late':0, 'drate':0.0, 'prate':0.0, 'gloss':0.0, 'closs':0.0}
             output[pid]['tx' ] = {'good':0, 'missing':0, 'invalid':0, 'late':0, 'drate':0.0, 'prate':0.0, 'gloss':0.0, 'closs':0.0}
-            output[pid]['cmd'] = _getCommandLine(pid)
+            output[pid]['cmd'] = get_command_line(pid)
         ### Actual data
         output[pid][type]['good'   ] += curr['good'   ]
         output[pid][type]['missing'] += curr['missing']
@@ -188,7 +188,7 @@ def _getStatistics(blockList, prevList):
     return output
 
 
-def _setUnits(value):
+def _set_units(value):
     """
     Convert a value in bytes so a human-readable format with units.
     """
@@ -207,7 +207,7 @@ def _setUnits(value):
     return value, unit
 
 
-def _addLine(screen, y, x, string, *args):
+def _add_line(screen, y, x, string, *args):
     """
     Helper function for curses to add a line, clear the line to the end of 
     the screen, and update the line number counter.
@@ -224,7 +224,7 @@ _REDRAW_INTERVAL_SEC = 0.2
 def main(args):
     hostname = socket.gethostname()
 
-    blockList = _getTransmitReceive()
+    blockList = get_transmit_receive()
     order = sorted([blockList[key]['pid'] for key in blockList])
     order = set(order)
     nPID = len(order)
@@ -274,7 +274,7 @@ def main(args):
                 pidDirs.sort()
 
                 ## Load the data
-                blockList = _getTransmitReceive()
+                blockList = get_transmit_receive()
 
                 ## Sort
                 order = sorted([blockList[key]['pid'] for key in blockList])
@@ -282,7 +282,7 @@ def main(args):
                 nPID = len(order)
 
                 ## Stats
-                stats = _getStatistics(blockList, prevList)
+                stats = get_statistics(blockList, prevList)
 
                 ## Mark
                 tLastPoll = time.time()
@@ -304,13 +304,13 @@ def main(args):
             output += ' '*(size[1]-len(output)-len(os.path.basename(__file__))-1)
             output += os.path.basename(__file__)+' '
             output += '\n'
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - header
-            k = _addLine(scr, k, 0, ' ', std)
+            k = _add_line(scr, k, 0, ' ', std)
             output = '%6s        %9s        %6s        %9s        %6s' % ('PID', 'RX Rate', 'RX #/s', 'TX Rate', 'TX #/s')
             output += ' '*(size[1]-len(output))
             output += '\n'
-            k = _addLine(scr, k, 0, output, rev)
+            k = _add_line(scr, k, 0, output, rev)
             ### Data
             for o in order:
                 curr = stats[o]
@@ -318,10 +318,10 @@ def main(args):
                     act = curr
 
                 drateR, prateR = curr['rx']['drate'], curr['rx']['prate']
-                drateR, drateuR = _setUnits(drateR)
+                drateR, drateuR = _set_units(drateR)
 
                 drateT, prateT = curr['tx']['drate'], curr['tx']['prate']
-                drateT, drateuT = _setUnits(drateT)
+                drateT, drateuT = _set_units(drateT)
 
 
                 output = '%6i        %7.2f%2s        %6i        %7.2f%2s        %6i\n' % (o, drateR, drateuR, prateR, drateT, drateuT, prateT)
@@ -332,34 +332,34 @@ def main(args):
                         sty = std
                 except IndexError:
                     sty = std
-                k = _addLine(scr, k, 0, output, sty)
+                k = _add_line(scr, k, 0, output, sty)
 
                 if k > size[0]-9:
                     break
             while k < size[0]-9:
                 output = ' '
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
 
             ### Details of selected
             output = 'Details - %8s     %19s           %19s' % (stats['updated'].strftime("%H:%M:%S"), 'RX', 'TX')
             output += ' '*(size[1]-len(output))
             output += '\n'
-            k = _addLine(scr, k, 0, output, rev)
+            k = _add_line(scr, k, 0, output, rev)
             if act is not None:
                 output = 'Good:                  %18iB           %18iB\n' % (act['rx']['good'   ], act['tx']['good'   ])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Missing:               %18iB           %18iB\n' % (act['rx']['missing'], act['tx']['missing'])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Invalid:               %18iB           %18iB\n' % (act['rx']['invalid'], act['tx']['invalid'])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Late:                  %18iB           %18iB\n' % (act['rx']['late'   ], act['tx']['late'   ])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Global Missing:        %18.2f%%           %18.2f%%\n' % (act['rx']['gloss'  ], act['tx']['gloss'  ])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Current Missing:       %18.2f%%           %18.2f%%\n' % (act['rx']['closs'  ], act['tx']['closs'  ])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Command:               %s' % act['cmd']
-                k = _addLine(scr, k, 0, output[:size[1]], std)
+                k = _add_line(scr, k, 0, output[:size[1]], std)
 
             ### Clear to the bottom
             scr.clrtobot()

@@ -35,7 +35,7 @@ import glob
 import argparse
 
 
-def _readSiblings():
+def read_siblings():
     cpus = glob.glob('/sys/devices/system/cpu/cpu*/topology/thread_siblings_list')
 
     siblings = {}
@@ -54,7 +54,7 @@ def _readSiblings():
 
 
 def main(args):
-    siblings = _readSiblings()
+    siblings = read_siblings()
 
     if len(args.core) == 0:
         for cpu in sorted(siblings.keys()):

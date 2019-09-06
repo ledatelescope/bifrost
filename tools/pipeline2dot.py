@@ -42,7 +42,7 @@ from bifrost.proclog import load_by_pid
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
 
 
-def _getProcessDetails(pid):
+def get_process_details(pid):
     """
     Use a call to 'ps' to get details about the specified PID.  These details
     include:
@@ -75,7 +75,7 @@ def _getProcessDetails(pid):
     return data
 
 
-def _getCommandLine(pid):
+def get_command_line(pid):
     """
     Given a PID, use the /proc interface to get the full command line for 
     the process.  Return an empty string if the PID doesn't have an entry in
@@ -94,7 +94,7 @@ def _getCommandLine(pid):
     return cmd
 
 
-def _getDataFlows(blocks):
+def get_data_flows(blocks):
     """
     Given a block dictonary from bifrost.proclog.load_by_pid(), return a list
     of chains that give the data flow.
@@ -233,8 +233,8 @@ def main(args):
 
         contents = load_by_pid(pid)
 
-        details = _getProcessDetails(pid)
-        cmd = _getCommandLine(pid)
+        details = get_process_details(pid)
+        cmd = get_command_line(pid)
 
         if cmd == '' and details['user'] == '':
             continue
@@ -245,7 +245,7 @@ def main(args):
             lut[block] = chr(i+97)
 
         # Find chains of linked blocks
-        sources, sinks, chains, associations = _getDataFlows(contents)
+        sources, sinks, chains, associations = get_data_flows(contents)
 
         # Add in network sources, if needed
         i = len(contents.keys())

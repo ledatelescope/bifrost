@@ -39,7 +39,7 @@ os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
 
 
-def _getBestSize(value):
+def get_best_size(value):
     """
     Give a size in bytes, convert it into a nice, human-readable value 
     with units.
@@ -202,7 +202,7 @@ def main(args):
     for node in sorted(nodeCountsFiles.keys()):
         print("  NUMA Node %i:" % node)
         print("    Count: %i" % nodeCountsFiles[node])
-        print("    Size: %.3f %s" % _getBestSize(nodeSizesFiles[node]))
+        print("    Size: %.3f %s" % get_best_size(nodeSizesFiles[node]))
     print("Anonymous Memory Areas:")
     print("  Total: %i" % len(areas))
     print("  Heap: %i" % len([addr for addr in areas if areas[addr]['heap']]))
@@ -212,7 +212,7 @@ def main(args):
     for node in sorted(nodeCountsAreas.keys()):
         print("  NUMA Node %i:" % node)
         print("    Count: %i" % nodeCountsAreas[node])
-        print("    Size: %.3f %s" % _getBestSize(nodeSizesAreas[node]))
+        print("    Size: %.3f %s" % get_best_size(nodeSizesAreas[node]))
     print(" ")
     
     print("Ring Mappings:")
@@ -223,15 +223,15 @@ def main(args):
         except KeyError:
             print("    Unknown")
             continue
-        sv, su = _getBestSize(area['size'])
+        sv, su = get_best_size(area['size'])
         diff = abs(area['size'] - rings[ring]['stride'])
         status = ''
         if diff > 0.5*hugeSize:
             status = '???'
-        dv, du = _getBestSize(diff)
+        dv, du = get_best_size(diff)
         sf = float(area['swapsize'])/float(area['size'])
         
-        print("    Size: %.3f %s" % _getBestSize(rings[ring]['stride']))
+        print("    Size: %.3f %s" % get_best_size(rings[ring]['stride']))
         print("    Area: %s %s" % (rings[ring]['addr'], status))
         print("      Size: %.3f %s%s" % (sv, su, ' (within %.3f %s)' % (dv, du) if diff != 0 else ''))
         print("      Node: %i" % area['node'])
@@ -247,11 +247,11 @@ def main(args):
     print(" ")
     
     print("Other Non-Ring Areas:")
-    print("  Size: %.3f %s" % _getBestSize(sum([areas[area]['size'] for area in areas if area not in matched])))
+    print("  Size: %.3f %s" % get_best_size(sum([areas[area]['size'] for area in areas if area not in matched])))
     print(" ")
     
     print("File Backed Areas:")
-    print("  Size: %.3f %s" % _getBestSize(sum([files[area]['size'] for area in files])))
+    print("  Size: %.3f %s" % get_best_size(sum([files[area]['size'] for area in files])))
 
 
 if __name__ == "__main__":

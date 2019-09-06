@@ -43,7 +43,7 @@ from bifrost.proclog import load_by_pid
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
 
 
-def _getProcessDetails(pid):
+def get_process_details(pid):
     """
     Use a call to 'ps' to get details about the specified PID.  These details
     include:
@@ -76,7 +76,7 @@ def _getProcessDetails(pid):
     return data
 
 
-def _getCommandLine(pid):
+def get_command_line(pid):
     """
     Given a PID, use the /proc interface to get the full command line for 
     the process.  Return an empty string if the PID doesn't have an entry in
@@ -95,7 +95,7 @@ def _getCommandLine(pid):
     return cmd
 
 
-def _getBestSize(value):
+def get_best_size(value):
     """
     Give a size in bytes, convert it into a nice, human-readable value 
     with units.
@@ -126,8 +126,8 @@ def main(args):
         pid = int(os.path.basename(pidDir), 10)
         contents = load_by_pid(pid)
 
-        details = _getProcessDetails(pid)
-        cmd = _getCommandLine(pid)
+        details = get_process_details(pid)
+        cmd = get_command_line(pid)
 
         if cmd == '' and details['user'] == '':
             continue
@@ -161,7 +161,7 @@ def main(args):
         for i,ring in enumerate(rings):
             try:
                 dtls = ring_details[ring]
-                sz, un = _getBestSize(dtls['stride']*dtls['nringlet'])
+                sz, un = get_best_size(dtls['stride']*dtls['nringlet'])
                 print("    %i: %s on %s of size %.1f %s" % (i, ring, dtls['space'], sz, un))
             except KeyError:
                 print("    %i: %s" % (i, ring))

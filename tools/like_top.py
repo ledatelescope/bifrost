@@ -50,7 +50,7 @@ from bifrost.proclog import load_by_pid
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
 
 
-def _getLoadAverage():
+def get_load_average():
     """
     Query the /proc/loadavg interface to get the 1, 5, and 10 minutes load 
     averages.  The contents of this file is returned as a dictionary.
@@ -76,7 +76,7 @@ def _getLoadAverage():
 
 global _CPU_STATE
 _CPU_STATE = {}
-def _getProcessorUsage():
+def get_processor_usage():
     """
     Read in the /proc/stat file to return a dictionary of the load on each \
     CPU.  This dictionary also includes an 'avg' entry that gives the average
@@ -132,7 +132,7 @@ def _getProcessorUsage():
     return data
 
 
-def _getMemoryAndSwapUsage():
+def get_memory_swap_usage():
     """
     Read in the /proc/meminfo and return a dictionary of the memory and swap 
     usage for all processes.
@@ -169,7 +169,7 @@ def _getMemoryAndSwapUsage():
     return data
 
 
-def _getGpuMemoryUsage():
+def get_gpu_memory_usage():
     """
     Grab nvidia-smi output and return a dictionary of the memory usage.
     """
@@ -206,7 +206,7 @@ def _getGpuMemoryUsage():
     return data
 
 
-def _getCommandLine(pid):
+def get_command_line(pid):
     """
     Given a PID, use the /proc interface to get the full command line for 
     the process.  Return an empty string if the PID doesn't have an entry in
@@ -224,7 +224,7 @@ def _getCommandLine(pid):
     return cmd
 
 
-def _addLine(screen, y, x, string, *args):
+def _add_line(screen, y, x, string, *args):
     """
     Helper function for curses to add a line, clear the line to the end of 
     the screen, and update the line number counter.
@@ -294,10 +294,10 @@ def main(args):
             ## Do we need to poll the system again?
             if t-tLastPoll > poll_interval:
                 ## Load in the various bits form /proc that we need
-                load = _getLoadAverage()
-                cpu  = _getProcessorUsage()
-                mem  = _getMemoryAndSwapUsage()
-                gpu  = _getGpuMemoryUsage()
+                load = get_load_average()
+                cpu  = get_processor_usage()
+                mem  = get_memory_swap_usage()
+                gpu  = get_gpu_memory_usage()
                 
                 ## Determine if we have GPU data to display
                 if gpu['devCount'] > 0:
@@ -313,7 +313,7 @@ def main(args):
                     pid = int(os.path.basename(pidDir), 10)
                     contents = load_by_pid(pid)
 
-                    cmd = _getCommandLine(pid)
+                    cmd = get_command_line(pid)
                     if cmd == '':
                         continue
 
@@ -344,20 +344,20 @@ def main(args):
             k = 0
             ### General - load average
             output = '%s - %s - load average: %s, %s, %s\n' % (os.path.basename(__file__), hostname, load['1min'], load['5min'], load['10min'])
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - process counts
             output = 'Processes: %s total, %s running\n' % (load['procTotal'], load['procRunning'])
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - average processor usage
             c = cpu['avg']
             output = 'CPU(s):%5.1f%%us,%5.1f%%sy,%5.1f%%ni,%5.1f%%id,%5.1f%%wa,%5.1f%%hi,%5.1f%%si,%5.1f%%st\n' % (100.0*c['user'], 100.0*c['sys'], 100.0*c['nice'], 100.0*c['idle'], 100.0*c['wait'], 100.0*c['irq'], 100.0*c['sirq'], 100.0*c['steal'])
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - memory
             output = 'Mem:    %9ik total, %9ik used, %9ik free, %9ik buffers\n' % (mem['memTotal'], mem['memUsed'], mem['memFree'], mem['buffers'])
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - swap
             output = 'Swap:   %9ik total, %9ik used, %9ik free, %9ik cached\n' % (mem['swapTotal'], mem['swapUsed'], mem['swapFree'], mem['cached'])
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - GPU, if avaliable
             if display_gpu:
                 if gpu['pwrLimit'] != 0.0:
@@ -367,14 +367,14 @@ def main(args):
                         output = 'GPU(s): %9ik total, %9ik used, %9ik free, %.0f/%.0fW\n' % (gpu['memTotal'], gpu['memUsed'], gpu['memFree'], gpu['pwrDraw'], gpu['pwrLimit'])
                 else:
                     output = 'GPU(s): %9ik total, %9ik used, %9ik free, %i device(s)\n' % (gpu['memTotal'], gpu['memUsed'], gpu['memFree'], gpu['devCount'])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
             ### Header
-            k = _addLine(scr, k, 0, ' ', std)
+            k = _add_line(scr, k, 0, ' ', std)
             output = '%6s  %15s  %4s  %5s  %7s  %7s  %7s  %7s  Cmd' % ('PID', 'Block', 'Core', '%CPU', 'Total', 'Acquire', 'Process', 'Reserve')
             csize = size[1]-len(output)
             output += ' '*csize
             output += '\n'
-            k = _addLine(scr, k, 0, output, rev)
+            k = _add_line(scr, k, 0, output, rev)
             ### Data
             for o in order:
                 d = blockList[o]
@@ -384,7 +384,7 @@ def main(args):
                 except KeyError:
                     c = '%5s' % ' '
                 output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'][:15], d['core'], c, d['total'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 if k >= size[0] - 1:
                     break
             ### Clear to the bottom
