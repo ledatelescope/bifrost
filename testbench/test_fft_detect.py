@@ -4,6 +4,9 @@
 This testbench initializes a simple bifrost pipeline that reads from a binary file,
 takes the FFT of the data (on the GPU no less), and then writes it to a new file. 
 """
+
+from __future__ import print_function
+
 import os
 import glob
 import numpy as np
@@ -14,7 +17,6 @@ from bifrost.blocks import CopyBlock, DetectBlock
 from scipy.fftpack import fft as scipy_fft
 
 if __name__ == "__main__":
-
     # FFT Parameters
     window_len = 2**18
     n_window   = 32
@@ -31,13 +33,13 @@ if __name__ == "__main__":
 
     # Run pipeline
     pipeline = bfp.get_default_pipeline()
-    print pipeline.dot_graph()
+    print(pipeline.dot_graph())
     pipeline.run()
 
     # Check the output files match the input files
     for filename in filenames:
         try:
-            print filename
+            print(filename)
 
             # Load the input data, do a windowed FFT
             indata  = np.fromfile(filename, dtype='complex64')
@@ -48,15 +50,16 @@ if __name__ == "__main__":
             outdata = outdata.reshape(n_window, window_len)
 
             assert np.allclose(indata, outdata, atol=0.1)
-            print "    Input data and output data match."
+            print("    Input data and output data match.")
         except AssertionError:
-            print "    Error: input and output data do not match."
+            print("    Error: input and output data do not match.")
             for ii in range(len(indata)):
-                print "Window %02i match: %s" % (ii, np.allclose(indata[ii], outdata[ii], atol=0.1))
-            print indata[0, 0:10]
-            print outdata[0, 0:10]
-            print np.max(indata - outdata)
+                print("Window %02i match: %s" % (ii, np.allclose(indata[ii], outdata[ii], atol=0.1)))
+            print(indata[0, 0:10])
+            print(outdata[0, 0:10])
+            print(np.max(indata - outdata))
         finally:
-            print "    Cleaning up..."
+            print("    Cleaning up...")
             #os.remove(filename + '.out')
-            print "    Done."
+            print("    Done.")
+            

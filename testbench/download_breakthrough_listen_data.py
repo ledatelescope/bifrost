@@ -3,6 +3,9 @@
 
 Generate test data that can be used with a testbench
 """
+
+from __future__ import print_function
+
 import os
 import numpy as np
 
@@ -19,7 +22,6 @@ pulsar_filelist =[
 voyager_filelist = ['https://storage.googleapis.com/gbt_fil/voyager_f1032192_t300_v2.fil']
 
 if __name__ == "__main__":
-
     cont = raw_input("This will download approximately 5GB of data. Type Y to continue: ")
 
     if not cont.lower() == 'y':
@@ -37,19 +39,18 @@ if __name__ == "__main__":
     if not os.path.exists('testdata/guppi_raw'):
         os.mkdir('testdata/guppi_raw')    
 
-    print "Downloading Breakthough Listen raw data"
+    print("Downloading Breakthough Listen raw data")
     for filename in raw_filelist:
         bname = os.path.basename(filename)
         os.system("curl -O %s; mv %s testdata/guppi_raw/" % (filename, bname))
 
-    print "Downloading Breakthough Listen pulsar data"
+    print("Downloading Breakthough Listen pulsar data")
     for filename in pulsar_filelist:
         bname = os.path.basename(filename)
         os.system("curl -O %s; mv %s testdata/pulsars/" % (filename, bname))
 
-    print "Downloading Breakthough Listen Voyager data"
+    print("Downloading Breakthough Listen Voyager data")
     for filename in voyager_filelist:
         bname = os.path.basename(filename)
         os.system("curl -O %s; mv %s testdata/" % (filename, bname))
-
-
+        

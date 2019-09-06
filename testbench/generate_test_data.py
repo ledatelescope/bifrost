@@ -3,15 +3,17 @@
 
 Generate test data that can be used with a testbench
 """
+
+from __future__ import print_function
+
 import os
 import numpy as np
 
 if __name__ == "__main__":
-
     if not os.path.exists('testdata'):
         os.mkdir('testdata')
 
-    print "Generating sine wave dataset"
+    print("Generating sine wave dataset")
     for ii in range(32):
         # Generate test vector and save to file
         window_len = 2**16     
@@ -21,7 +23,7 @@ if __name__ == "__main__":
         s = np.sin((ii+1)* w * t, dtype='complex64')
         s.tofile('testdata/sin_data_%02i.bin' % ii)
 
-    print "Generating noisy dataset"
+    print("Generating noisy dataset")
     for ii in range(8):
         window_len = 2**18
         n_window   = 32
@@ -33,4 +35,4 @@ if __name__ == "__main__":
 
         d = noise + s0 + s1 + s2
         d.tofile('testdata/noisy_data_%02i.bin' % ii)
-
+        

@@ -26,6 +26,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 import bifrost as bf
 from argparse import ArgumentParser
 
@@ -40,7 +42,7 @@ if __name__ == "__main__":
                         help='number of integrations per dump')
     args = parser.parse_args()
 
-    print "Building pipeline"
+    print("Building pipeline")
     bc = bf.BlockChainer()
     bc.blocks.read_guppi_raw(args.filenames, core=0)
     bc.blocks.copy(space='cuda', core=1)
@@ -53,7 +55,8 @@ if __name__ == "__main__":
         bc.blocks.accumulate(args.n_int)
     bc.blocks.copy(space='cuda_host', core=2)
     bc.blocks.write_sigproc(core=3)
-    print "Running pipeline"
+    print("Running pipeline")
     bf.get_default_pipeline().shutdown_on_signals()
     bf.get_default_pipeline().run()
-    print "All done"
+    print("All done")
+    
