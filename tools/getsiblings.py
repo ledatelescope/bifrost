@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2017, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2017, The University of New Mexico. All rights reserved.
@@ -28,52 +27,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 import os
 import sys
 import glob
-import getopt
-
-
-def usage(exitCode=None):
-    print """%s - Get sibling cores on HT systems
-
-Usage: %s [OPTIONS] [core [core [...]]]
-
-Options:
--h, --help                  Display this help information
-""" % (os.path.basename(__file__), os.path.basename(__file__))
-
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    # Command line flags - default values
-    config['args'] = []
-
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "h", ["help",])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        else:
-            assert False
-
-    # Add in arguments
-    config['args'] = args
-
-    # Return configuration
-    return config
+import argparse
 
 
 def _readSiblings():
@@ -95,23 +54,27 @@ def _readSiblings():
 
 
 def main(args):
-    config = parseOptions(args)
-
     siblings = _readSiblings()
 
-    if len(config['args']) == 0:
+    if len(args.core) == 0:
         for cpu in sorted(siblings.keys()):
-            print "%i: %s" % (cpu, str(siblings[cpu]))
+            print("%i: %s" % (cpu, str(siblings[cpu])))
     else:
-        for cpu in config['args']:
-            cpu = int(cpu, 10)
+        for cpu in args.core:
             try:
                 data = str(siblings[cpu])
             except KeyError:
                 data = "not found"
-            print "%i: %s" % (cpu, str(siblings[cpu]))
+            print("%i: %s" % (cpu, str(siblings[cpu])))
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
-
+    parser = argparse.ArgumentParser(
+        description='Get sibling cores on HT systems',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('core', type=int, nargs='*',
+                        help='core to query')
+    args = parser.parse_args()
+    main(args)
+    

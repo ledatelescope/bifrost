@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2017, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2017, The University of New Mexico. All rights reserved.
@@ -28,13 +27,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 import os
 import sys
 import glob
 import time
 import curses
-import getopt
 import socket
+import argparse
 import traceback
 import subprocess
 try:
@@ -47,46 +48,6 @@ from bifrost.proclog import load_by_pid
 
 
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
-
-def usage(exitCode=None):
-    print """%s - Display perfomance of different blocks in various bifrost processes
-
-Usage: %s [OPTIONS]
-
-Options:
--h, --help                  Display this help information
-""" % (os.path.basename(__file__), os.path.basename(__file__))
-
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    # Command line flags - default values
-    config['args'] = []
-
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "h", ["help",])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        else:
-            assert False
-
-    # Add in arguments
-    config['args'] = args
-
-    # Return configuration
-    return config
 
 
 def _getLoadAverage():
@@ -278,8 +239,6 @@ _REDRAW_INTERVAL_SEC = 0.2
 
 
 def main(args):
-    config = parseOptions(args)
-
     hostname = socket.gethostname()
 
     scr = curses.initscr()
@@ -449,8 +408,8 @@ def main(args):
     # Save the window contents
     contents = ''
     y,x = scr.getmaxyx()
-    for i in xrange(y-1):
-        for j in xrange(x):
+    for i in range(y-1):
+        for j in range(x):
             d = scr.inch(i,j)
             c = d&0xFF
             a = (d>>8)&0xFF
@@ -465,14 +424,19 @@ def main(args):
     # Final reporting
     try:
         ## Error
-        print "%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), traceback.tb_lineno(exc_traceback))
+        print("%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), traceback.tb_lineno(exc_traceback)))
         for line in tbString.split('\n'):
-            print line
+            print(line)
     except NameError:
         ## Last window contents sans attributes
-        print contents
+        print(contents)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='Display perfomance of different blocks of Bifrost pipelines',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    args = parser.parse_args()
+    main(args)
     

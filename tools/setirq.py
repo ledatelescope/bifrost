@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2017, The Bifrost Authors. All rights reserved.
 #
@@ -27,54 +26,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 import os
 import sys
-import getopt
-
-
-def usage(exitCode=None):
-    print """%s - Configure the IRQ bindings for a particular network interface
-
-Usage: %s [OPTIONS] interface cpu0 [cpu1 [...]]
-
-Options:
--h, --help             Display this help information
-""" % (os.path.basname(__file__), os.path.basename(__file__))
-
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseConfig(args):
-    config = {}
-    config['args'] = []
-
-    # Read in and process the command line flags
-    try:
-        opts, arg = getopt.getopt(args, "h", ["help",])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        else:
-            assert False
-
-    # Add in arguments
-    config['args'] = arg
-
-    # Validate
-    if len(config['args']) < 2:
-        raise RuntimeError("Need to specify the device name and at least one CPU to bind to")
-
-    # Return configuration
-    return config
+import argparse
 
 
 def compute_mask(cpu):
@@ -99,17 +55,13 @@ def write_irq_smp_affinity(irq, mask):
 
 
 def main(args):
-    config = parseConfig(args)
-    interface = config['args'][0]
-    cpus = [int(v,10) for v in config['args'][1:]]
-
     fh = open('/proc/interrupts', 'r')
     lines = fh.read()
     fh.close()
 
     irqs = {}
     for line in lines.split('\n'):
-        if line.find(interface) != -1:
+        if line.find(args.interface) != -1:
             fields = line.split()
             irq = int(fields[0][:-1], 10)
             procs = [int(v,10) for v in fields[1:-2]]
@@ -120,18 +72,27 @@ def main(args):
             mi = procs.index(mv)
             irqs[irq] = {'cpu':mi, 'type':type, 'name':name, 'count':mv}
 
-    print "Interface: %s" % interface
-    print "%4s  %16s  %16s  %7s  %7s" % ('IRQ', 'Name', 'Type', 'Old CPU', 'New CPU')  
+    print("Interface: %s" % args.interface)
+    print("%4s  %16s  %16s  %7s  %7s" % ('IRQ', 'Name', 'Type', 'Old CPU', 'New CPU')  )
     for i,irq in enumerate(sorted(irqs.keys())):
         oCPU = irqs[irq]['cpu']
-        nCPU = cpus[i % len(cpus)]
+        nCPU = args.cpu[i % len(args.cpu)]
 
-        print "%4i  %16s  %16s  %7i  %7i" % (irq, irqs[irq]['name'], irqs[irq]['type'], oCPU, nCPU)
+        print("%4i  %16s  %16s  %7i  %7i" % (irq, irqs[irq]['name'], irqs[irq]['type'], oCPU, nCPU))
 
         mask = compute_mask(nCPU)
         write_irq_smp_affinity(irq, mask)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
-
+    parser = argparse.ArgumentParser(
+        description='Configure the IRQ bindings for a particular network interface',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('interface', type=str,
+                        help='interface to configure')
+    parser.add_argument('cpu', type=int, nargs='+',
+                        help='CPU to bind to')
+    args = parser.parse_args()
+    main(args)
+    
