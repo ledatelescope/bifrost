@@ -33,21 +33,15 @@ import re
 import imp
 import sys
 
-currentDir = os.path.abspath(os.getcwd())
-if os.path.exists(os.path.join(currentDir, 'download_test_data.sh')):
-    modInfoBuild = imp.find_module('bifrost', [os.path.join(currentDir, '..', 'python')])
-    MODULE_BUILD =  os.path.abspath(modInfoBuild[1])
-elif os.path.exists(os.path.joni(currentDir, 'user.mk')):
-    modInfoBuild = imp.find_module('bifrost', [os.path.join(currentDir, 'python')])
-    MODULE_BUILD =  os.path.abspath(modInfoBuild[1])
-else:
-    MODULE_BUILD = None
+TEST_DIR = os.path.dirname(__file__)
+TOOLS_DIR = os.path.join(TEST_DIR, '..', 'tools')
+modInfoBuild = imp.find_module('bifrost', [os.path.join(TEST_DIR, '..', 'python')])
+BIFROST_DIR =  os.path.abspath(modInfoBuild[1])
 
 run_scripts_tests = False
 try:
     from pylint import epylint as lint
-    if MODULE_BUILD is not None:
-        run_scripts_tests = True
+    run_scripts_tests = True
 except ImportError:
     pass
 
@@ -73,20 +67,20 @@ class ScriptTest(unittest.TestCase):
                 line_no, type, info = mtch.group('line'), mtch.group('type'), mtch.group('info')
                 self.assertEqual(type, None, "%s:%s - %s" % (os.path.basename(filename), line_no, info))
     def test_getirq(self):
-        self._test_script(os.path.join(MODULE_BUILD, '..', '..', 'tools', 'getirq.py'))
+        self._test_script(os.path.join(TOOLS_DIR, 'getirq.py'))
     def test_getsiblings(self):
-        self._test_script(os.path.join(MODULE_BUILD, '..', '..', 'tools', 'getsiblings.py'))
+        self._test_script(os.path.join(TOOLS_DIR, 'getsiblings.py'))
     def test_like_bmon(self):
-        self._test_script(os.path.join(MODULE_BUILD, '..', '..', 'tools', 'like_bmon.py'))
+        self._test_script(os.path.join(TOOLS_DIR, 'like_bmon.py'))
     def test_like_pmap(self):
-        self._test_script(os.path.join(MODULE_BUILD, '..', '..', 'tools', 'like_pmap.py'))
+        self._test_script(os.path.join(TOOLS_DIR, 'like_pmap.py'))
     def test_like_ps(self):
-        self._test_script(os.path.join(MODULE_BUILD, '..', '..', 'tools', 'like_ps.py'))
+        self._test_script(os.path.join(TOOLS_DIR, 'like_ps.py'))
     def test_like_top(self):
-        self._test_script(os.path.join(MODULE_BUILD, '..', '..', 'tools', 'like_top.py'))
+        self._test_script(os.path.join(TOOLS_DIR, 'like_top.py'))
     def test_pipeline2dot(self):
-        self._test_script(os.path.join(MODULE_BUILD, '..', '..', 'tools', 'pipeline2dot.py'))
+        self._test_script(os.path.join(TOOLS_DIR, 'pipeline2dot.py'))
     def test_setirq(self):
-        self._test_script(os.path.join(MODULE_BUILD, '..', '..', 'tools', 'setirq.py'))
+        self._test_script(os.path.join(TOOLS_DIR, 'setirq.py'))
 
 
