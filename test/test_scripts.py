@@ -59,8 +59,9 @@ class ScriptTest(unittest.TestCase):
         err.close()
         
         for line in out_lines:
-            print line
             if line.find("Module 'numpy") != -1:
+                continue
+            if line.find("module 'scipy.fftpack") != -1:
                 continue
                 
             mtch = _LINT_RE.match(line)
@@ -86,22 +87,22 @@ class ScriptTest(unittest.TestCase):
         self._test_script(os.path.join(TOOLS_DIR, 'setirq.py'))
         
     def test_download_breakthrough_listen_data(self):
-        self._test_script(os.path.join(TESTBENCH_DIR, 'download_breakthrough_listen_data.py')
+        self._test_script(os.path.join(TESTBENCH_DIR, 'download_breakthrough_listen_data.py'))
     def test_generate_test_data(self):
-        self._test_script(os.path.join(TESTBENCH_DIR, 'generate_test_data.py')
+        self._test_script(os.path.join(TESTBENCH_DIR, 'generate_test_data.py'))
     def test_gpuspec_simple(self):
-        self._test_script(os.path.join(TESTBENCH_DIR, 'gpuspec_simple.py')
+        self._test_script(os.path.join(TESTBENCH_DIR, 'gpuspec_simple.py'))
     def test_test_fdmt(self):
-        self._test_script(os.path.join(TESTBENCH_DIR, 'test_fdmt.py')
+        self._test_script(os.path.join(TESTBENCH_DIR, 'test_fdmt.py'))
     def test_test_fft_detect(self):
-        self._test_script(os.path.join(TESTBENCH_DIR, 'test_fft_detect.py')
+        self._test_script(os.path.join(TESTBENCH_DIR, 'test_fft_detect.py'))
     def test_test_fft(self):
-        self._test_script(os.path.join(TESTBENCH_DIR, 'test_fft.py')
+        self._test_script(os.path.join(TESTBENCH_DIR, 'test_fft.py'))
     def test_test_file_read_write(self):
-        self._test_script(os.path.join(TESTBENCH_DIR, ' test_file_read_write.py')
+        self._test_script(os.path.join(TESTBENCH_DIR, 'test_file_read_write.py'))
     def test_test_guppi(self):
-        self._test_script(os.path.join(TESTBENCH_DIR, 'test_guppi.py')
+        self._test_script(os.path.join(TESTBENCH_DIR, 'test_guppi.py'))
     def test_test_guppi_reader(self):
-        self._test_script(os.path.join(TESTBENCH_DIR, 'test_guppi_reader.py')
+        self._test_script(os.path.join(TESTBENCH_DIR, 'test_guppi_reader.py'))
     def test_your_first_block(self):
-        self._test_script(os.path.join(TESTBENCH_DIR, 'your_first_block.py')
+        self._test_script(os.path.join(TESTBENCH_DIR, 'your_first_block.py'))
