@@ -60,7 +60,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='List the IRQ bindings for a particular network interface',
+        description='List the interrupt request (IRQ) bindings for a particular network interface',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
         )
     parser.add_argument('interface', type=str,

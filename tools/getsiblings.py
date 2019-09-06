@@ -70,7 +70,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Get sibling cores on HT systems',
+        description='Get sibling cores on hyper-threaded systems',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
         )
     parser.add_argument('core', type=int, nargs='*',
