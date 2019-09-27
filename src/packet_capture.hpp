@@ -530,9 +530,7 @@ public:
 	}
 	inline BFoffset seek(BFoffset offset, BFiowhence whence=BF_WHENCE_CUR) {
         BF_ASSERT(_capture->get_io_method() == BF_IO_DISK, BF_STATUS_UNSUPPORTED);
-        std::cout << "Here with " << offset << " and " << whence << " from " << _capture->tell() << std::endl;
         BFoffset moved = _capture->seek(offset, whence);
-        std::cout << "-> Moved to " << moved << std::endl;
         this->flush();
         return moved;
     }
@@ -865,7 +863,6 @@ class BFpacketcapture_drx_impl : public BFpacketcapture_impl {
 	BFoffset _time_tag;
     uint16_t _decim;
 	int      _chan1;
-	uint8_t  _tstate;
 	
 	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
 		_seq          = round_nearest(pkt->seq, _nseq_per_buf);
@@ -873,32 +870,27 @@ class BFpacketcapture_drx_impl : public BFpacketcapture_impl {
     }
     void on_sequence_active(const PacketDesc* pkt) {
         if( pkt ) {
-		    //cout << "Latest nchan, chan0 = " << pkt->nchan << ", " << pkt->chan0 << endl;
-            if( pkt->src / 2  == 0 ) {
-                if( pkt->tuning != _chan0 ) {
-                    _tstate |= 1;
-                    _chan0 = pkt->tuning;
-                }
-            } else {
-                if( pkt->tuning != _chan1 ) {
-                    _tstate |= 2;
-                    _chan1 = pkt->tuning;
-                }
-            }
-		}
+            //cout << "Latest nchan, chan0 = " << pkt->nchan << ", " << pkt->chan0 << endl;
+        }
 		else {
 			//cout << "No latest packet" << endl;
 		}
 	}
 	inline bool has_sequence_changed(const PacketDesc* pkt) {
-	    return (   (_tstate == 3 && _nsrc == 4) 
-	            || (_tstate != 0 && _nsrc == 2) 
-                || (_decim != pkt->decimation ) );
+	    return (   (pkt->tuning  != _chan0)
+	            || (pkt->tuning1 != _chan1)
+                || (pkt->decimation != _decim) );
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
 	    *time_tag = pkt->time_tag;
         _time_tag     = pkt->time_tag;
+        _chan0        = pkt->tuning;
+        _chan1        = pkt->tuning1;
+        if( _nsrc == 2 ) {
+            _chan0        = std::max(_chan0, _chan1);
+            _chan1        = 0;
+        }
         _decim        = pkt->decimation;
         _payload_size = pkt->payload_size;
         
@@ -922,8 +914,7 @@ class BFpacketcapture_drx_impl : public BFpacketcapture_impl {
 			*hdr_size = 0;
 		}
         
-        _tstate = 0;
-		_chan_log.update() << "chan0        : " << _chan0 << "\n"
+        _chan_log.update() << "chan0        : " << _chan0 << "\n"
 					       << "chan1        : " << _chan1 << "\n"
 					       << "payload_size : " << _payload_size << "\n";
     }
@@ -939,7 +930,7 @@ public:
 		  _type_log((std::string(capture->get_name())+"/type").c_str()),
 		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
 		  _sequence_callback(sequence_callback->get_drx()), 
-		  _decim(0), _chan1(0), _tstate(0) {
+		  _decim(0), _chan1(0) {
 		_decoder = new DRXDecoder(nsrc, src0);
 		_processor = new DRXProcessor();
 		_type_log.update("type : %s\n", "drx");

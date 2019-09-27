@@ -55,6 +55,7 @@ struct PacketDesc {
 	uint32_t       sync;
 	uint64_t       time_tag;
 	int            tuning;
+	int            tuning1 = 0;
 	uint8_t        beam;
 	uint16_t       gain;
 	uint16_t       decimation;

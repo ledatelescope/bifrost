@@ -50,7 +50,12 @@ class DRXDecoder : virtual public PacketDecoder {
 	            pkt->src        >= 0 &&
         	    pkt->src        <  _nsrc &&
 	            pkt->time_tag   >= 0 &&
-	            pkt->tuning     >= 0 && 
+	            (((_nsrc == 4) && 
+                  (pkt->tuning     >  0 &&
+                   pkt->tuning1    >  0)) ||
+                 (_nsrc == 2 && 
+                  (pkt->tuning     >  0 ||
+                   pkt->tuning1    >  0))) &&
 	            pkt->valid_mode == 0);
     }
 public:
@@ -67,17 +72,18 @@ public:
 	    int pkt_id        = pkt_hdr->frame_count_word & 0xFF;
 	    pkt->beam         = (pkt_id & 0x7) - 1;
 	    int pkt_tune      = ((pkt_id >> 3) & 0x7) - 1;
-        if( _nsrc == 2 ) {
-            pkt_tune = 0;
-        }
-	    int pkt_pol       = ((pkt_id >> 7) & 0x1);
+        int pkt_pol       = ((pkt_id >> 7) & 0x1);
 	    pkt_id            = (pkt_tune << 1) | pkt_pol;
 	    pkt->sync         = pkt_hdr->sync_word;
 	    pkt->time_tag     = be64toh(pkt_hdr->time_tag) - be16toh(pkt_hdr->time_offset);
 	    pkt->seq          = pkt->time_tag / be16toh(pkt_hdr->decimation) / 4096;
 	    pkt->nsrc         = _nsrc;
 	    pkt->src          = pkt_id - _src0;
-	    pkt->tuning       = be32toh(pkt_hdr->tuning_word);
+	    if( pkt->src / 2 == 0 ) {
+	        pkt->tuning       = be32toh(pkt_hdr->tuning_word);
+	    } else {
+	        pkt->tuning1      = be32toh(pkt_hdr->tuning_word);
+	    }
 	    pkt->decimation   = be16toh(pkt_hdr->decimation);
 	    pkt->valid_mode   = ((pkt_id >> 6) & 0x1);
 	    pkt->payload_size = pld_size;
