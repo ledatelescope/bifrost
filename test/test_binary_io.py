@@ -101,4 +101,7 @@ class BinaryIOTest(unittest.TestCase):
     def tearDown(self):
         for filename in self.filenames:
             os.unlink(filename)
-            os.unlink(filename+".out")
+            try:
+                os.unlink(filename+".out")
+            except OSError:
+                pass
