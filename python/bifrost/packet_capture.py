@@ -103,6 +103,8 @@ class DiskReader(_CaptureBase):
             fmt, fh.fileno(), ring.obj, nsrc, src0,
             buffer_nframe, slot_nframe,
             sequence_callback.obj, core)
+        # Make sure we start in the same place in the file
+        self.seek(fh.tell(), _bf.BF_WHENCE_SET)
     def seek(self, offset, whence=_bf.BF_WHENCE_CUR):
         position = ctypes.c_ulong(0)
         _check(_bf.bfPacketCaptureSeek(self.obj, offset, whence, position))
