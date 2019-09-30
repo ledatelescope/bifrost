@@ -379,7 +379,9 @@ BFstatus bfMemcpy(void*       dst,
 		//         than using cudaMemcpyDefault.
 		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		cudaMemcpyKind kind = cudaMemcpyDefault;
+#endif
 		switch( src_space ) {
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST: // fall-through
@@ -410,8 +412,8 @@ BFstatus bfMemcpy(void*       dst,
 			default: BF_FAIL("Valid bfMemcpy dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
-#endif
 		}
+#endif
 		default: BF_FAIL("Valid bfMemcpy src space", BF_STATUS_INVALID_ARGUMENT);
 		}
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
@@ -452,7 +454,9 @@ BFstatus bfMemcpy2D(void*       dst,
 		//         than using cudaMemcpyDefault.
 		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		cudaMemcpyKind kind = cudaMemcpyDefault;
+#endif
 		switch( src_space ) {
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST: // fall-through
