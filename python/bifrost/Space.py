@@ -29,24 +29,23 @@ from bifrost.libbifrost import _bf
 
 SPACEMAP_TO_STR = {_bf.BF_SPACE_AUTO:         'auto',
                    _bf.BF_SPACE_SYSTEM:       'system',
+                   _bf.BF_SPACE_MAPPED:       'mapped',
                    _bf.BF_SPACE_CUDA:         'cuda',
                    _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
-                   _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed',
-                   _bf.BF_SPACE_DISK_BACKED:  'disk_backed'}
+                   _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
 
 SPACEMAP_FROM_STR = {'auto':         _bf.BF_SPACE_AUTO,
                      'system':       _bf.BF_SPACE_SYSTEM,
+                     'mapped':       _bf.BF_SPACE_MAPPED,
                      'cuda':         _bf.BF_SPACE_CUDA,
                      'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
-                     'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED,
-                     'disk_backed':  _bf.BF_SPACE_DISK_BACKED}
+                     'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
 
 class Space(object):
     def __init__(self, s):
         if isinstance(s, basestring):
-            if s not in set(['auto', 'system',
-                             'cuda', 'cuda_host', 'cuda_managed',
-                             'disk_backed']):
+            if s not in set(['auto', 'system', 'mapped',
+                             'cuda', 'cuda_host', 'cuda_managed']):
                 raise ValueError('Invalid space: %s' % s)
             self._space = s
         elif isinstance(s, _bf.BFspace) or isinstance(s, int):

@@ -47,10 +47,10 @@ extern "C" {
 typedef enum BFspace_ {
 	BF_SPACE_AUTO         = 0,
 	BF_SPACE_SYSTEM       = 1, // aligned_alloc
-	BF_SPACE_CUDA         = 2, // cudaMalloc
-	BF_SPACE_CUDA_HOST    = 3, // cudaHostAlloc
-	BF_SPACE_CUDA_MANAGED = 4, // cudaMallocManaged
-	BF_SPACE_DISK_BACKED  = 5  // disk-backed memory
+    BF_SPACE_MAPPED       = 2, // mmapped to a file
+	BF_SPACE_CUDA         = 3, // cudaMalloc
+	BF_SPACE_CUDA_HOST    = 4, // cudaHostAlloc
+	BF_SPACE_CUDA_MANAGED = 5 // cudaMallocManaged
 } BFspace;
 
 BFstatus bfMalloc(void** ptr, BFsize size, BFspace space);
