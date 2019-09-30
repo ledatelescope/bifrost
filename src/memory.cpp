@@ -50,8 +50,8 @@ static_assert(BF_IS_POW2(BF_ALIGNMENT), "BF_ALIGNMENT must be a power of 2");
 #undef BF_IS_POW2
 //static_assert(BF_ALIGNMENT >= 8,        "BF_ALIGNMENT must be >= 8");
 
-#ifndef BF_MAPPED_DIR
-  #define BF_MAPPED_DIR "/tmp/bifrost"
+#ifndef BF_MAPPED_RING_DIR
+  #define BF_MAPPED_RING_DIR "/tmp/bifrost"
 #endif
 
 void mmake_dir(std::string path, int perms=775) {
@@ -113,7 +113,7 @@ public:
 };
 
 class MappedMgr {
-    static constexpr const char*  base_mapdir = BF_MAPPED_DIR;
+    static constexpr const char*  base_mapdir = BF_MAPPED_RING_DIR;
     std::string                   _mapdir;
     std::map<void**, std::string> _filenames;
     std::map<void**, int>         _fds;
