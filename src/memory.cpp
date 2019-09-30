@@ -35,11 +35,223 @@
 #include <cstdlib> // For posix_memalign
 #include <cstring> // For memcpy
 #include <iostream>
+#include <cstdio>
+#include <sys/file.h>  // For flock
+#include <sys/stat.h>  // For fstat
+#include <sys/types.h> // For getpid
+#include <dirent.h>    // For opendir, readdir, closedir
+#include <system_error>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 #define BF_IS_POW2(x) (x) && !((x) & ((x) - 1))
 static_assert(BF_IS_POW2(BF_ALIGNMENT), "BF_ALIGNMENT must be a power of 2");
 #undef BF_IS_POW2
 //static_assert(BF_ALIGNMENT >= 8,        "BF_ALIGNMENT must be >= 8");
+
+#ifndef BF_DISK_BACKED_DIR
+  #define BF_DISK_BACKED_DIR "/tmp/bifrost"
+#endif
+
+void mmake_dir(std::string path, int perms=775) {
+	if( std::system(("mkdir -p "+path+" -m "+std::to_string(perms)).c_str()) ) {
+		throw std::runtime_error("Failed to create path: "+path);
+	}
+}
+void mremove_all(std::string path) {
+	if( std::system(("rm -rf "+path).c_str()) ) {
+		throw std::runtime_error("Failed to remove all: "+path);
+	}
+}
+void mremove_dir(std::string path) {
+	if( std::system(("rmdir "+path+" 2> /dev/null").c_str()) ) {
+		throw std::runtime_error("Failed to remove dir: "+path);
+	}
+}
+void mremove_file(std::string path) {
+	if( std::system(("rm -f "+path).c_str()) ) {
+		throw std::runtime_error("Failed to remove file: "+path);
+	}
+}
+bool mprocess_exists(pid_t pid) {
+	struct stat s;
+	return !(stat(("/proc/"+std::to_string(pid)).c_str(), &s) == -1
+	         && errno == ENOENT);
+}
+
+std::string mget_dirname(std::string filename) {
+	// TODO: This is crude, but works for our proclog use-case
+	return filename.substr(0, filename.find_last_of("/"));
+}
+
+class MLockFile {
+	std::string _lockfile;
+	int         _fd;
+public:
+	MLockFile(MLockFile const& ) = delete;
+	MLockFile& operator=(MLockFile const& ) = delete;
+	MLockFile(std::string lockfile) : _lockfile(lockfile) {
+		while( true ) {
+			_fd = open(_lockfile.c_str(), O_CREAT, 600);
+			flock(_fd, LOCK_EX);
+			struct stat fd_stat, lockfile_stat;
+			fstat(_fd, &fd_stat);
+			stat(_lockfile.c_str(), &lockfile_stat);
+			// Compare inodes
+			if( fd_stat.st_ino == lockfile_stat.st_ino ) {
+				// Got the lock
+				break;
+			}
+			close(_fd);
+		}
+	}
+	~MLockFile() {
+		unlink(_lockfile.c_str());
+		flock(_fd, LOCK_UN);
+	}
+};
+
+class MMapMgr {
+    static constexpr const char*  base_mmapdir = BF_DISK_BACKED_DIR;
+    std::string                   _mmapdir;
+    std::map<void**, std::string> _filenames;
+    std::map<void**, int>         _fds;
+    std::map<void**, BFsize>      _lengths;
+    
+	void try_base_mmapdir_cleanup() {
+		// Do this with a file lock to avoid interference from other processes
+		MLockFile lock(std::string(base_mmapdir) + ".lock");
+		DIR* dp;
+		// Remove pid dirs for which a corresponding process does not exist
+		if( (dp = opendir(base_mmapdir)) ) {
+			struct dirent* ep;
+			while( (ep = readdir(dp)) ) {
+				pid_t pid = atoi(ep->d_name);
+				if( pid && !mprocess_exists(pid) ) {
+					mremove_all(std::string(base_mmapdir) + "/" +
+					            std::to_string(pid));
+				}
+			}
+			closedir(dp);
+		}
+		// Remove the base_logdir if it's empty
+		try { mremove_dir(base_mmapdir); }
+		catch( std::exception ) {}
+	}
+    void cleanup(std::string filename, int fd) {
+        if( fd >= 0 ) {
+            ::close(fd);
+        }
+        try { mremove_file(filename); }
+        catch( std::exception ) {}
+    } 
+    MMapMgr()
+        : _mmapdir(std::string(base_mmapdir) + "/" + std::to_string(getpid())) {
+		this->try_base_mmapdir_cleanup();
+		mmake_dir(base_mmapdir, 777);
+		mmake_dir(_mmapdir);
+	}
+    ~MMapMgr() {
+        void** data;
+        for(auto& x : _filenames) {
+            data = x.first;
+            this->free(*data);
+        }
+        try {
+			mremove_all(_mmapdir);
+			this->try_base_mmapdir_cleanup();
+		} catch( std::exception ) {}
+    }
+public:
+    MMapMgr(MMapMgr& ) = delete;
+    MMapMgr& operator=(MMapMgr& ) = delete;
+    static MMapMgr& get() {
+        static MMapMgr mmm;
+        return mmm;
+    }
+    inline bool is_mmap(void** data) {
+        if( _filenames.count(data) == 0 ) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+    int alloc(void** data, BFsize size) {
+        // Create
+        char tempname[256];
+        strcpy(tempname, _mmapdir.c_str());
+        strcat(tempname, "/mmapXXXXXX");
+        int fd = ::mkstemp(tempname);
+        std::string filename = std::string(tempname);
+        std::cout << "filename: " << filename << std::endl;
+        if( fd < 0 ) {
+            this->cleanup(filename, fd);
+            return 1;
+        }
+        
+        // Allocate
+        int status = ::posix_fallocate(fd, 0, size);
+        if( status != 0 ) {
+            this->cleanup(filename, fd);
+            return 2;
+        }
+        
+        // MMap
+        *data = ::mmap(nullptr, size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+        if( *data == MAP_FAILED ) {
+            this->cleanup(filename, fd);
+            return 3;
+        }
+        
+	    // Advise the kernel of how we'll use it
+        ::madvise(*data, size, MADV_SEQUENTIAL);
+        
+        // Save and return
+        _filenames[data] = filename;
+        _fds[data] = fd;
+        _lengths[data] = size;
+        return 0;
+    }
+    int sync(void* data) {
+        if( !this->is_mmap((void**)&data) ) {
+            return -1;
+        }
+        
+        BFsize length = _lengths[(void**)&data];
+        return ::msync(data, length, MS_ASYNC|MS_INVALIDATE);
+    }
+    void* memcpy(void* dest, void* src, BFsize count) {
+        ::memcpy(dest, src, count);
+        if( this->is_mmap((void**)&dest) ) {
+            this->sync(dest);
+        }
+        return dest;
+    }
+    void* memset(void* dest, int ch, BFsize count) {
+        ::memset(dest, ch, count);
+        if( this->is_mmap((void**)&dest) ) {
+            this->sync(dest);
+        }
+        return dest;
+    }
+    int free(void* data) {
+        if( !this->is_mmap((void**)&data) ) {
+            return -1;
+        }
+        
+        std::string filename = _filenames[(void**)&data];
+        _filenames.erase((void**)&data);
+        int fd = _fds[(void**)&data];
+        _fds.erase((void**)&data);
+        BFsize length = _lengths[(void**)&data];
+        _lengths.erase((void**)&data);
+        
+        ::munmap(data, length);
+        this->cleanup(filename, fd);
+        return 0;
+    }
+};
 
 BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 	BF_ASSERT(ptr, BF_STATUS_INVALID_POINTER);
@@ -56,7 +268,11 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 		//           up in cuda-memcheck?
 		// Note: cudaPointerGetAttributes only works for memory allocated with
 		//         CUDA API functions, so if it fails we just assume sysmem.
-		*space = BF_SPACE_SYSTEM;
+		if( MMapMgr::get().is_mmap((void**)&ptr) ) {
+		    *space = BF_SPACE_DISK_BACKED;
+		} else {
+		    *space = BF_SPACE_SYSTEM;
+		}
 		// WAR to avoid the ignored failure showing up later
 		cudaGetLastError();
 	} else if( ptr_attrs.isManaged ) {
@@ -87,6 +303,7 @@ const char* bfGetSpaceString(BFspace space) {
 		case BF_SPACE_CUDA:         return "cuda";
 		case BF_SPACE_CUDA_HOST:    return "cuda_host";
 		case BF_SPACE_CUDA_MANAGED: return "cuda_managed";
+        case BF_SPACE_DISK_BACKED:  return "disk_backed";
 		default: return "unknown";
 	}
 }
@@ -103,6 +320,11 @@ BFstatus bfMalloc(void** ptr, BFsize size, BFspace space) {
 		//printf("bfMalloc --> %p\n", data);
 		break;
 	}
+    case BF_SPACE_DISK_BACKED: {
+        int err = MMapMgr::get().alloc((void**)&data, size);
+        BF_ASSERT(!err, BF_STATUS_MEM_ALLOC_FAILED);
+        break;
+    }
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 	case BF_SPACE_CUDA: {
 		BF_CHECK_CUDA(cudaMalloc((void**)&data, size),
@@ -135,6 +357,7 @@ BFstatus bfFree(void* ptr, BFspace space) {
 	}
 	switch( space ) {
 	case BF_SPACE_SYSTEM:       ::free(ptr); break;
+    case BF_SPACE_DISK_BACKED:  MMapMgr::get().free(ptr); break;
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 	case BF_SPACE_CUDA:         cudaFree(ptr); break;
 	case BF_SPACE_CUDA_HOST:    cudaFreeHost(ptr); break;
@@ -152,26 +375,32 @@ BFstatus bfMemcpy(void*       dst,
 	if( count ) {
 		BF_ASSERT(dst, BF_STATUS_INVALID_POINTER);
 		BF_ASSERT(src, BF_STATUS_INVALID_POINTER);
-#if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
-		::memcpy(dst, src, count);
-#else
 		// Note: Explicitly dispatching to ::memcpy was found to be much faster
 		//         than using cudaMemcpyDefault.
 		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
 		cudaMemcpyKind kind = cudaMemcpyDefault;
 		switch( src_space ) {
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST: // fall-through
+#endif
+        case BF_SPACE_DISK_BACKED: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA_HOST: // fall-through
+#endif
+            case BF_SPACE_DISK_BACKED: // fall-through
 			case BF_SPACE_SYSTEM: ::memcpy(dst, src, count); return BF_STATUS_SUCCESS;
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
 			// TODO: BF_SPACE_CUDA_MANAGED
+#endif
 			default: BF_FAIL("Valid bfMemcpy dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
 		}
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
@@ -181,9 +410,11 @@ BFstatus bfMemcpy(void*       dst,
 			default: BF_FAIL("Valid bfMemcpy dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
+#endif
 		}
 		default: BF_FAIL("Valid bfMemcpy src space", BF_STATUS_INVALID_ARGUMENT);
 		}
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		BF_TRACE_STREAM(g_cuda_stream);
 		BF_CHECK_CUDA(cudaMemcpyAsync(dst, src, count, kind, g_cuda_stream),
 		              BF_STATUS_MEM_OP_FAILED);
@@ -217,27 +448,32 @@ BFstatus bfMemcpy2D(void*       dst,
 	if( width*height ) {
 		BF_ASSERT(dst, BF_STATUS_INVALID_POINTER);
 		BF_ASSERT(src, BF_STATUS_INVALID_POINTER);
-#if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
-		memcpy2D(dst, dst_stride, src, src_stride, width, height);
-#else
 		// Note: Explicitly dispatching to ::memcpy was found to be much faster
 		//         than using cudaMemcpyDefault.
 		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
 		cudaMemcpyKind kind = cudaMemcpyDefault;
 		switch( src_space ) {
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST: // fall-through
+#endif
+        case BF_SPACE_DISK_BACKED: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA_HOST: // fall-through
+#endif
 			case BF_SPACE_SYSTEM: memcpy2D(dst, dst_stride, src, src_stride, width, height); return BF_STATUS_SUCCESS;
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
 			// TODO: Is this the right thing to do?
 			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+#endif
 			default: BF_FAIL("Valid bfMemcpy2D dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
 		}
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
@@ -249,8 +485,10 @@ BFstatus bfMemcpy2D(void*       dst,
 			}
 			break;
 		}
+#endif
 		default: BF_FAIL("Valid bfMemcpy2D src space", BF_STATUS_INVALID_ARGUMENT);
 		}
+#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		BF_TRACE_STREAM(g_cuda_stream);
 		BF_CHECK_CUDA(cudaMemcpy2DAsync(dst, dst_stride,
 		                                src, src_stride,
@@ -272,6 +510,7 @@ BFstatus bfMemset(void*   ptr,
 			bfGetSpace(ptr, &space);
 		}
 		switch( space ) {
+		case BF_SPACE_DISK_BACKED: // fall-through
 		case BF_SPACE_SYSTEM:       ::memset(ptr, value, count); break;
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST:    ::memset(ptr, value, count); break;
@@ -309,6 +548,7 @@ BFstatus bfMemset2D(void*   ptr,
 			bfGetSpace(ptr, &space);
 		}
 		switch( space ) {
+		case BF_SPACE_DISK_BACKED: // fall-through
 		case BF_SPACE_SYSTEM:       memset2D(ptr, stride, value, width, height); break;
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST:    memset2D(ptr, stride, value, width, height); break;

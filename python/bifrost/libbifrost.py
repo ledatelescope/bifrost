@@ -147,7 +147,8 @@ STRING2SPACE = {'auto':         _bf.BF_SPACE_AUTO,
                 'system':       _bf.BF_SPACE_SYSTEM,
                 'cuda':         _bf.BF_SPACE_CUDA,
                 'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
-                'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
+                'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED,
+                'disk_backed':  _bf.BF_SPACE_DISK_BACKED}
 def _string2space(s):
     if s not in STRING2SPACE:
         raise KeyError("Invalid space '" + str(s) +
@@ -158,6 +159,7 @@ SPACE2STRING = {_bf.BF_SPACE_AUTO:         'auto',
                 _bf.BF_SPACE_SYSTEM:       'system',
                 _bf.BF_SPACE_CUDA:         'cuda',
                 _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
-                _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
+                _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed',
+                _bf.BF_SPACE_DISK_BACKED:  'disk_backed'}
 def _space2string(i):
     return SPACE2STRING[i]

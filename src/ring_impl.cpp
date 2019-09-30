@@ -98,10 +98,12 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM       ||
 	                    space==BF_SPACE_CUDA         ||
 	                    space==BF_SPACE_CUDA_HOST    ||
-	                    space==BF_SPACE_CUDA_MANAGED,
+	                    space==BF_SPACE_CUDA_MANAGED ||
+	                    space==BF_SPACE_DISK_BACKED,
 	                    BF_STATUS_INVALID_ARGUMENT);
 #else
-	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM,
+	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM      ||
+                        space==BF_SPACE_DISK_BACKED,
 	                    BF_STATUS_INVALID_ARGUMENT);
 #endif
 	
