@@ -35,10 +35,19 @@ def space_accessible(space, from_spaces):
     from_spaces = set(from_spaces)
     if space in from_spaces:
         return True
+    elif space in ('system', 'mapped'):
+        return 'system' in from_spaces \
+               or 'mapped' in from_spaces \
+               or 'cuda_host' in from_spaces \
+               or 'cuda_managed' in from_spaces
     elif space == 'cuda_host':
-        return 'system' in from_spaces
+        return 'system' in from_spaces \
+               or 'mapped' in from_spaces
+               or 'cuda_managed' in from_spaces
     elif space == 'cuda_managed':
-        return 'system' in from_spaces or 'cuda' in from_spaces
+        return 'system' in from_spaces \
+               or 'mapped' in from_spaces \
+               or 'cuda' in from_spaces
     else:
         return False
 
