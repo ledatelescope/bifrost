@@ -100,6 +100,10 @@ ifdef ALIGNMENT
   CPPFLAGS   += -DBF_ALIGNMENT=$(ALIGNMENT)
 endif
 
+ifdef MAPPED_DIR
+  CPPFLAGS   += -DBF_MAPPED_DIR=$(MAPPED_DIR)
+endif
+
 ifdef CUDA_DEBUG
   NVCCFLAGS += -G
 endif
