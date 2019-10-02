@@ -79,7 +79,7 @@ class PipelineTestCPU(unittest.TestCase):
         #         ring buffer at least a few times over in order to properly
         #         test things.
         self.fil_file = "./data/2chan16bitNoDM.fil"
-    def test_read_sigproc(self):
+    def test_read_sigproc(self, space='system'):
         gulp_nframe = 101
         def check_sequence(seq):
             tensor = seq.header['_tensor']
@@ -93,11 +93,13 @@ class PipelineTestCPU(unittest.TestCase):
             self.assertEqual(ispan.data.shape, (ispan.nframe,1,2))
             self.assertEqual(ospan.data.shape, (ospan.nframe,1,2))
         with bf.Pipeline() as pipeline:
-            data = read_sigproc([self.fil_file], gulp_nframe)
-            data = CallbackBlock(data, check_sequence, check_data)
+            data = read_sigproc([self.fil_file], gulp_nframe, space=space)
+            data = CallbackBlock(data, check_sequence, check_data, space='system')
             pipeline.run()
+    def test_read_sigproc_mapped(self):
+        self.test_read_sigproc(space='mapped')
     def run_test_simple_copy(self, guarantee, test_views=False,
-                             gulp_nframe_inc=0):
+                             gulp_nframe_inc=0, space='system'):
         def check_sequence(seq):
             hdr = seq.header
             tensor = hdr['_tensor']
@@ -110,7 +112,7 @@ class PipelineTestCPU(unittest.TestCase):
             pass
         gulp_nframe = 101
         with bf.Pipeline() as pipeline:
-            data = read_sigproc([self.fil_file], gulp_nframe)
+            data = read_sigproc([self.fil_file], gulp_nframe, space=space)
             if test_views:
                 data = bf.views.split_axis(data, 'freq', 2, 'fine_freq')
                 data = bf.views.merge_axes(data, 'freq', 'fine_freq')
@@ -131,29 +133,44 @@ class PipelineTestCPU(unittest.TestCase):
             for i in xrange(20):
                 if gulp_nframe_inc != 0:
                     data = copy(data, guarantee=guarantee,
-                                gulp_nframe=gulp_nframe+i*gulp_nframe_inc)
+                                gulp_nframe=gulp_nframe+i*gulp_nframe_inc,
+                                space=space)
                 else:
-                    data = copy(data, guarantee=guarantee)
+                    data = copy(data, guarantee=guarantee, space=space)
             data = copy(data, guarantee=guarantee, gulp_nframe=gulp_nframe)
             ref = {}
-            data = CallbackBlock(data, check_sequence, check_data, data_ref=ref)
+            data = CallbackBlock(data, check_sequence, check_data, data_ref=ref, space='system')
             pipeline.run()
             self.assertEqual(ref['odata'].dtype, 'uint16')
             self.assertEqual(ref['odata'].shape, (29, 1, 2))
     def test_simple_copy(self):
         self.run_test_simple_copy(guarantee=True)
+    def test_simple_copy_mapped(self):
+        self.run_test_simple_copy(guarantee=True, space='mapped')
     def test_simple_copy_unguaranteed(self):
         self.run_test_simple_copy(guarantee=False)
+    def test_ssimple_copy_unguaranteed_mapped(self):
+        self.run_test_simple_copy(guarantee=False, space='mapped')
     def test_simple_copy_mixed_gulp_nframe(self):
         self.run_test_simple_copy(guarantee=True, gulp_nframe_inc=1)
         self.run_test_simple_copy(guarantee=True, gulp_nframe_inc=3)
+    def test_simple_copy_mixed_gulp_nframe_mapped(self):
+        self.run_test_simple_copy(guarantee=True, gulp_nframe_inc=1, space='mapped')
+        self.run_test_simple_copy(guarantee=True, gulp_nframe_inc=3, space='mapped')
     def test_simple_copy_mixed_gulp_nframe_unguaranteed(self):
         self.run_test_simple_copy(guarantee=False, gulp_nframe_inc=1)
         self.run_test_simple_copy(guarantee=False, gulp_nframe_inc=3)
+    def test_simple_copy_mixed_gulp_nframe_unguaranteed_mapped(self):
+        self.run_test_simple_copy(guarantee=False, gulp_nframe_inc=1, space='mapped')
+        self.run_test_simple_copy(guarantee=False, gulp_nframe_inc=3, space='mapped')
     def test_simple_views(self):
         self.run_test_simple_copy(guarantee=True, test_views=True)
+    def test_simple_views_mapped(self):
+        self.run_test_simple_copy(guarantee=True, test_views=True, space='mapped')
     def test_simple_views_unguaranteed(self):
         self.run_test_simple_copy(guarantee=False, test_views=True)
+    def test_simple_views_unguaranteed_mapped(self):
+        self.run_test_simple_copy(guarantee=False, test_views=True, space='mapped')
     def test_block_chainer(self):
         with bf.Pipeline() as pipeline:
             bc = bf.BlockChainer()
