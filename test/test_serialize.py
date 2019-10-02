@@ -83,9 +83,9 @@ class SerializeTest(unittest.TestCase):
         self.basename = os.path.basename(self.fil_file)
         self.basepath = os.path.join(self.temp_path, self.basename)
         self.gulp_nframe = 101
-    def run_test_serialize_with_name_no_ringlets(self, gulp_nframe_inc=0):
+    def run_test_serialize_with_name_no_ringlets(self, gulp_nframe_inc=0, space='system'):
         with bf.Pipeline() as pipeline:
-            data = read_sigproc([self.fil_file], self.gulp_nframe, core=0)
+            data = read_sigproc([self.fil_file], self.gulp_nframe, core=0, space='mapped')
             for i in xrange(5):
                 if gulp_nframe_inc != 0:
                     data = copy(data,
@@ -108,9 +108,13 @@ class SerializeTest(unittest.TestCase):
         self.run_test_serialize_with_name_no_ringlets()
         self.run_test_serialize_with_name_no_ringlets(gulp_nframe_inc=1)
         self.run_test_serialize_with_name_no_ringlets(gulp_nframe_inc=3)
-    def test_serialize_with_time_tag_no_ringlets(self):
+    def test_serialize_with_name_no_ringlets_mapped(self):
+        self.run_test_serialize_with_name_no_ringlets(space='mapped')
+        self.run_test_serialize_with_name_no_ringlets(gulp_nframe_inc=1, space='mapped')
+        self.run_test_serialize_with_name_no_ringlets(gulp_nframe_inc=3, space='mapped')
+    def test_serialize_with_time_tag_no_ringlets(self, space='system'):
         with bf.Pipeline() as pipeline:
-            data = read_sigproc([self.fil_file], self.gulp_nframe)
+            data = read_sigproc([self.fil_file], self.gulp_nframe, space=space)
             # Custom view sets sequence name to '', which causes SerializeBlock
             #   to use the time_tag instead.
             data = bf.views.custom(data, lambda hdr: rename_sequence(hdr, ''))
@@ -127,9 +131,11 @@ class SerializeTest(unittest.TestCase):
                 with open(datpath, 'rb') as f:
                     data = f.read()
                     self.assertEqual(data, self.data)
-    def test_serialize_with_name_and_ringlets(self):
+    def test_serialize_with_time_tag_no_ringlets_mapped(self):
+        self.test_serialize_with_time_tag_no_ringlets(space='mapped')
+    def test_serialize_with_name_and_ringlets(self, space='system'):
         with bf.Pipeline() as pipeline:
-            data = read_sigproc([self.fil_file], self.gulp_nframe)
+            data = read_sigproc([self.fil_file], self.gulp_nframe, space=space)
             # Transpose so that freq becomes a ringlet dimension
             # TODO: Test multiple ringlet dimensions (e.g., freq + pol) once
             #         SerializeBlock supports it.
@@ -148,10 +154,12 @@ class SerializeTest(unittest.TestCase):
                                  self.data_size // 2)
                 self.assertEqual(os.path.getsize(datpath1),
                                  self.data_size // 2)
-    def test_deserialize_no_ringlets(self):
+    def test_serialize_with_name_and_ringlets_mapped(self):
+        self.test_serialize_with_name_and_ringlets(space='mapped')
+    def test_deserialize_no_ringlets(self, space='system'):
         with TemporaryDirectory(self.temp_path):
             with bf.Pipeline() as pipeline:
-                data = read_sigproc([self.fil_file], self.gulp_nframe)
+                data = read_sigproc([self.fil_file], self.gulp_nframe, space=space)
                 serialize(data, self.temp_path)
                 pipeline.run()
                 datpath = self.basepath + '.bf.' + '0' * 12 + '.dat'
@@ -168,10 +176,12 @@ class SerializeTest(unittest.TestCase):
                     data = f.read()
                     self.assertEqual(len(data), len(self.data))
                     self.assertEqual(data, self.data)
-    def test_deserialize_with_ringlets(self):
+    def test_deserialize_no_ringlets_mapped(self):
+        self.test_deserialize_no_ringlets(space='mapped')
+    def test_deserialize_with_ringlets(self, space='system'):
         with TemporaryDirectory(self.temp_path):
             with bf.Pipeline() as pipeline:
-                data = read_sigproc([self.fil_file], self.gulp_nframe)
+                data = read_sigproc([self.fil_file], self.gulp_nframe, space=space)
                 data = transpose(data, ['freq', 'time', 'pol'])
                 serialize(data, self.temp_path)
                 pipeline.run()
@@ -194,3 +204,5 @@ class SerializeTest(unittest.TestCase):
                                  self.data_size // 2)
                 self.assertEqual(os.path.getsize(datpath1),
                                  self.data_size // 2)
+    def test_deserialize_with_ringlets_mapped(self):
+        self.test_deserialize_with_ringlets(space='mapped')
