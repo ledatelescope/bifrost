@@ -113,30 +113,30 @@ public:
 };
 
 class MappedMgr {
-    static constexpr const char*  base_mapdir = BF_MAPPED_RING_DIR;
-    std::string                   _mapdir;
-    std::map<void**, std::string> _filenames;
-    std::map<void**, int>         _fds;
-    std::map<void**, BFsize>      _lengths;
+    static constexpr const char*  base_mapped_dir = BF_MAPPED_RING_DIR;
+    std::string                   _mapped_dir;
+    std::map<void*, std::string> _filenames;
+    std::map<void*, int>         _fds;
+    std::map<void*, BFsize>      _lengths;
     
-	void try_base_mapdir_cleanup() {
+	void try_base_mapped_dir_cleanup() {
 		// Do this with a file lock to avoid interference from other processes
-		MLockFile lock(std::string(base_mapdir) + ".lock");
+		MLockFile lock(std::string(base_mapped_dir) + ".lock");
 		DIR* dp;
 		// Remove pid dirs for which a corresponding process does not exist
-		if( (dp = opendir(base_mapdir)) ) {
+		if( (dp = opendir(base_mapped_dir)) ) {
 			struct dirent* ep;
 			while( (ep = readdir(dp)) ) {
 				pid_t pid = atoi(ep->d_name);
 				if( pid && !mprocess_exists(pid) ) {
-					mremove_all(std::string(base_mapdir) + "/" +
+					mremove_all(std::string(base_mapped_dir) + "/" +
 					            std::to_string(pid));
 				}
 			}
 			closedir(dp);
 		}
 		// Remove the base_logdir if it's empty
-		try { mremove_dir(base_mapdir); }
+		try { mremove_dir(base_mapped_dir); }
 		catch( std::exception ) {}
 	}
     void cleanup(std::string filename, int fd) {
@@ -147,20 +147,18 @@ class MappedMgr {
         catch( std::exception ) {}
     } 
     MappedMgr()
-        : _mapdir(std::string(base_mapdir) + "/" + std::to_string(getpid())) {
-		this->try_base_mapdir_cleanup();
-		mmake_dir(base_mapdir, 777);
-		mmake_dir(_mapdir);
+        : _mapped_dir(std::string(base_mapped_dir) + "/" + std::to_string(getpid())) {
+		this->try_base_mapped_dir_cleanup();
+		mmake_dir(base_mapped_dir, 777);
+		mmake_dir(_mapped_dir);
 	}
     ~MappedMgr() {
-        void** data;
         for(auto& x : _filenames) {
-            data = x.first;
-            this->free(*data);
+            this->free(x.first);
         }
         try {
-			mremove_all(_mapdir);
-			this->try_base_mapdir_cleanup();
+            mremove_all(_mapped_dir);
+            this->try_base_mapped_dir_cleanup();
 		} catch( std::exception ) {}
     }
 public:
@@ -170,7 +168,7 @@ public:
         static MappedMgr mm;
         return mm;
     }
-    inline bool is_mmap(void** data) {
+    inline bool is_mapped(void* data) const {
         if( _filenames.count(data) == 0 ) {
             return false;
         } else {
@@ -180,11 +178,11 @@ public:
     int alloc(void** data, BFsize size) {
         // Create
         char tempname[256];
-        strcpy(tempname, _mapdir.c_str());
+        strcpy(tempname, _mapped_dir.c_str());
         strcat(tempname, "/mmapXXXXXX");
         int fd = ::mkstemp(tempname);
         std::string filename = std::string(tempname);
-        std::cout << "filename: " << filename << std::endl;
+        //std::cout << "filename: " << filename << std::endl;
         if( fd < 0 ) {
             this->cleanup(filename, fd);
             return 1;
@@ -208,44 +206,43 @@ public:
         ::madvise(*data, size, MADV_SEQUENTIAL);
         
         // Save and return
-        _filenames[data] = filename;
-        _fds[data] = fd;
-        _lengths[data] = size;
+        _filenames[*data] = filename;
+        _fds[*data] = fd;
+        _lengths[*data] = size;
         return 0;
     }
     int sync(void* data) {
-        if( !this->is_mmap((void**)&data) ) {
+        if( !this->is_mapped(data) ) {
             return -1;
         }
         
-        BFsize length = _lengths[(void**)&data];
-        return ::msync(data, length, MS_ASYNC|MS_INVALIDATE);
+        return ::msync(data, _lengths[data], MS_ASYNC|MS_INVALIDATE);
     }
     void* memcpy(void* dest, void* src, BFsize count) {
         ::memcpy(dest, src, count);
-        if( this->is_mmap((void**)&dest) ) {
+        if( this->is_mapped(dest) ) {
             this->sync(dest);
         }
         return dest;
     }
     void* memset(void* dest, int ch, BFsize count) {
         ::memset(dest, ch, count);
-        if( this->is_mmap((void**)&dest) ) {
+        if( this->is_mapped(dest) ) {
             this->sync(dest);
         }
         return dest;
     }
     int free(void* data) {
-        if( !this->is_mmap((void**)&data) ) {
+        if( !this->is_mapped(data) ) {
             return -1;
         }
         
-        std::string filename = _filenames[(void**)&data];
-        _filenames.erase((void**)&data);
-        int fd = _fds[(void**)&data];
-        _fds.erase((void**)&data);
-        BFsize length = _lengths[(void**)&data];
-        _lengths.erase((void**)&data);
+        std::string filename = _filenames[data];
+        _filenames.erase(data);
+        int fd = _fds[data];
+        _fds.erase(data);
+        BFsize length = _lengths[data];
+        _lengths.erase(data);
         
         ::munmap(data, length);
         this->cleanup(filename, fd);
@@ -256,7 +253,7 @@ public:
 BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 	BF_ASSERT(ptr, BF_STATUS_INVALID_POINTER);
 #if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
-	if( MappedMgr::get().is_mmap((void**)&ptr) ) {
+	if( MappedMgr::get().is_mapped((void*) ptr) ) {
         *space = BF_SPACE_MAPPED;
     } else {
         *space = BF_SPACE_SYSTEM;
@@ -272,7 +269,7 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 		//           up in cuda-memcheck?
 		// Note: cudaPointerGetAttributes only works for memory allocated with
 		//         CUDA API functions, so if it fails we just assume sysmem.
-		if( MappedMgr::get().is_mmap((void**)&ptr) ) {
+		if( MappedMgr::get().is_mapped((void*) ptr) ) {
 		    *space = BF_SPACE_MAPPED;
 		} else {
 		    *space = BF_SPACE_SYSTEM;
