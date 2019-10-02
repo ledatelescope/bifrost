@@ -472,6 +472,7 @@ BFstatus bfMemcpy2D(void*       dst,
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA_HOST: // fall-through
 #endif
+            case BF_SPACE_MAPPED: // fall-through
 			case BF_SPACE_SYSTEM: memcpy2D(dst, dst_stride, src, src_stride, width, height); return BF_STATUS_SUCCESS;
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
