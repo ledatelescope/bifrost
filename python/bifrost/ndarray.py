@@ -90,8 +90,8 @@ def zeros(shape, dtype='f32', space=None, **kwargs):
 def copy_array(dst, src):
     dst_bf = asarray(dst)
     src_bf = asarray(src)
-    if (space_accessible(dst_bf.bf.space, ['system']) and
-        space_accessible(src_bf.bf.space, ['system'])):
+    if (space_accessible(dst_bf.bf.space, ['system',]) and      # TODO:  Should mapped be here as well?
+        space_accessible(src_bf.bf.space, ['system',])):
         np.copyto(dst_bf, src_bf)
     else:
         _check(_bf.bfArrayCopy(dst_bf.as_BFarray(),
