@@ -237,15 +237,11 @@ public:
             return -1;
         }
         
-        std::string filename = _filenames[data];
+        ::munmap(data, _lengths[data]);
+        this->cleanup(_filenames[data], _fds[data]);
         _filenames.erase(data);
-        int fd = _fds[data];
         _fds.erase(data);
-        BFsize length = _lengths[data];
         _lengths.erase(data);
-        
-        ::munmap(data, length);
-        this->cleanup(filename, fd);
         return 0;
     }
 };
@@ -296,7 +292,6 @@ const char* bfGetSpaceString(BFspace space) {
 	// TODO: Is there a better way to do this that does not involve hard 
 	//       coding all of these values twice (one in memory.h for the 
 	//       enum, once here)?
-	
 	
 	switch( space ) {
 		case BF_SPACE_AUTO:         return "auto";
