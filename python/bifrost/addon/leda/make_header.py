@@ -36,6 +36,8 @@ Modified by Hugh Garsden from Danny Price's dada.py and pipeline.py
 Makes header.txt files that is used by corr2uvfit and DuCT.
 """
 
+from __future__ import print_function
+
 import numpy as np
 import os, sys, ephem, datetime
 from dateutil import tz
@@ -63,7 +65,7 @@ class DadaReader(object):
         self.filename = filename
     self.warnings = warnings
      self.file_size = file_size    # Externally supplied
-    #print filename, warnings, file_size
+    #print(filename, warnings, file_size)
     self.generate_info()
 
     def generate_info(self):
@@ -113,7 +115,7 @@ class DadaReader(object):
         data_size_dsk = int(header["FILE_SIZE"])    # these data sizes don't include header
         data_size_hdr = data_size_dsk
       else:                    # Failure
-        if self.warnings: print "WARNING: File is zipped and FILE_SIZE is not in header and file_size not supplied. "
+        if self.warnings: print("WARNING: File is zipped and FILE_SIZE is not in header and file_size not supplied. ")
         have_size = False
         data_size_hdr = data_size_dsk = 0
     else:                     # File not zipped. Can get true complete file size
@@ -122,7 +124,7 @@ class DadaReader(object):
       else: data_size_hdr = data_size_dsk
 
         if data_size_hdr != data_size_dsk:
-      if self.warnings: print "WARNING: Data size in file doesn't match actual size. Using actual size."
+      if self.warnings: print("WARNING: Data size in file doesn't match actual size. Using actual size.")
 
     data_size = data_size_dsk        # Settle on this as the size of the data
 
@@ -135,13 +137,13 @@ class DadaReader(object):
 
         if "BYTES_PER_AVG" in header and have_size:
        if data_size % bpa != 0:
-        if self.warnings: print "WARNING: BYTES_PER_AVG does not result in an integral number of scans"
+        if self.warnings: print("WARNING: BYTES_PER_AVG does not result in an integral number of scans")
         if "DATA_ORDER" in header and self.data_order == 'TIME_SUBSET_CHAN_TRIANGULAR_POL_POL_COMPLEX':
           if self.warnings: 
-        print 'DATA_ORDER is TIME_SUBSET_CHAN_TRIANGULAR_POL_POL_COMPLEX, resetting BYTES_PER_AVG to',(109*32896*2*2+9*109*1270*2*2)*8,"(fixed)"
+        print('DATA_ORDER is TIME_SUBSET_CHAN_TRIANGULAR_POL_POL_COMPLEX, resetting BYTES_PER_AVG to',(109*32896*2*2+9*109*1270*2*2)*8,"(fixed)")
           bpa = (109*32896*2*2+9*109*1270*2*2)*8
           if data_size % bpa != 0 and self.warnings:
-            print "WARNING: BYTES_PER_AVG still doesn't give integral number of scans"
+            print("WARNING: BYTES_PER_AVG still doesn't give integral number of scans")
 
           self.n_int = float(data_size) / bpa
 
@@ -213,9 +215,9 @@ class DadaTimes(object):
     ra, dec = ovro.radec_of(0, np.pi/2)
     self.lst_str = str(float(ra) / 2 / np.pi * 24)
     self.dec_str = str(float(repr(dec))*180/np.pi)
-    #print ("UTC START:   %s"%dada_file.datestamp)
-    #print ("TIME OFFSET: %s"%datetime.timedelta(seconds=dada_file.t_offset))
-    #print ("NEW START:   (%s, %s)"%(date_str, time_str))
+    #print("UTC START:   %s"%dada_file.datestamp)
+    #print("TIME OFFSET: %s"%datetime.timedelta(seconds=dada_file.t_offset))
+    #print("NEW START:   (%s, %s)"%(date_str, time_str))
 
 
 def make_header(filename, write=True, warn=True, size=None):
@@ -286,5 +288,5 @@ if __name__ == "__main__":
   if len(sys.argv) == 2: make_header(sys.argv[1])
   elif len(sys.argv) == 3: make_header(sys.argv[1],size=sys.argv[2])
   else:
-    print "Expecting file name and optionally file size"
+    print("Expecting file name and optionally file size")
 

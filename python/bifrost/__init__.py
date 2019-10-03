@@ -31,6 +31,9 @@ Bifrost pipeline processing library
 """
 
 # TODO: Decide how to organise the namespace
+
+from __future__ import print_function
+
 import core, memory, affinity, ring, block, address, udp_socket
 import pipeline
 import device
@@ -49,9 +52,9 @@ from reduce import reduce
 try:
     from .version import __version__
 except ImportError:
-    print "*************************************************************************"
-    print "Please run `make` from the root of the source tree to generate version.py"
-    print "*************************************************************************"
+    print("*************************************************************************")
+    print("Please run `make` from the root of the source tree to generate version.py")
+    print("*************************************************************************")
     raise
 __author__     = "The Bifrost Authors"
 __copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."

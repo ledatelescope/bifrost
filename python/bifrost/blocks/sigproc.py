@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 from bifrost.pipeline import SourceBlock, SinkBlock
 import bifrost.sigproc2 as sigproc
@@ -100,12 +100,12 @@ class SigprocSourceBlock(SourceBlock):
         return [ohdr]
     def on_data(self, reader, ospans):
         ospan = ospans[0]
-        #print "SigprocReadBlock::on_data", ospan.data.dtype
+        #print("SigprocReadBlock::on_data", ospan.data.dtype)
         if self.unpack:
             indata = reader.read(ospan.shape[0])
             nframe = indata.shape[0]
-            #print indata.shape, indata.dtype, nframe
-            #print indata
+            #print(indata.shape, indata.dtype, nframe)
+            #print(indata)
             ospan.data[:nframe] = indata
             # TODO: This will break when frame size < 1 byte
             #         Can't use frame_nbyte; must use something like frame_nbit
@@ -117,7 +117,7 @@ class SigprocSourceBlock(SourceBlock):
             #             bits.
             #           Multiple pols could be included, but only if chan and pol
             #             dims are merged together.
-            #print "NBYTE", nbyte
+            #print("NBYTE", nbyte)
             #assert(nbyte % reader.frame_nbyte == 0)
             #nframe = nbyte // reader.frame_nbyte
         else:

@@ -29,6 +29,9 @@
 Right now the only possible block type is one
 of a simple transform which works on a span by span basis.
 """
+
+from __future__ import print_function
+
 import json
 import threading
 import time
@@ -840,8 +843,8 @@ class WaterfallBlock(object):
         matplotlib.use('Agg')
         from matplotlib import pyplot as plt
         plt.ioff()
-        print "Interactive mode off"
-        print waterfall_matrix.shape
+        print("Interactive mode off")
+        print(waterfall_matrix.shape)
         fig = pylab.figure()
         ax = fig.gca()
         header = self.header
@@ -877,7 +880,7 @@ class WaterfallBlock(object):
             nchans = self.header['frame_shape'][0]
             gulp_size = self.gulp_nframe * nchans * self.header['nbit']
             waterfall_matrix = np.zeros(shape=(0, nchans))
-            print tstart, tsamp, nchans
+            print(tstart, tsamp, nchans)
             for span in sequence.read(gulp_size):
                 array_size = span.data.shape[1] / nchans
                 frequency = self.header['fch1']
@@ -887,7 +890,7 @@ class WaterfallBlock(object):
                     waterfall_matrix = np.concatenate(
                         (waterfall_matrix, curr_data), 0)
                 except:
-                    print "Bad shape for waterfall"
+                    print("Bad shape for waterfall")
         return waterfall_matrix
 class NumpyBlock(MultiTransformBlock):
     """Perform an arbitrary N ndarray -> M ndarray numpy function

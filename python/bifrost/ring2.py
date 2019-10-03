@@ -29,6 +29,8 @@
 # TODO: Some of this code has gotten a bit hacky
 #         Also consider merging some of the logic into the backend
 
+from __future__ import print_function
+
 from libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string
 from DataType import DataType
 from ndarray import ndarray, _address_as_buffer
@@ -41,7 +43,7 @@ import numpy as np
 try:
     import simplejson as json
 except ImportError:
-    print "WARNING: Install simplejson for better performance"
+    print("WARNING: Install simplejson for better performance")
     import json
 
 def _slugify(name):

@@ -26,6 +26,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 import sys
 import threading
 import Queue
@@ -251,7 +253,7 @@ class Pipeline(BlockScope):
         join_all(self.threads, timeout=self.shutdown_timeout)
         for thread in self.threads:
             if thread.is_alive():
-                print "WARNING: Thread %s did not shut down on time and will be killed" % thread.name
+                print("WARNING: Thread %s did not shut down on time and will be killed" % thread.name)
     def shutdown_on_signals(self, signals=None):
         if signals is None:
             signals = [signal.SIGHUP,
@@ -266,7 +268,7 @@ class Pipeline(BlockScope):
                             reversed(sorted(signal.__dict__.items()))
                             if v.startswith('SIG') and
                             not v.startswith('SIG_'))
-        print "WARNING: Received signal %i %s, shutting down pipeline" % (signum, SIGNAL_NAMES[signum])
+        print("WARNING: Received signal %i %s, shutting down pipeline" % (signum, SIGNAL_NAMES[signum]))
         self.shutdown()
     def __enter__(self):
         thread_local.pipeline_stack.append(self)

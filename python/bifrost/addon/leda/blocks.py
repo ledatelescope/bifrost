@@ -28,6 +28,8 @@
 This file contains blocks specific to LEDA-OVRO.
 """
 
+from __future__ import print_function
+
 import os
 import bandfiles
 import bifrost
@@ -75,10 +77,10 @@ class DadaReadBlock(object):
         i += 1
 
     # Report what we've got
-    print "Num files in time:",  len(beamformer_scans)
-    print "File and number:"
+    print("Num files in time:",  len(beamformer_scans))
+    print("File and number:")
     for scan in beamformer_scans:
-      print os.path.basename(scan.files[0].name)+":", len(scan.files)
+      print(os.path.basename(scan.files[0].name)+":", len(scan.files))
 
     self.beamformer_scans = beamformer_scans     # List of full-band time steps
 
@@ -100,7 +102,7 @@ class DadaReadBlock(object):
     ohdr["tsamp"] = self.SAMPLING_RATE
     ohdr['foff'] = self.CHANNEL_WIDTH
 
-    #print length_one_second, ring_span_size, file_chunk_size, number_of_chunks
+    #print(length_one_second, ring_span_size, file_chunk_size, number_of_chunks)
 
     with self.oring.begin_writing() as oring:
 
@@ -109,7 +111,7 @@ class DadaReadBlock(object):
         # Go through the frequencies
         for f in scan.files:
 
-          print "Opening", f.name
+          print("Opening", f.name)
 
           with open(f.name,'rb') as ifile:
             ifile.read(self.HEADER_SIZE)
@@ -126,10 +128,10 @@ class DadaReadBlock(object):
                 try:
                     data = np.fromfile(ifile, count=file_chunk_size, dtype=np.int8).astype(np.float32)
                 except:
-                    print "Bad read. Stopping read."
+                    print("Bad read. Stopping read.")
                     return
                 if data.size != length_one_second*self.N_BEAM*self.N_CHAN*2:
-                    print "Bad data shape. Stopping read."
+                    print("Bad data shape. Stopping read.")
                     return
                 data = data.reshape(length_one_second, self.N_BEAM, self.N_CHAN, 2)
                 power = (data[...,0]**2 + data[...,1]**2).mean(axis=1)  # Now have time by frequency.

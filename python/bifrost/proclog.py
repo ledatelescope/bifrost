@@ -26,6 +26,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 from libbifrost import _bf, _check, _get, BifrostObject
 
 import os
@@ -36,7 +38,7 @@ import numpy as np
 try:
     import simplejson as json
 except ImportError:
-    print "WARNING: Install simplejson for better performance"
+    print("WARNING: Install simplejson for better performance")
     import json
 
 class ProcLog(BifrostObject):

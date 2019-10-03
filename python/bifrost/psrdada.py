@@ -39,7 +39,7 @@ lib_LTLIBRARIES = libpsrdada.la
 libtest_la_LDFLAGS = -version-info 0:0:0
 """
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 from bifrost.pipeline import SourceBlock, SinkBlock
 from bifrost.DataType import DataType
@@ -87,7 +87,7 @@ class IpcBufBlock(object):
             self.buf.close(self.nbyte_commit)
             self.ptr = None
     def enable_eod(self):
-        #print '>ipcbuf_enable_eod'
+        #print('>ipcbuf_enable_eod')
         if _dada.ipcbuf_enable_eod(self.buf.buf) < 0:
             raise IOError("Failed to enable EOD flag")
     def size_bytes(self):
@@ -104,10 +104,10 @@ class IpcBaseBuf(object):
     def size_bytes(self):
         return _dada.ipcbuf_get_bufsz(self.buf)
     def eod(self):
-        #print '>ipcbuf_eod'
+        #print('>ipcbuf_eod')
         return bool(_dada.ipcbuf_eod(self.buf))
     def reset(self):
-        #print '>ipcbuf_reset'
+        #print('>ipcbuf_reset')
         if _dada.ipcbuf_reset(self.buf) < 0:
             raise IOError("Failed to reset buffer")
     def __iter__(self):
@@ -131,7 +131,7 @@ class IpcBaseIO(IpcBaseBuf):
         super(IpcBaseIO, self).__init__(ipcbuf, mutable)
         self.io = ipcio
     def stop(self):
-        #print '>ipcio_stop'
+        #print('>ipcio_stop')
         if _dada.ipcio_stop(self.io) < 0:
             raise IOError("Failed to write EOD marker to block")
 
@@ -140,13 +140,13 @@ class IpcReadHeaderBuf(IpcBaseBuf):
         super(IpcReadHeaderBuf, self).__init__(ipcbuf)
     def open(self):
         nbyte = ctypes.c_uint64()
-        #print '>ipcbuf_get_next_read'
+        #print('>ipcbuf_get_next_read')
         ptr = _dada.ipcbuf_get_next_read(self.buf, nbyte)
         nbyte = nbyte.value
         block_id = 0
         return ptr, nbyte, block_id
     def close(self, nbyte):
-        #print '>ipcbuf_mark_cleared'
+        #print('>ipcbuf_mark_cleared')
         if _dada.ipcbuf_mark_cleared(self.buf) < 0:
             raise IOError("Failed to mark block as cleared")
 
@@ -155,12 +155,12 @@ class IpcWriteHeaderBuf(IpcBaseBuf):
         super(IpcWriteHeaderBuf, self).__init__(ipcbuf, mutable=True)
     def open(self):
         nbyte = self.size_bytes()
-        #print '>ipcbuf_get_next_write'
+        #print('>ipcbuf_get_next_write')
         ptr = _dada.ipcbuf_get_next_write(self.buf)
         block_id = 0
         return ptr, nbyte, block_id
     def close(self, nbyte):
-        #print '>ipcbuf_mark_filled'
+        #print('>ipcbuf_mark_filled')
         if _dada.ipcbuf_mark_filled(self.buf, nbyte) < 0:
             raise IOError("Failed to mark block as filled")
 
@@ -170,14 +170,14 @@ class IpcReadDataBuf(IpcBaseIO):
     def open(self):
         nbyte    = ctypes.c_uint64()
         block_id = ctypes.c_uint64()
-        #print '>ipcio_open_block_read'
+        #print('>ipcio_open_block_read')
         ptr = _dada.ipcio_open_block_read(self.io, nbyte, block_id)
         nbyte = nbyte.value
         block_id = block_id.value
-        #print 'block_id =', block_id
+        #print('block_id =', block_id)
         return ptr, nbyte, block_id
     def close(self, nbyte):
-        #print '>ipcio_close_block_read(nbyte=%i)' % nbyte
+        #print('>ipcio_close_block_read(nbyte=%i)' % nbyte)
         if _dada.ipcio_close_block_read(self.io, nbyte) < 0:
             raise IOError("Failed to close block for reading")
 
@@ -188,13 +188,13 @@ class IpcWriteDataBuf(IpcBaseIO):
     def open(self):
         nbyte = self.size_bytes()
         block_id = ctypes.c_uint64()
-        #print '>ipcio_open_block_write'
+        #print('>ipcio_open_block_write')
         ptr = _dada.ipcio_open_block_write(self.io, block_id)
         block_id = block_id.value
-        #print 'block_id =', block_id
+        #print('block_id =', block_id)
         return ptr, nbyte, block_id
     def close(self, nbyte):
-        #print '>ipcio_close_block_write(nbyte=%i)' % nbyte
+        #print('>ipcio_close_block_write(nbyte=%i)' % nbyte)
         if _dada.ipcio_close_block_write(self.io, nbyte) < 0:
             raise IOError("Failed to close block for writing")
 

@@ -25,14 +25,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 from bifrost.pipeline import SinkBlock, SourceBlock
 import os
 try:
     import simplejson as json
 except ImportError:
-    print "WARNING: Install simplejson for better performance"
+    print("WARNING: Install simplejson for better performance")
     import json
 import glob
 

@@ -27,6 +27,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 from libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string
 #from GPUArray import GPUArray
 from DataType import DataType
@@ -120,7 +122,7 @@ class Ring(BifrostObject):
     #    span     = self._total_span()
     #    stride   = self._stride()
     #    nringlet = self._nringlet()
-    #    #print "******", span, stride, nringlet
+    #    #print("******", span, stride, nringlet)
     #    BufferType = c_byte*(nringlet*stride)
     #    data_buffer_ptr = cast(data_ptr, POINTER(BufferType))
     #    data_buffer     = data_buffer_ptr.contents
@@ -194,7 +196,7 @@ class WriteSequence(SequenceBase):
         header_size = len(header)
         if isinstance(header, np.ndarray):
             header = header.ctypes.data
-        #print "hdr:", header_size, type(header)
+        #print("hdr:", header_size, type(header))
         name = str(name)
         offset_from_head = 0
         self.obj = _bf.BFwsequence()
@@ -301,14 +303,14 @@ class SpanBase(object):
         stride     = self.stride
         #nringlet   = self.sequence.nringlet
         nringlet   = self.nringlet
-        #print "******", span_size, stride, nringlet
+        #print("******", span_size, stride, nringlet)
         #BufferType = c_byte*(span_size*self.stride)
         # TODO: We should really map the actual ring memory space and index
         #         it with offset rather than mapping from the current pointer.
         BufferType = ctypes.c_byte * (nringlet * stride)
         data_buffer_ptr = ctypes.cast(data_ptr, ctypes.POINTER(BufferType))
         data_buffer     = data_buffer_ptr.contents
-        #print len(data_buffer), (nringlet, span_size), (self.stride, 1)
+        #print(len(data_buffer), (nringlet, span_size), (self.stride, 1))
         _shape   = (nringlet, span_size // itemsize)
         strides = (self.stride, itemsize) if nringlet > 1 else None
         #space   = self.sequence.ring.space

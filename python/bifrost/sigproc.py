@@ -52,6 +52,8 @@ period:        <delete>
 data:          [time][pol][nbit] (General case: [time][if/pol][chan][nbit])
 """
 
+from __future__ import print_function
+
 import struct
 import numpy as np
 from collections import defaultdict
@@ -165,7 +167,7 @@ def _write_header(hdr, file_object):
             pass
         else:
             #raise KeyError("Unknown sigproc header key: %s"%key)
-            print "WARNING: Unknown sigproc header key: %s" % key
+            print("WARNING: Unknown sigproc header key: %s" % key)
     _header_write_string(file_object, "HEADER_END")
 
 def _read_header(file_object):
@@ -194,7 +196,7 @@ def _read_header(file_object):
             header[expecting] = key
             expecting = None
         else:
-            print "WARNING: Unknown header key", key
+            print("WARNING: Unknown header key", key)
     if 'nchans' not in header:
         header['nchans'] = 1
     header['header_size'] = file_object.tell()
@@ -226,7 +228,7 @@ def seek_to_data(file_object):
             header[expecting] = key
             expecting = None
         else:
-            print "WARNING: Unknown header key", key
+            print("WARNING: Unknown header key", key)
     return
 
 def pack(data, nbit):
