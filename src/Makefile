@@ -25,7 +25,6 @@ ifndef NOCUDA
   transpose.o \
   fft.o \
   fft_kernels.o \
-  fft_shift.o \
   fdmt.o \
   map.o \
   trace.o \
