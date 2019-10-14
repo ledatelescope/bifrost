@@ -5,7 +5,7 @@ language: python
 python:
     - 2.7
     # PyPy versions
-    - pypy-5.10.1
+    - pypy2.7-6.0
 
 services:
     - docker
