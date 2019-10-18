@@ -1,4 +1,4 @@
-FROM nvidia/cuda:8.0
+FROM nvidia/cuda:10.1-devel-ubuntu18.04
 
 MAINTAINER Ben Barsdell <benbarsdell@gmail.com>
 
