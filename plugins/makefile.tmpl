@@ -81,7 +81,7 @@ define run_ctypesgen
 endef
 
 define run_wrapper
-	python wrapper.py $1
+	python wrap_plugin.py $1
 endef
 
 lib{libname}.so: {libname}.o

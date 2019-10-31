@@ -8,7 +8,7 @@ import argparse
 from textwrap import fill as tw_fill
 
 
-_WRAPPER_TEMPLATE = os.path.join(os.path.dirname(__file__), 'wrapper.tmpl')
+_WRAPPER_TEMPLATE = os.path.join(os.path.dirname(__file__), 'wrap_plugin.tmpl')
 
 
 def _patch_bifrost_objects(filename, includes):

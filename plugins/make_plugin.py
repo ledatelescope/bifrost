@@ -38,8 +38,8 @@ def main(args):
     elif os.path.getmtime(makename) < os.path.getmtime(__file__) \
           or os.path.getmtime(makename) < os.path.getmtime('makefile.py') \
           or os.path.getmtime(makename) < os.path.getmtime('makefile.tmpl') \
-          or os.path.getmtime(makename) < os.path.getmtime('wrapper.py') \
-          or os.path.getmtime(makename) < os.path.getmtime('wrapper.tmpl'):
+          or os.path.getmtime(makename) < os.path.getmtime('wrap_plugin.py') \
+          or os.path.getmtime(makename) < os.path.getmtime('wrap_plugin.tmpl'):
         trigger_rebuild = True
         
     if trigger_rebuild:
