@@ -212,7 +212,7 @@ def _render_call(py_name, call, for_method=False, indent=0):
     call_base = "_gen.{name}({args})".format(name=c_name, args=c_args)
     return_type = _check_get_or_return(py_name, call)
     
-    tw_padding = 2*indent + len(c_name) + 5 + 1
+    tw_padding = indent + 4 + len(c_name) + 5 + 1
     if return_type == 'check':
         tw_padding += 7
     elif return_type == 'get':
