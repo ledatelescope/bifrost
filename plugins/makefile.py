@@ -31,7 +31,7 @@ def create_makefile(libname, includes, bifrost_path=None):
         
     # Get the Bifrost source path, if needed
     if bifrost_path is None:
-        bifrost_path = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+        bifrost_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
     # Load in the template
     with open(_MAKEFILE_TEMPLATE, 'r') as fh:

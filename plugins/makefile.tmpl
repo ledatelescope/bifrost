@@ -87,10 +87,10 @@ endef
 lib{libname}.so: {libname}.o
 	$(CXX) -o lib{libname}.so {libname}.o -lm -shared -fopenmp $(LDFLAGS)
 
-%.o: %.cpp
+%.o: %.cpp {includes}
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(GCCFLAGS) -c $(OUTPUT_OPTION) $<
 
-%.o: %.cu
+%.o: %.cu {includes}
 	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" -c $(OUTPUT_OPTION) $<
 
 $(PYTHON_BINDINGS_FILE): {includes}
