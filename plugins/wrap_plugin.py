@@ -122,6 +122,7 @@ def _extract_calls(filename, libname):
         for py_name in functions:
             c_name = functions[py_name]
             if line.find("%s.argtypes" % c_name) != -1:
+                # TODO: Is there a way to get the actual argument names and not just the types?
                 value = line.split('=', 1)[-1]
                 arguments[py_name] = _split_and_clean_args(value)
             elif line.find("%s.restype" % c_name) != -1:
