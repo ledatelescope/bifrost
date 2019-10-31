@@ -257,10 +257,12 @@ def main(args):
     includes.extend(glob.glob("%s*.hpp" % libname))
     
     # Patch
+    print("INFO: Status: patching %s." % os.path.basename(filename))
     _patch_bifrost_objects(filename, includes)
     
     # Extract the ctypes-wrapped calls and use that to find what type of 
     # wrapper to build
+    print("INFO: Status: extracting function calls.")
     calls = _extract_calls(filename, libname)
     wrap_type = _class_or_functions(calls)
     
@@ -269,6 +271,7 @@ def main(args):
         template = fh.read()
     
     # Build the wrapper
+    print("INFO: Status: Writing to %s." % wrapname)
     with open(wrapname, 'w') as fh:
         template = template.format(libname=libname)
         fh.write(template)
@@ -297,6 +300,7 @@ def main(args):
                 call = calls[py_name]
                 function = _render_call(py_name, call, for_method=True, indent=4)
                 fh.write(function)
+    print("INFO: Status: High-level wrapping complete.")
 
 
 if __name__ == "__main__":
