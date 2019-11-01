@@ -106,15 +106,20 @@ def _extract_calls(filename, libname):
         for line in fh:
             wrapper.append(line)
             
-    # Pass 1:  Find the functions
+    # Pass 1:  Find the functions and defintion locations
     functions = {}
-    for line in wrapper:
+    locations = {}
+    for i,line in enumerate(wrapper):
         if line.find('if not hasattr(_lib') != -1 or line.find('if hasattr(_lib') != -1:
             function = line.split(None)[-1][1:]
             function = function.replace("'):", '')
             py_name = function.split(libname.capitalize(), 1)[-1]
             py_name = _normalize_function_name(py_name)
             functions[py_name] = function
+            if wrapper[i-1][0] == '#' and wrapper[i-1].find(':') != -1:
+                locations[py_name] = wrapper[i-1].split(None, 1)[1]
+            elif wrapper[i-2][0] == '#' and wrapper[i-2].find(':') != -1:
+                locations[py_name] = wrapper[i-2].split(None, 1)[1]
             
     # Pass 2: Find the argument and return types
     arguments, results = {}, {}
@@ -122,19 +127,45 @@ def _extract_calls(filename, libname):
         for py_name in functions:
             c_name = functions[py_name]
             if line.find("%s.argtypes" % c_name) != -1:
-                # TODO: Is there a way to get the actual argument names and not just the types?
                 value = line.split('=', 1)[-1]
                 arguments[py_name] = _split_and_clean_args(value)
             elif line.find("%s.restype" % c_name) != -1:
                 value = line.split('=', 1)[-1]
                 results[py_name] = _split_and_clean_args(value)
                 
+    # Pass 3:  Find the argument names
+    names = {}
+    for py_name in locations:
+        filename, line_no = locations[py_name].split(':',1)
+        line_no = int(line_no, 10)
+        
+        definition = ''
+        with open(filename, 'r') as fh:
+            i = 0
+            for line in fh:
+                i += 1
+                if i < line_no:
+                    continue
+                definition += line.strip().rstrip()
+                if line.find(')') != -1:
+                    break
+        definition = definition.split('(', 1)[1]
+        definition = definition.split(')', 1)[0]
+        args = definition.split(',')
+        args = [arg.rsplit(None, 1)[1].replace('*', '') for arg in args]
+        names[py_name] = args
+        
     # Combine and done
     calls = {}
     for py_name in functions:
         calls[py_name] = {}
         calls[py_name]['c_name'] = functions[py_name]
         calls[py_name]['arguments'] = arguments[py_name]
+        try:
+            calls[py_name]['names'] = names[py_name]
+        except KeyError:
+            ## Fallback in case we didn't find anything useful
+            calls[py_name]['names'] = ['arg%i' for i in range(len(arguments[py_name]))]
         calls[py_name]['results'] = results[py_name]
     return calls
 
@@ -184,10 +215,11 @@ def _convert_call_args(call, for_method=True):
     """
     
     args = call['arguments']
+    names = call['names']
     
     py_args, c_args = [], []
-    for arg in args:
-        py_args.append("arg%i_%s" % (len(py_args), arg))
+    for arg,name in zip(args, names):
+        py_args.append("%s_%s" % (name, arg))
         c_args.append(py_args[-1])
         # Make sure we wrap arguments of type BFarray with 
         # "asarray().as_BFarray()".
@@ -233,7 +265,7 @@ def _render_call(py_name, call, for_method=False, indent=0):
         output += "{indent}    _check({call})\n".format(indent=' '*indent,
                                                         call=call_base)
         if py_name == 'execute':
-            py_arrays = [arg for arg in py_args.split(',') if arg.find('BFarray') != -1]
+            py_arrays = [arg.strip() for arg in py_args.split(',') if arg.find('BFarray') != -1]
             if len(py_arrays) > 1:
                 output += "{indent}    return {array}\n".format(indent=' '*indent,
                                                                 array=py_arrays[-1])
