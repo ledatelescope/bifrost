@@ -69,6 +69,23 @@ def _normalize_function_name(function):
         name += l.lower()
     return name
 
+
+def _reverse_normalize_function_name(function):
+    """
+    Given a Python funciton name, convert it into a C++ function name.  For
+    example "set_positions" becomes "SetPositions".
+    """
+    
+    name = function[0].upper()
+    next_upper = False
+    for l in function[1:]:
+        if l == '_':
+            next_upper = True
+            continue
+        name += l.upper() if next_upper else l
+        next_upper = False
+    return name
+
 def _split_and_clean_args(args):
     """
     Given a string of arguments from a ctypesgen-generated wrapper, parse
@@ -113,7 +130,7 @@ def _extract_calls(filename, libname):
         if line.find('if not hasattr(_lib') != -1 or line.find('if hasattr(_lib') != -1:
             function = line.split(None)[-1][1:]
             function = function.replace("'):", '')
-            py_name = function.split(libname.capitalize(), 1)[-1]
+            py_name = function.split(_reverse_normalize_function_name(libname), 1)[-1]
             py_name = _normalize_function_name(py_name)
             functions[py_name] = function
             if wrapper[i-1][0] == '#' and wrapper[i-1].find(':') != -1:
@@ -315,7 +332,7 @@ def main(args):
                 function = _render_call(py_name, call, for_method=False, indent=0)
                 fh.write(function)
         else:
-            fh.write("class {wrapname}(BifrostObject):\n".format(wrapname=libname.capitalize()))
+            fh.write("class {wrapname}(BifrostObject):\n".format(wrapname=_reverse_normalize_function_name(libname)))
             fh.write("    def __init__(self):\n")
             fh.write("        BifrostObject.__init__(self, _gen.{create}, _gen.{destroy})\n".format(create=calls['create']['c_name'],
                                                                                                    destroy=calls['destroy']['c_name']))
