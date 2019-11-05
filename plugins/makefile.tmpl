@@ -1,5 +1,5 @@
 
-include ../config.mk ../user.mk
+include {bifrost}/config.mk {bifrost}/user.mk
 
 ifndef NOCUDA
 # All CUDA archs supported by this version of nvcc
@@ -95,7 +95,7 @@ define run_ctypesgen
 endef
 
 define run_wrapper
-	python wrap_plugin.py $1
+	python {bifrost}/plugins/wrap_plugin.py $1
 endef
 
 lib{libname}.so: {libname}.o
