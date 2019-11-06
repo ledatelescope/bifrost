@@ -36,6 +36,10 @@ TODO: Some calls result in segfault with space=cuda (e.g., __getitem__
 
 """
 
+import sys
+if sys.version_info > (3,):
+    xrange = range
+    
 import ctypes
 import numpy as np
 from memory import raw_malloc, raw_free, raw_get_space, space_accessible

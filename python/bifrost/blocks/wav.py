@@ -26,7 +26,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import absolute_import
-
+import sys
+if sys.version_info > (3,):
+    xrange = range
+    
 from bifrost.pipeline import SourceBlock, SinkBlock
 from bifrost.DataType import DataType
 from bifrost.units import convert_units

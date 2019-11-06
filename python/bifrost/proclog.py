@@ -27,7 +27,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import print_function
-
+import sys
+if sys.version_info > (3,):
+    xrange = range
+    
 from libbifrost import _bf, _check, _get, BifrostObject
 
 import os

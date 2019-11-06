@@ -38,6 +38,10 @@ ci4:  4+4-bit complex signed integer
 cf32: 32+32-bit complex floating point
 """
 
+import sys
+if sys.version_info > (3,):
+    xrange = range
+    
 from libbifrost import _bf
 import numpy as np
 

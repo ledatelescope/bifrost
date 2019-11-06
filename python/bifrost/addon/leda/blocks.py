@@ -29,7 +29,10 @@ This file contains blocks specific to LEDA-OVRO.
 """
 
 from __future__ import print_function
-
+import sys
+if sys.version_info > (3,):
+    xrange = range
+    
 import os
 import bandfiles
 import bifrost
@@ -122,7 +125,7 @@ class DadaReadBlock(object):
             self.oring.resize(ring_span_size)
             with oring.begin_sequence(f.name, header=json.dumps(ohdr)) as osequence:
 
-              for i in range(number_of_seconds):
+              for i in xrange(number_of_seconds):
                   # Get a chunk of data from the file. The whole band is used, but only a chunk of time (1 second).
                   # Massage the data so it can go through the ring. That means changng the data type and flattening.
                 try:
