@@ -131,6 +131,9 @@ def _extract_calls(filename, libname):
             function = line.split(None)[-1][1:]
             function = function.replace("'):", '')
             py_name = function.split(_reverse_normalize_function_name(libname), 1)[-1]
+            if py_name == '':
+                ## Catch for when the library name is the same as the function
+                py_name = function
             py_name = _normalize_function_name(py_name)
             functions[py_name] = function
             if wrapper[i-1][0] == '#' and wrapper[i-1].find(':') != -1:

@@ -18,6 +18,9 @@ BIFROST_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def main(args):
     filename = args.filename
+    if os.path.dirname(os.path.abspath(filename)) \
+       != os.path.abspath(os.getcwd()):
+        raise RuntimeError("%s must be run from the same directory as %s" % (os.path.basename(__file__), os.path.basename(filename)))
     ext = os.path.splitext(filename)[1]
     if ext not in ('.cpp', '.cu'):
         raise RuntimeError("Unknown file extension '%s'" % ext)
