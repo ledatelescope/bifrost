@@ -20,7 +20,7 @@ CUDA_INCDIR   ?= $(CUDA_HOME)/include
 
 ALIGNMENT ?= 4096 # Memory allocation alignment
 
-#MAPPED_RING_DIR ?= "/tmp/bifrost"	# Mapped ring space file location
+#MAPPED_RING_DIR ?= /tmp/bifrost	# Mapped ring space file location
 
 #NODEBUG    = 1 # Disable debugging mode (use this for production releases)
 #TRACE      = 1 # Enable tracing mode (generates annotations for use with nvprof/nvvp)
