@@ -77,7 +77,8 @@ class Orville(BifrostObject):
             del self._subgrid
             del self._stcgrid
             del self._w_kernels
-            del self._fft
+            del self._fft_im
+            del self._fft_wp
         except AttributeError:
             pass
         
@@ -127,10 +128,6 @@ class Orville(BifrostObject):
         corr = numpy.fft.ifft(corr).real
         corr = numpy.fft.fftshift(corr)
         corr = corr[corr.size/2-self._gridsize/2-self._gridsize%2:corr.size/2+self._gridsize/2] * self._oversample
-        #import pylab
-        #pylab.plot(corr)
-        #pylab.plot(1/corr)
-        #pylab.show()
         corr = numpy.fft.fftshift(corr)
         self._img_correction = ndarray(corr, dtype='f32', space='cuda')
         
@@ -201,11 +198,11 @@ class Orville(BifrostObject):
             ## FFT
             self._subgrid = self._subgrid.reshape(-1,self._gridsize,self._gridsize)
             try:
-                self._fft.execute(self._subgrid, self._subgrid, inverse=True)
+                self._fft_wp.execute(self._subgrid, self._subgrid, inverse=True)
             except AttributeError:
-                self._fft = Fft()
-                self._fft.init(self._subgrid, self._subgrid, axes=(1,2))
-                self._fft.execute(self._subgrid, self._subgrid, inverse=True)
+                self._fft_wp = Fft()
+                self._fft_wp.init(self._subgrid, self._subgrid, axes=(1,2))
+                self._fft_wp.execute(self._subgrid, self._subgrid, inverse=True)
             self._subgrid = self._subgrid.reshape(self._nplane,self._ntimechan,self._npol,self._gridsize,self._gridsize)
                 
             ## Project
@@ -215,7 +212,7 @@ class Orville(BifrostObject):
             
             ## IFFT
             self._subgrid = self._subgrid.reshape(-1,self._gridsize,self._gridsize)
-            self._fft.execute(self._subgrid, self._subgrid, inverse=False)
+            self._fft_wp.execute(self._subgrid, self._subgrid, inverse=False)
             self._subgrid = self._subgrid.reshape(self._nplane,self._ntimechan,self._npol,self._gridsize,self._gridsize)
             
             # Stack
@@ -228,11 +225,11 @@ class Orville(BifrostObject):
         ## IFFT
         self._stcgrid = self._stcgrid.reshape(-1,self._gridsize,self._gridsize)
         try:
-            self._fft.execute(self._stcgrid, self._stcgrid, inverse=True)
+            self._fft_im.execute(self._stcgrid, self._stcgrid, inverse=True)
         except AttributeError:
-            self._fft = Fft()
-            self._fft.init(self._stcgrid, self._stcgrid, axes=(1,2))
-            self._fft.execute(self._stcgrid, self._stcgrid, inverse=True)
+            self._fft_im = Fft()
+            self._fft_im.init(self._stcgrid, self._stcgrid, axes=(1,2))
+            self._fft_im.execute(self._stcgrid, self._stcgrid, inverse=True)
             
         ## Correct for the kernel
         map('img(c,i,j) /= corr(i)*corr(j)',
