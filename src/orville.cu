@@ -46,7 +46,11 @@ Implements the Romein convolutional algorithm onto a GPU using CUDA.
 
 #include <thrust/device_vector.h>
 
-#define MAX_W_PLANES  128
+// Maximum number of w planes to allow
+#define ORVILLE_MAX_W_PLANES  128
+
+// Use bilinear interpolation for the gridding kernel rather than nearest neighbor
+#define ORVILLE_USE_KERNEL_INTERP
 
 struct __attribute__((aligned(1))) nibble2 {
     // Yikes!  This is dicey since the packing order is implementation dependent!  
@@ -116,6 +120,20 @@ inline OutType WeightAndInterp2D(OutType             w,
     OutType ky = ((int)y + 1 - y)*ky0 + (y - (int)y)*ky1;
     
     return w*kx*ky;
+}
+
+
+template<typename OutType, typename IndexType>
+__device__
+inline OutType WeightAndNearestNeighbor2D(OutType             w,
+                                          cudaTextureObject_t kernel_tex, 
+                                          IndexType           x, 
+                                          IndexType           y, 
+                                          int                 size) {
+    OutType kxnn = fetch_cf<OutType>(kernel_tex, (int) round(x));
+    OutType kynn = fetch_cf<OutType>(kernel_tex, (int) round(y));
+    
+    return w*knn*knn;
 }
 
 
@@ -241,7 +259,11 @@ __global__ void orville_kernel_spln(int                         nbaseline,
             }
             
             //TODO: Re-do the w-kernel/gcf for our data.
+#ifdef ORVILLE_USE_KERNEL_INTERP
             OutType px = WeightAndInterp2D(weight[vi+vi_s], kernel_tex, myConvVO, myConvUO, maxsupport * oversample);
+#else
+            OutType px = WeightAndNearestNeighbor2D(weight[vi+vi_s], kernel_tex, myConvVO, myConvUO, maxsupport * oversample);
+#endif
             // Sum up
             InType temp = d_in[vi+vi_s];
             OutType vi_v = OutType(temp.x, temp.y);
@@ -371,7 +393,11 @@ __global__ void orville_kernel_sloc(int                         nbaseline,
             }
             
             //TODO: Re-do the w-kernel/gcf for our data.
+#ifdef ORVILLE_USE_KERNEL_INTERP
             OutType px = WeightAndInterp2D(weight[vi+vi_s], kernel_tex, myConvVO, myConvUO, maxsupport * oversample);
+#else
+            OutType px = WeightAndNearestNeighbor2D(weight[vi+vi_s], kernel_tex, myConvVO, myConvUO, maxsupport * oversample);
+#endif
             // Sum up
             InType temp = d_in[vi+vi_s];
             OutType vi_v = OutType(temp.x, temp.y);
@@ -603,9 +629,9 @@ public:
             ALIGNMENT_ELMTS = ALIGNMENT_BYTES / sizeof(float)
         };
         Workspace workspace(ALIGNMENT_BYTES);
-        _plan_stride = round_up(MAX_W_PLANES+1, ALIGNMENT_ELMTS);
-        workspace.reserve(MAX_W_PLANES+1, &_planes);
-        workspace.reserve(MAX_W_PLANES+1, &_midpoints);
+        _plan_stride = round_up(ORVILLE_MAX_W_PLANES+1, ALIGNMENT_ELMTS);
+        workspace.reserve(ORVILLE_MAX_W_PLANES+1, &_planes);
+        workspace.reserve(ORVILLE_MAX_W_PLANES+1, &_midpoints);
         if( storage_size ) {
             if( !storage_ptr ) {
                 // Return required storage size
@@ -666,8 +692,8 @@ public:
         int count = 1;
         float* planes;
         float* midpoints;
-        planes = (float*) malloc((MAX_W_PLANES+1)*sizeof(float));
-        midpoints = (float*) malloc((MAX_W_PLANES+1)*sizeof(float));
+        planes = (float*) malloc((ORVILLE_MAX_W_PLANES+1)*sizeof(float));
+        midpoints = (float*) malloc((ORVILLE_MAX_W_PLANES+1)*sizeof(float));
         *(planes + 0) = *(zsorted + 0);
         *(midpoints + 0) = *(zsorted + 0);
         for(int i=1; i<npositions*nbl; i++) {
@@ -676,7 +702,7 @@ public:
                 count = 0;
                 
                 _nplane++;
-                BF_ASSERT_EXCEPTION(_nplane < MAX_W_PLANES, BF_STATUS_INTERNAL_ERROR);
+                BF_ASSERT_EXCEPTION(_nplane < ORVILLE_MAX_W_PLANES, BF_STATUS_INTERNAL_ERROR);
                 *(planes + _nplane - 1) = *(zsorted + i);
                 *(midpoints + _nplane - 1) = *(zsorted + i);
                 count++;
@@ -698,13 +724,13 @@ public:
         
         BF_CHECK_CUDA_EXCEPTION(cudaMemcpyAsync(_planes, 
                                                 planes, 
-                                                (MAX_W_PLANES+1)*sizeof(float), 
+                                                (ORVILLE_MAX_W_PLANES+1)*sizeof(float), 
                                                 cudaMemcpyHostToDevice,
                                                 _stream),
                                 BF_STATUS_MEM_OP_FAILED);
         BF_CHECK_CUDA_EXCEPTION(cudaMemcpyAsync(_midpoints, 
                                                 midpoints, 
-                                                (MAX_W_PLANES+1)*sizeof(float), 
+                                                (ORVILLE_MAX_W_PLANES+1)*sizeof(float), 
                                                 cudaMemcpyHostToDevice,
                                                 _stream),
                                 BF_STATUS_MEM_OP_FAILED);
@@ -760,12 +786,12 @@ public:
         _nplane = 0;
         BF_CHECK_CUDA_EXCEPTION( cudaMemsetAsync(_planes,
                                                 0,
-                                                sizeof(float)*(MAX_W_PLANES+1),
+                                                sizeof(float)*(ORVILLE_MAX_W_PLANES+1),
                                                 _stream),
                                 BF_STATUS_MEM_OP_FAILED );
         BF_CHECK_CUDA_EXCEPTION( cudaMemsetAsync(_midpoints,
                                                 0,
-                                                sizeof(float)*(MAX_W_PLANES+1),
+                                                sizeof(float)*(ORVILLE_MAX_W_PLANES+1),
                                                 _stream),
                                 BF_STATUS_MEM_OP_FAILED );
         
