@@ -231,12 +231,28 @@ class Orville(BifrostObject):
             self._fft_im.init(self._stcgrid, self._stcgrid, axes=(1,2))
             self._fft_im.execute(self._stcgrid, self._stcgrid, inverse=True)
             
-        ## Correct for the kernel
-        map('img(c,i,j) /= corr(i)*corr(j)',
-            {'img':self._stcgrid, 'corr':self._img_correction},
-            axis_names=('c','i','j'), shape=self._stcgrid.shape)
-            
-        # Shift and accumulate onto odata
+        ### Correct for the kernel
+        #map('img(c,i,j) /= corr(i)*corr(j)',
+        #    {'img':self._stcgrid, 'corr':self._img_correction},
+        #    axis_names=('c','i','j'), shape=self._stcgrid.shape)
+        #    
+        ## Shift and accumulate onto odata
+        #oshape = odata.shape
+        #odata = odata.reshape(-1,odata.shape[-2],odata.shape[-1])
+        #padding = self._gridsize - self._origsize
+        #offset = padding/2# - padding%2
+        #map("""
+        #    auto k = i + {offset} - {gridsize}/2;
+        #    auto l = j + {offset} - {gridsize}/2;
+        #    if( k < 0 ) k += {gridsize};
+        #    if( l < 0 ) l += {gridsize};
+        #    odata(c,i,j) += idata(c,k,l).real;
+        #    """.format(gridsize=self._gridsize, offset=offset), 
+        #    {'odata':odata, 'idata':self._stcgrid}, 
+        #    axis_names=('c','i','j'), shape=odata.shape)
+        #odata = odata.reshape(oshape)
+        
+        # Correct for the kernel, shift, and accumulate onto odata
         oshape = odata.shape
         odata = odata.reshape(-1,odata.shape[-2],odata.shape[-1])
         padding = self._gridsize - self._origsize
@@ -246,9 +262,9 @@ class Orville(BifrostObject):
             auto l = j + {offset} - {gridsize}/2;
             if( k < 0 ) k += {gridsize};
             if( l < 0 ) l += {gridsize};
-            odata(c,i,j) += idata(c,k,l).real;
+            odata(c,i,j) += idata(c,k,l).real / (corr(k) * corr(l));
             """.format(gridsize=self._gridsize, offset=offset), 
-            {'odata':odata, 'idata':self._stcgrid}, 
+            {'odata':odata, 'idata':self._stcgrid, 'corr':self._img_correction}, 
             axis_names=('c','i','j'), shape=odata.shape)
         odata = odata.reshape(oshape)
         
