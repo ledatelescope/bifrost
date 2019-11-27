@@ -133,7 +133,7 @@ inline OutType WeightAndNearestNeighbor2D(OutType             w,
     OutType kxnn = fetch_cf<OutType>(kernel_tex, (int) round(x));
     OutType kynn = fetch_cf<OutType>(kernel_tex, (int) round(y));
     
-    return w*knn*knn;
+    return w*kxnn*kynn;
 }
 
 
