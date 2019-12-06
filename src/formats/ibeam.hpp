@@ -110,11 +110,10 @@ public:
 	    itype const* __restrict__ in  = (itype const*)pkt->payload_ptr;
 	    otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
 	
-	    int chan = 0;
-        int beam = 0;
-	    for( ; chan<pkt->nchan; ++chan ) {
-            for( ; beam<_nbeam; ++beam) {
-                out[pkt->nchan*_nbeam*pkt->src + chan*_nbeam + beam] = in[chan*_nbeam + beam];
+	    int chan, beam;
+        for(chan=0; chan<pkt->nchan; ++chan ) {
+            for(beam=0; beam<_nbeam; ++beam) {
+                out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam] = in[chan*_nbeam + beam];
             }
 	    }
     }
@@ -129,7 +128,7 @@ public:
 	    for( int t=0; t<nseq; ++t ) {
 		    for( int c=0; c<nchan; ++c ) {
                 for( int b=0; b<_nbeam; ++b ) {
-                    ::memset(&aligned_data[t*_nbeam*nchan*src + _nbeam*c + b],
+                    ::memset(&aligned_data[t*nsrc*nchan*_nbeam + src*nchan*_nbeam + c*_nbeam + b],
 			                 0, sizeof(otype));
                 }
 		    }
