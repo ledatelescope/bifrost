@@ -258,39 +258,17 @@ public:
     }
 };
 
-class BFpacketwriter_subbeam2_impl : public BFpacketwriter_impl {
+template<uint8_t B>
+class BFpacketwriter_ibeam_impl : public BFpacketwriter_impl {
+    uint8_t            _nbeam = B;
     ProcLog            _type_log;
 public:
-    inline BFpacketwriter_subbeam2_impl(PacketWriterThread* writer,
-                                        int                 nsamples)
+    inline BFpacketwriter_ibeam_impl(PacketWriterThread* writer,
+                                     int                 nsamples)
         : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CF32),
           _type_log((std::string(writer->get_name())+"/type").c_str()) {
-        _filler = new CHIPSHeaderFiller();
-        _type_log.update("type : %s\n", "subbeam2");
-    }
-};
-
-class BFpacketwriter_subbeam3_impl : public BFpacketwriter_impl {
-    ProcLog            _type_log;
-public:
-    inline BFpacketwriter_subbeam3_impl(PacketWriterThread* writer,
-                                        int                 nsamples)
-        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CF32),
-          _type_log((std::string(writer->get_name())+"/type").c_str()) {
-        _filler = new CHIPSHeaderFiller();
-        _type_log.update("type : %s\n", "subbeam3");
-    }
-};
-
-class BFpacketwriter_subbeam4_impl : public BFpacketwriter_impl {
-    ProcLog            _type_log;
-public:
-    inline BFpacketwriter_subbeam4_impl(PacketWriterThread* writer,
-                                        int                 nsamples)
-        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CF32),
-          _type_log((std::string(writer->get_name())+"/type").c_str()) {
-        _filler = new CHIPSHeaderFiller();
-        _type_log.update("type : %s\n", "subbeam4");
+        _filler = new IBeamHeaderFiller<B>();
+        _type_log.update("type : %s%i\n", "ibeam", _nbeam);
     }
 };
 
@@ -355,15 +333,15 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
         nsamples = 32*nchan;
-    } else if( std::string(format).substr(0, 9) == std::string("subbeam2_") ) {
-        int nchan = std::atoi((std::string(format).substr(9, std::string(format).length())).c_str());
-        nsamples = 4*nchan;
-    } else if( std::string(format).substr(0, 9) == std::string("subbeam3_") ) {
-        int nchan = std::atoi((std::string(format).substr(9, std::string(format).length())).c_str());
-        nsamples = 6*nchan;
-    } else if( std::string(format).substr(0, 9) == std::string("subbeam4_") ) {
-        int nchan = std::atoi((std::string(format).substr(9, std::string(format).length())).c_str());
-        nsamples = 8*nchan;
+    } else if( std::string(format).substr(0, 7) == std::string("ibeam2_") ) {
+        int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
+        nsamples = 2*2*nchan;
+    } else if( std::string(format).substr(0, 7) == std::string("ibeam3_") ) {
+        int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
+        nsamples = 2*3*nchan;
+    } else if( std::string(format).substr(0, 7) == std::string("ibeam4_") ) {
+        int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
+        nsamples = 2*4*nchan;
     } else if(std::string(format).substr(0, 4) == std::string("cor_") ) {
         int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
         nsamples = 4*nchan;
@@ -391,14 +369,14 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_chips_impl(writer, nsamples),
                            *obj = 0);
-    } else if( std::string(format).substr(0, 9) == std::string("subbeam2_") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_subbeam2_impl(writer, nsamples),
+    } else if( std::string(format).substr(0, 7) == std::string("ibeam2_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<2>(writer, nsamples),
                            *obj = 0);
-    } else if( std::string(format).substr(0, 9) == std::string("subbeam3_") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_subbeam3_impl(writer, nsamples),
+    } else if( std::string(format).substr(0, 7) == std::string("ibeam3_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<3>(writer, nsamples),
                            *obj = 0);
-    } else if( std::string(format).substr(0, 9) == std::string("subbeam4_") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_subbeam4_impl(writer, nsamples),
+    } else if( std::string(format).substr(0, 7) == std::string("ibeam4_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<4>(writer, nsamples),
                            *obj = 0);
     } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_cor_impl(writer, nsamples),

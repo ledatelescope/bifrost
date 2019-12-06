@@ -38,6 +38,9 @@
 
 #define JUMBO_FRAME_SIZE 9000
 
+struct __attribute__((aligned(16))) aligned128_type {
+    uint8_t data[16];
+};
 struct __attribute__((aligned(32))) aligned256_type {
 	uint8_t data[32];
 };
