@@ -352,6 +352,7 @@ BFstatus bfUnpack(BFarray const* in,
 #else
 			CALL_FOREACH_SIMPLE_CPU_UNPACK(uint8_t,int64_t);
 #endif
+			break;
 		}
 		case BF_DTYPE_CI2: nelement *= 2;
 		case BF_DTYPE_I2: {
@@ -434,6 +435,7 @@ BFstatus bfUnpack(BFarray const* in,
 #else
 			CALL_FOREACH_PROMOTE_CPU_UNPACK(uint8_t,int64_t,float);
 #endif
+			break;
 		}
 		case BF_DTYPE_CI2: nelement *= 2;
 		case BF_DTYPE_I2: {
