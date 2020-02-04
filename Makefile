@@ -24,8 +24,8 @@ clean:
 	$(MAKE) -C $(SRC_DIR) clean
 .PHONY: clean
 install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME)
-	install -C -D -m 644 -t $(INSTALL_INC_DIR)/$(BIFROST_NAME)/config config.mk user.mk
-	install -C -m 644 -t $(INSTALL_INC_DIR) \
+	install -D -m 644 -t $(INSTALL_INC_DIR)/$(BIFROST_NAME)/config config.mk user.mk
+	install -D -m 644 -t $(INSTALL_INC_DIR) \
 		src/array_utils.hpp src/assert.hpp src/Complex.hpp src/cuda.hpp src/EnvVars.hpp \
 		src/fft_kernels.h src/int_fastdiv.h src/Jones.hpp src/linalg_kernels.h src/ObjectCache.hpp \
 		src/utils.hpp src/utils.hu src/Vector.hpp src/workspace.hpp src/ArrayIndexer.cuh src/IndexArray.cuh \
