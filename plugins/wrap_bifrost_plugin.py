@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright (c) 2019, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2019, The University of New Mexico. All rights reserved.
 #
@@ -35,7 +37,14 @@ import argparse
 from textwrap import fill as tw_fill
 
 
-_WRAPPER_TEMPLATE = os.path.join(os.path.dirname(__file__), 'wrap_plugin.tmpl')
+# Python wrapper template
+_WRAPPER_TEMPLATE = r"""
+from bifrost.libbifrost import _check, _get, BifrostObject
+from bifrost.ndarray import asarray
+
+import {libname}_generated as _gen
+
+"""
 
 
 def _patch_bifrost_objects(filename, includes):
@@ -346,14 +355,10 @@ def main(args):
     calls = _extract_calls(filename, libname)
     wrap_type = _class_or_functions(calls)
     
-    # Load the base template
-    with open(_WRAPPER_TEMPLATE, 'r') as fh:
-        template = fh.read()
-    
     # Build the wrapper
     print("INFO: Status: Writing to %s." % wrapname)
     with open(wrapname, 'w') as fh:
-        template = template.format(libname=libname)
+        template = _WRAPPER_TEMPLATE.format(libname=libname)
         fh.write(template)
         
         if wrap_type == 'functions':
