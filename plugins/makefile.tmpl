@@ -1,5 +1,5 @@
 
-include {bifrost}/config.mk {bifrost}/user.mk
+include {bifrost_config}/config.mk {bifrost_config}/user.mk
 
 ifndef NOCUDA
 # All CUDA archs supported by this version of nvcc
@@ -69,9 +69,9 @@ ifndef ANY_ARCH
   NVCCFLAGS += -Xcompiler "-march=native"
 endif
 
-CPPFLAGS += -I{bifrost}/src -I. -I$(CUDA_INCDIR)
+CPPFLAGS += -I{bifrost_include} -I. -I$(CUDA_INCDIR)
 
-LDFLAGS += -L{bifrost}/lib -lbifrost
+LDFLAGS += -L{bifrost_library} -lbifrost
 
 GCCFLAGS += -fmessage-length=80 #-fdiagnostics-color=auto
 
@@ -82,7 +82,7 @@ PYTHON_WRAPPER_FILE={libname}.py
 all: lib{libname}.so $(PYTHON_BINDINGS_FILE) $(PYTHON_WRAPPER_FILE)
 
 define run_ctypesgen
-	python {bifrost}/python/wrap.py -l$1 -I. -I{bifrost}/src $^ -o $@
+	python -c 'from ctypesgen import main as ctypeswrap; ctypeswrap.main()' -l$1 -I. -I{bifrost_include} $^ -o $@
 	# WAR for 'const char**' being generated as POINTER(POINTER(c_char)) instead of POINTER(c_char_p)
 	sed -i 's/POINTER(c_char)/c_char_p/g' $@
 	# WAR for a buggy WAR in ctypesgen that breaks type checking and auto-byref functionality
@@ -95,7 +95,7 @@ define run_ctypesgen
 endef
 
 define run_wrapper
-	python {bifrost}/plugins/wrap_plugin.py $1
+	python {bifrost_script}/wrap_plugin.py $1
 endef
 
 lib{libname}.so: {libname}.o

@@ -38,6 +38,37 @@ __all__ = ['get_makefile_name', 'create_makefile', 'build', 'clean', 'purge']
 _MAKEFILE_TEMPLATE = os.path.join(os.path.dirname(__file__), 'makefile.tmpl')
 
 
+def resolve_bifrost(bifrost_path=None):
+    """
+    Given a base path for a Bifrost installation, find all of the necessary 
+    components for the Makefile.  Returns a four-element tuple of the
+    configuration path, includes path, library path, and plugin scripts path.
+    """
+    
+    # Get the Bifrost source path, if needed
+    if bifrost_path is None:
+        bifrost_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+    # Setup the dependant paths
+    ## Configuration files
+    bifrost_config_path = bifrost_path+'/include/bifrost/config'
+    if not os.path.exists(os.path.join(bifrost_config_path, 'config.mk')):
+        ### Fallback to this being in the directory itself
+        bifrost_config_path = bifrost_path
+    ## Includes
+    bifrost_include_path = bifrost_path+'/include'
+    if not os.path.exists(os.path.join(bifrost_include_path, 'bifrost', 'ring.h')):
+        ### Fallback to this being in the src directory
+        bifrost_include_path = os.path.join(bifrost_path, 'src')
+    ## Libraries
+    bifrost_library_path = bifrost_path+'/lib'
+    ## Plugin scripts
+    bifrost_script_path = os.path.dirname(os.path.abspath(__file__))
+    
+    # Done
+    return bifrost_config_path, bifrost_include_path, bifrost_library_path, bifrost_script_path
+
+
 def get_makefile_name(libname):
     """
     Given a library name, return the corresponding Makefile name.
@@ -56,9 +87,8 @@ def create_makefile(libname, includes, bifrost_path=None):
     if isinstance(includes, (list, tuple)):
         includes = " ".join(includes)
         
-    # Get the Bifrost source path, if needed
-    if bifrost_path is None:
-        bifrost_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Get the Bifrost paths
+    bifrost_config, bifrost_include, bifrost_library, bifrost_script = resolve_bifrost(bifrost_path=bifrost_path)
         
     # Load in the template
     with open(_MAKEFILE_TEMPLATE, 'r') as fh:
@@ -67,7 +97,10 @@ def create_makefile(libname, includes, bifrost_path=None):
     # Fill the template, save it, and return the filename
     template = template.format(libname=libname,
                                includes=includes,
-                               bifrost=bifrost_path)
+                               bifrost_config=bifrost_config,
+                               bifrost_include=bifrost_include,
+                               bifrost_library=bifrost_library,
+                               bifrost_script=bifrost_script)
     filename = get_makefile_name(libname)
     with open(filename, 'w') as fh:
         fh.write(template)

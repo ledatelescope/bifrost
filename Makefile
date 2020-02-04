@@ -24,7 +24,12 @@ clean:
 	$(MAKE) -C $(SRC_DIR) clean
 .PHONY: clean
 install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME)
-	install -m 644 -t $(INSTALL_INC_DIR)/$(BIFROST_NAME) config.mk user.mk
+	install -C -D -m 644 -t $(INSTALL_INC_DIR)/$(BIFROST_NAME)/config config.mk user.mk
+	install -C -m 644 -t $(INSTALL_INC_DIR) \
+		src/array_utils.hpp src/assert.hpp src/Complex.hpp src/cuda.hpp src/EnvVars.hpp \
+		src/fft_kernels.h src/int_fastdiv.h src/Jones.hpp src/linalg_kernels.h src/ObjectCache.hpp \
+		src/utils.hpp src/utils.hu src/Vector.hpp src/workspace.hpp src/ArrayIndexer.cuh src/IndexArray.cuh \
+		src/ShapeIndexer.cuh
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) install
 .PHONY: install
 uninstall:
@@ -32,6 +37,23 @@ uninstall:
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ)
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN)
 	rm -rf $(INSTALL_INC_DIR)/bifrost/
+	rm -rf $(INSTALL_INC_DIR)/array_utils.hpp
+	rm -rf $(INSTALL_INC_DIR)/assert.hpp
+	rm -rf $(INSTALL_INC_DIR)/Complex.hpp
+	rm -rf $(INSTALL_INC_DIR)/cuda.hpp
+	rm -rf $(INSTALL_INC_DIR)/EnvVars.hpp
+	rm -rf $(INSTALL_INC_DIR)/fft_kernels.h
+	rm -rf $(INSTALL_INC_DIR)/int_fastdiv.h
+	rm -rf $(INSTALL_INC_DIR)/Jones.hpp
+	rm -rf $(INSTALL_INC_DIR)/linalg_kernels.h
+	rm -rf $(INSTALL_INC_DIR)/ObjectCache.hpp
+	rm -rf $(INSTALL_INC_DIR)/utils.hpp
+	rm -rf $(INSTALL_INC_DIR)/utils.hu
+	rm -rf $(INSTALL_INC_DIR)/Vector.hpp
+	rm -rf $(INSTALL_INC_DIR)/workspace.hpp
+	rm -rf $(INSTALL_INC_DIR)/ArrayIndexer.cuh
+	rm -rf $(INSTALL_INC_DIR)/IndexArray.cuh
+	rm -rf $(INSTALL_INC_DIR)/ShapeIndexer.cuh
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) uninstall
 .PHONY: uninstall
 
