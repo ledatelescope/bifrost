@@ -24,6 +24,7 @@ clean:
 	$(MAKE) -C $(SRC_DIR) clean
 .PHONY: clean
 install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME)
+	install -m 644 -t $(INSTALL_INC_DIR)/$(BIFROST_NAME) config.mk user.mk
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) install
 .PHONY: install
 uninstall:
