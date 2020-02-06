@@ -59,6 +59,18 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 		*space = BF_SPACE_SYSTEM;
 		// WAR to avoid the ignored failure showing up later
 		cudaGetLastError();
+#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+    } else {
+        switch( ptr_attrs.type ) {
+		case cudaMemoryTypeHost:    *space = BF_SPACE_SYSTEM;       break;
+		case cudaMemoryTypeDevice:  *space = BF_SPACE_CUDA;         break;
+		case cudaMemoryTypeManaged: *space = BF_SPACE_CUDA_MANAGED; break
+		default: {
+			// This should never be reached
+			BF_FAIL("Valid memoryType", BF_STATUS_INTERNAL_ERROR);
+		}
+		}
+#else
 	} else if( ptr_attrs.isManaged ) {
 		*space = BF_SPACE_CUDA_MANAGED;
 	} else {
@@ -71,6 +83,7 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 		}
 		}
 	}
+#endif  // defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
 #endif
 	return BF_STATUS_SUCCESS;
 }
@@ -214,7 +227,7 @@ BFstatus bfMemcpy2D(void*       dst,
                     BFspace     src_space,
                     BFsize      width,    // bytes
                     BFsize      height) { // rows
-	if( width*height ) {
+	if( width && height ) {
 		BF_ASSERT(dst, BF_STATUS_INVALID_POINTER);
 		BF_ASSERT(src, BF_STATUS_INVALID_POINTER);
 #if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
@@ -304,7 +317,7 @@ BFstatus bfMemset2D(void*   ptr,
                     BFsize  width,    // bytes
                     BFsize  height) { // rows
 	BF_ASSERT(ptr, BF_STATUS_INVALID_POINTER);
-	if( width*height ) {
+	if( width && height ) {
 		if( space == BF_SPACE_AUTO ) {
 			bfGetSpace(ptr, &space);
 		}
