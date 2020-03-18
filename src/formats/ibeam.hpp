@@ -111,13 +111,13 @@ public:
 	    otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
 	
 	    int chan, beam;
-        for(chan=0; chan<pkt->nchan; ++chan ) {
-		for(beam=0; beam<_nbeam; ++beam) {
-			::memcpy(&out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam], 
-			 	 &in[chan*_nbeam + beam], sizeof(otype));
-                	//out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam] = in[chan*_nbeam + beam];
-            	}
-	}
+	    for(chan=0; chan<pkt->nchan; ++chan ) {
+		    for(beam=0; beam<_nbeam; ++beam) {
+			    ::memcpy(&out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam], 
+			 	     &in[chan*_nbeam + beam], sizeof(otype));
+                	    //out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam] = in[chan*_nbeam + beam];
+		    }
+	    }
     }
 
     inline void blank_out_source(uint8_t* data,
