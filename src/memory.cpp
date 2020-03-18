@@ -1,5 +1,5 @@
 ﻿/*
- * Copyright (c) 2016-2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,7 @@
 #include "utils.hpp"
 #include "cuda.hpp"
 #include "trace.hpp"
+#include "fileutils.hpp"
 
 #include <cstdlib> // For posix_memalign
 #include <cstring> // For memcpy
@@ -54,64 +55,6 @@ static_assert(BF_IS_POW2(BF_ALIGNMENT), "BF_ALIGNMENT must be a power of 2");
   #define BF_MAPPED_RING_DIR "/tmp/bifrost"
 #endif
 
-void mmake_dir(std::string path, int perms=775) {
-	if( std::system(("mkdir -p "+path+" -m "+std::to_string(perms)).c_str()) ) {
-		throw std::runtime_error("Failed to create path: "+path);
-	}
-}
-void mremove_all(std::string path) {
-	if( std::system(("rm -rf "+path).c_str()) ) {
-		throw std::runtime_error("Failed to remove all: "+path);
-	}
-}
-void mremove_dir(std::string path) {
-	if( std::system(("rmdir "+path+" 2> /dev/null").c_str()) ) {
-		throw std::runtime_error("Failed to remove dir: "+path);
-	}
-}
-void mremove_file(std::string path) {
-	if( std::system(("rm -f "+path).c_str()) ) {
-		throw std::runtime_error("Failed to remove file: "+path);
-	}
-}
-bool mprocess_exists(pid_t pid) {
-	struct stat s;
-	return !(stat(("/proc/"+std::to_string(pid)).c_str(), &s) == -1
-	         && errno == ENOENT);
-}
-
-std::string mget_dirname(std::string filename) {
-	// TODO: This is crude, but works for our proclog use-case
-	return filename.substr(0, filename.find_last_of("/"));
-}
-
-class MLockFile {
-	std::string _lockfile;
-	int         _fd;
-public:
-	MLockFile(MLockFile const& ) = delete;
-	MLockFile& operator=(MLockFile const& ) = delete;
-	MLockFile(std::string lockfile) : _lockfile(lockfile) {
-		while( true ) {
-			_fd = open(_lockfile.c_str(), O_CREAT, 600);
-			flock(_fd, LOCK_EX);
-			struct stat fd_stat, lockfile_stat;
-			fstat(_fd, &fd_stat);
-			stat(_lockfile.c_str(), &lockfile_stat);
-			// Compare inodes
-			if( fd_stat.st_ino == lockfile_stat.st_ino ) {
-				// Got the lock
-				break;
-			}
-			close(_fd);
-		}
-	}
-	~MLockFile() {
-		unlink(_lockfile.c_str());
-		flock(_fd, LOCK_UN);
-	}
-};
-
 class MappedMgr {
     static constexpr const char*  base_mapped_dir = BF_MAPPED_RING_DIR;
     std::string                   _mapped_dir;
@@ -121,43 +64,43 @@ class MappedMgr {
     
 	void try_base_mapped_dir_cleanup() {
 		// Do this with a file lock to avoid interference from other processes
-		MLockFile lock(std::string(base_mapped_dir) + ".lock");
+		LockFile lock(std::string(base_mapped_dir) + ".lock");
 		DIR* dp;
 		// Remove pid dirs for which a corresponding process does not exist
 		if( (dp = opendir(base_mapped_dir)) ) {
 			struct dirent* ep;
 			while( (ep = readdir(dp)) ) {
 				pid_t pid = atoi(ep->d_name);
-				if( pid && !mprocess_exists(pid) ) {
-					mremove_all(std::string(base_mapped_dir) + "/" +
-					            std::to_string(pid));
+				if( pid && !process_exists(pid) ) {
+					remove_all(std::string(base_mapped_dir) + "/" +
+					           std::to_string(pid));
 				}
 			}
 			closedir(dp);
 		}
 		// Remove the base_logdir if it's empty
-		try { mremove_dir(base_mapped_dir); }
+		try { remove_dir(base_mapped_dir); }
 		catch( std::exception ) {}
 	}
     void cleanup(std::string filename, int fd) {
         if( fd >= 0 ) {
             ::close(fd);
         }
-        try { mremove_file(filename); }
+        try { remove_file(filename); }
         catch( std::exception ) {}
     } 
     MappedMgr()
         : _mapped_dir(std::string(base_mapped_dir) + "/" + std::to_string(getpid())) {
 		this->try_base_mapped_dir_cleanup();
-		mmake_dir(base_mapped_dir, 777);
-		mmake_dir(_mapped_dir);
+		make_dir(base_mapped_dir, 777);
+		make_dir(_mapped_dir);
 	}
     ~MappedMgr() {
         for(auto& x : _filenames) {
             this->free(x.first);
         }
         try {
-            mremove_all(_mapped_dir);
+            remove_all(_mapped_dir);
             this->try_base_mapped_dir_cleanup();
 		} catch( std::exception ) {}
     }
