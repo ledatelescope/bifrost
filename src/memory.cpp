@@ -239,7 +239,7 @@ const char* bfGetSpaceString(BFspace space) {
 	switch( space ) {
 		case BF_SPACE_AUTO:         return "auto";
 		case BF_SPACE_SYSTEM:       return "system";
-        case BF_SPACE_MAPPED:       return "mapped";
+		case BF_SPACE_MAPPED:       return "mapped";
 		case BF_SPACE_CUDA:         return "cuda";
 		case BF_SPACE_CUDA_HOST:    return "cuda_host";
 		case BF_SPACE_CUDA_MANAGED: return "cuda_managed";
@@ -296,7 +296,7 @@ BFstatus bfFree(void* ptr, BFspace space) {
 	}
 	switch( space ) {
 	case BF_SPACE_SYSTEM:       ::free(ptr); break;
-    case BF_SPACE_MAPPED:       MappedMgr::get().free(ptr); break;
+	case BF_SPACE_MAPPED:       MappedMgr::get().free(ptr); break;
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 	case BF_SPACE_CUDA:         cudaFree(ptr); break;
 	case BF_SPACE_CUDA_HOST:    cudaFreeHost(ptr); break;
@@ -325,13 +325,13 @@ BFstatus bfMemcpy(void*       dst,
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST: // fall-through
 #endif
-        case BF_SPACE_MAPPED: // fall-through
+		case BF_SPACE_MAPPED: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA_HOST: // fall-through
 #endif
-            case BF_SPACE_MAPPED: // fall-through
+			case BF_SPACE_MAPPED: // fall-through
 			case BF_SPACE_SYSTEM: ::memcpy(dst, src, count); return BF_STATUS_SUCCESS;
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
@@ -345,7 +345,7 @@ BFstatus bfMemcpy(void*       dst,
 		case BF_SPACE_CUDA: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
-            case BF_SPACE_MAPPED: // fall-through # TODO:  Is this a good idea?
+			case BF_SPACE_MAPPED: // fall-through # TODO:  Is this a good idea?
 			case BF_SPACE_SYSTEM: kind = cudaMemcpyDeviceToHost; break;
 			case BF_SPACE_CUDA:   kind = cudaMemcpyDeviceToDevice; break;
 			// TODO: BF_SPACE_CUDA_MANAGED
@@ -401,13 +401,13 @@ BFstatus bfMemcpy2D(void*       dst,
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST: // fall-through
 #endif
-        case BF_SPACE_MAPPED: // fall-through
+		case BF_SPACE_MAPPED: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA_HOST: // fall-through
 #endif
-            case BF_SPACE_MAPPED: // fall-through
+			case BF_SPACE_MAPPED: // fall-through
 			case BF_SPACE_SYSTEM: memcpy2D(dst, dst_stride, src, src_stride, width, height); return BF_STATUS_SUCCESS;
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
@@ -422,7 +422,7 @@ BFstatus bfMemcpy2D(void*       dst,
 		case BF_SPACE_CUDA: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
-            case BF_SPACE_MAPPED: // fall-through # TODO:  Is this a good idea?
+			case BF_SPACE_MAPPED: // fall-through # TODO:  Is this a good idea?
 			case BF_SPACE_SYSTEM: kind = cudaMemcpyDeviceToHost; break;
 			case BF_SPACE_CUDA:   kind = cudaMemcpyDeviceToDevice; break;
 			// TODO: Is this the right thing to do?
