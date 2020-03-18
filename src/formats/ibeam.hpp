@@ -59,7 +59,7 @@ public:
     inline bool operator()(const uint8_t* pkt_ptr,
 	                       int            pkt_size,
 	                       PacketDesc*    pkt) const {
-        if( pkt_size < (int)sizeof(ibeam_hdr_type) ) {
+	    if( pkt_size < (int)sizeof(ibeam_hdr_type) ) {
 	        return false;
 	    }
 	    const ibeam_hdr_type* pkt_hdr  = (ibeam_hdr_type*)pkt_ptr;
@@ -69,7 +69,7 @@ public:
 	    //pkt->nsrc  =         pkt_hdr->nserver;
 	    pkt->nsrc  =         _nsrc;
 	    pkt->src   =        (pkt_hdr->server - 1) - _src0;
-        pkt->beam  =         pkt_hdr->nbeam;
+	    pkt->beam  =         pkt_hdr->nbeam;
 	    pkt->nchan =         pkt_hdr->nchan;
 	    pkt->chan0 =   ntohs(pkt_hdr->chan0) - pkt->nchan * pkt->src;
 	    pkt->payload_size = pld_size;
@@ -100,7 +100,7 @@ public:
 	    int payload_size = pkt->payload_size;
 	
 	    size_t obuf_offset = (pkt->seq-obuf_seq0)*pkt->nsrc*payload_size;
-	    typedef aligned128_type itype;  // cf32 * 1 beam * 2 pol
+	    typedef unaligned128_type itype;  // cf32 * 1 beam * 2 pol
 	    typedef aligned128_type otype;
 	
 	    obuf_offset *= BF_UNPACK_FACTOR;
@@ -112,10 +112,12 @@ public:
 	
 	    int chan, beam;
         for(chan=0; chan<pkt->nchan; ++chan ) {
-            for(beam=0; beam<_nbeam; ++beam) {
-                out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam] = in[chan*_nbeam + beam];
-            }
-	    }
+		for(beam=0; beam<_nbeam; ++beam) {
+			::memcpy(&out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam], 
+			 	 &in[chan*_nbeam + beam], sizeof(otype));
+                	//out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam] = in[chan*_nbeam + beam];
+            	}
+	}
     }
 
     inline void blank_out_source(uint8_t* data,
@@ -126,12 +128,12 @@ public:
 	    typedef aligned128_type otype;
 	    otype* __restrict__ aligned_data = (otype*)data;
 	    for( int t=0; t<nseq; ++t ) {
-		    for( int c=0; c<nchan; ++c ) {
-                for( int b=0; b<_nbeam; ++b ) {
-                    ::memset(&aligned_data[t*nsrc*nchan*_nbeam + src*nchan*_nbeam + c*_nbeam + b],
+		for( int c=0; c<nchan; ++c ) {
+                	for( int b=0; b<_nbeam; ++b ) {
+                    		::memset(&aligned_data[t*nsrc*nchan*_nbeam + src*nchan*_nbeam + c*_nbeam + b],
 			                 0, sizeof(otype));
-                }
-		    }
+                	}
+		}
 	    }
     }
 };

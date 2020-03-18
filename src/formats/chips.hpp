@@ -97,7 +97,7 @@ public:
 	    int payload_size = pkt->payload_size;//pkt->nchan*(PKT_NINPUT*2*PKT_NBIT/8);
 	
 	    size_t obuf_offset = (pkt->seq-obuf_seq0)*pkt->nsrc*payload_size;
-	    typedef aligned256_type itype;
+	    typedef unaligned256_type itype;
 	    typedef aligned256_type otype;
 	
 	    obuf_offset *= BF_UNPACK_FACTOR;
@@ -143,7 +143,9 @@ public:
 	    //if( pkt->src < 8 ) { // HACK TESTING
 	    //for( ; chan<32; ++chan ) { // HACK TESTING
 	    for( ; chan<pkt->nchan; ++chan ) { // HACK TESTING
-		    out[pkt->src + pkt->nsrc*chan] = in[chan];
+		    ::memcpy(&out[pkt->src + pkt->nsrc*chan], 
+		             &in[chan], sizeof(otype));
+		    //out[pkt->src + pkt->nsrc*chan] = in[chan];
 		    //::memset(
 	    }
 	    //}

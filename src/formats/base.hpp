@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,11 +38,20 @@
 
 #define JUMBO_FRAME_SIZE 9000
 
+struct unaligned128_type {
+    uint8_t data[16];
+};
 struct __attribute__((aligned(16))) aligned128_type {
     uint8_t data[16];
 };
+struct unaligned256_type {
+        uint8_t data[32];
+};
 struct __attribute__((aligned(32))) aligned256_type {
 	uint8_t data[32];
+};
+struct unaligned512_type {
+        uint8_t data[64];
 };
 struct __attribute__((aligned(64))) aligned512_type {
 	uint8_t data[64];
