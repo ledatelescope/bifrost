@@ -125,7 +125,6 @@ public:
         strcat(tempname, "/mmapXXXXXX");
         int fd = ::mkstemp(tempname);
         std::string filename = std::string(tempname);
-        //std::cout << "filename: " << filename << std::endl;
         if( fd < 0 ) {
             this->cleanup(filename, fd);
             return 1;
@@ -145,7 +144,7 @@ public:
             return 3;
         }
         
-	    // Advise the kernel of how we'll use it
+	// Advise the kernel of how we'll use it
         ::madvise(*data, size, MADV_SEQUENTIAL);
         
         // Save and return
@@ -215,6 +214,19 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 		}
 		// WAR to avoid the ignored failure showing up later
 		cudaGetLastError();
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 10000
+    } else {
+        switch( ptr_attrs.type ) {
+		case cudaMemoryTypeHost:    *space = BF_SPACE_SYSTEM;       break;
+		case cudaMemoryTypeDevice:  *space = BF_SPACE_CUDA;         break;
+		case cudaMemoryTypeManaged: *space = BF_SPACE_CUDA_MANAGED; break;
+		default: {
+			// This should never be reached
+			BF_FAIL("Valid memoryType", BF_STATUS_INTERNAL_ERROR);
+		}
+		}
+	}
+#else
 	} else if( ptr_attrs.isManaged ) {
 		*space = BF_SPACE_CUDA_MANAGED;
 	} else {
@@ -227,6 +239,7 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 		}
 		}
 	}
+#endif  // defined(CUDA_VERSION) && CUDA_VERSION >= 10000
 #endif
 	return BF_STATUS_SUCCESS;
 }
@@ -387,7 +400,7 @@ BFstatus bfMemcpy2D(void*       dst,
                     BFspace     src_space,
                     BFsize      width,    // bytes
                     BFsize      height) { // rows
-	if( width*height ) {
+	if( width && height ) {
 		BF_ASSERT(dst, BF_STATUS_INVALID_POINTER);
 		BF_ASSERT(src, BF_STATUS_INVALID_POINTER);
 		// Note: Explicitly dispatching to ::memcpy was found to be much faster
@@ -489,7 +502,7 @@ BFstatus bfMemset2D(void*   ptr,
                     BFsize  width,    // bytes
                     BFsize  height) { // rows
 	BF_ASSERT(ptr, BF_STATUS_INVALID_POINTER);
-	if( width*height ) {
+	if( width && height ) {
 		if( space == BF_SPACE_AUTO ) {
 			bfGetSpace(ptr, &space);
 		}
