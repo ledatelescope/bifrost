@@ -7,8 +7,6 @@ extern "C" {
 
 BFstatus XcorrLite(BFarray *data, BFarray *xcorr, int reset);
 
-BFstatus XcorrLiteAccumulate(BFarray *bf_indata, BFarray *bf_outdata, int reset);
-
 #ifdef __cplusplus
 }
 #endif

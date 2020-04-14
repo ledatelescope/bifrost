@@ -4,22 +4,22 @@ from bifrost.libbifrost import _bf
 
 def compute_xcorr_cpu(d):
     dc = d.astype('float32').view('complex64')
-    dc = dc[0].transpose((0,2,3,1)).copy()
+    dc = dc.transpose((0,1,3,4,2)).copy()
     xcorr_cpu = np.einsum('...i,...j', dc,  np.conj(dc)).view('float32').sum(axis=-4)
     return xcorr_cpu
 
-def test_xcorr(N, F, T):
+def test_xcorr(H, N, F, T):
     # Create complex data
     reset = 1
 
     # Create complex data
-    xcorr = np.zeros((1, F, N, N*2), dtype='float32')
+    xcorr = np.zeros((H, F, N, N*2), dtype='float32')
     xcorr_bf = bf.ndarray(xcorr, dtype='f32', space='cuda')
 
     for ii in range(8):
         print "---- Iteration %i ----" % ii
         print "Generate test vectors..."
-        d = np.random.randint(64, size=(1, F, N, T, 2), dtype='int8')
+        d = np.random.randint(64, size=(H, F, N, T, 2), dtype='int8')
         print "Data shape: ", d.shape
         print "Xcorr shape:", xcorr.shape
 
@@ -38,13 +38,13 @@ def test_xcorr(N, F, T):
         print "Comparing CPU to GPU..."
         assert np.allclose(xcorr_gpu.squeeze(), xcorr_cpu.squeeze())
 
-def test_multi_accumulate(N, F, T, n_cycles):
+def test_multi_accumulate(H, N, F, T, n_cycles):
     reset = 1
     # Create complex data
-    xcorr = np.zeros((1, F, N, N*2), dtype='float32')
+    xcorr = np.zeros((H, F, N, N*2), dtype='float32')
     xcorr_bf = bf.ndarray(xcorr, dtype='f32', space='cuda')
 
-    d = np.random.randint(64, size=(1, F, N, T, 2), dtype='int8')
+    d = np.random.randint(64, size=(H, F, N, T, 2), dtype='int8')
 
     print "Computing Xcorr on CPU..."
     xcorr_cpu = compute_xcorr_cpu(d)
@@ -71,5 +71,5 @@ def test_multi_accumulate(N, F, T, n_cycles):
         assert np.allclose(xcorr_gpu.squeeze(), xcorr_cpu.squeeze())
 
 if __name__ == "__main__":
-    test_xcorr(N=12, F=320, T=1024)
-    test_multi_accumulate(N=12, F=1, T=1024, n_cycles=4)
+    test_xcorr(H=7, N=12, F=320, T=1024)
+    test_multi_accumulate(H=3, N=12, F=1, T=1024, n_cycles=4)
