@@ -12,13 +12,18 @@ LIBBIFROST_OBJS = \
   ring.o \
   ring_impl.o \
   array.o \
-  address.o \
-  udp_socket.o \
-  udp_capture.o \
-  udp_transmit.o \
   unpack.o \
   quantize.o \
   proclog.o
+
+ifndef NOUDPSOCKET
+  LIBBIFROST_OBJS += \
+  address.o \
+  udp_socket.o \
+  udp_capture.o \
+  udp_transmit.o 
+endif
+
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
@@ -36,6 +41,12 @@ ifndef NOCUDA
   fir.o \
   guantize.o \
   gunpack.o
+endif
+
+ifdef BUILDDP4A
+  LIBBIFROST_OBJS += \
+  xcorr_lite.o\
+  beanfarmer.o
 endif
 
 JIT_SOURCES ?= \

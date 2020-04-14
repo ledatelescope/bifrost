@@ -49,6 +49,7 @@ from .serialize import serialize, SerializeBlock, deserialize, DeserializeBlock
 from .reduce import reduce, ReduceBlock
 from .correlate import correlate, CorrelateBlock
 from .convert_visibilities import convert_visibilities, ConvertVisibilitiesBlock
+from .correlate_dp4a import correlate_dp4a
 
 try: # Avoid error if portaudio library not installed
     from .audio import read_audio, AudioSourceBlock
