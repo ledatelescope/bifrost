@@ -8,6 +8,9 @@
 #include <stdio.h>
 #include <iostream>
 
+
+//#define DCP_DEBUG
+
 extern "C" {
 
     __forceinline__ __device__
@@ -61,61 +64,89 @@ extern "C" {
         dp4a(res_im, A, Bmodp);
         }
 
+
+    // Data array should be (heap H, frequency F, antenna N, fine_time T)
     __global__ void xcorrDp4aKernel
-        (int *data, int *xcorr, int N, int F, int T, int reset)
+        (int *data, float *xcorr, int H, int F, int N, int T, int reset)
         {
         int x, y; // x not used
         int idx, ia, ib;
-
+   
         // Setup thread indexes
         x = threadIdx.x;
         y = threadIdx.y;
         
-        int chan_offset_in  = blockIdx.x * N * T/2;
-        int chan_offset_out = blockIdx.x * N * N * 2;
-        int ant_offset      = T / 2;  //x2 for complex, but /4 for packed
-    
-        idx = 2*y + N*2*x + chan_offset_out; // Compute index for output array
-    
-        for (int t = 0; t < T/2; t++) {
-            if (reset != 0) {
-                xcorr[idx]   = 0;
-                xcorr[idx+1] = 0;
+        for (int h = 0; h < H; h++) {
+
+            int chan_offset_in  = blockIdx.x * N * T/2;
+            int chan_offset_out = blockIdx.x * N * N * 2;
+            int ant_offset      = T / 2;  //x2 for complex, but /4 for packed
+            int heap_offset     = h * F * N * T/2;
+            int heap_offset_out = h * F * N * N * 2;
+
+            int xy_real = 0;
+            int xy_imag = 0;
+            idx = 2*y + N*2*x + chan_offset_out + heap_offset_out; // Compute index for output array
+            
+            // Note -- using dp4a must be careful of bit growth.
+            // output of each 8-bit dot product is 16 bits
+            // Adding 4x 16-bit numbers = 18-bit number
+            // accumulator is only 32 bits, so using 18 of 32 bits.
+            // Max 14 bits of growth = 2^14 = 4096 integrations
+            for (int t = 0; t < T/2; t++) {
+                if (t == 0 && reset != 0) {
+                    xcorr[idx]   = 0;
+                    xcorr[idx+1] = 0;
+                }
+                ia  = heap_offset + ant_offset*x + chan_offset_in + t;
+                ib  = heap_offset + ant_offset*y + chan_offset_in + t;
+            
+                //printf("idx %d | x%d.y%d | A %dx%d\\n", idx, x, y, ia, ib);
+                //cmult_dp4a(xcorr[idx], xcorr[idx+1], data[ia], data[ib]);
+                cmult_dp4a(xy_real, xy_imag, data[ia], data[ib]);
             }
-            ia  = ant_offset*x + chan_offset_in + t;
-            ib  = ant_offset*y + chan_offset_in + t;
-        
-            //printf("idx %d | x%d.y%d | A %dx%d\\n", idx, x, y, ia, ib);
-            cmult_dp4a(xcorr[idx], xcorr[idx+1], data[ia], data[ib]);
-        }
+            // Copy xy* result to device mem
+            xcorr[idx]   += (float) xy_real;
+            xcorr[idx+1] += (float) xy_imag;
+          }
         }
         
-    void launch_xcorr_lite(int *data, int *xcorr, int N, int F, int T, int reset) {
-        dim3 blockSize, gridSize;
-        gridSize.x = F;
-        gridSize.y = 1;
-        gridSize.z = 1;
+    void launch_xcorr_lite(int *data, float *xcorr, int H, int F, int N, int T, int reset) {
+        dim3 block, grid;
+        grid.x = F;
+        grid.y = 1;
+        grid.z = 1;
         
-        blockSize.x = N;
-        blockSize.y = N;
-        blockSize.z = 1;
-        
-        xcorrDp4aKernel<<< gridSize, blockSize >>>(data, xcorr, N, F, T, reset);
+        block.x = N;
+        block.y = N;
+        block.z = 1;
+
+#ifdef DCP_DEBUG
+        printf("N: %d SHM %d\n", N, shm_bytes);
+  printf("Debug: <<<B: (%d, %d, %d) G: (%d, %d, %d) SHM: %dB >>>\n", block.x,
+         block.y, block.z, grid.x, grid.y, grid.z);
+#endif
+         int shm = 0;
+        xcorrDp4aKernel<<< grid, block, shm, g_cuda_stream >>>(data, xcorr, H, F, N, T, reset);
     }
         
+
 
     BFstatus XcorrLite(BFarray *bf_data, BFarray *bf_xcorr, int reset)
     {
         int* data = (int *)bf_data->data;
-        int* xcorr = (int *)bf_xcorr->data;
+        float* xcorr = (float *)bf_xcorr->data;
 
-        int N = bf_data->shape[1];
-        int F = bf_data->shape[0];
-        int T = bf_data->shape[2];
-
-        launch_xcorr_lite(data, xcorr, N, F, T, reset);
+        int H = bf_data->shape[0]; // Heap (slow time axis)
+        int F = bf_data->shape[1]; // Frequency
+        int N = bf_data->shape[2]; // Antenna
+        int T = bf_data->shape[3]; // Fine time
+        
+        //printf("ispan dims F: %d N: %d T: %d\n", F, N, T);
+        launch_xcorr_lite(data, xcorr, H, F, N, T, reset);
         
         BF_CHECK_CUDA(cudaGetLastError(), BF_STATUS_DEVICE_ERROR);
+
         return BF_STATUS_SUCCESS;
     }
 
