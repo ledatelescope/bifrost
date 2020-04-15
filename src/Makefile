@@ -24,6 +24,13 @@ ifndef NOUDPSOCKET
   udp_transmit.o 
 endif
 
+
+ifdef BUILDDP4A
+  LIBBIFROST_OBJS += \
+  xcorr_lite.o\
+  beanfarmer.o
+endif
+
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \

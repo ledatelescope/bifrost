@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <iostream>
 
+
 //#define DCP_DEBUG
 
 extern "C" {
@@ -63,13 +64,14 @@ extern "C" {
         dp4a(res_im, A, Bmodp);
         }
 
+
     // Data array should be (heap H, frequency F, antenna N, fine_time T)
     __global__ void xcorrDp4aKernel
         (int *data, float *xcorr, int H, int F, int N, int T, int reset)
         {
         int x, y; // x not used
         int idx, ia, ib;
-        
+   
         // Setup thread indexes
         x = threadIdx.x;
         y = threadIdx.y;
