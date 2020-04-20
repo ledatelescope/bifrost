@@ -53,17 +53,17 @@ _LINT_RE = re.compile('(?P<module>.*?)\:(?P<line>\d+)\: \[(?P<type>.*?)\] (?P<in
 class ScriptTest(unittest.TestCase):
     def _test_script(self, script):
         self.assertTrue(os.path.exists(script))
-        out, err = lint.py_run("%s -E --init-hook='import sys; sys.path=[%s]; sys.path.insert(0, \"%s\")'" % (script, ",".join(['"%s"' % p for p in sys.path]), os.path.dirname(BIFROST_DIR)), return_std=True)
+        out, err = lint.py_run("%s -E --extension-pkg-whitelist=numpy,scipy.fftpack --init-hook='import sys; sys.path=[%s]; sys.path.insert(0, \"%s\")'" % (script, ",".join(['"%s"' % p for p in sys.path]), os.path.dirname(BIFROST_DIR)), return_std=True)
         out_lines = out.read().split('\n')
         err_lines = err.read().split('\n')
         out.close()
         err.close()
         
         for line in out_lines:
-            if line.find("Module 'numpy") != -1:
-                continue
-            if line.find("module 'scipy.fftpack") != -1:
-                continue
+            #if line.find("Module 'numpy") != -1:
+            #    continue
+            #if line.find("module 'scipy.fftpack") != -1:
+            #    continue
                 
             mtch = _LINT_RE.match(line)
             if mtch is not None:
