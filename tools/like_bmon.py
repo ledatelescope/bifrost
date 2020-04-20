@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2017-2019, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2019, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
 from __future__ import print_function
 
 import os
