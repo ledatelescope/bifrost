@@ -4,6 +4,7 @@
 This testbench tests a guppi gpuspec reader
 """
 
+# Python2 compatibility
 from __future__ import print_function
 
 import os

@@ -5,6 +5,7 @@ This testbench initializes a simple bifrost pipeline that reads from a binary fi
 takes the FFT of the data (on the GPU no less), and then writes it to a new file. 
 """
 
+# Python2 compatibility
 from __future__ import print_function
 
 import os

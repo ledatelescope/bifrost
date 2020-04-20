@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,6 +33,7 @@ This file reads a sigproc filterbank file, and applies the Fast Dispersion
 Measure Transform (FDMT), writing the output to a PGM file.
 """
 
+# Python2 compatibility
 from __future__ import print_function
 
 import bifrost.pipeline as bfp

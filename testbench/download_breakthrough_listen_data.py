@@ -4,7 +4,11 @@
 Generate test data that can be used with a testbench
 """
 
+# Python2 compatibility
 from __future__ import print_function
+import sys
+if sys.version_info < (3,):
+    input = raw_input
 
 import os
 import numpy as np
@@ -22,7 +26,7 @@ pulsar_filelist =[
 voyager_filelist = ['https://storage.googleapis.com/gbt_fil/voyager_f1032192_t300_v2.fil']
 
 if __name__ == "__main__":
-    cont = raw_input("This will download approximately 5GB of data. Type Y to continue: ")
+    cont = input("This will download approximately 5GB of data. Type Y to continue: ")
 
     if not cont.lower() == 'y':
         exit()

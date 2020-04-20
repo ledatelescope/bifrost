@@ -5,6 +5,7 @@ This testbench initializes a simple bifrost pipeline that reads from a binary fi
 and then writes the data to an output file. 
 """
 
+# Python2 compatibility
 from __future__ import print_function
 
 import os

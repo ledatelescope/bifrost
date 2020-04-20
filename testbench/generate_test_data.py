@@ -4,6 +4,7 @@
 Generate test data that can be used with a testbench
 """
 
+# Python2 compatibility
 from __future__ import print_function
 
 import os
