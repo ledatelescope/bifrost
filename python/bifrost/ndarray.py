@@ -36,9 +36,10 @@ TODO: Some calls result in segfault with space=cuda (e.g., __getitem__
 
 """
 
+# Python2 compatibility
 import sys
-if sys.version_info > (3,):
-    xrange = range
+if sys.version_info < (3,):
+    range = xrange
     
 import ctypes
 import numpy as np
@@ -292,13 +293,13 @@ class ndarray(np.ndarray):
             a.ndim = 1
             a.shape[0] = 1
             a.strides[0] = self.bf.dtype.itemsize
-        for d in xrange(len(self.shape)):
+        for d in range(len(self.shape)):
             a.shape[d] = self.shape[d]
         # HACK TESTING support for 'packed' arrays
         itemsize_bits = self.bf.dtype.itemsize_bits
         if itemsize_bits < 8:
             a.shape[a.ndim - 1] *= 8 // itemsize_bits
-        for d in xrange(len(self.strides)):
+        for d in range(len(self.strides)):
             a.strides[d] = self.strides[d]
         a.big_endian = not self.bf.native
         a.conjugated = self.bf.conjugated

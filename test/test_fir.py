@@ -1,6 +1,6 @@
 
-# Copyright (c) 2017, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -73,7 +73,7 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
+        for i in range(known_data.shape[1]):
             zf = lfiltic(self.coeffs, 1.0, 0.0)
             known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i], zi=zf)
             compare(odata[:,i], known_result)
@@ -94,8 +94,8 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
-            for j in xrange(known_data.shape[2]):
+        for i in range(known_data.shape[1]):
+            for j in range(known_data.shape[2]):
                 zf = lfiltic(self.coeffs, 1.0, 0.0)
                 known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i,j], zi=zf)
                 compare(odata[:,i,j], known_result)
@@ -115,8 +115,8 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
-            for j in xrange(known_data.shape[2]):
+        for i in range(known_data.shape[1]):
+            for j in range(known_data.shape[2]):
                 zf = lfiltic(self.coeffs, 1.0, 0.0)
                 known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i,j], zi=zf)
                 compare(odata[:,i,j], known_result)
@@ -137,7 +137,7 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
+        for i in range(known_data.shape[1]):
             zf = lfiltic(self.coeffs, 1.0, 0.0)
             known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i], zi=zf)
             compare(odata[:,i], known_result)
@@ -159,7 +159,7 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
+        for i in range(known_data.shape[1]):
             zf = lfiltic(self.coeffs, 1.0, 0.0)
             known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i], zi=zf)
             known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i], zi=zf)
@@ -182,8 +182,8 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
-            for j in xrange(known_data.shape[2]):
+        for i in range(known_data.shape[1]):
+            for j in range(known_data.shape[2]):
                 zf = lfiltic(self.coeffs, 1.0, 0.0)
                 known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i,j], zi=zf)
                 known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i,j], zi=zf)
@@ -205,7 +205,7 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
+        for i in range(known_data.shape[1]):
             zf = lfiltic(self.coeffs, 1.0, 0.0)
             known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i], zi=zf)
             known_result = known_result[0::2]
@@ -227,8 +227,8 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
-            for j in xrange(known_data.shape[2]):
+        for i in range(known_data.shape[1]):
+            for j in range(known_data.shape[2]):
                 zf = lfiltic(self.coeffs, 1.0, 0.0)
                 known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i,j], zi=zf)
                 known_result = known_result[0::2]
@@ -251,7 +251,7 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
+        for i in range(known_data.shape[1]):
             zf = lfiltic(self.coeffs, 1.0, 0.0)
             known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i], zi=zf)
             known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i], zi=zf)
@@ -275,8 +275,8 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
-            for j in xrange(known_data.shape[2]):
+        for i in range(known_data.shape[1]):
+            for j in range(known_data.shape[2]):
                 zf = lfiltic(self.coeffs, 1.0, 0.0)
                 known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i,j], zi=zf)
                 known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i,j], zi=zf)
@@ -303,7 +303,7 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
+        for i in range(known_data.shape[1]):
             zf = lfiltic(self.coeffs, 1.0, 0.0)
             known_result, zf = lfilter(self.coeffs*2.0, 1.0, known_data[:,i], zi=zf)
             compare(odata[:,i], known_result)
@@ -328,8 +328,8 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
-            for j in xrange(known_data.shape[2]):
+        for i in range(known_data.shape[1]):
+            for j in range(known_data.shape[2]):
                 zf = lfiltic(self.coeffs, 1.0, 0.0)
                 known_result, zf = lfilter(self.coeffs*2.0, 1.0, known_data[:,i,j], zi=zf)
                 compare(odata[:,i,j], known_result)
@@ -352,7 +352,7 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
+        for i in range(known_data.shape[1]):
             zf = lfiltic(self.coeffs, 1.0, 0.0)
             known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i], zi=zf)
             compare(odata[:,i], known_result)
@@ -377,8 +377,8 @@ class TestFIR(unittest.TestCase):
         fir.execute(idata, odata)
         odata = odata.copy('system')
         
-        for i in xrange(known_data.shape[1]):
-            for j in xrange(known_data.shape[2]):
+        for i in range(known_data.shape[1]):
+            for j in range(known_data.shape[2]):
                 zf = lfiltic(self.coeffs, 1.0, 0.0)
                 known_result, zf = lfilter(self.coeffs, 1.0, known_data[:,i,j], zi=zf)
                 compare(odata[:,i,j], known_result)

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,10 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
 from __future__ import print_function
 import sys
-if sys.version_info > (3,):
-    xrange = range
+if sys.version_info < (3,):
+    range = xrange
     
 from libbifrost import _bf, _check, _get, BifrostObject
 
@@ -82,7 +82,7 @@ def load_by_filename(filename):
     contents = {}
     with open(filename, 'r') as fh:
         ## Read the file all at once to avoid problems but only after it has a size
-        for attempt in xrange(5):
+        for attempt in range(5):
             if os.path.getsize(filename) != 0:
                 break
             time.sleep(0.001)

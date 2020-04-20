@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,10 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
 from __future__ import print_function
 import sys
-if sys.version_info > (3,):
-    xrange = range
+if sys.version_info < (3,):
+    range = xrange
     
 import threading
 import Queue
@@ -513,7 +513,7 @@ class MultiTransformBlock(Block):
         self._seq_count = 0
         self.perf_proclog = ProcLog(self.name + "/perf")
         self.sequence_proclogs = [ProcLog(self.name + "/sequence%i" % i)
-                                  for i in xrange(len(self.irings))]
+                                  for i in range(len(self.irings))]
         self.out_proclog = ProcLog(self.name + "/out")
 
         rnames = {'nring': len(self.orings)}
@@ -722,7 +722,7 @@ class TransformBlock(MultiTransformBlock):
         # Note: This zeros the whole gulp, even though only part of the gulp
         #         may have been overwritten.
         memset_array(ospan.data, 0)
-        #for i in xrange(0, ispan.nframe_skipped, igulp_nframe):
+        #for i in range(0, ispan.nframe_skipped, igulp_nframe):
         #    inframe = min(igulp_nframe, inskipped - i)
         #    onframe = self._define_output_nframes(inframe)
         #    with oseq.reserve(onframe) as ospan:

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,10 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
 from __future__ import absolute_import
 import sys
-if sys.version_info > (3,):
-    xrange = range
+if sys.version_info < (3,):
+    range = xrange
     
 import bifrost as bf
 from bifrost.pipeline import TransformBlock
@@ -86,10 +87,10 @@ class DetectBlock(TransformBlock):
             bf.map("b = Complex<b_type>(a).mag2()", {'a': idata, 'b': odata})
         else:
             shape = idata.shape[:self.axis] + idata.shape[self.axis + 1:]
-            inds = ['i%i' % i for i in xrange(idata.ndim)]
+            inds = ['i%i' % i for i in range(idata.ndim)]
             inds[self.axis] = '%i'
             inds_pol = ','.join(inds)
-            inds_ = [inds_pol % i for i in xrange(4)]
+            inds_ = [inds_pol % i for i in range(4)]
             inds = inds[:self.axis] + inds[self.axis + 1:]
             if self.mode == 'jones':
                 func = """

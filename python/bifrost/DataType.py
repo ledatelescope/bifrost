@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -38,9 +38,10 @@ ci4:  4+4-bit complex signed integer
 cf32: 32+32-bit complex floating point
 """
 
+# Python2 compatibility
 import sys
-if sys.version_info > (3,):
-    xrange = range
+if sys.version_info < (3,):
+    range = xrange
     
 from libbifrost import _bf
 import numpy as np
@@ -104,10 +105,10 @@ def is_vector_structure(dtype):
     if dtype.names is None:
         return False
     ndim = len(dtype.names)
-    vector_field_names = tuple('f%i' % i for i in xrange(ndim))
+    vector_field_names = tuple('f%i' % i for i in range(ndim))
     return (dtype.kind == 'V' and
             dtype.names == vector_field_names and
-            all([dtype[i] == dtype[0] for i in xrange(1, ndim)]))
+            all([dtype[i] == dtype[0] for i in range(1, ndim)]))
 
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)

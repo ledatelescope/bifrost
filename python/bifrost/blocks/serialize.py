@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,10 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
 from __future__ import absolute_import, print_function
 import sys
-if sys.version_info > (3,):
-    xrange = range
+if sys.version_info < (3,):
+    range = xrange
     
 from bifrost.pipeline import SinkBlock, SourceBlock
 import os
@@ -61,7 +62,7 @@ class BifrostReader(object):
         if self.nringlet > 0:
             ringlet_inds = [inds[0] for inds in ringlet_inds]
             self.ringlet_files = []
-            for ringlet in xrange(self.nringlet):
+            for ringlet in range(self.nringlet):
                 ringlet_filenames = [f for f, r in zip(data_filenames, ringlet_inds)
                                      if r == ringlet]
                 ringlet_filenames.sort()
@@ -190,7 +191,7 @@ class SerializeBlock(SinkBlock):
             ndigit    = len(str(self.nringlet-1))
             filenames = [self.basename + ('.bf.%012i.%0'+str(ndigit)+'i.dat') %
                          (frame_offset, i)
-                         for i in xrange(self.nringlet)]
+                         for i in range(self.nringlet)]
         else:
             # TODO: Need to deal with separating multiple ringlet axes
             #         E.g., separate each ringlet dim with a dot
@@ -232,7 +233,7 @@ class SerializeBlock(SinkBlock):
         if self.nringlet == 1:
             ispan.data.tofile(self.ofiles[0])
         else:
-            for r in xrange(self.nringlet):
+            for r in range(self.nringlet):
                 ispan.data[r].tofile(self.ofiles[r])
 
 def serialize(iring, path=None, max_file_size=None, *args, **kwargs):
