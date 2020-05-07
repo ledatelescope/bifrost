@@ -1,5 +1,4 @@
-
-# Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2018, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,26 +24,29 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check
-from bifrost import asarray
+from libbifrost import _bf, _check, _get, BifrostObject
+import ctypes
+from ndarray import asarray
 
-REDUCE_MAP = {
-    'sum':       _bf.BF_REDUCE_SUM,
-    'mean':      _bf.BF_REDUCE_MEAN,
-    'min':       _bf.BF_REDUCE_MIN,
-    'max':       _bf.BF_REDUCE_MAX,
-    'stderr':    _bf.BF_REDUCE_STDERR,
-    'pwrsum':    _bf.BF_REDUCE_POWER_SUM,
-    'pwrmean':   _bf.BF_REDUCE_POWER_MEAN,
-    'pwrmin':    _bf.BF_REDUCE_POWER_MIN,
-    'pwrmax':    _bf.BF_REDUCE_POWER_MAX,
-    'pwrstderr': _bf.BF_REDUCE_POWER_STDERR,
-}
+class Romein(BifrostObject):
+    def __init__(self):
+        BifrostObject.__init__(self, _bf.bfRomeinCreate, _bf.bfRomeinDestroy)
+    def init(self, positions, kernels, ngrid, polmajor=True):
+        _check( _bf.bfRomeinInit(self.obj, 
+                                 asarray(positions).as_BFarray(), 
+                                 asarray(kernels).as_BFarray(),
+                                 ngrid,
+                                 polmajor) )
+    def set_positions(self, positions):
+        _check( _bf.bfRomeinSetPositions(self.obj, 
+                                         asarray(positions).as_BFarray()) )
+    def set_kernels(self, kernels):
+        _check( _bf.bfRomeinSetKernels(self.obj, 
+                                       asarray(kernels).as_BFarray()) )
+    def execute(self, idata, odata):
+        # TODO: Work out how to integrate CUDA stream
+        _check( _bf.bfRomeinExecute(self.obj,
+                                    asarray(idata).as_BFarray(),
+                                    asarray(odata).as_BFarray()) )
+        return odata
 
-def reduce(idata, odata, op='sum'):
-    if op not in REDUCE_MAP:
-        raise ValueError("Invalid reduce op: " + str(op))
-    op = REDUCE_MAP[op]
-    _check(_bf.bfReduce(asarray(idata).as_BFarray(),
-                        asarray(odata).as_BFarray(),
-                        op))

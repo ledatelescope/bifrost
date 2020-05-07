@@ -31,7 +31,9 @@ import bifrost as bf
 from bifrost.DataType import DataType
 
 from bifrost.blocks import *
-from bifrost.pipeline import SourceBlock, SinkBlock
+from bifrost.pipeline import SourceBlock, TransformBlock, SinkBlock
+
+from copy import deepcopy
 
 RTOL = 1e-4
 ATOL = 1e-5
@@ -67,6 +69,22 @@ class CorrelateTestInputBlock(SourceBlock):
         nframe = min(ospan.nframe, self.nframe)
         self.nframe -= nframe
         return [nframe]
+
+class ToComplexBlock(TransformBlock):
+    """Test-only block which converts the input data to cf32 data."""
+    def on_sequence(self, iseq):
+        ihdr = iseq.header
+        ohdr = deepcopy(ihdr)
+        ohdr['_tensor']['dtype'] = 'cf32'
+        return ohdr
+    def on_data(self, ispan, ospan):
+        idata = ispan.data
+        odata = ospan.data
+        axes = []
+        for i in range(len(idata.shape)):
+            axes.append(chr(i+ord('i')))
+        bf.map('b(%s) = Complex<float>(a(%s))' % (','.join(axes), ','.join(axes)), 
+               {'a':idata, 'b':odata}, axis_names=axes, shape=idata.shape)
 
 class CallbackBlock(SinkBlock):
     """Testing-only block which calls user-defined
@@ -157,6 +175,48 @@ class PipelineTest(unittest.TestCase):
             data = copy(data, space='cuda')
             data = bf.blocks.reduce(data, 'freq', nreduce_freq)
             data = bf.blocks.reduce(data, 'time', nreduce_time)
+            CallbackBlock(data, check_sequence, check_data)
+            pipeline.run()
+    def test_complex_reduce(self):
+        gulp_nframe = 128
+        nreduce_freq = 2
+        nreduce_time = 8
+        def check_sequence(seq):
+            tensor = seq.header['_tensor']
+            self.assertEqual(seq.header['gulp_nframe'], gulp_nframe // nreduce_time)
+            self.assertEqual(tensor['shape'],  [-1,1,2 // nreduce_freq])
+            self.assertEqual(tensor['dtype'],  'cf32')
+            self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
+            self.assertEqual(tensor['units'],  ['s', None, 'MHz'])
+        def check_data(ispan):
+            pass
+        with bf.Pipeline() as pipeline:
+            data = read_sigproc([self.fil_file], gulp_nframe)
+            data = copy(data, space='cuda')
+            data = ToComplexBlock(data)
+            data = bf.blocks.reduce(data, 'freq', nreduce_freq)
+            data = bf.blocks.reduce(data, 'time', nreduce_time)
+            CallbackBlock(data, check_sequence, check_data)
+            pipeline.run()
+    def test_complex_power_reduce(self):
+        gulp_nframe = 128
+        nreduce_freq = 2
+        nreduce_time = 8
+        def check_sequence(seq):
+            tensor = seq.header['_tensor']
+            self.assertEqual(seq.header['gulp_nframe'], gulp_nframe // nreduce_time)
+            self.assertEqual(tensor['shape'],  [-1,1,2 // nreduce_freq])
+            self.assertEqual(tensor['dtype'],  'f32')
+            self.assertEqual(tensor['labels'], ['time', 'pol', 'freq'])
+            self.assertEqual(tensor['units'],  ['s', None, 'MHz'])
+        def check_data(ispan):
+            pass
+        with bf.Pipeline() as pipeline:
+            data = read_sigproc([self.fil_file], gulp_nframe)
+            data = copy(data, space='cuda')
+            data = ToComplexBlock(data)
+            data = bf.blocks.reduce(data, 'freq', nreduce_freq, 'pwrsum')
+            data = bf.blocks.reduce(data, 'time', nreduce_time, 'pwrsum')
             CallbackBlock(data, check_sequence, check_data)
             pipeline.run()
     def test_correlate(self):
