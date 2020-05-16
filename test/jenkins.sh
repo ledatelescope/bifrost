@@ -13,9 +13,7 @@ coverage run --source=bifrost.ring,bifrost,bifrost.pipeline -m unittest \
   test_serialize \
   test_binary_io \
   test_address \
-  # test_fdmt \
   test_fft \
-  # test_fir \
   test_guantize \
   test_gunpack \
   test_linalg \
