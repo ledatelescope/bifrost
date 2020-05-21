@@ -55,7 +55,7 @@ def get_sigproc_file_size(filename):
         while 'HEADER_END' not in head:
             more_data = f.read(4096)
             try:
-                more_data = more_data.decode()
+                more_data = more_data.decode(errors='replace')
             except AttributeError:
                 # Python2 catch
                 pass
