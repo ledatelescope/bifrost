@@ -29,6 +29,7 @@ import unittest
 import numpy as np
 import bifrost as bf
 import bifrost.transpose
+from functools import reduce
 from itertools import permutations
 
 class TransposeTest(unittest.TestCase):

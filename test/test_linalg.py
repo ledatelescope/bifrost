@@ -27,6 +27,9 @@
 
 # **TODO: Add tests with beta != 0
 
+# Python2 compatibility
+from __future__ import print_function
+
 import ctypes
 import unittest
 import numpy as np
@@ -146,7 +149,7 @@ class TestLinAlg(unittest.TestCase):
         b_ = b.copy('system')
 
         np.testing.assert_allclose(b_, b_gold, RTOL, ATOL)
-        '''
+        """
         # Benchmarking
         nrep = 30
         bf.device.stream_synchronize()
@@ -158,10 +161,10 @@ class TestLinAlg(unittest.TestCase):
         nflop = nrep * ntime * nbeam * nstand*2 * nchan * 8
         nbyte = nrep * (x.nbytes + w.nbytes + b.nbytes)
         nsamp = nrep * ntime * nchan
-        print nbeam, '\t'*1, nflop / dt / 1e9, 'GFLOP/s'
-        print nbeam, '\t'*2, nbyte / dt / 1e9, 'GB/s'
-        print nbeam, '\t'*3, nsamp / dt / 1e6, 'MHz/s'
-        '''
+        print(nbeam, '\t'*1, nflop / dt / 1e9, 'GFLOP/s')
+        print(nbeam, '\t'*2, nbyte / dt / 1e9, 'GB/s')
+        print(nbeam, '\t'*3, nsamp / dt / 1e6, 'MHz/s')
+        """
     def run_test_matmul_aa_correlator_kernel(self, ntime, nstand, nchan, misalign=0):
         x_shape = (ntime, nchan, nstand*2)
         perm = [1,0,2]
@@ -201,8 +204,8 @@ class TestLinAlg(unittest.TestCase):
         bf.device.stream_synchronize();
         dt = time.time() - t0
         nflop = nrep * nchan * ntime * nstand*(nstand+1)/2 * 2*2 * 8
-        print nstand, '\t', nflop / dt / 1e9, 'GFLOP/s'
-        print '\t\t', nrep*ntime*nchan / dt / 1e6, 'MHz'
+        print(nstand, '\t', nflop / dt / 1e9, 'GFLOP/s')
+        print('\t\t', nrep*ntime*nchan / dt / 1e6, 'MHz')
     def test_matmul_ab_beamformer_kernel_small(self):
         for nchan in range(1, 1+3):
             for ntime in range(1, 1+8):
@@ -212,7 +215,7 @@ class TestLinAlg(unittest.TestCase):
                             ntime=ntime, nbeam=nbeam, nstand=nstand, nchan=nchan)
     def test_matmul_ab_beamformer_kernel_large(self):
         for nbeam in range(1, 1+12):
-            #print "--------------", nbeam, "---------------"
+            #print("--------------", nbeam, "---------------")
             self.run_test_matmul_ab_beamformer_kernel(ntime=512, nbeam=nbeam,
                                                       nstand=256, nchan=10)
     def test_matmul_aa_correlator_kernel_small(self):

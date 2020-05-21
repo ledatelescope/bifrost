@@ -1,5 +1,5 @@
-#!/usr/bin/env python
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,6 +31,9 @@
 This file reads a sigproc filterbank file, and applies the Fast Dispersion
 Measure Transform (FDMT), writing the output to a PGM file.
 """
+
+# Python2 compatibility
+from __future__ import print_function
 
 import bifrost.pipeline as bfp
 from bifrost.blocks import read_sigproc, copy, transpose, fdmt, scrunch
@@ -88,7 +91,7 @@ def write_pgm(iring, *args, **kwargs):
 def main():
     import sys
     if len(sys.argv) <= 1:
-        print "Usage: example1.py file1.fil [file2.fil ...]"
+        print("Usage: example1.py file1.fil [file2.fil ...]")
         sys.exit(-1)
     filenames = sys.argv[1:]
 
@@ -108,9 +111,9 @@ def main():
     graph_filename = "example1.dot"
     with open(graph_filename, 'w') as dotfile:
         dotfile.write(str(pipeline.dot_graph()))
-        print "Wrote graph definition to", graph_filename
+        print("Wrote graph definition to", graph_filename)
     pipeline.run()
-    print "All done"
+    print("All done")
 
 if __name__ == '__main__':
     main()

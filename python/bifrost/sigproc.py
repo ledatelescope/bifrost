@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -130,6 +130,11 @@ def _header_write_string(file_object, key):
     """Writes a single key name to the header,
     which will be followed by the value"""
     file_object.write(struct.pack('=i', len(key)))
+    try:
+        key = key.encode()
+    except AttributeError:
+        # Catch for Python2
+        pass
     file_object.write(key)
 
 def _header_write_value(file_object, key, value):
@@ -150,7 +155,13 @@ def _header_read_one_parameter(file_object):
     length = struct.unpack('=i', file_object.read(4))[0]
     if length <= 0 or length >= 80:
         return None
-    return file_object.read(length)
+    s = file_object.read(length)
+    try:
+        s = s.decode()
+    except AttributeError:
+        # Python2 catch
+        pass
+    return s
 
 def _write_header(hdr, file_object):
     """write the entire header to the current position of a file"""

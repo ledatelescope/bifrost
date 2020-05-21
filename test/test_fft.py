@@ -29,6 +29,7 @@
 on the bifrost FFT wrapper."""
 import ctypes
 import unittest
+from functools import reduce
 import numpy as np
 # Note: Numpy FFTs are always double precision, which is good for this purpose
 from numpy.fft import fftn as gold_fftn, ifftn as gold_ifftn

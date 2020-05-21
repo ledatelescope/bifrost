@@ -54,6 +54,11 @@ def get_sigproc_file_size(filename):
         head = ''
         while 'HEADER_END' not in head:
             more_data = f.read(4096)
+            try:
+                more_data = more_data.decode()
+            except AttributeError:
+                # Python2 catch
+                pass
             if len(more_data) == 0:
                 raise IOError("Not a valid sigproc file: " + filename)
             head += more_data

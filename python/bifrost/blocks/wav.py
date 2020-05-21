@@ -40,9 +40,20 @@ import os
 
 def wav_read_chunk_desc(f):
     id_, size, fmt = struct.unpack('<4sI4s', f.read(12))
+    try:
+        id = id.decode()
+        fmt = fmt.decode()
+    except AttributeError:
+        # Catch for Python2
+        pass
     return id_, size, fmt
 def wav_read_subchunk_desc(f):
     id_, size = struct.unpack('<4sI', f.read(8))
+    try:
+        id = id.decode()
+    except AttributeError:
+        # Catch for Python2
+        pass
     return id_, size
 def wav_read_subchunk_fmt(f, size):
     assert(size >= 16)

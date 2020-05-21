@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,8 +34,11 @@
 #    instance instead of LP_s
 #  E.g., _bf.bfRingSequenceGetName(<BFspan>) [should be <BFsequence>]
 
+# Python2 compatibility
+from __future__ import absolute_import
+
 import ctypes
-import libbifrost_generated as _bf
+import bifrost.libbifrost_generated as _bf
 bf = _bf # Public access to library
 
 # Internal helpers below
@@ -78,7 +81,12 @@ def _array(size_or_vals, dtype=None):
                 dtype = ctypes.c_int
             elif isinstance(vals[0], float):
                 dtype = ctypes.c_double
-            elif isinstance(vals[0], basestring):
+            elif isinstance(vals[0], str):
+                try:
+                    vals = [val.encode() for val in vals]
+                except AttributeError:
+                    # Python2 catch
+                    pass
                 dtype = ctypes.c_char_p
             elif isinstance(vals[0], _bf.BFarray):
                 dtype = ctypes.POINTER(_bf.BFarray)
@@ -151,7 +159,7 @@ STRING2SPACE = {'auto':         _bf.BF_SPACE_AUTO,
 def _string2space(s):
     if s not in STRING2SPACE:
         raise KeyError("Invalid space '" + str(s) +
-                       "'.\nValid spaces: " + str(LUT.keys()))
+                       "'.\nValid spaces: " + str(list(LUT.keys())))
     return STRING2SPACE[s]
 
 SPACE2STRING = {_bf.BF_SPACE_AUTO:         'auto',
@@ -161,3 +169,4 @@ SPACE2STRING = {_bf.BF_SPACE_AUTO:         'auto',
                 _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
 def _space2string(i):
     return SPACE2STRING[i]
+

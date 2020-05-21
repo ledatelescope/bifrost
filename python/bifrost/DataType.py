@@ -39,11 +39,12 @@ cf32: 32+32-bit complex floating point
 """
 
 # Python2 compatibility
+from __future__ import division, absolute_import
 import sys
 if sys.version_info < (3,):
     range = xrange
     
-from libbifrost import _bf
+from bifrost.libbifrost import _bf
 import numpy as np
 
 # Custom dtypes to represent additional complex types
@@ -113,7 +114,7 @@ def is_vector_structure(dtype):
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
     def __init__(self, t=None):
-        if isinstance(t, basestring):
+        if isinstance(t, str):
             for i, char in enumerate(t):
                 if char.isdigit():
                     break
@@ -153,10 +154,10 @@ class DataType(object):
                 t = t[0]
             self._kind = t.kind
             if t.kind == 'c':
-                self._nbit /= 2   # Bifrost convention is nbit per real component
+                self._nbit //= 2   # Bifrost convention is nbit per real component
                 self._kind = 'cf' # Numpy only supports floating-point complex types
             elif t.kind == 'V': # WAR to support custom integer complex types
-                self._nbit /= 2
+                self._nbit //= 2
                 if t in [ci4, ci8, ci16, ci32, ci64]:
                     self._kind = 'ci'
                 elif t in [cf16]:

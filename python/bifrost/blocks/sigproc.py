@@ -205,7 +205,7 @@ class SigprocSinkBlock(SinkBlock):
 
         filename = os.path.join(self.path, ihdr['name'])
 
-        if ndim >= 3 and axnames[-3:] == ('time', 'pol', 'freq'):
+        if ndim >= 3 and axnames[-3:] == ['time', 'pol', 'freq']:
             self.data_format = 'filterbank'
             assert(dtype.is_real)
             sigproc_hdr['data_type'] = 1
@@ -292,7 +292,7 @@ class SigprocSinkBlock(SinkBlock):
             else:
                 raise ValueError("Too many dimensions")
 
-        elif ndim == 4 and axnames[-3:] == ('pol', 'freq', 'phase'):
+        elif ndim == 4 and axnames[-3:] == ['pol', 'freq', 'phase']:
             self.data_format = 'pulseprofile'
             assert(dtype.is_real)
             sigproc_hdr['data_type'] = 2

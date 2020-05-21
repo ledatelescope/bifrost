@@ -28,6 +28,9 @@
 
 """This set of unit tests check the functionality
 on the bifrost FIR filter."""
+# Python2 compatibility
+from __future__ import division
+
 import ctypes
 import unittest
 import numpy as np
@@ -129,7 +132,7 @@ class TestFIR(unittest.TestCase):
         coeffs = self.coeffs*1.0
         coeffs.shape += (1,)
         coeffs = np.repeat(coeffs, idata.shape[1], axis=1)
-        coeffs.shape = (coeffs.shape[0],idata.shape[1]/2, 2)
+        coeffs.shape = (coeffs.shape[0],idata.shape[1]//2, 2)
         coeffs = bf.ndarray(coeffs, space='cuda')
         
         fir = Fir()
@@ -193,7 +196,7 @@ class TestFIR(unittest.TestCase):
         shape = self.shape2D
         known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
         idata = bf.ndarray(known_data, space='cuda')
-        odata = bf.empty((idata.shape[0]/2, idata.shape[1]), dtype=idata.dtype, space='cuda')
+        odata = bf.empty((idata.shape[0]//2, idata.shape[1]), dtype=idata.dtype, space='cuda')
         coeffs = self.coeffs*1.0
         coeffs.shape += (1,)
         coeffs = np.repeat(coeffs, idata.shape[1], axis=1)
@@ -215,7 +218,7 @@ class TestFIR(unittest.TestCase):
         shape = self.shape3D
         known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
         idata = bf.ndarray(known_data, space='cuda')
-        odata = bf.empty((idata.shape[0]/2, idata.shape[1], idata.shape[2]), dtype=idata.dtype, space='cuda')
+        odata = bf.empty((idata.shape[0]//2, idata.shape[1], idata.shape[2]), dtype=idata.dtype, space='cuda')
         coeffs = self.coeffs*1.0
         coeffs.shape += (1,)
         coeffs = np.repeat(coeffs, idata.shape[1]*idata.shape[2], axis=1)
@@ -238,7 +241,7 @@ class TestFIR(unittest.TestCase):
         shape = self.shape2D
         known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
         idata = bf.ndarray(known_data, space='cuda')
-        odata = bf.empty((idata.shape[0]/2, idata.shape[1]), dtype=idata.dtype, space='cuda')
+        odata = bf.empty((idata.shape[0]//2, idata.shape[1]), dtype=idata.dtype, space='cuda')
         coeffs = self.coeffs*1.0
         coeffs.shape += (1,)
         coeffs = np.repeat(coeffs, idata.shape[1], axis=1)
@@ -262,7 +265,7 @@ class TestFIR(unittest.TestCase):
         shape = self.shape3D
         known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
         idata = bf.ndarray(known_data, space='cuda')
-        odata = bf.empty((idata.shape[0]/2, idata.shape[1], idata.shape[2]), dtype=idata.dtype, space='cuda')
+        odata = bf.empty((idata.shape[0]//2, idata.shape[1], idata.shape[2]), dtype=idata.dtype, space='cuda')
         coeffs = self.coeffs*1.0
         coeffs.shape += (1,)
         coeffs = np.repeat(coeffs, idata.shape[1]*idata.shape[2], axis=1)

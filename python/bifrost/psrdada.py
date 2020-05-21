@@ -112,7 +112,7 @@ class IpcBaseBuf(object):
             raise IOError("Failed to reset buffer")
     def __iter__(self):
         return self
-    def next(self):
+    def __next__(self):
         block = IpcBufBlock(self, self.mutable)
         if block.nbyte > 0:
             return block
@@ -120,6 +120,8 @@ class IpcBaseBuf(object):
             del block
             self.reset()
             raise StopIteration()
+    def next(self):
+        return self.__next__()
     def open(self):
         raise NotImplementedError()
     def close(self):

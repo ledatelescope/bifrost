@@ -26,12 +26,12 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Python2 compatibility
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 import sys
 if sys.version_info < (3,):
     range = xrange
     
-from libbifrost import _bf, _check, _get, BifrostObject
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
 import os
 import time
@@ -46,6 +46,11 @@ except ImportError:
 
 class ProcLog(BifrostObject):
     def __init__(self, name):
+        try:
+            name = name.encode('utf-8')
+        except AttributeError:
+            # Python2 catch
+            pass
         BifrostObject.__init__(
             self, _bf.bfProcLogCreate, _bf.bfProcLogDestroy, name)
     def update(self, contents):
@@ -57,6 +62,11 @@ class ProcLog(BifrostObject):
         if isinstance(contents, dict):
             contents = '\n'.join(['%s : %s' % item
                                   for item in contents.items()])
+        try:
+            contents = contents.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         _check(_bf.bfProcLogUpdate(self.obj, contents))
 
 def _multi_convert(value):

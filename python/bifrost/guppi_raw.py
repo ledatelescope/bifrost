@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -47,12 +47,15 @@ Header keywords:
   BACKEND:  'GUPPI' for guppi/BL data
   [CHAN_BW]
 
-NTIME = BLOCSIZE * 8 / (2 * NPOL * NCHAN * NBITS)
+NTIME = BLOCSIZE * 8 // (2 * NPOL * NCHAN * NBITS)
 
 Binary data:
   [chan][time][pol][complex]
 
 """
+
+# Python2 compatibility
+from __future__ import division
 
 import numpy as np
 
@@ -89,7 +92,7 @@ def read_header(f):
         hdr['NPOL'] = 1 if hdr['NPOL'] == 1 else 2
     if 'NTIME' not in hdr:
         # Compute and add NTIME parameter
-        hdr['NTIME'] = hdr['BLOCSIZE'] * 8 / (hdr['OBSNCHAN'] * hdr['NPOL'] *
+        hdr['NTIME'] = hdr['BLOCSIZE'] * 8 // (hdr['OBSNCHAN'] * hdr['NPOL'] *
                                               2 * hdr['NBITS'])
     return hdr
 

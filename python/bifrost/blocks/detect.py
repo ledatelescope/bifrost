@@ -59,7 +59,7 @@ class DetectBlock(TransformBlock):
               self.mode != 'scalar' and
               'pol' in itensor['labels']):
             self.axis = itensor['labels'].index('pol')
-        elif isinstance(self.axis, basestring):
+        elif isinstance(self.axis, str):
             self.axis = itensor['labels'].index(self.axis)
         # Note: axis may be None here, which indicates single-pol mode
         ohdr = deepcopy(ihdr)

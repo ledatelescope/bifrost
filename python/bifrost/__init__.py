@@ -32,32 +32,32 @@ Bifrost pipeline processing library
 
 # TODO: Decide how to organise the namespace
 
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 
-import core, memory, affinity, ring, block, address, udp_socket
-import pipeline
-import device
-from ndarray import ndarray, asarray, empty_like, empty, zeros_like, zeros
-import views
-from map import map
-from pipeline import Pipeline, get_default_pipeline, block_scope
-import blocks
-from block_chainer import BlockChainer
-from reduce import reduce
+from bifrost import core, memory, affinity, ring, block, address, udp_socket
+from bifrost import pipeline
+from bifrost import device
+from bifrost.ndarray import ndarray, asarray, empty_like, empty, zeros_like, zeros
+from bifrost import views
+from bifrost.map import map
+from bifrost.pipeline import Pipeline, get_default_pipeline, block_scope
+from bifrost import blocks
+from bifrost.block_chainer import BlockChainer
+from bifrost.reduce import reduce
 # import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
-# from transpose import transpose
-# from unpack import unpack
-# from quantize import quantize
+# from bifrost.transpose import transpose
+# from bifrost.unpack import unpack
+# from bifrost.quantize import quantize
 
 try:
-    from .version import __version__
+    from bifrost.version import __version__
 except ImportError:
     print("*************************************************************************")
     print("Please run `make` from the root of the source tree to generate version.py")
     print("*************************************************************************")
     raise
 __author__     = "The Bifrost Authors"
-__copyright__  = "Copyright (c) 2016, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
+__copyright__  = "Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
 __credits__    = ["Ben Barsdell"]
 __license__    = "BSD 3-Clause"
 __maintainer__ = "Ben Barsdell"

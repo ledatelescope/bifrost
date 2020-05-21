@@ -1,7 +1,7 @@
 
 
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,13 +36,11 @@ Modified by Hugh Garsden from Danny Price's dada.py and pipeline.py
 Makes header.txt files that is used by corr2uvfit and DuCT.
 """
 
-from __future__ import print_function
+from __future__ import print_function, division
 
 import numpy as np
 import os, sys, ephem, datetime
 from dateutil import tz
-
-
 
 
 class DadaReader(object):
@@ -159,7 +157,7 @@ class DadaReader(object):
       if "OBS_OFFSET" in header and "BYTES_PER_AVG" in header:
             # Calculate the time offset since the observation started
             byte_offset = int(header["OBS_OFFSET"])
-            num_int_since_obs_start = byte_offset / bpa  
+            num_int_since_obs_start = byte_offset // bpa  
             time_offset_since_obs_start = num_int_since_obs_start * int_tim
             self.t_offset = time_offset_since_obs_start
 

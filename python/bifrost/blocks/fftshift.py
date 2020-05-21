@@ -51,7 +51,7 @@ class FftShiftBlock(TransformBlock):
         ihdr = iseq.header
         itensor = ihdr['_tensor']
         self.axes = [itensor['labels'].index(axis)
-                     if isinstance(axis, basestring)
+                     if isinstance(axis, str)
                      else axis
                      for axis in self.specified_axes]
         frame_axis = itensor['shape'].index(-1)

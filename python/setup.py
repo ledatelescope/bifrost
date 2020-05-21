@@ -26,6 +26,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
+from __future__ import print_function
+
 from setuptools import setup, find_packages
 import os
 import sys
@@ -46,9 +49,9 @@ try:
 except IOError:
     if 'clean' in sys.argv[1:]:
         sys.exit(0)
-    print "*************************************************************************"
-    print "Please run `make` from the root of the source tree to generate version.py"
-    print "*************************************************************************"
+    print("*************************************************************************")
+    print("Please run `make` from the root of the source tree to generate version.py")
+    print("*************************************************************************")
     raise
 
 # Build up a list of scripts to install

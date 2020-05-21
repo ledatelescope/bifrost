@@ -39,6 +39,7 @@ except ImportError:
     print("WARNING: Install simplejson for better performance")
     import json
 import glob
+from functools import reduce
 
 def _parse_bifrost_filename(fname):
     inds = fname[fname.find('.bf.') + 4:].split('.')[:-1]
