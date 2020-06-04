@@ -41,7 +41,7 @@ import os
 def wav_read_chunk_desc(f):
     id_, size, fmt = struct.unpack('<4sI4s', f.read(12))
     try:
-        id = id.decode()
+        id_ = id_.decode()
         fmt = fmt.decode()
     except AttributeError:
         # Catch for Python2
@@ -50,7 +50,7 @@ def wav_read_chunk_desc(f):
 def wav_read_subchunk_desc(f):
     id_, size = struct.unpack('<4sI', f.read(8))
     try:
-        id = id.decode()
+        id_ = id_.decode()
     except AttributeError:
         # Catch for Python2
         pass
