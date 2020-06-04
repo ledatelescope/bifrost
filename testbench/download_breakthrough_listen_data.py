@@ -4,6 +4,7 @@
 Generate test data that can be used with a testbench
 """
 import os
+import sys
 import numpy as np
 
 raw_filelist = [
@@ -19,12 +20,17 @@ pulsar_filelist =[
 voyager_filelist = ['https://storage.googleapis.com/gbt_fil/voyager_f1032192_t300_v2.fil']
 
 if __name__ == "__main__":
+    show_prompt = True
+    if len(sys.argv) > 1:
+        if sys.argv[1] == '-y':
+            show_prompt = False
 
-    cont = raw_input("This will download approximately 5GB of data. Type Y to continue: ")
-
-    if not cont.lower() == 'y':
-        exit()
-
+    if show_prompt:
+        cont = raw_input("This will download approximately 5GB of data. Type Y to continue: ")
+        
+        if not cont.lower() == 'y':
+            exit()
+            
     if not os.path.exists('testdata'):
         os.mkdir('testdata')
 
