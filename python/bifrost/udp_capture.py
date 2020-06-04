@@ -27,7 +27,7 @@
 
 # **TODO: Write tests for this class
 
-from libbifrost import _bf, _check, _get, BifrostObject
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
 class UDPCapture(BifrostObject):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
