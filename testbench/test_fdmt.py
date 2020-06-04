@@ -71,7 +71,7 @@ class PgmWriterBlock(bfp.SinkBlock):
         """Process data from from ispans to ospans and return the number of
         frames to commit for each output (or None to commit complete spans)."""
         data = ispan.data
-        print "PgmWriterBlock.on_data()"
+        print("PgmWriterBlock.on_data()")
         # HACK TESTING
         if data.dtype != np.uint8:
             data = (data - data.min()) / (data.max() - data.min()) * 255

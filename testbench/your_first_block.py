@@ -4,6 +4,8 @@
 This testbench initializes a simple bifrost pipeline that reads from a binary file,
 and then writes the data to an output file. 
 """
+from __future__ import print_function
+
 import os
 import numpy as np
 import bifrost.pipeline as bfp
@@ -63,5 +65,5 @@ if __name__ == "__main__":
 
     # Run pipeline
     pipeline = bfp.get_default_pipeline()
-    print pipeline.dot_graph()
+    print(pipeline.dot_graph())
     pipeline.run()

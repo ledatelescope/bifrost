@@ -3,6 +3,8 @@
 
 This testbench tests a guppi gpuspec reader
 """
+
+from __future__ import print_function
 import os
 import glob
 import numpy as np
@@ -20,5 +22,5 @@ if __name__ == "__main__":
 
     # Run pipeline
     pipeline = bfp.get_default_pipeline()
-    print pipeline.dot_graph()
+    print(pipeline.dot_graph())
     pipeline.run()
