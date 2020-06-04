@@ -28,6 +28,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 import os
 import sys
 import glob
@@ -35,13 +37,13 @@ import getopt
 
 
 def usage(exitCode=None):
-    print """%s - Get sibling cores on HT systems
+    print("""%s - Get sibling cores on HT systems
 
 Usage: %s [OPTIONS] [core [core [...]]]
 
 Options:
 -h, --help                  Display this help information
-""" % (os.path.basename(__file__), os.path.basename(__file__))
+""" % (os.path.basename(__file__), os.path.basename(__file__)))
 
     if exitCode is not None:
         sys.exit(exitCode)
@@ -57,9 +59,9 @@ def parseOptions(args):
     # Read in and process the command line flags
     try:
         opts, args = getopt.getopt(args, "h", ["help",])
-    except getopt.GetoptError, err:
+    except getopt.GetoptError as err:
         # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
+        print(str(err)) # will print something like "option -a not recognized"
         usage(exitCode=2)
 
     # Work through opts
@@ -101,7 +103,7 @@ def main(args):
 
     if len(config['args']) == 0:
         for cpu in sorted(siblings.keys()):
-            print "%i: %s" % (cpu, str(siblings[cpu]))
+            print("%i: %s" % (cpu, str(siblings[cpu])))
     else:
         for cpu in config['args']:
             cpu = int(cpu, 10)
@@ -109,7 +111,7 @@ def main(args):
                 data = str(siblings[cpu])
             except KeyError:
                 data = "not found"
-            print "%i: %s" % (cpu, str(siblings[cpu]))
+            print("%i: %s" % (cpu, str(siblings[cpu])))
 
 
 if __name__ == '__main__':

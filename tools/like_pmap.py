@@ -31,6 +31,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 import os
 import re
 import sys
@@ -42,13 +44,13 @@ from bifrost.proclog import load_by_pid
 
 
 def usage(exitCode=None):
-    print """%s - Get a detailed look at memory usage in a bifrost pipeline
+    print("""%s - Get a detailed look at memory usage in a bifrost pipeline
 
 Usage: %s [OPTIONS] pid
 
 Options:
 -h, --help                  Display this help information
-""" % (os.path.basename(__file__), os.path.basename(__file__))
+""" % (os.path.basename(__file__), os.path.basename(__file__)))
     
     if exitCode is not None:
         sys.exit(exitCode)
@@ -64,9 +66,9 @@ def parseOptions(args):
     # Read in and process the command line flags
     try:
         opts, args = getopt.getopt(args, "h", ["help",])
-    except getopt.GetoptError, err:
+    except getopt.GetoptError as err:
         # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
+        print(str(err))# will print something like "option -a not recognized"
         usage(exitCode=2)
         
     # Work through opts
@@ -239,36 +241,36 @@ def main(args):
             nodeSizesFiles[node] = size
             
     # Final report
-    print "Rings: %i" % len(rings)
-    print "File Backed Memory Areas:"
-    print "  Total: %i" % len(files)
-    print "  Heap: %i" % len([addr for addr in files if files[addr]['heap']])
-    print "  Stack: %i" % len([addr for addr in files if files[addr]['stack']])
-    print "  Shared: %i" % len([addr for addr in files if files[addr]['shared']])
-    print "  Swapped: %i" % len([addr for addr in files if files[addr]['swapped']])
+    print("Rings: %i" % len(rings))
+    print("File Backed Memory Areas:")
+    print("  Total: %i" % len(files))
+    print("  Heap: %i" % len([addr for addr in files if files[addr]['heap']]))
+    print("  Stack: %i" % len([addr for addr in files if files[addr]['stack']]))
+    print("  Shared: %i" % len([addr for addr in files if files[addr]['shared']]))
+    print("  Swapped: %i" % len([addr for addr in files if files[addr]['swapped']]))
     for node in sorted(nodeCountsFiles.keys()):
-        print "  NUMA Node %i:" % node
-        print "    Count: %i" % nodeCountsFiles[node]
-        print "    Size: %.3f %s" % _getBestSize(nodeSizesFiles[node])
-    print "Anonymous Memory Areas:"
-    print "  Total: %i" % len(areas)
-    print "  Heap: %i" % len([addr for addr in areas if areas[addr]['heap']])
-    print "  Stack: %i" % len([addr for addr in areas if areas[addr]['stack']])
-    print "  Shared: %i" % len([addr for addr in areas if areas[addr]['shared']])
-    print "  Swapped: %i" % len([addr for addr in areas if areas[addr]['swapped']])
+        print("  NUMA Node %i:" % node)
+        print("    Count: %i" % nodeCountsFiles[node])
+        print("    Size: %.3f %s" % _getBestSize(nodeSizesFiles[node]))
+    print("Anonymous Memory Areas:")
+    print("  Total: %i" % len(areas))
+    print("  Heap: %i" % len([addr for addr in areas if areas[addr]['heap']]))
+    print("  Stack: %i" % len([addr for addr in areas if areas[addr]['stack']]))
+    print("  Shared: %i" % len([addr for addr in areas if areas[addr]['shared']]))
+    print("  Swapped: %i" % len([addr for addr in areas if areas[addr]['swapped']]))
     for node in sorted(nodeCountsAreas.keys()):
-        print "  NUMA Node %i:" % node
-        print "    Count: %i" % nodeCountsAreas[node]
-        print "    Size: %.3f %s" % _getBestSize(nodeSizesAreas[node])
-    print " "
+        print("  NUMA Node %i:" % node)
+        print("    Count: %i" % nodeCountsAreas[node])
+        print("    Size: %.3f %s" % _getBestSize(nodeSizesAreas[node]))
+    print(" ")
     
-    print "Ring Mappings:"
+    print("Ring Mappings:")
     for ring in sorted(rings):
-        print "  %s" % ring
+        print("  %s" % ring)
         try:
             area = areas[rings[ring]['addr']]
         except KeyError:
-            print "    Unknown"
+            print("    Unknown")
             continue
         sv, su = _getBestSize(area['size'])
         diff = abs(area['size'] - rings[ring]['stride'])
@@ -278,27 +280,27 @@ def main(args):
         dv, du = _getBestSize(diff)
         sf = float(area['swapsize'])/float(area['size'])
         
-        print "    Size: %.3f %s" % _getBestSize(rings[ring]['stride'])
-        print "    Area: %s %s" % (rings[ring]['addr'], status)
-        print "      Size: %.3f %s%s" % (sv, su, ' (within %.3f %s)' % (dv, du) if diff != 0 else '')
-        print "      Node: %i" % area['node']
-        print "      Attributes:"
-        print "        Huge? %s" % area['huge']
-        print "        Heap? %s" % area['heap']
-        print "        Stack? %s" % area['stack']
-        print "        Shared? %s" % area['shared']
-        print "      Swap Status:"
-        print "        Swapped? %s" % area['swapped']
+        print("    Size: %.3f %s" % _getBestSize(rings[ring]['stride']))
+        print("    Area: %s %s" % (rings[ring]['addr'], status))
+        print("      Size: %.3f %s%s" % (sv, su, ' (within %.3f %s)' % (dv, du) if diff != 0 else ''))
+        print("      Node: %i" % area['node'])
+        print("      Attributes:")
+        print("        Huge? %s" % area['huge'])
+        print("        Heap? %s" % area['heap'])
+        print("        Stack? %s" % area['stack'])
+        print("        Shared? %s" % area['shared'])
+        print("      Swap Status:")
+        print("        Swapped? %s" % area['swapped'])
         if area['swapped']:
-            print "        Swap Fraction: %.1f%%" % (100.0*sf,)
-    print " "
+            print("        Swap Fraction: %.1f%%" % (100.0*sf,))
+    print(" ")
     
-    print "Other Non-Ring Areas:"
-    print "  Size: %.3f %s" % _getBestSize(sum([areas[area]['size'] for area in areas if area not in matched]))
-    print " "
+    print("Other Non-Ring Areas:")
+    print("  Size: %.3f %s" % _getBestSize(sum([areas[area]['size'] for area in areas if area not in matched])))
+    print(" ")
     
-    print "File Backed Areas:"
-    print "  Size: %.3f %s" % _getBestSize(sum([files[area]['size'] for area in files]))
+    print("File Backed Areas:")
+    print("  Size: %.3f %s" % _getBestSize(sum([files[area]['size'] for area in files])))
 
 
 if __name__ == "__main__":
