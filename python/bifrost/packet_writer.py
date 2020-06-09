@@ -65,6 +65,11 @@ class _WriterBase(BifrostObject):
 
 class UDPTransmit(_WriterBase):
     def __init__(self, fmt, sock, core=None):
+        try:
+            fmt = fmt.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         if core is None:
             core = -1
         BifrostObject.__init__(
@@ -74,6 +79,11 @@ class UDPTransmit(_WriterBase):
 
 class DiskWriter(_WriterBase):
     def __init__(self, fmt, fh, core=None):
+        try:
+            fmt = fmt.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         if core is None:
             core = -1
         BifrostObject.__init__(

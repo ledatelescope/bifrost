@@ -78,6 +78,11 @@ class _CaptureBase(BifrostObject):
 class UDPCapture(_CaptureBase):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
                  buffer_ntime, slot_ntime, sequence_callback, core=None):
+        try:
+            fmt = fmt.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         if core is None:
             core = -1
         BifrostObject.__init__(
