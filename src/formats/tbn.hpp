@@ -70,11 +70,11 @@ class TBNDecoder : virtual public PacketDecoder {
     
     inline bool valid_packet(const PacketDesc* pkt) const {
 	    return (pkt->sync       == 0x5CDEC0DE &&
-	            pkt->src        >= 0 &&
-               	pkt->src        <  _nsrc &&
+	            pkt->src        >= 0 && 
+		    pkt->src        <  _nsrc &&
 	            pkt->time_tag   >= 0 &&
 	            pkt->tuning     >= 0 && 
-                pkt->valid_mode == 0);
+		    pkt->valid_mode == 0);
     }
 public:
     TBNDecoder(int nsrc, int src0)
@@ -99,12 +99,12 @@ public:
 	    pkt->gain         = (be16toh(pkt_hdr->gain));
 	    pkt->payload_size = pld_size;
 	    pkt->payload_ptr  = pkt_pld;
-        bool valid        = this->valid_packet(pkt);
-        if( valid ) {
-            valid &= _cache->update(pkt->src, pkt->time_tag);
-            pkt->decimation = _cache->get_decimation();
-            pkt->seq        = pkt->time_tag / pkt->decimation / 512;
-        }
+	    bool valid        = this->valid_packet(pkt);
+	    if( valid ) {
+		    valid &= _cache->update(pkt->src, pkt->time_tag);
+		    pkt->decimation = _cache->get_decimation();
+		    pkt->seq        = pkt->time_tag / pkt->decimation / 512;
+	    }
 	    return valid;
     }
 };

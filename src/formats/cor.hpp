@@ -63,9 +63,9 @@ public:
 	    const cor_hdr_type* pkt_hdr  = (cor_hdr_type*)pkt_ptr;
 	    const uint8_t*      pkt_pld  = pkt_ptr  + sizeof(cor_hdr_type);
 	    int                 pld_size = pkt_size - sizeof(cor_hdr_type);
-        uint8_t             nserver = (be32toh(pkt_hdr->frame_count_word) >> 8) & 0xFF;
-        uint8_t             server = be32toh(pkt_hdr->frame_count_word) & 0xFF;
-        uint16_t            nchan_pkt = (pld_size/(8*4));
+	    uint8_t             nserver = (be32toh(pkt_hdr->frame_count_word) >> 8) & 0xFF;
+	    uint8_t             server = be32toh(pkt_hdr->frame_count_word) & 0xFF;
+	    uint16_t            nchan_pkt = (pld_size/(8*4));
 	    uint16_t            stand0 = be16toh(pkt_hdr->stand0) - 1;
 	    uint16_t            stand1 = be16toh(pkt_hdr->stand1) - 1;
 	    uint16_t            nstand = (sqrt(8*_nsrc/nserver+1)-1)/2;
@@ -78,7 +78,7 @@ public:
 	                        + (server - 1);
 	    pkt->chan0        = be16toh(pkt_hdr->first_chan) \
 	                        - nchan_pkt * (server - 1);
-        pkt->nchan        = nchan_pkt;
+	    pkt->nchan        = nchan_pkt;
 	    pkt->tuning       = (nserver << 8) | (server - 1);  // Stores the number of servers and 
                                                             // the server that sent this packet
 	    pkt->gain         = be16toh(pkt_hdr->gain);
@@ -120,7 +120,7 @@ public:
 	    int payload_size = pkt->payload_size;
 	
 	    size_t obuf_offset = (pkt->seq-obuf_seq0)*pkt->nsrc*payload_size;
-	    typedef aligned256_type itype;      // 32+32 * 4 pol. products
+	    typedef unaligned256_type itype;      // 32+32 * 4 pol. products
 	    typedef aligned256_type otype;
 	
 	    // Note: Using these SSE types allows the compiler to use SSE instructions
@@ -133,8 +133,9 @@ public:
 	    int nchan = pkt->nchan;
 	    
 	    int chan = 0;
-        for( ; chan<nchan; ++chan ) {
-		    out[bl_server*nchan + chan] = in[chan];
+	    for( ; chan<nchan; ++chan ) {
+		    ::memcpy(&out[bl_server*nchan + chan], &in[chan], sizeof(otype));
+		    //out[bl_server*nchan + chan] = in[chan];
 	    }
     }
 	
@@ -145,7 +146,7 @@ public:
 	                             int      nseq) {
 	    typedef aligned256_type otype;
 	    otype* __restrict__ aligned_data = (otype*)data;
-        for( int t=0; t<nseq; ++t ) {
+	    for( int t=0; t<nseq; ++t ) {
 		    ::memset(&aligned_data[t*nsrc*nchan + src*nchan],
 			         0, nchan*sizeof(otype));
 	    }

@@ -51,11 +51,11 @@ class DRXDecoder : virtual public PacketDecoder {
         	    pkt->src        <  _nsrc &&
 	            pkt->time_tag   >= 0 &&
 	            (((_nsrc == 4) && 
-                  (pkt->tuning     >  0 &&
-                   pkt->tuning1    >  0)) ||
-                 (_nsrc == 2 && 
-                  (pkt->tuning     >  0 ||
-                   pkt->tuning1    >  0))) &&
+		      (pkt->tuning     >  0 &&
+		       pkt->tuning1    >  0)) ||
+		     (_nsrc == 2 && 
+		      (pkt->tuning     >  0 ||
+		       pkt->tuning1    >  0))) &&
 	            pkt->valid_mode == 0);
     }
 public:
@@ -72,7 +72,7 @@ public:
 	    int pkt_id        = pkt_hdr->frame_count_word & 0xFF;
 	    pkt->beam         = (pkt_id & 0x7) - 1;
 	    int pkt_tune      = ((pkt_id >> 3) & 0x7) - 1;
-        int pkt_pol       = ((pkt_id >> 7) & 0x1);
+	    int pkt_pol       = ((pkt_id >> 7) & 0x1);
 	    pkt_id            = (pkt_tune << 1) | pkt_pol;
 	    pkt->sync         = pkt_hdr->sync_word;
 	    pkt->time_tag     = be64toh(pkt_hdr->time_tag) - be16toh(pkt_hdr->time_offset);
