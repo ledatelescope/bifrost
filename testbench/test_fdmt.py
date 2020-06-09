@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 # Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
@@ -40,6 +41,7 @@ from bifrost.blocks import read_sigproc, copy, transpose, fdmt, scrunch
 from bifrost import blocks
 
 import os
+import argparse
 import numpy as np
 
 # This is a (very hacky) sink block for writing data as a greyscale PGM image
@@ -88,14 +90,8 @@ class PgmWriterBlock(bfp.SinkBlock):
 def write_pgm(iring, *args, **kwargs):
     PgmWriterBlock(iring, *args, **kwargs)
 
-def main():
-    import sys
-    if len(sys.argv) <= 1:
-        print("Usage: example1.py file1.fil [file2.fil ...]")
-        sys.exit(-1)
-    filenames = sys.argv[1:]
-
-    h_filterbank = read_sigproc(filenames, gulp_nframe=16000, core=0)
+def main(args):
+    h_filterbank = read_sigproc(args.filename, gulp_nframe=16000, core=0)
     h_filterbank = scrunch(h_filterbank, 16, core=0)
     d_filterbank = copy(h_filterbank, space='cuda', gpu=0, core=2)
     blocks.print_header(d_filterbank)
@@ -116,5 +112,12 @@ def main():
     print("All done")
 
 if __name__ == '__main__':
-    main()
-
+    parser = argparse.ArgumentParser(
+        description='Read  sigproc filterbank file and apply the Fast Dispersion Measure Transform (FDMT), writing the output to a PGM file',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('filename', type=str, nargs='+',
+                        help='filterbank file to process')
+    args = parser.parse_args()
+    main(args)
+    
