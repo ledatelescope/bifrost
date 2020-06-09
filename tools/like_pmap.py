@@ -1,11 +1,7 @@
 ﻿#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-# Copyright (c) 2017, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,59 +27,20 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
+from __future__ import print_function
+
 import os
 import re
 import sys
-import getopt
+import argparse
 import subprocess
 
 os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
 
 
-def usage(exitCode=None):
-    print """%s - Get a detailed look at memory usage in a bifrost pipeline
-
-Usage: %s [OPTIONS] pid
-
-Options:
--h, --help                  Display this help information
-""" % (os.path.basename(__file__), os.path.basename(__file__))
-    
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    # Command line flags - default values
-    config['args'] = []
-    
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "h", ["help",])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-        
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        else:
-            assert False
-            
-    # Add in arguments
-    config['args'] = args
-    
-    # Return configuration
-    return config
-
-
-def _getBestSize(value):
+def get_best_size(value):
     """
     Give a size in bytes, convert it into a nice, human-readable value 
     with units.
@@ -107,9 +64,6 @@ def _getBestSize(value):
 
 
 def main(args):
-    config = parseOptions(args)
-    pidToUse = int(config['args'][0], 10)
-    
     # Find out the kernel page size, both regular and huge
     ## Regular
     pageSize = subprocess.check_output(['getconf', 'PAGESIZE'])
@@ -119,7 +73,7 @@ def main(args):
     hugeSize = int(hugeSize.split()[1], 10) * 1024
     
     # Load in the bifrost ring information for this process
-    contents = load_by_pid(pidToUse, include_rings=True)
+    contents = load_by_pid(args.pid, include_rings=True)
     rings = {}
     for block in contents.keys():
         if block == 'rings':
@@ -129,15 +83,15 @@ def main(args):
                     rings[ring][key] = contents[block][ring][key]
                 continue
     if not rings:
-        raise RuntimeError("Cannot find bifrost ring info for PID: %i" % pidToUse)
+        raise RuntimeError("Cannot find bifrost ring info for PID: %i" % args.pid)
         
     # Load in the NUMA map page for this process
     try:
-        fh = open('/proc/%i/numa_maps' % pidToUse, 'r')
+        fh = open('/proc/%i/numa_maps' % args.pid, 'r')
         numaInfo = fh.read()
         fh.close()
     except IOError:
-        raise RuntimeError("Cannot find NUMA memory info for PID: %i" % pidToUse)
+        raise RuntimeError("Cannot find NUMA memory info for PID: %i" % args.pid)
         
     # Parse out the anonymous entries in this file
     _numaRE = re.compile('(?P<addr>[0-9a-f]+).*[(anon)|(mapped)]=(?P<size>\d+).*(swapcache=(?P<swap>\d+))?.*N(?P<binding>\d+)=(?P<size2>\d+)')
@@ -239,68 +193,75 @@ def main(args):
             nodeSizesFiles[node] = size
             
     # Final report
-    print "Rings: %i" % len(rings)
-    print "File Backed Memory Areas:"
-    print "  Total: %i" % len(files)
-    print "  Heap: %i" % len([addr for addr in files if files[addr]['heap']])
-    print "  Stack: %i" % len([addr for addr in files if files[addr]['stack']])
-    print "  Shared: %i" % len([addr for addr in files if files[addr]['shared']])
-    print "  Swapped: %i" % len([addr for addr in files if files[addr]['swapped']])
+    print("Rings: %i" % len(rings))
+    print("File Backed Memory Areas:")
+    print("  Total: %i" % len(files))
+    print("  Heap: %i" % len([addr for addr in files if files[addr]['heap']]))
+    print("  Stack: %i" % len([addr for addr in files if files[addr]['stack']]))
+    print("  Shared: %i" % len([addr for addr in files if files[addr]['shared']]))
+    print("  Swapped: %i" % len([addr for addr in files if files[addr]['swapped']]))
     for node in sorted(nodeCountsFiles.keys()):
-        print "  NUMA Node %i:" % node
-        print "    Count: %i" % nodeCountsFiles[node]
-        print "    Size: %.3f %s" % _getBestSize(nodeSizesFiles[node])
-    print "Anonymous Memory Areas:"
-    print "  Total: %i" % len(areas)
-    print "  Heap: %i" % len([addr for addr in areas if areas[addr]['heap']])
-    print "  Stack: %i" % len([addr for addr in areas if areas[addr]['stack']])
-    print "  Shared: %i" % len([addr for addr in areas if areas[addr]['shared']])
-    print "  Swapped: %i" % len([addr for addr in areas if areas[addr]['swapped']])
+        print("  NUMA Node %i:" % node)
+        print("    Count: %i" % nodeCountsFiles[node])
+        print("    Size: %.3f %s" % get_best_size(nodeSizesFiles[node]))
+    print("Anonymous Memory Areas:")
+    print("  Total: %i" % len(areas))
+    print("  Heap: %i" % len([addr for addr in areas if areas[addr]['heap']]))
+    print("  Stack: %i" % len([addr for addr in areas if areas[addr]['stack']]))
+    print("  Shared: %i" % len([addr for addr in areas if areas[addr]['shared']]))
+    print("  Swapped: %i" % len([addr for addr in areas if areas[addr]['swapped']]))
     for node in sorted(nodeCountsAreas.keys()):
-        print "  NUMA Node %i:" % node
-        print "    Count: %i" % nodeCountsAreas[node]
-        print "    Size: %.3f %s" % _getBestSize(nodeSizesAreas[node])
-    print " "
+        print("  NUMA Node %i:" % node)
+        print("    Count: %i" % nodeCountsAreas[node])
+        print("    Size: %.3f %s" % get_best_size(nodeSizesAreas[node]))
+    print(" ")
     
-    print "Ring Mappings:"
+    print("Ring Mappings:")
     for ring in sorted(rings):
-        print "  %s" % ring
+        print("  %s" % ring)
         try:
             area = areas[rings[ring]['addr']]
         except KeyError:
-            print "    Unknown"
+            print("    Unknown")
             continue
-        sv, su = _getBestSize(area['size'])
+        sv, su = get_best_size(area['size'])
         diff = abs(area['size'] - rings[ring]['stride'])
         status = ''
         if diff > 0.5*hugeSize:
             status = '???'
-        dv, du = _getBestSize(diff)
+        dv, du = get_best_size(diff)
         sf = float(area['swapsize'])/float(area['size'])
         
-        print "    Size: %.3f %s" % _getBestSize(rings[ring]['stride'])
-        print "    Area: %s %s" % (rings[ring]['addr'], status)
-        print "      Size: %.3f %s%s" % (sv, su, ' (within %.3f %s)' % (dv, du) if diff != 0 else '')
-        print "      Node: %i" % area['node']
-        print "      Attributes:"
-        print "        Huge? %s" % area['huge']
-        print "        Heap? %s" % area['heap']
-        print "        Stack? %s" % area['stack']
-        print "        Shared? %s" % area['shared']
-        print "      Swap Status:"
-        print "        Swapped? %s" % area['swapped']
+        print("    Size: %.3f %s" % get_best_size(rings[ring]['stride']))
+        print("    Area: %s %s" % (rings[ring]['addr'], status))
+        print("      Size: %.3f %s%s" % (sv, su, ' (within %.3f %s)' % (dv, du) if diff != 0 else ''))
+        print("      Node: %i" % area['node'])
+        print("      Attributes:")
+        print("        Huge? %s" % area['huge'])
+        print("        Heap? %s" % area['heap'])
+        print("        Stack? %s" % area['stack'])
+        print("        Shared? %s" % area['shared'])
+        print("      Swap Status:")
+        print("        Swapped? %s" % area['swapped'])
         if area['swapped']:
-            print "        Swap Fraction: %.1f%%" % (100.0*sf,)
-    print " "
+            print("        Swap Fraction: %.1f%%" % (100.0*sf,))
+    print(" ")
     
-    print "Other Non-Ring Areas:"
-    print "  Size: %.3f %s" % _getBestSize(sum([areas[area]['size'] for area in areas if area not in matched]))
-    print " "
+    print("Other Non-Ring Areas:")
+    print("  Size: %.3f %s" % get_best_size(sum([areas[area]['size'] for area in areas if area not in matched])))
+    print(" ")
     
-    print "File Backed Areas:"
-    print "  Size: %.3f %s" % _getBestSize(sum([files[area]['size'] for area in files]))
+    print("File Backed Areas:")
+    print("  Size: %.3f %s" % get_best_size(sum([files[area]['size'] for area in files])))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='Get a detailed look at memory usage in a Bifrost pipeline',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('pid', type=int,
+                        help='process ID')
+    args = parser.parse_args()
+    main(args)
     
