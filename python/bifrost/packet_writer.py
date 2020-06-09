@@ -1,5 +1,5 @@
 
-# Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,8 +27,8 @@
 
 # **TODO: Write tests for this class
 
-from libbifrost import _bf, _check, _get, BifrostObject
-from ndarray import asarray
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject
+from bifrost.ndarray import asarray
 
 class HeaderInfo(BifrostObject):
     def __init__(self):
