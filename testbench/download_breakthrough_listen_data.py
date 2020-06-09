@@ -1,8 +1,43 @@
+#!/usr/bin/env python
+
+# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+# * Redistributions of source code must retain the above copyright
+#   notice, this list of conditions and the following disclaimer.
+# * Redistributions in binary form must reproduce the above copyright
+#   notice, this list of conditions and the following disclaimer in the
+#   documentation and/or other materials provided with the distribution.
+# * Neither the name of The Bifrost Authors nor the names of its
+#   contributors may be used to endorse or promote products derived
+#   from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 """
 # generate_test_data.py
 
 Generate test data that can be used with a testbench
 """
+
+# Python2 compatibility
+from __future__ import print_function
+import sys
+if sys.version_info < (3,):
+    input = raw_input
+
 import os
 import numpy as np
 
@@ -19,8 +54,7 @@ pulsar_filelist =[
 voyager_filelist = ['https://storage.googleapis.com/gbt_fil/voyager_f1032192_t300_v2.fil']
 
 if __name__ == "__main__":
-
-    cont = raw_input("This will download approximately 5GB of data. Type Y to continue: ")
+    cont = input("This will download approximately 5GB of data. Type Y to continue: ")
 
     if not cont.lower() == 'y':
         exit()
@@ -37,19 +71,18 @@ if __name__ == "__main__":
     if not os.path.exists('testdata/guppi_raw'):
         os.mkdir('testdata/guppi_raw')    
 
-    print "Downloading Breakthough Listen raw data"
+    print("Downloading Breakthough Listen raw data")
     for filename in raw_filelist:
         bname = os.path.basename(filename)
         os.system("curl -O %s; mv %s testdata/guppi_raw/" % (filename, bname))
 
-    print "Downloading Breakthough Listen pulsar data"
+    print("Downloading Breakthough Listen pulsar data")
     for filename in pulsar_filelist:
         bname = os.path.basename(filename)
         os.system("curl -O %s; mv %s testdata/pulsars/" % (filename, bname))
 
-    print "Downloading Breakthough Listen Voyager data"
+    print("Downloading Breakthough Listen Voyager data")
     for filename in voyager_filelist:
         bname = os.path.basename(filename)
         os.system("curl -O %s; mv %s testdata/" % (filename, bname))
-
-
+        
