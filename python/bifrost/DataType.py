@@ -114,7 +114,12 @@ def is_vector_structure(dtype):
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
     def __init__(self, t=None):
-        if isinstance(t, str):
+        if isinstance(t, (str, bytes)):
+            try:
+                t = t.decode()
+            except AttributeError:
+                # Python2 catch
+                pass
             for i, char in enumerate(t):
                 if char.isdigit():
                     break

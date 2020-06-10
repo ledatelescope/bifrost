@@ -6,7 +6,7 @@ python generate_test_data.py
 ## Use
 python test_file_read_write.py
 python test_fft.py
-python your_first_test_block.py
+python your_first_block.py
 
 # Part 2 - Real data
 ## Download
