@@ -14,8 +14,9 @@ LIBBIFROST_OBJS = \
   array.o \
   address.o \
   udp_socket.o \
-  udp_capture.o \
-  udp_transmit.o \
+  hw_locality.o \
+  packet_capture.o \
+  packet_writer.o \
   unpack.o \
   quantize.o \
   proclog.o

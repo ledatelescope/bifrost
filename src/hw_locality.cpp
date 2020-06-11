@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,32 +26,22 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_ADDRESS_H_INCLUDE_GUARD_
-#define BF_ADDRESS_H_INCLUDE_GUARD_
+#include "hw_locality.hpp"
 
-#include <bifrost/common.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct sockaddr* BFaddress;
-
-BFstatus bfAddressCreate(BFaddress*  addr,
-                         const char* addr_string,
-                         int         port,
-                         unsigned    family);
-BFstatus bfAddressDestroy(BFaddress addr);
-BFstatus bfAddressGetFamily(BFaddress addr, unsigned* family);
-BFstatus bfAddressGetPort(BFaddress addr, int* port);
-BFstatus bfAddressIsMulticast(BFaddress addr, int* multicast);
-BFstatus bfAddressGetMTU(BFaddress addr, int* mtu);
-BFstatus bfAddressGetString(BFaddress addr,
-                            BFsize    bufsize, // 128 should always be enough
-                            char*     buf);
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
-#endif // BF_ADDRESS_H_INCLUDE_GUARD_
+#if BF_HWLOC_ENABLED
+int HardwareLocality::bind_memory_to_core(int core) {
+    int core_depth = hwloc_get_type_or_below_depth(_topo, HWLOC_OBJ_CORE);
+    int ncore      = hwloc_get_nbobjs_by_depth(_topo, core_depth);
+    int ret = 0;
+    if( 0 <= core && core < ncore ) {
+        hwloc_obj_t    obj    = hwloc_get_obj_by_depth(_topo, core_depth, core);
+        hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->allowed_cpuset);
+        hwloc_bitmap_singlify(cpuset); // Avoid hyper-threads
+        hwloc_membind_policy_t policy = HWLOC_MEMBIND_BIND;
+        hwloc_membind_flags_t  flags  = HWLOC_MEMBIND_THREAD;
+        ret = hwloc_set_membind(_topo, cpuset, policy, flags);
+        hwloc_bitmap_free(cpuset);
+    }
+    return ret;
+}
+#endif // BF_HWLOC_ENABLED

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,50 +26,30 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_UDP_CAPTURE_H_INCLUDE_GUARD_
-#define BF_UDP_CAPTURE_H_INCLUDE_GUARD_
+#ifndef BF_IO_H_INCLUDE_GUARD_
+#define BF_IO_H_INCLUDE_GUARD_
+
+#include <unistd.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <bifrost/address.h>
-#include <bifrost/ring.h>
+typedef enum BFiomethod_ {
+    BF_IO_GENERIC = 0,
+    BF_IO_DISK    = 1,
+    BF_IO_UDP     = 2,
+    BF_IO_SNIFFER = 3
+} BFiomethod;
 
-typedef struct BFudpcapture_impl* BFudpcapture;
-
-typedef int (*BFudpcapture_sequence_callback)(BFoffset, int, int, int,
-                                              BFoffset*, void const**, size_t*);
-
-typedef enum BFudpcapture_status_ {
-	BF_CAPTURE_STARTED,
-	BF_CAPTURE_ENDED,
-	BF_CAPTURE_CONTINUED,
-	BF_CAPTURE_CHANGED,
-	BF_CAPTURE_NO_DATA,
-	BF_CAPTURE_INTERRUPTED,
-	BF_CAPTURE_ERROR
-} BFudpcapture_status;
-
-BFstatus bfUdpCaptureCreate(BFudpcapture* obj,
-                            const char*   format,
-                            int           fd,
-                            BFring        ring,
-                            BFsize        nsrc,
-                            BFsize        src0,
-                            BFsize        max_payload_size,
-                            BFsize        buffer_ntime,
-                            BFsize        slot_ntime,
-                            BFudpcapture_sequence_callback sequence_callback,
-                            int           core);
-BFstatus bfUdpCaptureDestroy(BFudpcapture obj);
-BFstatus bfUdpCaptureRecv(BFudpcapture obj, BFudpcapture_status* result);
-BFstatus bfUdpCaptureFlush(BFudpcapture obj);
-BFstatus bfUdpCaptureEnd(BFudpcapture obj);
-// TODO: bfUdpCaptureGetXX
+typedef enum BFiowhence_ {
+    BF_WHENCE_SET = SEEK_SET,
+    BF_WHENCE_CUR = SEEK_CUR,
+    BF_WHENCE_END = SEEK_END
+} BFiowhence;
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif // BF_UDP_CAPTURE_H_INCLUDE_GUARD_
+#endif // BF_IO_H_INCLUDE_GUARD_

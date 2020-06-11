@@ -56,6 +56,9 @@ class Address(BifrostObject):
     def port(self):
         return _get(_bf.bfAddressGetPort, self.obj)
     @property
+    def is_multicast(self):
+        return True if _get(_bf.bfAddressIsMulticast, self.obj) else False
+    @property
     def mtu(self):
         return _get(_bf.bfAddressGetMTU, self.obj)
     @property
