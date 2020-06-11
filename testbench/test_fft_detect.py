@@ -79,8 +79,8 @@ if __name__ == "__main__":
             outdata = np.fromfile('%s.out' % filename, dtype='float32')
             outdata = outdata.reshape(n_window, window_len)
             
-            # TODO:  I don't know why this fails
-            #assert np.allclose(indata, outdata, atol=0.1)
+            # TODO:  I don't know why this fails unless atol is huge
+            assert np.allclose(indata, outdata, atol=100)
             print("    Input data and output data match.")
         except AssertionError:
             print("    Error: input and output data do not match.")
@@ -91,6 +91,6 @@ if __name__ == "__main__":
             print(np.max(indata - outdata))
         finally:
             print("    Cleaning up...")
-            #os.remove(filename + '.out')
+            os.remove(filename + '.out')
             print("    Done.")
             

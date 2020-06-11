@@ -88,6 +88,6 @@ if __name__ == "__main__":
             print(np.max(indata - outdata))
         finally:
             print("    Cleaning up...")
-            #os.remove(filename + '.out')
+            os.remove(filename + '.out')
             print("    Done.")
             

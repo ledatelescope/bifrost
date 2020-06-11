@@ -91,5 +91,5 @@ if __name__ == "__main__":
     print("Downloading Breakthough Listen Voyager data")
     for filename in voyager_filelist:
         bname = os.path.basename(filename)
-        os.system("curl -O %s; mv %s testdata/" % (filename, bname))
+        os.system("curl -O %s; mv %s testdata/voyager/" % (filename, bname))
         
