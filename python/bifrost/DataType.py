@@ -38,11 +38,10 @@ ci4:  4+4-bit complex signed integer
 cf32: 32+32-bit complex floating point
 """
 
-string_types = (str,)
-
 # Python2 compatibility
 from __future__ import division, absolute_import
 import sys
+string_types = (str,)
 if sys.version_info < (3,):
     range = xrange
     string_types = (basestring,)
