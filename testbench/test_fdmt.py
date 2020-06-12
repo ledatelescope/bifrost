@@ -64,10 +64,10 @@ class PgmWriterBlock(bfp.SinkBlock):
         maxval = 255
         filename = os.path.join(self.outpath, self.filename_callback(ihdr))
         self.outfile = open(filename, 'wb')
-        self.outfile.write("P5\n")
+        self.outfile.write(b"P5\n")
         # HACK This sets the height to gulp_nframe because we don't know the
         #        sequence length apriori.
-        self.outfile.write("%i %i\n%i\n" % (shape[-1], ihdr['gulp_nframe'], maxval))
+        self.outfile.write(b"%i %i\n%i\n" % (shape[-1], ihdr['gulp_nframe'], maxval))
     # **TODO: Need something like on_sequence_end, or a proper SinkBlock class
     def on_data(self, ispan):
         """Process data from from ispans to ospans and return the number of

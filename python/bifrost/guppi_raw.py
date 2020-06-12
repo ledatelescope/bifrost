@@ -68,7 +68,13 @@ def read_header(f):
         record = f.read(RECORD_LEN)
         if len(record) < RECORD_LEN:
             raise IOError("EOF reached in middle of header")
-        if record.startswith('END'):
+
+        try:
+            record = record.decode()
+        except AttributeError:
+            # Python2 catch
+            pass
+        if record.startswith(b'END'):
             break
         key, val = record.split('=', 1)
         key, val = key.strip(), val.strip()

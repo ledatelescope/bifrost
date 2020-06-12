@@ -115,7 +115,13 @@ class Ring(BifrostObject):
                                  nringlet) )
     @property
     def name(self):
-        return _get(_bf.bfRingGetName, self.obj)
+        n = _get(_bf.bfRingGetName, self.obj)
+        try:
+            n = n.decode()
+        except AttributeError:
+            # Python2 catch
+            pass
+        return n
     @property
     def core(self):
         return _get(_bf.bfRingGetAffinity, self.obj)
@@ -169,7 +175,12 @@ class SequenceBase(object):
         return self._ring
     @property
     def name(self):
-        return _get(_bf.bfRingSequenceGetName, self._base_obj)
+        n = _get(_bf.bfRingSequenceGetName, self._base_obj)
+        try:
+            n = n.decode()
+        except AttributeError:
+            pass
+        return n
     @property
     def time_tag(self):
         return _get(_bf.bfRingSequenceGetTimeTag, self._base_obj)
@@ -192,6 +203,11 @@ class SequenceBase(object):
         nringlet       = reduce(lambda x, y: x * y, ringlet_shape, 1)
         frame_nelement = reduce(lambda x, y: x * y, frame_shape,   1)
         dtype = header['_tensor']['dtype']
+        try:
+            dtype = dtype.decode()
+        except AttributeError:
+            # Python2 catch
+            pass
         nbit = DataType(dtype).itemsize_bits
         assert(nbit % 8 == 0)
         frame_nbyte = frame_nelement * nbit // 8
