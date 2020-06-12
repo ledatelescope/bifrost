@@ -38,11 +38,14 @@ ci4:  4+4-bit complex signed integer
 cf32: 32+32-bit complex floating point
 """
 
+string_types = (str,)
+
 # Python2 compatibility
 from __future__ import division, absolute_import
 import sys
 if sys.version_info < (3,):
     range = xrange
+    string_types = (basestring,)
     
 from bifrost.libbifrost import _bf
 import numpy as np
@@ -114,7 +117,7 @@ def is_vector_structure(dtype):
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
     def __init__(self, t=None):
-        if isinstance(t, str):
+        if isinstance(t, string_types):
             for i, char in enumerate(t):
                 if char.isdigit():
                     break
