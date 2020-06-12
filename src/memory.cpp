@@ -56,7 +56,7 @@ static_assert(BF_IS_POW2(BF_ALIGNMENT), "BF_ALIGNMENT must be a power of 2");
 #endif
 
 class MappedMgr {
-    static constexpr const char*  base_mapped_dir = BF_MAPPED_RING_DIR;
+    static constexpr const char*  base_mapped_dir = (std::getenv("BIFROST_MAPPED_RING_DIR") != NULL ? std::getenv("BIFROST_MAPPED_RING_DIR") : BF_MAPPED_RING_DIR);
     std::string                   _mapped_dir;
     std::map<void*, std::string> _filenames;
     std::map<void*, int>         _fds;
