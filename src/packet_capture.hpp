@@ -350,6 +350,7 @@ inline uint64_t round_nearest(uint64_t val, uint64_t mult) {
 
 class BFpacketcapture_callback_impl {
     BFpacketcapture_chips_sequence_callback _chips_callback;
+    BFpacketcapture_snap2_sequence_callback _snap2_callback;
     BFpacketcapture_ibeam_sequence_callback _ibeam_callback;
     BFpacketcapture_cor_sequence_callback   _cor_callback;
     BFpacketcapture_vdif_sequence_callback  _vdif_callback;
@@ -358,12 +359,19 @@ class BFpacketcapture_callback_impl {
 public:
     BFpacketcapture_callback_impl()
      : _chips_callback(NULL), _ibeam_callback(NULL), _cor_callback(NULL), 
-        _vdif_callback(NULL), _tbn_callback(NULL), _drx_callback(NULL) {}
+        _vdif_callback(NULL), _tbn_callback(NULL), _drx_callback(NULL),
+        _snap2_callback(NULL) {}
     inline void set_chips(BFpacketcapture_chips_sequence_callback callback) {
         _chips_callback = callback;
     }
     inline BFpacketcapture_chips_sequence_callback get_chips() {
         return _chips_callback;
+    }
+    inline void set_snap2(BFpacketcapture_snap2_sequence_callback callback) {
+        _snap2_callback = callback;
+    }
+    inline BFpacketcapture_snap2_sequence_callback get_snap2() {
+        return _snap2_callback;
     }
     inline void set_ibeam(BFpacketcapture_ibeam_sequence_callback callback) {
         _ibeam_callback = callback;
@@ -622,6 +630,81 @@ public:
 		_decoder = new CHIPSDecoder(nsrc, src0);
 		_processor = new CHIPSProcessor();
 		_type_log.update("type : %s\n", "chips");
+	}
+};
+
+class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
+	ProcLog            _type_log;
+	ProcLog            _chan_log;
+	
+	BFpacketcapture_snap2_sequence_callback _sequence_callback;
+	
+	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
+        // TODO: Might be safer to round to nearest here, but the current firmware
+		//         always starts things ~3 seq's before the 1sec boundary anyway.
+		//seq = round_up(pkt->seq, _slot_ntime);
+		//*_seq          = round_nearest(pkt->seq, _slot_ntime);
+		_seq          = round_up(pkt->seq, _slot_ntime);
+		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
+    }
+    void on_sequence_active(const PacketDesc* pkt) {
+        if( pkt ) {
+		    //cout << "Latest nchan, chan0 = " << pkt->nchan << ", " << pkt->chan0 << endl;
+		}
+		else {
+			//cout << "No latest packet" << endl;
+		}
+	}
+    // Has the configuration changed? I.e., different channels being sent.
+	inline bool has_sequence_changed(const PacketDesc* pkt) {
+        // TODO: sequence never changes?
+        //return false;
+	    //return (pkt->seq % 128 == 0);
+	}
+	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+        _chan0 = pkt->chan0;
+        _nchan = pkt->nchan;
+        _payload_size = pkt->payload_size;
+        
+	    if( _sequence_callback ) {
+	        int status = (*_sequence_callback)(*seq0,
+			                                   _chan0,
+			                                   _nchan,
+			                                   _nsrc,
+			                                   time_tag,
+			                                   hdr,
+			                                   hdr_size);
+			if( status != 0 ) {
+			    // TODO: What to do here? Needed?
+				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
+			}
+		} else {
+			// Simple default for easy testing
+			*time_tag = *seq0;
+			*hdr      = NULL;
+			*hdr_size = 0;
+		}
+        
+		_chan_log.update() << "chan0        : " << _chan0 << "\n"
+		                   << "nchan        : " << _nchan << "\n"
+		                   << "payload_size : " << _payload_size << "\n";
+    }
+public:
+	inline BFpacketcapture_snap2_impl(PacketCaptureThread* capture,
+	                                  BFring               ring,
+	                                  int                  nsrc,
+	                                  int                  src0,
+	                                  int                  buffer_ntime,
+	                                  int                  slot_ntime,
+	                                  BFpacketcapture_callback sequence_callback)
+		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+		  _type_log((std::string(capture->get_name())+"/type").c_str()),
+		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
+		  _sequence_callback(sequence_callback->get_snap2()) {
+		_decoder = new SNAP2Decoder(nsrc, src0);
+		_processor = new SNAP2Processor();
+		_type_log.update("type : %s\n", "snap2");
 	}
 };
 
@@ -1089,6 +1172,11 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
     
     if( std::string(format).substr(0, 5) == std::string("chips") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_chips_impl(capture, ring, nsrc, src0,
+                                                                 buffer_ntime, slot_ntime,
+                                                                 sequence_callback),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 5) == std::string("snap2") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_snap2_impl(capture, ring, nsrc, src0,
                                                                  buffer_ntime, slot_ntime,
                                                                  sequence_callback),
                            *obj = 0);

@@ -35,3 +35,4 @@
 #include "tbn.hpp"
 #include "tbf.hpp"
 #include "ibeam.hpp"
+#include "snap2.hpp"

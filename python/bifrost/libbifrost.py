@@ -47,6 +47,7 @@ class BifrostObject(object):
     """Base class for simple objects with create/destroy functions"""
     def __init__(self, constructor, destructor, *args):
         self.obj = destructor.argtypes[0]()
+        print(self.obj)
         _check(constructor(ctypes.byref(self.obj), *args))
         self._destructor = destructor
     def _destroy(self):

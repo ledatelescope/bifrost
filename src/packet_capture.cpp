@@ -132,6 +132,13 @@ BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
     return BF_STATUS_SUCCESS;
 }
 
+BFstatus bfPacketCaptureCallbackSetSNAP2(BFpacketcapture_callback obj,
+                                         BFpacketcapture_snap2_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_snap2(callback);
+    return BF_STATUS_SUCCESS;
+}
+
 BFstatus bfPacketCaptureCallbackSetIBeam(BFpacketcapture_callback obj,
                                          BFpacketcapture_ibeam_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
@@ -245,9 +252,12 @@ BFpacketcapture_status BFpacketcapture_impl::recv() {
 				ret = BF_CAPTURE_CONTINUED;
 			}
 		}
+	    BF_PRINTD("_bufs.size(): " << _bufs.size());
 		if( _bufs.size() == 2 ) {
+	        BF_PRINTD("Committing buffer");
 			this->commit_buf();
 		}
+	    BF_PRINTD("Rseerving buffer");
 		this->reserve_buf();
 	} else {
 		

@@ -39,6 +39,8 @@ extern "C" {
 
 typedef int (*BFpacketcapture_chips_sequence_callback)(BFoffset, int, int, int,
                                                        BFoffset*, void const**, size_t*);
+typedef int (*BFpacketcapture_snap2_sequence_callback)(BFoffset, int, int, int,
+                                                       BFoffset*, void const**, size_t*);
 typedef int (*BFpacketcapture_ibeam_sequence_callback)(BFoffset, int, int, int,
                                                        BFoffset*, void const**, size_t*);
 typedef int (*BFpacketcapture_cor_sequence_callback)(BFoffset, BFoffset, int, int,
@@ -56,6 +58,8 @@ BFstatus bfPacketCaptureCallbackCreate(BFpacketcapture_callback* obj);
 BFstatus bfPacketCaptureCallbackDestroy(BFpacketcapture_callback obj);
 BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
                                          BFpacketcapture_chips_sequence_callback callback);
+BFstatus bfPacketCaptureCallbackSetSNAP2(BFpacketcapture_callback obj,
+                                         BFpacketcapture_snap2_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetIBeam(BFpacketcapture_callback obj,
                                          BFpacketcapture_ibeam_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetCOR(BFpacketcapture_callback obj,

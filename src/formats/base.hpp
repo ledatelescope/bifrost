@@ -64,6 +64,10 @@ struct PacketDesc {
 	int            src;
 	int            nchan;
 	int            chan0;
+	int            nchan_tot;
+	int            npol;
+	int            pol0;
+	int            npol_tot;
 	uint32_t       sync;
 	uint64_t       time_tag;
 	int            tuning;

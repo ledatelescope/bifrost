@@ -1,0 +1,190 @@
+/*
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ * * Neither the name of The Bifrost Authors nor the names of its
+ *   contributors may be used to endorse or promote products derived
+ *   from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#pragma once
+
+#include "base.hpp"
+
+//#include <immintrin.h> // SSE
+
+#define SNAP2_HEADER_MAGIC 0xaabbccdd
+
+// TODO: parameterize somewhere. This isn't
+// related to the packet formatting
+#define PIPELINE_NPOL 704
+#define PIPELINE_NCHAN 32
+
+#pragma pack(1)
+// All entries are network (i.e. big) endian
+struct snap2_hdr_type {
+        uint64_t  seq;       // Spectra counter == packet counter
+        uint32_t  magic;     // = 0xaabbccdd
+        uint16_t  npol;      // Number of pols in this packet
+        uint16_t  npol_tot;      // Number of pols total
+        uint16_t  nchan;     // Number of channels in this packet
+        uint16_t  nchan_tot;     // Number of channels total (for this pipeline)
+        uint32_t  chan_block_id; // ID of this block of chans
+        uint32_t  chan0;     // First channel in this packet 
+        uint32_t  pol0;      // First pol in this packet 
+};
+
+/*
+ * The PacketDecoder's job is to unpack
+ * a packet into a standard PacketDesc
+ * format, and verify that a packet
+ * is valid.
+ */
+
+#define BF_SNAP2_DEBUG 0
+
+class SNAP2Decoder : virtual public PacketDecoder {
+protected:
+    inline bool valid_packet(const PacketDesc* pkt) const {
+#if BFSNAP2_DEBUG
+        cout << "seq: "<< pkt->seq << endl;
+        cout << "src: "<< pkt->src << endl;
+        cout << "nsrc: "<< pkt->nsrc << endl;
+        cout << "nchan: "<< pkt->nchan << endl;
+        cout << "chan0: "<< pkt->chan0 << endl;
+#endif
+        return ( 
+                 pkt->seq >= 0
+                 && pkt->src >= 0
+                 && pkt->src < _nsrc
+                 && pkt->nsrc == _nsrc
+                 && pkt->chan0 >= 0
+               );
+    }
+public:
+    SNAP2Decoder(int nsrc, int src0) : PacketDecoder(nsrc, src0) {}
+    inline bool operator()(const uint8_t* pkt_ptr,
+                           int            pkt_size,
+                           PacketDesc*    pkt) const {
+        if( pkt_size < (int)sizeof(snap2_hdr_type) ) {
+            return false;
+        }
+        const snap2_hdr_type* pkt_hdr  = (snap2_hdr_type*)pkt_ptr;
+        const uint8_t*        pkt_pld  = pkt_ptr  + sizeof(snap2_hdr_type);
+        int                   pld_size = pkt_size - sizeof(snap2_hdr_type);
+        if( be32toh(pkt_hdr->magic) != SNAP2_HEADER_MAGIC ) {
+            return false;
+        }
+        pkt->seq   = be64toh(pkt_hdr->seq);
+        int npol_blocks  = (be16toh(pkt_hdr->npol_tot) / be16toh(pkt_hdr->npol));
+        int nchan_blocks = (be16toh(pkt_hdr->nchan_tot) / be16toh(pkt_hdr->nchan));
+
+        pkt->nsrc = npol_blocks * nchan_blocks;// _nsrc;
+        pkt->src = (npol_blocks * be16toh(pkt_hdr->chan_block_id)) +  (be16toh(pkt_hdr->npol_tot) / be16toh(pkt_hdr->npol));
+        pkt->nchan  = be16toh(pkt_hdr->nchan);
+        pkt->chan0  = be32toh(pkt_hdr->chan_block_id) * be16toh(pkt_hdr->nchan);
+        pkt->nchan_tot  = be16toh(pkt_hdr->nchan_tot);
+        pkt->npol  = be16toh(pkt_hdr->npol);
+        pkt->npol_tot  = be16toh(pkt_hdr->npol_tot);
+        pkt->pol0  = be32toh(pkt_hdr->pol0);
+        pkt->payload_size = pld_size;
+        pkt->payload_ptr  = pkt_pld;
+        return this->valid_packet(pkt);
+    }
+};
+
+class SNAP2Processor : virtual public PacketProcessor {
+protected:
+    int _pipeline_nchan = PIPELINE_NCHAN;
+public:
+    inline void operator()(const PacketDesc* pkt,
+                           uint64_t          seq0,
+                           uint64_t          nseq_per_obuf,
+                           int               nbuf,
+                           uint8_t*          obufs[],
+                           size_t            ngood_bytes[],
+                           size_t*           src_ngood_bytes[]) {
+            int    obuf_idx = ((pkt->seq - seq0 >= 1*nseq_per_obuf) +
+                               (pkt->seq - seq0 >= 2*nseq_per_obuf));
+            size_t obuf_seq0 = seq0 + obuf_idx*nseq_per_obuf;
+            size_t nbyte = pkt->payload_size * BF_UNPACK_FACTOR;
+            ngood_bytes[obuf_idx]               += nbyte;
+            src_ngood_bytes[obuf_idx][pkt->src] += nbyte;
+            int payload_size = pkt->payload_size;
+        
+            size_t obuf_offset = (pkt->seq-obuf_seq0)*pkt->nsrc*payload_size;
+            typedef unaligned256_type itype; //256 bits = 32 pols / word
+            typedef aligned256_type otype;
+        
+            obuf_offset *= BF_UNPACK_FACTOR;
+        
+            // Note: Using these SSE types allows the compiler to use SSE instructions
+            //         However, they require aligned memory (otherwise segfault)
+            itype const* __restrict__ in  = (itype const*)pkt->payload_ptr;
+            otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
+        
+            // Copy packet payload one channel at a time.
+            // Packets have payload format nchans x npols x complexity
+            // spacing with which channel chunks are copied depends
+            // on the total number of channels/pols in the system
+            for(int chan=0; chan<pkt->nchan; chan++) {
+                 //   // TODO: AVX stores here will probably be much faster
+                 //   ::memcpy(&out[(((pkt->npol_tot) * (pkt->chan0 + chan)) + (pkt->pol0)) / 32],
+                 //            &in[(pkt->npol / 32) * chan], pkt->npol / 32);
+            }
+    }
+
+    inline void blank_out_source(uint8_t* data,
+                                     int      src,
+                                     int      nsrc,
+                                     int      nchan,
+                                     int      nseq) {
+            typedef aligned256_type otype;
+            otype* __restrict__ aligned_data = (otype*)data;
+            for( int t=0; t<nseq; ++t ) {
+                    for( int c=0; c<nchan; ++c ) {
+                            ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
+                                     0, sizeof(otype));
+                    }
+            }
+    }
+};
+
+class SNAP2HeaderFiller : virtual public PacketHeaderFiller {
+public:
+    inline int get_size() { return sizeof(chips_hdr_type); }
+    inline void operator()(const PacketDesc* hdr_base,
+                           BFoffset          framecount,
+                           char*             hdr) {
+        chips_hdr_type* header = reinterpret_cast<chips_hdr_type*>(hdr);
+        memset(header, 0, sizeof(chips_hdr_type));
+        
+        header->roach    = hdr_base->src + 1;
+        header->gbe      = hdr_base->tuning;
+        header->nchan    = hdr_base->nchan;
+        header->nsubband = 1;       // Should be changable?
+        header->subband  = 0;       // Should be changable?
+        header->nroach   = hdr_base->nsrc;
+        header->chan0    = htons(hdr_base->chan0);
+        header->seq      = htobe64(hdr_base->seq);
+    }
+};
