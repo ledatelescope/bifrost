@@ -37,6 +37,10 @@ ifndef NOCUDA
   fir.o \
   guantize.o \
   gunpack.o
+ifdef XGPU
+  LIBBIFROST_OBJS += \
+  bf_xgpu.o
+endif
 endif
 
 JIT_SOURCES ?= \
@@ -110,6 +114,9 @@ endif
 ifndef NOCUDA
   CPPFLAGS  += -DBF_CUDA_ENABLED=1
   LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt
+ifdef XGPU
+  LIB       += -lxgpu
+endif
 endif
 
 ifndef ANY_ARCH
