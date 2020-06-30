@@ -36,7 +36,9 @@ ifndef NOCUDA
   reduce.o \
   fir.o \
   guantize.o \
-  gunpack.o
+  gunpack.o \
+  beamform.o \
+  cublas_beamform.o
 ifdef XGPU
   LIBBIFROST_OBJS += \
   bf_xgpu.o
