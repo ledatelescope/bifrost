@@ -105,6 +105,12 @@ ifdef VMA
   CPPFLAGS   += -DBF_VMA_ENABLED=1
 endif
 
+ifdef IBV
+  # Requires ibverbs/hashpipe to be installed
+  LIB        += -libverbs -lhashpipe
+  CPPFLAGS   += -DBF_HPIBV_ENABLED=1
+endif
+
 ifdef ALIGNMENT
   CPPFLAGS   += -DBF_ALIGNMENT=$(ALIGNMENT)
 endif
