@@ -97,3 +97,9 @@ target/
 # Benchmarking files
 test/benchmarks/development_vs_gpuspec/with_bifrost/
 test/benchmarks/development_vs_gpuspec/without_bifrost/
+
+# ctags files
+python/bifrost/tags
+python/tags
+src/tags
+tags
