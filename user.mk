@@ -11,7 +11,8 @@ PYINSTALLFLAGS ?=
 
 #GPU_ARCHS     ?= 30 32 35 37 50 52 53 # Nap time!
 #GPU_ARCHS     ?= 35 52
-GPU_ARCHS     ?= 35 61
+#GPU_ARCHS     ?= 35 61
+GPU_ARCHS     ?= 75
 
 GPU_SHAREDMEM ?= 16384 # GPU shared memory size
 
