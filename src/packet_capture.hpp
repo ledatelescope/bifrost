@@ -228,68 +228,21 @@ public:
 #endif
 
 #if BF_HPIBV_ENABLED
-#include "hashpipe_ibverbs.h"
-#define IBV_UDP_PAYLOAD_OFFSET 42
-class IBVReceiver {
-    struct hashpipe_ibv_context _hibv_ctx;
-    struct hashpipe_ibv_recv_pkt* _hibv_rpkt; // Current packet chain
-    struct hashpipe_ibv_recv_pkt* _pkt; // Current packet
+#include <bifrost/bf_ibverbs.h>
+
+class IBVUDPPacketReceiver : public PacketCaptureMethod {
 public:
-    IBVReceiver(int port, int pkt_size_max, char *ifname) 
-        : _pkt(NULL), _hibv_rpkt(NULL) {
-        strncpy(_hibv_ctx.interface_name, ifname, IFNAMSIZ);
-	    _hibv_ctx.interface_name[IFNAMSIZ-1] = '\0'; // Ensure NUL termination
-	    _hibv_ctx.send_pkt_num = 1;
-	    _hibv_ctx.recv_pkt_num = 8192;
-	    _hibv_ctx.pkt_size_max = pkt_size_max;
-	    _hibv_ctx.max_flows = 1;
-	    int ret = hashpipe_ibv_init(&_hibv_ctx);
-	    if( ret ) {
-	        //PANIC
-	    }
-	    // Subscribe to RX flow
-	    ret = hashpipe_ibv_flow(
-            &_hibv_ctx,
-            0, IBV_FLOW_SPEC_UDP,
-            _hibv_ctx.mac, NULL, NULL, NULL, NULL, NULL,
-            NULL, port);
-        if( ret ) {
-	        //PANIC
-        }
+    IBVUDPPacketReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_IBV_UDP)
+    {
+        ibv_init(pkt_size_max);
     }
-    ~IBVReceiver() { }
-    inline int recv_packet(uint8_t* buf, size_t bufsize, uint8_t** pkt_ptr, int flags=0) {
-        // If we don't have a work-request queue on the go,
-        // get some new packets.
-        // If we do, walk through the packets in this queue.
-        // Once at the end of the queue, release the current queue and wait
-        // for another
-        if ( !_hibv_rpkt ) {
-            _hibv_rpkt = hashpipe_ibv_recv_pkts(&_hibv_ctx, -1); //infinite timeout
-            _pkt = _hibv_rpkt;
-        } else {
-            _pkt = (struct hashpipe_ibv_recv_pkt *)_pkt->wr.next;
-        }
-        if ( !_pkt ) {
-            hashpipe_ibv_release_pkts(&_hibv_ctx, _hibv_rpkt);
-            _hibv_rpkt = hashpipe_ibv_recv_pkts(&_hibv_ctx, -1); //infinite timeout
-            _pkt = _hibv_rpkt;
-        }
-        if ( _pkt ) {
-            // IBV returns Eth/UDP/IP headers. Strip them off here.
-            *pkt_ptr = (uint8_t *)_pkt->wr.sg_list->addr + IBV_UDP_PAYLOAD_OFFSET;
-            return _pkt->length - IBV_UDP_PAYLOAD_OFFSET;
-        } else {
-            //TODO: can we ever get here? And is returning 0 if no packets
-            // are available allowed?
-            hashpipe_ibv_release_pkts(&_hibv_ctx, _hibv_rpkt);
-            _hibv_rpkt = 0;
-            return 0;
-        }
+    inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
+        return ibv_recv_packet(pkt_ptr, flags);
     }
+    inline const char* get_name() { return "ibv_udp_capture"; }
 };
 #endif // BF_HPIBV_ENABLED
-
 
 class UDPPacketReceiver : public PacketCaptureMethod {
 #if BF_VMA_ENABLED
@@ -728,6 +681,7 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
         // TODO: sequence never changes?
         //return false;
 	    //return (pkt->seq % 128 == 0);
+        return false;
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
@@ -1231,6 +1185,8 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         method = new DiskPacketReader(fd, max_payload_size);
     } else if( backend == BF_IO_UDP ) {
         method = new UDPPacketReceiver(fd, max_payload_size);
+    } else if( backend == BF_IO_IBV_UDP ) {
+        method = new IBVUDPPacketReceiver(fd, max_payload_size);
     } else if( backend == BF_IO_SNIFFER ) {
         method = new UDPPacketSniffer(fd, max_payload_size);
     } else {

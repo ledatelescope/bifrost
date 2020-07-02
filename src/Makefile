@@ -44,6 +44,10 @@ ifdef XGPU
   bf_xgpu.o
 endif
 endif
+ifdef IBV
+  LIBBIFROST_OBJS += \
+  bf_ibverbs.o
+endif
 
 JIT_SOURCES ?= \
   Complex.hpp.jit \
@@ -107,7 +111,7 @@ endif
 
 ifdef IBV
   # Requires ibverbs/hashpipe to be installed
-  LIB        += -libverbs -lhashpipe
+  LIB        += -lhashpipe_ibverbs
   CPPFLAGS   += -DBF_HPIBV_ENABLED=1
 endif
 

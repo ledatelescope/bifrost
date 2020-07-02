@@ -23,6 +23,9 @@ CUDA_INCDIR   ?= $(CUDA_HOME)/include
 
 ALIGNMENT ?= 4096 # Memory allocation alignment
 
+# Defining the below will turn on various compilation
+# ifdef clauses.
+# ***defining as 0 is the same as defining as 1!***
 #NODEBUG    = 1 # Disable debugging mode (use this for production releases)
 #TRACE      = 1 # Enable tracing mode (generates annotations for use with nvprof/nvvp)
 #NOCUDA     = 1 # Disable CUDA support
@@ -30,6 +33,6 @@ ALIGNMENT ?= 4096 # Memory allocation alignment
 #CUDA_DEBUG = 1 # Enable CUDA debugging (nvcc -G)
 #NUMA       = 1 # Enable use of numa library for setting affinity of ring memory
 HWLOC      = 1 # Enable use of hwloc library for memory binding in udp_capture
-VMA        = 1 # Enable use of Mellanox libvma in udp_capture
+#VMA        = 1 # Enable use of Mellanox libvma in udp_capture
 XGPU       = 1 # build xGPU integrations (requires the xGPU library)
 IBV        = 1 # Build IB Verbs support using the hashpipe library

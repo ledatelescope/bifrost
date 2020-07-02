@@ -106,6 +106,19 @@ BFstatus bfUdpCaptureCreate(BFpacketcapture* obj,
                             BFsize           slot_ntime,
                             BFpacketcapture_callback sequence_callback,
                             int              core);
+
+BFstatus bfIbvUdpCaptureCreate(BFpacketcapture* obj,
+                            const char*      format,
+                            int              fd,
+                            BFring           ring,
+                            BFsize           nsrc,
+                            BFsize           src0,
+                            BFsize           max_payload_size,
+                            BFsize           buffer_ntime,
+                            BFsize           slot_ntime,
+                            BFpacketcapture_callback sequence_callback,
+                            int              core);
+
 BFstatus bfUdpSnifferCreate(BFpacketcapture* obj,
                             const char*      format,
                             int              fd,
