@@ -240,7 +240,7 @@ public:
     inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
         return ibv_recv_packet(pkt_ptr, flags);
     }
-    inline const char* get_name() { return "ibv_udp_capture"; }
+    inline const char* get_name() { return "udp_capture"; }
 };
 #endif // BF_HPIBV_ENABLED
 
