@@ -1,7 +1,7 @@
 #include <bifrost/common.h>
 #include <bifrost/array.h>
 
-BFstatus beamformInitialize(
+BFstatus bfBeamformInitialize(
   int gpudev,
   int ninputs,
   int nchans,
@@ -10,7 +10,7 @@ BFstatus beamformInitialize(
   int ntime_blocks
 );
 
-BFstatus beamformRun(
+BFstatus bfBeamformRun(
   BFarray *in,
   BFarray *out,
   BFarray *weights
