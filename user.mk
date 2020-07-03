@@ -33,6 +33,6 @@ ALIGNMENT ?= 4096 # Memory allocation alignment
 #CUDA_DEBUG = 1 # Enable CUDA debugging (nvcc -G)
 #NUMA       = 1 # Enable use of numa library for setting affinity of ring memory
 HWLOC      = 1 # Enable use of hwloc library for memory binding in udp_capture
-#VMA        = 1 # Enable use of Mellanox libvma in udp_capture
+VMA        = 1 # Enable use of Mellanox libvma in udp_capture
 XGPU       = 1 # build xGPU integrations (requires the xGPU library)
 IBV        = 1 # Build IB Verbs support using the hashpipe library

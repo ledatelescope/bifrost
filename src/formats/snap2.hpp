@@ -30,7 +30,8 @@
 
 #include "base.hpp"
 
-//#include <immintrin.h> // SSE
+#include <immintrin.h> // SSE
+#include <emmintrin.h>
 
 #define SNAP2_HEADER_MAGIC 0xaabbccdd
 
@@ -141,15 +142,29 @@ public:
             //         However, they require aligned memory (otherwise segfault)
             itype const* __restrict__ in  = (itype const*)pkt->payload_ptr;
             otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
+
+            int words_per_chan_in = pkt->npol >> 5; // 32 pols per 256-bit word
+            int words_per_chan_out = pkt->npol_tot >> 5;
+            int pol_offset_out = pkt->pol0 >> 5;
+            int pkt_chan = pkt->chan0;           // The first channel in this packet
         
             // Copy packet payload one channel at a time.
-            // Packets have payload format nchans x npols x complexity
-            // spacing with which channel chunks are copied depends
+            // Packets have payload format nchans x npols x complexity.
+            // Output buffer order is chans * npol_total * complexity
+            // Spacing with which channel chunks are copied depends
             // on the total number of channels/pols in the system
-            for(int chan=0; chan<pkt->nchan; chan++) {
-                 //   // TODO: AVX stores here will probably be much faster
-                 //   ::memcpy(&out[(((pkt->npol_tot) * (pkt->chan0 + chan)) + (pkt->pol0)) / 32],
-                 //            &in[(pkt->npol / 32) * chan], pkt->npol / 32);
+            __m256i *dest_p;
+            __m256i vecbuf[2];
+            uint64_t *in64 = (uint64_t *)in;
+            int c, i;
+            dest_p = (__m256i *)(out + (words_per_chan_out * (pkt_chan)) + pol_offset_out);
+            for(c=0; c<pkt->nchan; c++) {
+               vecbuf[0] = _mm256_set_epi64x(in64[3], in64[2], in64[1], in64[0]);
+               vecbuf[1] = _mm256_set_epi64x(in64[7], in64[6], in64[5], in64[4]);
+               _mm256_stream_si256(dest_p, vecbuf[0]);
+               _mm256_stream_si256(dest_p+1,   vecbuf[1]);
+               in64 += 8;
+               dest_p += words_per_chan_out;
             }
     }
 

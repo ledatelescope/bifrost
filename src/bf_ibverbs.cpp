@@ -16,8 +16,10 @@ BFstatus ibv_init(size_t pkt_size_max) {
     strncpy(_hibv_ctx.interface_name, ifname, IFNAMSIZ);
     _hibv_ctx.interface_name[IFNAMSIZ-1] = '\0'; // Ensure NUL termination
     _hibv_ctx.send_pkt_num = 1;
-    _hibv_ctx.recv_pkt_num = 8192;
+    _hibv_ctx.recv_pkt_num = 32768;
     _hibv_ctx.pkt_size_max = pkt_size_max;
+    fprintf(stderr, "IBV: pkt_size_max: %d\n", _hibv_ctx.pkt_size_max);
+    fprintf(stderr, "IBV: recv_pkt_num: %d\n", _hibv_ctx.recv_pkt_num);
     _hibv_ctx.max_flows = 1;
     int ret = hashpipe_ibv_init(&_hibv_ctx);
 	if( ret ) {
