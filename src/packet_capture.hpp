@@ -678,10 +678,9 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
 	}
     // Has the configuration changed? I.e., different channels being sent.
 	inline bool has_sequence_changed(const PacketDesc* pkt) {
-        // TODO: sequence never changes?
+        // TODO: Decide what a sequence actually is!
+	    return (pkt->seq % 480 == 0);
         //return false;
-	    //return (pkt->seq % 128 == 0);
-        return false;
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
