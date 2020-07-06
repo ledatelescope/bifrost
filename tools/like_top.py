@@ -189,7 +189,7 @@ def get_gpu_memory_usage():
         pass
     else:
         # Parse the ouptut and turn everything into something useful, if possible
-        lines = output.split('\n')[:-1]
+        lines = output.decode().split('\n')[:-1]
         for line in lines:
             used, total, free, draw, limit, load = line.split(',')
             data['devCount'] += 1
@@ -402,7 +402,8 @@ def main(args):
     except KeyboardInterrupt:
         pass
 
-    except Exception as error:
+    except Exception as err:
+        error = err
         exc_type, exc_value, exc_traceback = sys.exc_info()
         fileObject = StringIO()
         traceback.print_tb(exc_traceback, file=fileObject)
@@ -428,7 +429,7 @@ def main(args):
     # Final reporting
     try:
         ## Error
-        print("%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), traceback.tb_lineno(exc_traceback)))
+        print("%s: failed with %s" % (os.path.basename(__file__), str(error)))
         for line in tbString.split('\n'):
             print(line)
     except NameError:
