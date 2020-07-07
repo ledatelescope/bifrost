@@ -29,9 +29,11 @@
 
 # Python2 compatibility
 from __future__ import print_function
-
-import os
 import sys
+if sys.version_info < (3,):
+    range = xrange
+    
+import os
 import glob
 import time
 import curses
@@ -39,10 +41,11 @@ import socket
 import argparse
 import traceback
 import subprocess
+
 try:
-    import cStringIO as StringIO
+    from cStringIO import StringIO
 except ImportError:
-    import StringIO
+    from io import StringIO
 
 os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
@@ -401,7 +404,7 @@ def main(args):
 
     except Exception as error:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        fileObject = StringIO.StringIO()
+        fileObject = StringIO()
         traceback.print_tb(exc_traceback, file=fileObject)
         tbString = fileObject.getvalue()
         fileObject.close()

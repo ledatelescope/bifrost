@@ -42,7 +42,7 @@ from datetime import datetime
 try:
     import cStringIO as StringIO
 except ImportError:
-    import StringIO
+    from io import StringIO
 
 os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
@@ -375,7 +375,7 @@ def main(args):
 
     except Exception as error:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        fileObject = StringIO.StringIO()
+        fileObject = StringIO()
         traceback.print_tb(exc_traceback, file=fileObject)
         tbString = fileObject.getvalue()
         fileObject.close()
