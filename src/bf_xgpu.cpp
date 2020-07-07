@@ -24,7 +24,7 @@ static XGPUInfo info;
  * a pointer to the input and output data (on the host),
  * and a GPU device ID
  */
-BFstatus xgpuInitialize(BFarray *in, BFarray *out, int gpu_dev) {
+BFstatus bfXgpuInitialize(BFarray *in, BFarray *out, int gpu_dev) {
   int xgpu_error;
   xgpuInfo(&info);
   // Don't bother checking sizes if the input space is CUDA.
@@ -67,7 +67,7 @@ BFstatus xgpuInitialize(BFarray *in, BFarray *out, int gpu_dev) {
  * doDump : if 1, this is the last call in an integration, and results
  *          will be copied to the host.
  */
-BFstatus xgpuCorrelate(BFarray *in, BFarray *out, int doDump) {
+BFstatus bfXgpuCorrelate(BFarray *in, BFarray *out, int doDump) {
   if (in->space == BF_SPACE_CUDA) {
     return BF_STATUS_UNSUPPORTED_SPACE;
   }
@@ -100,7 +100,7 @@ BFstatus xgpuCorrelate(BFarray *in, BFarray *out, int doDump) {
  *          will be copied to the host.
  */
 static int newAcc = 1; // flush vacc on the first call
-BFstatus xgpuKernel(BFarray *in, BFarray *out, int doDump) {
+BFstatus bfXgpuKernel(BFarray *in, BFarray *out, int doDump) {
   if (in->space != BF_SPACE_CUDA) {
     return BF_STATUS_UNSUPPORTED_SPACE;
   }
@@ -137,7 +137,7 @@ BFstatus xgpuKernel(BFarray *in, BFarray *out, int doDump) {
  * int **vismap : array of visibilities in [[polA, polB], [polC, polD], ... ] form.
  * int nvis : The number of visibilities to colate (length of the vismap array)
  */
-BFstatus xgpuSubSelect(BFarray *in, BFarray *out, BFarray *vismap) {
+BFstatus bfXgpuSubSelect(BFarray *in, BFarray *out, BFarray *vismap) {
   long long unsigned nvis = num_contiguous_elements(vismap);
   int xgpu_error;
   if (in->space != BF_SPACE_CUDA) {

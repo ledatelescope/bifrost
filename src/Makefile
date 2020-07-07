@@ -44,6 +44,10 @@ ifdef XGPU
   bf_xgpu.o
 endif
 endif
+ifdef IBV
+  LIBBIFROST_OBJS += \
+  bf_ibverbs.o
+endif
 
 JIT_SOURCES ?= \
   Complex.hpp.jit \
@@ -103,6 +107,12 @@ ifdef VMA
   # Requires Mellanox libvma to be installed
   LIB        += -lvma
   CPPFLAGS   += -DBF_VMA_ENABLED=1
+endif
+
+ifdef IBV
+  # Requires ibverbs/hashpipe to be installed
+  LIB        += -lhashpipe_ibverbs
+  CPPFLAGS   += -DBF_HPIBV_ENABLED=1
 endif
 
 ifdef ALIGNMENT

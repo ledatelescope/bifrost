@@ -21,7 +21,7 @@ extern "C" {
  * Initialize the beamformer library
  */
 
-BFstatus beamformInitialize(
+BFstatus bfBeamformInitialize(
   int gpudev,
   int ninputs,
   int nchans,
@@ -42,7 +42,7 @@ BFstatus beamformInitialize(
   return BF_STATUS_SUCCESS;
 }
 
-BFstatus beamformRun(BFarray *in, BFarray *out, BFarray *weights) {
+BFstatus bfBeamformRun(BFarray *in, BFarray *out, BFarray *weights) {
   if (in->space != BF_SPACE_CUDA) {
     fprintf(stderr, "Beamformer input buffer must be in CUDA space\n");
     return BF_STATUS_INVALID_SPACE;

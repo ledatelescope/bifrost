@@ -223,6 +223,27 @@ public:
 };
 #endif // BF_VMA_ENABLED
 
+#ifndef BF_HPIBV_ENABLED
+#define BF_HPIBV_ENABLED 0
+#endif
+
+#if BF_HPIBV_ENABLED
+#include <bifrost/bf_ibverbs.h>
+
+class IBVUDPPacketReceiver : public PacketCaptureMethod {
+public:
+    IBVUDPPacketReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_IBV_UDP)
+    {
+        ibv_init(pkt_size_max);
+    }
+    inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
+        return ibv_recv_packet(pkt_ptr, flags);
+    }
+    inline const char* get_name() { return "udp_capture"; }
+};
+#endif // BF_HPIBV_ENABLED
+
 class UDPPacketReceiver : public PacketCaptureMethod {
 #if BF_VMA_ENABLED
     VMAReceiver            _vma;
@@ -657,9 +678,9 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
 	}
     // Has the configuration changed? I.e., different channels being sent.
 	inline bool has_sequence_changed(const PacketDesc* pkt) {
-        // TODO: sequence never changes?
+        // TODO: Decide what a sequence actually is!
+	    return (pkt->seq % 480 == 0);
         //return false;
-	    //return (pkt->seq % 128 == 0);
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
@@ -1163,6 +1184,8 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         method = new DiskPacketReader(fd, max_payload_size);
     } else if( backend == BF_IO_UDP ) {
         method = new UDPPacketReceiver(fd, max_payload_size);
+    } else if( backend == BF_IO_IBV_UDP ) {
+        method = new IBVUDPPacketReceiver(fd, max_payload_size);
     } else if( backend == BF_IO_SNIFFER ) {
         method = new UDPPacketSniffer(fd, max_payload_size);
     } else {
