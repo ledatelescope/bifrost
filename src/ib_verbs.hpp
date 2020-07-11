@@ -85,8 +85,8 @@ class Verbs {
     struct ibv_flow**        _flows = NULL;
     
     struct bf_ibv_recv_pkt*  _pkt_buf = NULL;
-    struct bf_ibv_recv_pkt*  _pkt;
-    struct bf_ibv_recv_pkt*  _chain;
+    struct bf_ibv_recv_pkt*  _pkt = NULL;
+    struct bf_ibv_recv_pkt*  _chain = NULL;
     
     uint8_t*                 _mr_buf = NULL;
     size_t                   _mr_size = 0;
@@ -203,6 +203,5 @@ public:
         *pkt_ptr = (uint8_t *)_pkt->wr.sg_list->addr + BF_VERBS_PAYLOAD_OFFSET;
         return _pkt->length - BF_VERBS_PAYLOAD_OFFSET;
     }
-    inline operator bool() const { return true; }
 };
 

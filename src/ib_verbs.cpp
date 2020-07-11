@@ -118,15 +118,16 @@ void Verbs::create_buffers() {
     _pkt_buf = (bf_ibv_recv_pkt*) ::malloc(BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(bf_ibv_recv_pkt));
     check_null(_pkt_buf, 
                "cannot allocate receive packet buffer");
+    ::memset(_pkt_buf, 0, BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(bf_ibv_recv_pkt));
     _sge = (struct ibv_sge*) ::malloc(BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct ibv_sge));
     check_null(_sge,
                "cannot allocate scatter/gather entries");
     ::memset(_sge, 0, BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct ibv_sge));
     _mr_size = (size_t) BF_VERBS_NPKTBUF*BF_VERBS_NQP * _pkt_size_max;
     _mr_buf = (uint8_t *) ::malloc(_mr_size);
-    ::memset(_mr_buf, 0, _mr_size);
     check_null(_mr_buf,
                "cannot allocate memory region buffer");
+    ::memset(_mr_buf, 0, _mr_size);
     _mr = ibv_reg_mr(_pd, _mr_buf, _mr_size, IBV_ACCESS_LOCAL_WRITE);
     check_null(_mr,
                "cannot register memory region");
