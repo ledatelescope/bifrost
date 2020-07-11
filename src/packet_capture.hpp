@@ -176,10 +176,17 @@ public:
 // TODO: The VMA API is returning unaligned buffers, which prevents use of SSE
 #ifndef BF_VMA_ENABLED
 #define BF_VMA_ENABLED 0
-//#define BF_VMA_ENABLED 1
 #endif
 
-#if BF_VMA_ENABLED
+// NOTE: IBVERBS overrides VMA
+#ifndef BF_IBVERBS_ENABLED
+#define BF_IBVERBS_ENABLED 0
+#endif
+
+#if BF_IBVERBS_ENABLED
+#include "ib_verbs.hpp"
+
+#elif BF_VMA_ENABLED
 #include <mellanox/vma_extra.h>
 class VMAReceiver {
     int           _fd;
@@ -224,18 +231,28 @@ public:
 #endif // BF_VMA_ENABLED
 
 class UDPPacketReceiver : public PacketCaptureMethod {
-#if BF_VMA_ENABLED
+#if BF_IBVERBS_ENABLED
+    IBVerbsReceiver        _ibv;
+#elif BF_VMA_ENABLED
     VMAReceiver            _vma;
 #endif
 public:
     UDPPacketReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
         : PacketCaptureMethod(fd, pkt_size_max, BF_IO_UDP)
-#if BF_VMA_ENABLED
+#if BF_IBVERBS_ENABLED
+        , _ibv(fd, pkt_size_max)
+#elif BF_VMA_ENABLED
         , _vma(fd)
 #endif
     {}
     inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
-#if BF_VMA_ENABLED
+
+#if BF_IBVERBS_ENABLED
+        if( _ibv ) {
+            *pkt_ptr = 0;
+            return _ibv.recv_packet(&_buf[0], _buf.size(), pkt_ptr, flags);
+        } else {
+#elif BF_VMA_ENABLED
         if( _vma ) {
             *pkt_ptr = 0;
             return _vma.recv_packet(&_buf[0], _buf.size(), pkt_ptr, flags);
@@ -243,7 +260,7 @@ public:
 #endif
             *pkt_ptr = &_buf[0];
             return ::recvfrom(_fd, &_buf[0], _buf.size(), flags, 0, 0);
-#if BF_VMA_ENABLED
+#if BF_IBVERBS_ENABLED || BF_VMA_ENABLED
         }
 #endif
     }
