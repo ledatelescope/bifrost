@@ -54,7 +54,7 @@
 #define BF_VERBS_WCBATCH 16
 #endif
 
-#define IBV_UDP_PAYLOAD_OFFSET 42
+#define BF_VERBS_PAYLOAD_OFFSET 42
 
 struct bf_ibv_recv_pkt {
     struct ibv_recv_wr wr;
@@ -69,7 +69,7 @@ struct bf_ibv_flow {
   struct ibv_flow_spec_tcp_udp spec_tcp_udp;
 } __attribute__((packed));
 
-class VerbsReceiver {
+class Verbs {
     int                      _fd;
     size_t                   _pkt_size_max;
     
@@ -143,7 +143,7 @@ class VerbsReceiver {
 			std::stringstream ss;
 			ss << "Failed to " << what << ": (" << errno << ") "
 			   << strerror(errno);
-			throw VerbsReceiver::Error(ss.str());
+			throw Verbs::Error(ss.str());
 		}
 	}
     inline void check_null(void* ptr, std::string what) {
@@ -156,7 +156,7 @@ class VerbsReceiver {
 			std::stringstream ss;
 			ss << "Failed to " << what << ": (" << errno << ") "
 			   << strerror(errno);
-			throw VerbsReceiver::Error(ss.str());
+			throw Verbs::Error(ss.str());
 		}
 	}
 public:
@@ -171,7 +171,7 @@ public:
 			: super_t(what_arg) {}
 	};
 	
-    VerbsReceiver(int fd, size_t pkt_size_max)
+    Verbs(int fd, size_t pkt_size_max)
         : _fd(fd), _pkt_size_max(pkt_size_max) {
             create_context();
             create_buffers();
@@ -179,7 +179,7 @@ public:
             link_work_requests();
             create_flows();
     }
-    ~VerbsReceiver() {
+    ~Verbs() {
         destroy_flows();
         destroy_queues();
         destroy_buffers();
@@ -200,8 +200,8 @@ public:
             _pkt = _chain;
         }
         // IBV returns Eth/UDP/IP headers. Strip them off here.
-        *pkt_ptr = (uint8_t *)_pkt->wr.sg_list->addr + IBV_UDP_PAYLOAD_OFFSET;
-        return _pkt->length - IBV_UDP_PAYLOAD_OFFSET;
+        *pkt_ptr = (uint8_t *)_pkt->wr.sg_list->addr + BF_VERBS_PAYLOAD_OFFSET;
+        return _pkt->length - BF_VERBS_PAYLOAD_OFFSET;
     }
     inline operator bool() const { return true; }
 };

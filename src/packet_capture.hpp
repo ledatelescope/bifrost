@@ -178,15 +178,7 @@ public:
 #define BF_VMA_ENABLED 0
 #endif
 
-// NOTE: VERBS overrides VMA
-#ifndef BF_VERBS_ENABLED
-#define BF_VERBS_ENABLED 0
-#endif
-
-#if BF_VERBS_ENABLED
-#include "ib_verbs.hpp"
-
-#elif BF_VMA_ENABLED
+#if BF_VMA_ENABLED
 #include <mellanox/vma_extra.h>
 class VMAReceiver {
     int           _fd;
@@ -231,28 +223,19 @@ public:
 #endif // BF_VMA_ENABLED
 
 class UDPPacketReceiver : public PacketCaptureMethod {
-#if BF_VERBS_ENABLED
-    IBVerbsReceiver        _ibv;
-#elif BF_VMA_ENABLED
+#if BF_VMA_ENABLED
     VMAReceiver            _vma;
 #endif
 public:
     UDPPacketReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
         : PacketCaptureMethod(fd, pkt_size_max, BF_IO_UDP)
-#if BF_VERBS_ENABLED
-        , _ibv(fd, pkt_size_max)
-#elif BF_VMA_ENABLED
+#if BF_VMA_ENABLED
         , _vma(fd)
 #endif
     {}
     inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
 
-#if BF_VERBS_ENABLED
-        if( _ibv ) {
-            *pkt_ptr = 0;
-            return _ibv.recv_packet(&_buf[0], _buf.size(), pkt_ptr, flags);
-        } else {
-#elif BF_VMA_ENABLED
+#if BF_VMA_ENABLED
         if( _vma ) {
             *pkt_ptr = 0;
             return _vma.recv_packet(&_buf[0], _buf.size(), pkt_ptr, flags);
@@ -260,7 +243,7 @@ public:
 #endif
             *pkt_ptr = &_buf[0];
             return ::recvfrom(_fd, &_buf[0], _buf.size(), flags, 0, 0);
-#if BF_VERBS_ENABLED || BF_VMA_ENABLED
+#if BF_VMA_ENABLED
         }
 #endif
     }
@@ -295,6 +278,26 @@ public:
     }
     inline const char* get_name() { return "udp_sniffer"; }
 };
+
+#ifndef BF_VERBS_ENABLED
+#define BF_VERBS_ENABLED 0
+#endif
+
+#if BF_VERBS_ENABLED
+#include "ib_verbs.hpp"
+
+class UDPVerbsReceiver : public PacketCaptureMethod {
+    Verbs                  _ibv;
+public:
+    UDPVerbsReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_VERBS), _ibv(fd, pkt_size_max) {}
+    inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
+        *pkt_ptr = 0;
+        return _ibv.recv_packet(&_buf[0], _buf.size(), pkt_ptr, flags);
+    }
+    inline const char* get_name() { return "udp_verbs_capture"; }
+};
+#endif // BF_VERBS_ENABLED
 
 struct PacketStats {
 	size_t ninvalid;
@@ -1099,6 +1102,10 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         method = new UDPPacketReceiver(fd, max_payload_size);
     } else if( backend == BF_IO_SNIFFER ) {
         method = new UDPPacketSniffer(fd, max_payload_size);
+#if BF_VERBS_ENABLED
+    } else if( backend == BF_IO_VERBS ) {
+        method = new UDPVerbsReceiver(fd, max_payload_size);
+#endif
     } else {
         return BF_STATUS_UNSUPPORTED;
     }

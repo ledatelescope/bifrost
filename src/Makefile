@@ -23,7 +23,8 @@ LIBBIFROST_OBJS = \
 ifdef VERBS
   # These files require IB verbs to combine
   LIBBIFROST_OBJS += \
-  ib_verbs.o \
+  ib_verbs.o
+endif
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \

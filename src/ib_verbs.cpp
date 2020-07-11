@@ -28,7 +28,7 @@
 
 #include "ib_verbs.hpp"
 
-void VerbsReceiver::create_context() {
+void Verbs::create_context() {
     int d, p, g;
     int ndev, found;
     struct ibv_context* ibv_ctx = NULL;
@@ -93,11 +93,11 @@ void VerbsReceiver::create_context() {
     // Done
     if( !found ) {
         destroy_context();
-        throw VerbsReceiver::Error("specified device not found");
+        throw Verbs::Error("specified device not found");
     }
 }
 
-void VerbsReceiver::destroy_context() {
+void Verbs::destroy_context() {
     int failures = 0;
     if( _ctx ) {
         if( ibv_close_device(_ctx) ) {
@@ -110,7 +110,7 @@ void VerbsReceiver::destroy_context() {
     }
 }
 
-void VerbsReceiver::create_buffers() {
+void Verbs::create_buffers() {
     // Setup the protected domain
     _pd = ibv_alloc_pd(_ctx);
     
@@ -132,7 +132,7 @@ void VerbsReceiver::create_buffers() {
                "cannot register memory region");
 }
 
-void VerbsReceiver::destroy_buffers() {
+void Verbs::destroy_buffers() {
     int failures = 0;
     if( _mr ) {
         if( ibv_dereg_mr(_mr) ) {
@@ -159,7 +159,7 @@ void VerbsReceiver::destroy_buffers() {
     }
 }
 
-void VerbsReceiver::create_queues() {
+void Verbs::create_queues() {
     int i;
     
     // Setup the completion channel and make it non-blocking
@@ -219,7 +219,7 @@ void VerbsReceiver::create_queues() {
 
 }
 
-void VerbsReceiver::destroy_queues() {
+void Verbs::destroy_queues() {
     int failures = 0;
     
     if( _qp ) {
@@ -247,7 +247,7 @@ void VerbsReceiver::destroy_queues() {
     }
 }
 
-void VerbsReceiver::link_work_requests() {
+void Verbs::link_work_requests() {
     // Make sure we are ready to go
     check_null(_pkt_buf,
                "packet buffer has not been created");
@@ -289,7 +289,7 @@ void VerbsReceiver::link_work_requests() {
     }
 }
 
-void VerbsReceiver::create_flows() {
+void Verbs::create_flows() {
     // Setup the flows
     _flows = (struct ibv_flow**) ::malloc(_nflows*BF_VERBS_NQP * sizeof(struct ibv_flow*));
     check_null(_flows,
@@ -333,7 +333,7 @@ void VerbsReceiver::create_flows() {
     }
 }
 
-void VerbsReceiver::destroy_flows() {
+void Verbs::destroy_flows() {
     int failures = 0;
     
     if( _flows ) {
@@ -347,7 +347,7 @@ void VerbsReceiver::destroy_flows() {
 }
 
 // See comments in header file for details about this function.
-int VerbsReceiver::release(struct bf_ibv_recv_pkt* recv_pkt) {
+int Verbs::release(struct bf_ibv_recv_pkt* recv_pkt) {
     int i;
     struct ibv_recv_wr* recv_wr_bad;
     
@@ -360,7 +360,7 @@ int VerbsReceiver::release(struct bf_ibv_recv_pkt* recv_pkt) {
     return ibv_post_recv(_qp[i], &recv_pkt->wr, &recv_wr_bad);
 }
 
-struct bf_ibv_recv_pkt* VerbsReceiver::receive(int timeout_ms) {
+struct bf_ibv_recv_pkt* Verbs::receive(int timeout_ms) {
     int i;
     int num_wce;
     uint64_t wr_id;
