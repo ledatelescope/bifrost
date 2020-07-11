@@ -20,7 +20,7 @@ LIBBIFROST_OBJS = \
   unpack.o \
   quantize.o \
   proclog.o
-ifdef IBVERBS
+ifdef VERBS
   # These files require IB verbs to combine
   LIBBIFROST_OBJS += \
   ib_verbs.o \
@@ -101,10 +101,10 @@ ifdef VMA
   CPPFLAGS   += -DBF_VMA_ENABLED=1
 endif
 
-ifdef IBVERBS
+ifdef VERBS
   # Requires Mellanox libvma to be installed
   LIB        += -lvma
-  CPPFLAGS   += -DBF_IBVERBS_ENABLED=1
+  CPPFLAGS   += -DBF_VERBS_ENABLED=1
 endif
 
 ifdef ALIGNMENT

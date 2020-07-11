@@ -42,16 +42,16 @@
 
 #include <infiniband/verbs.h>
 
-#ifndef BF_IBVERBS_NQP
-#define BF_IBVERBS_NQP 1
+#ifndef BF_VERBS_NQP
+#define BF_VERBS_NQP 1
 #endif
 
-#ifndef BF_IBVERBS_NPKTBUF
-#define BF_IBVERBS_NPKTBUF 32768
+#ifndef BF_VERBS_NPKTBUF
+#define BF_VERBS_NPKTBUF 32768
 #endif
 
-#ifndef BF_IBVERBS_WCBATCH
-#define BF_IBVERBS_WCBATCH 16
+#ifndef BF_VERBS_WCBATCH
+#define BF_VERBS_WCBATCH 16
 #endif
 
 #define IBV_UDP_PAYLOAD_OFFSET 42
@@ -69,7 +69,7 @@ struct bf_ibv_flow {
   struct ibv_flow_spec_tcp_udp spec_tcp_udp;
 } __attribute__((packed));
 
-class IBVerbsReceiver {
+class VerbsReceiver {
     int                      _fd;
     size_t                   _pkt_size_max;
     
@@ -92,8 +92,8 @@ class IBVerbsReceiver {
     size_t                   _mr_size = 0;
     struct ibv_mr*           _mr = NULL;
     
-    int32_t                  _nqp = BF_IBVERBS_NQP;
-    int32_t                  _npkt = BF_IBVERBS_NPKTBUF;
+    int32_t                  _nqp = BF_VERBS_NQP;
+    int32_t                  _npkt = BF_VERBS_NPKTBUF;
     int32_t                  _nflows = 1;
     
     uint64_t get_interface_id() {
@@ -143,7 +143,7 @@ class IBVerbsReceiver {
 			std::stringstream ss;
 			ss << "Failed to " << what << ": (" << errno << ") "
 			   << strerror(errno);
-			throw IBVerbsReceiver::Error(ss.str());
+			throw VerbsReceiver::Error(ss.str());
 		}
 	}
     inline void check_null(void* ptr, std::string what) {
@@ -156,7 +156,7 @@ class IBVerbsReceiver {
 			std::stringstream ss;
 			ss << "Failed to " << what << ": (" << errno << ") "
 			   << strerror(errno);
-			throw IBVerbsReceiver::Error(ss.str());
+			throw VerbsReceiver::Error(ss.str());
 		}
 	}
 public:
@@ -171,7 +171,7 @@ public:
 			: super_t(what_arg) {}
 	};
 	
-    IBVerbsReceiver(int fd, size_t pkt_size_max)
+    VerbsReceiver(int fd, size_t pkt_size_max)
         : _fd(fd), _pkt_size_max(pkt_size_max) {
             create_context();
             create_buffers();
@@ -179,7 +179,7 @@ public:
             link_work_requests();
             create_flows();
     }
-    ~IBVerbsReceiver() {
+    ~VerbsReceiver() {
         destroy_flows();
         destroy_queues();
         destroy_buffers();

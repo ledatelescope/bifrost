@@ -28,7 +28,7 @@
 
 #include "ib_verbs.hpp"
 
-void IBVerbsReceiver::create_context() {
+void VerbsReceiver::create_context() {
     int d, p, g;
     int ndev, found;
     struct ibv_context* ibv_ctx = NULL;
@@ -93,11 +93,11 @@ void IBVerbsReceiver::create_context() {
     // Done
     if( !found ) {
         destroy_context();
-        throw IBVerbsReceiver::Error("specified device not found");
+        throw VerbsReceiver::Error("specified device not found");
     }
 }
 
-void IBVerbsReceiver::destroy_context() {
+void VerbsReceiver::destroy_context() {
     int failures = 0;
     if( _ctx ) {
         if( ibv_close_device(_ctx) ) {
@@ -110,19 +110,19 @@ void IBVerbsReceiver::destroy_context() {
     }
 }
 
-void IBVerbsReceiver::create_buffers() {
+void VerbsReceiver::create_buffers() {
     // Setup the protected domain
     _pd = ibv_alloc_pd(_ctx);
     
     // Create the buffers, the scatter/gather entries, and the memory region
-    _pkt_buf = (bf_ibv_recv_pkt*) ::malloc(BF_IBVERBS_NPKTBUF*BF_IBVERBS_NQP * sizeof(bf_ibv_recv_pkt));
+    _pkt_buf = (bf_ibv_recv_pkt*) ::malloc(BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(bf_ibv_recv_pkt));
     check_null(_pkt_buf, 
                "cannot allocate receive packet buffer");
-    _sge = (struct ibv_sge*) ::malloc(BF_IBVERBS_NPKTBUF*BF_IBVERBS_NQP * sizeof(struct ibv_sge));
+    _sge = (struct ibv_sge*) ::malloc(BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct ibv_sge));
     check_null(_sge,
                "cannot allocate scatter/gather entries");
-    ::memset(_sge, 0, BF_IBVERBS_NPKTBUF*BF_IBVERBS_NQP * sizeof(struct ibv_sge));
-    _mr_size = (size_t) BF_IBVERBS_NPKTBUF*BF_IBVERBS_NQP * _pkt_size_max;
+    ::memset(_sge, 0, BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct ibv_sge));
+    _mr_size = (size_t) BF_VERBS_NPKTBUF*BF_VERBS_NQP * _pkt_size_max;
     _mr_buf = (uint8_t *) ::malloc(_mr_size);
     ::memset(_mr_buf, 0, _mr_size);
     check_null(_mr_buf,
@@ -132,7 +132,7 @@ void IBVerbsReceiver::create_buffers() {
                "cannot register memory region");
 }
 
-void IBVerbsReceiver::destroy_buffers() {
+void VerbsReceiver::destroy_buffers() {
     int failures = 0;
     if( _mr ) {
         if( ibv_dereg_mr(_mr) ) {
@@ -159,7 +159,7 @@ void IBVerbsReceiver::destroy_buffers() {
     }
 }
 
-void IBVerbsReceiver::create_queues() {
+void VerbsReceiver::create_queues() {
     int i;
     
     // Setup the completion channel and make it non-blocking
@@ -170,12 +170,12 @@ void IBVerbsReceiver::create_queues() {
     ::fcntl(_cc->fd, F_SETFL, flags | O_NONBLOCK);
     
     // Setup the completion queues
-    _cq = (struct ibv_cq**) ::malloc(BF_IBVERBS_NQP * sizeof(struct ibv_cq*));
+    _cq = (struct ibv_cq**) ::malloc(BF_VERBS_NQP * sizeof(struct ibv_cq*));
     check_null(_cq,
                "cannot allocate completion queues");
     
-    for(i=0; i<BF_IBVERBS_NQP; i++) {
-        _cq[i] = ibv_create_cq(_ctx, BF_IBVERBS_NPKTBUF, (void *)(uintptr_t)i, _cc, 0);
+    for(i=0; i<BF_VERBS_NQP; i++) {
+        _cq[i] = ibv_create_cq(_ctx, BF_VERBS_NPKTBUF, (void *)(uintptr_t)i, _cc, 0);
         check_null(_cq[i],
                    "cannot crete competion queue");
         
@@ -191,17 +191,17 @@ void IBVerbsReceiver::create_queues() {
     qp_init.qp_context = NULL;
     qp_init.srq = NULL;
     qp_init.cap.max_send_wr = 1;
-    qp_init.cap.max_recv_wr = BF_IBVERBS_NPKTBUF;
+    qp_init.cap.max_recv_wr = BF_VERBS_NPKTBUF;
     qp_init.cap.max_send_sge = 1;
     qp_init.cap.max_recv_sge = 1;
     qp_init.cap.max_inline_data = 0;
     qp_init.qp_type = IBV_QPT_RAW_PACKET;
     qp_init.sq_sig_all = 0;
     
-    _qp = (struct ibv_qp**) ::malloc(BF_IBVERBS_NQP*sizeof(struct ibv_qp*));
+    _qp = (struct ibv_qp**) ::malloc(BF_VERBS_NQP*sizeof(struct ibv_qp*));
     check_null(_qp,
                "cannot allocate queue pairs");
-    for(i=0; i<BF_IBVERBS_NQP; i++) {
+    for(i=0; i<BF_VERBS_NQP; i++) {
         qp_init.recv_cq = _cq[i];
         _qp[i] = ibv_create_qp(_pd, &qp_init);
         check_null(_qp[i],
@@ -219,11 +219,11 @@ void IBVerbsReceiver::create_queues() {
 
 }
 
-void IBVerbsReceiver::destroy_queues() {
+void VerbsReceiver::destroy_queues() {
     int failures = 0;
     
     if( _qp ) {
-        for(int i=0; i<BF_IBVERBS_NQP; i++) {
+        for(int i=0; i<BF_VERBS_NQP; i++) {
             if( ibv_destroy_qp(_qp[i]) ) {
                 failures += 1;
             }
@@ -232,7 +232,7 @@ void IBVerbsReceiver::destroy_queues() {
     }
     
     if( _cq ) {
-        for(int i=0; i<BF_IBVERBS_NQP; i++) {
+        for(int i=0; i<BF_VERBS_NQP; i++) {
             if( ibv_destroy_cq(_cq[i]) ) {
                 failures += 1;
             }
@@ -247,7 +247,7 @@ void IBVerbsReceiver::destroy_queues() {
     }
 }
 
-void IBVerbsReceiver::link_work_requests() {
+void VerbsReceiver::link_work_requests() {
     // Make sure we are ready to go
     check_null(_pkt_buf,
                "packet buffer has not been created");
@@ -258,7 +258,7 @@ void IBVerbsReceiver::link_work_requests() {
     int i, j, k;
     struct ibv_recv_wr* recv_wr_bad;
     
-    for(i=0; i<BF_IBVERBS_NPKTBUF*BF_IBVERBS_NQP; i++) {
+    for(i=0; i<BF_VERBS_NPKTBUF*BF_VERBS_NQP; i++) {
         _pkt_buf[i].wr.wr_id = i;
         _pkt_buf[i].wr.num_sge = 1;
         _sge[i].addr = (uint64_t) _mr_buf + i * _pkt_size_max;
@@ -276,9 +276,9 @@ void IBVerbsReceiver::link_work_requests() {
     }
     
     // Link the work requests to receive queue
-    for(i=0; i<BF_IBVERBS_NQP; i++) {
-        k = i*BF_IBVERBS_NPKTBUF;
-        for(j=0; j<BF_IBVERBS_NPKTBUF-1; j++) {
+    for(i=0; i<BF_VERBS_NQP; i++) {
+        k = i*BF_VERBS_NPKTBUF;
+        for(j=0; j<BF_VERBS_NPKTBUF-1; j++) {
             _pkt_buf[k+j].wr.next = &_pkt_buf[k+j+1].wr;
         }
         _pkt_buf[k+j].wr.next = NULL;
@@ -289,9 +289,9 @@ void IBVerbsReceiver::link_work_requests() {
     }
 }
 
-void IBVerbsReceiver::create_flows() {
+void VerbsReceiver::create_flows() {
     // Setup the flows
-    _flows = (struct ibv_flow**) ::malloc(_nflows*BF_IBVERBS_NQP * sizeof(struct ibv_flow*));
+    _flows = (struct ibv_flow**) ::malloc(_nflows*BF_VERBS_NQP * sizeof(struct ibv_flow*));
     check_null(_flows,
                "cannot allocate flows");
     
@@ -325,7 +325,7 @@ void IBVerbsReceiver::create_flows() {
     ::memset(flow.spec_eth.mask.dst_mac, 0xff, 6);
     
     // Create the flows
-    for(i=0; i<BF_IBVERBS_NQP; i++) {
+    for(i=0; i<BF_VERBS_NQP; i++) {
         j = i*1 + 0;
         _flows[j] = ibv_create_flow(_qp[i], (struct ibv_flow_attr*) &flow);
         check_null(_flows[j],
@@ -333,7 +333,7 @@ void IBVerbsReceiver::create_flows() {
     }
 }
 
-void IBVerbsReceiver::destroy_flows() {
+void VerbsReceiver::destroy_flows() {
     int failures = 0;
     
     if( _flows ) {
@@ -347,7 +347,7 @@ void IBVerbsReceiver::destroy_flows() {
 }
 
 // See comments in header file for details about this function.
-int IBVerbsReceiver::release(struct bf_ibv_recv_pkt* recv_pkt) {
+int VerbsReceiver::release(struct bf_ibv_recv_pkt* recv_pkt) {
     int i;
     struct ibv_recv_wr* recv_wr_bad;
     
@@ -356,11 +356,11 @@ int IBVerbsReceiver::release(struct bf_ibv_recv_pkt* recv_pkt) {
     }
     
     // Figure out which QP these packets belong to and repost to that QP
-    i = recv_pkt->wr.wr_id / BF_IBVERBS_NPKTBUF;
+    i = recv_pkt->wr.wr_id / BF_VERBS_NPKTBUF;
     return ibv_post_recv(_qp[i], &recv_pkt->wr, &recv_wr_bad);
 }
 
-struct bf_ibv_recv_pkt* IBVerbsReceiver::receive(int timeout_ms) {
+struct bf_ibv_recv_pkt* VerbsReceiver::receive(int timeout_ms) {
     int i;
     int num_wce;
     uint64_t wr_id;
@@ -368,12 +368,12 @@ struct bf_ibv_recv_pkt* IBVerbsReceiver::receive(int timeout_ms) {
     struct ibv_qp_attr qp_attr;
     struct ibv_cq *ev_cq;
     intptr_t ev_cq_ctx;
-    struct ibv_wc wc[BF_IBVERBS_WCBATCH];
+    struct ibv_wc wc[BF_VERBS_WCBATCH];
     struct bf_ibv_recv_pkt * recv_head = NULL;
     struct ibv_recv_wr * recv_tail = NULL;
     
     // Ensure the queue pairs are in a state suitable for receiving
-    for(i=0; i<BF_IBVERBS_NQP; i++) {
+    for(i=0; i<BF_VERBS_NQP; i++) {
         switch(_qp[i]->state) {
             case IBV_QPS_RESET: // Unexpected, but maybe user reset it
                 qp_attr.qp_state = IBV_QPS_INIT;
@@ -422,7 +422,7 @@ struct bf_ibv_recv_pkt* IBVerbsReceiver::receive(int timeout_ms) {
     
     // Empty the CQ: poll all of the completions from the CQ (if any exist)
     do {
-        num_wce = ibv_poll_cq(ev_cq, BF_IBVERBS_WCBATCH, wc);
+        num_wce = ibv_poll_cq(ev_cq, BF_VERBS_WCBATCH, wc);
         if( num_wce < 0 ) {
             return NULL;
         }
