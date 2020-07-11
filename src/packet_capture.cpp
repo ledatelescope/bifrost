@@ -340,6 +340,30 @@ BFstatus bfUdpSnifferCreate(BFpacketcapture* obj,
                                   BF_IO_SNIFFER);
 }
 
+BFstatus bfUdpVerbsCaptureCreate(BFpacketcapture* obj,
+                                 const char*      format,
+                                 int              fd,
+                                 BFring           ring,
+                                 BFsize           nsrc,
+                                 BFsize           src0,
+                                 BFsize           max_payload_size,
+                                 BFsize           buffer_ntime,
+                                 BFsize           slot_ntime,
+                                 BFpacketcapture_callback sequence_callback,
+                                 int              core) {
+    return BFpacketcapture_create(obj,
+                                  format,
+                                  fd,
+                                  ring,
+                                  nsrc,
+                                  src0,
+                                  buffer_ntime,
+                                  slot_ntime,
+                                  sequence_callback,
+                                  core,
+                                  BF_IO_VERBS);
+}
+
 BFstatus bfPacketCaptureDestroy(BFpacketcapture obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	delete obj;
