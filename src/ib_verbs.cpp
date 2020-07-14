@@ -26,7 +26,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
+#include <iostream>
 #include "ib_verbs.hpp"
+
+#define BF_JAYCE_DEBUG 1
+
+#if BF_JAYCE_DEBUG
+#define BF_PRINTD(stmt) \
+    std::cout << stmt << std::endl
+#else // not BF_JAYCE_DEBUG
+#define BF_PRINTD(stmt)
+#endif
 
 void Verbs::create_context() {
     int d, p, g;
@@ -36,9 +47,16 @@ void Verbs::create_context() {
     struct ibv_port_attr ibv_port_attr;
     union  ibv_gid ibv_gid;
     
-    // Get the interface ID
+    // Get the interface MAC address and GID
     found = 0;
-    uint64_t iid = this->get_interface_id();
+    uint8_t mac[6] = {0};
+    this->get_mac_address(&(mac[0]));
+    uint64_t gid = this->get_interface_gid();
+    
+    BF_PRINTD("MAC: " << std::hex << int(mac[0]) << ":" << int(mac[1]) << ":" << int(mac[2]) 
+                           << ":" << int(mac[3]) << ":" << int(mac[4]) << ":" << int(mac[5]) << std::dec);
+    BF_PRINTD("GID: " << std::hex << int((gid >> 24) & 0xFFFF) << ":" << int((gid >> 16) & 0xFFFF)
+                           << ":" << int((gid >>  8) & 0xFFFF) << ":" << int( gid        & 0xFFFF) << std::dec);
     
     // Find the right device
     /* Query all devices */
@@ -54,7 +72,7 @@ void Verbs::create_context() {
         
         check_error(ibv_query_device(ibv_ctx, &ibv_dev_attr),
                     "query device");
-                    
+        
         /* Loop through the ports on the device */
         for(p=1; p<=ibv_dev_attr.phys_port_cnt; p++) {
             check_error(ibv_query_port(ibv_ctx, p, &ibv_port_attr),
@@ -67,7 +85,7 @@ void Verbs::create_context() {
                 
                 /* Did we find a match? */
                 if( (ibv_gid.global.subnet_prefix == 0x80feUL) \
-                   && (ibv_gid.global.interface_id  == iid) ) {
+                   && (ibv_gid.global.interface_id  == gid) ) {
                    found = 1;
                    break;
                 }

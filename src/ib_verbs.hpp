@@ -132,7 +132,7 @@ class Verbs {
                     "query socket name");
         return ntohs(sin.sin_port);
     }
-    uint64_t get_interface_id() {
+    uint64_t get_interface_gid() {
         uint64_t id;
         uint8_t mac[6] = {0};
         uint8_t buf[8] = {0};
