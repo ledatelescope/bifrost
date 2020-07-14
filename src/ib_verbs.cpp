@@ -50,20 +50,20 @@ void Verbs::create_context() {
     for(d=0; d<ndev; d++) {
         ibv_ctx = ibv_open_device(_dev_list[d]);
         check_null(ibv_ctx,
-                   "cannot open device");
+                   "open device");
         
         check_error(ibv_query_device(ibv_ctx, &ibv_dev_attr),
-                    "cannot query device");
+                    "query device");
                     
         /* Loop through the ports on the device */
         for(p=1; p<=ibv_dev_attr.phys_port_cnt; p++) {
             check_error(ibv_query_port(ibv_ctx, p, &ibv_port_attr),
-                        "cannot query port");
+                        "query port");
             
             /* Loop through GIDs of the port on the device */
             for(g=0; g<ibv_port_attr.gid_tbl_len; g++) {
                 check_error(ibv_query_gid(ibv_ctx, p, g, &ibv_gid),
-                            "cannot query gid on port");
+                            "query gid on port");
                 
                 /* Did we find a match? */
                 if( (ibv_gid.global.subnet_prefix == 0x80feUL) \
@@ -77,16 +77,16 @@ void Verbs::create_context() {
                 break;
             }
         }
-        
+       
         if ( found ) {
             /* Save it to the class so that we can use it later */
-            *_ctx = *ibv_ctx;
-            ::memcpy(&_dev_attr, &ibv_dev_attr, sizeof(ibv_device_attr));
+	    _ctx = ibv_ctx;
+            ::memcpy(&_dev_attr, &ibv_dev_attr, sizeof(struct ibv_device_attr));
             _port_num = p;
             break;
         } else {
             check_error(ibv_close_device(ibv_ctx),
-                        "cannot close device");
+                        "close device");
         }
     }
     
@@ -117,20 +117,20 @@ void Verbs::create_buffers() {
     // Create the buffers, the scatter/gather entries, and the memory region
     _pkt_buf = (bf_ibv_recv_pkt*) ::malloc(BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(bf_ibv_recv_pkt));
     check_null(_pkt_buf, 
-               "cannot allocate receive packet buffer");
+               "allocate receive packet buffer");
     ::memset(_pkt_buf, 0, BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(bf_ibv_recv_pkt));
     _sge = (struct ibv_sge*) ::malloc(BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct ibv_sge));
     check_null(_sge,
-               "cannot allocate scatter/gather entries");
+               "allocate scatter/gather entries");
     ::memset(_sge, 0, BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct ibv_sge));
     _mr_size = (size_t) BF_VERBS_NPKTBUF*BF_VERBS_NQP * _pkt_size_max;
     _mr_buf = (uint8_t *) ::malloc(_mr_size);
     check_null(_mr_buf,
-               "cannot allocate memory region buffer");
+               "allocate memory region buffer");
     ::memset(_mr_buf, 0, _mr_size);
     _mr = ibv_reg_mr(_pd, _mr_buf, _mr_size, IBV_ACCESS_LOCAL_WRITE);
     check_null(_mr,
-               "cannot register memory region");
+               "register memory region");
 }
 
 void Verbs::destroy_buffers() {
@@ -166,24 +166,25 @@ void Verbs::create_queues() {
     // Setup the completion channel and make it non-blocking
     _cc = ibv_create_comp_channel(_ctx);
     check_null(_cc,
-               "cannot create completion channel");
+               "create completion channel");
     int flags = ::fcntl(_cc->fd, F_GETFL);
-    ::fcntl(_cc->fd, F_SETFL, flags | O_NONBLOCK);
+    check_error(::fcntl(_cc->fd, F_SETFL, flags | O_NONBLOCK),
+    		"set completion channel to non-blocking");
     
     // Setup the completion queues
     _cq = (struct ibv_cq**) ::malloc(BF_VERBS_NQP * sizeof(struct ibv_cq*));
     check_null(_cq,
-               "cannot allocate completion queues");
+               "allocate completion queues");
     
     for(i=0; i<BF_VERBS_NQP; i++) {
         _cq[i] = ibv_create_cq(_ctx, BF_VERBS_NPKTBUF, (void *)(uintptr_t)i, _cc, 0);
         check_null(_cq[i],
-                   "cannot crete competion queue");
+                   "create completion queue");
         
         // Request notifications before any receive completion can be created.
         // Do NOT restrict to solicited-only completions for receive.
         check_error(ibv_req_notify_cq(_cq[i], 0),
-                    "cannot change completion queue request notifications");
+                    "change completion queue request notifications");
     }
     
     // Setup the queue pairs
@@ -201,21 +202,21 @@ void Verbs::create_queues() {
     
     _qp = (struct ibv_qp**) ::malloc(BF_VERBS_NQP*sizeof(struct ibv_qp*));
     check_null(_qp,
-               "cannot allocate queue pairs");
+               "allocate queue pairs");
     for(i=0; i<BF_VERBS_NQP; i++) {
         qp_init.recv_cq = _cq[i];
         _qp[i] = ibv_create_qp(_pd, &qp_init);
         check_null(_qp[i],
-                   "cannot create queue pair");
+                   "create queue pair");
         
-        // Transition QP to INIT state
+        // Transition queue pair to INIT state
         struct ibv_qp_attr qp_attr;
         ::memset(&qp_attr, 0, sizeof(struct ibv_qp_attr));
         qp_attr.qp_state = IBV_QPS_INIT;
         qp_attr.port_num = _port_num;
         
         check_error(ibv_modify_qp(_qp[i], &qp_attr, IBV_QP_STATE|IBV_QP_PORT),
-                    "cannot modify queue pair state");
+                    "modify queue pair state");
     }
 
 }
@@ -225,8 +226,10 @@ void Verbs::destroy_queues() {
     
     if( _qp ) {
         for(int i=0; i<BF_VERBS_NQP; i++) {
-            if( ibv_destroy_qp(_qp[i]) ) {
-                failures += 1;
+	    if( _qp[i] ) {
+                if( ibv_destroy_qp(_qp[i]) ) {
+                    failures += 1;
+           	}
             }
         }
         free(_qp);
@@ -234,8 +237,10 @@ void Verbs::destroy_queues() {
     
     if( _cq ) {
         for(int i=0; i<BF_VERBS_NQP; i++) {
-            if( ibv_destroy_cq(_cq[i]) ) {
-                failures += 1;
+	    if( _cq[i] ) {
+                if( ibv_destroy_cq(_cq[i]) ) {
+                    failures += 1;
+		}
             }
         }
         free(_cq);
@@ -251,9 +256,9 @@ void Verbs::destroy_queues() {
 void Verbs::link_work_requests() {
     // Make sure we are ready to go
     check_null(_pkt_buf,
-               "packet buffer has not been created");
+               "find packet buffer");
     check_null(_qp,
-               "queue pairs have not been created");
+               "find queue pairs");
     
     // Setup the work requests
     int i, j, k;
@@ -286,7 +291,7 @@ void Verbs::link_work_requests() {
         
         // Post work requests to the receive queue
         check_error(ibv_post_recv(_qp[i], &_pkt_buf[k].wr, &recv_wr_bad),
-                    "cannot post work request to receive queue");
+                    "post work request to receive queue");
     }
 }
 
@@ -294,7 +299,7 @@ void Verbs::create_flows() {
     // Setup the flows
     _flows = (struct ibv_flow**) ::malloc(_nflows*BF_VERBS_NQP * sizeof(struct ibv_flow*));
     check_null(_flows,
-               "cannot allocate flows");
+               "allocate flows");
     
     int i, j;
     struct bf_ibv_flow flow;
@@ -330,7 +335,7 @@ void Verbs::create_flows() {
         j = i*1 + 0;
         _flows[j] = ibv_create_flow(_qp[i], (struct ibv_flow_attr*) &flow);
         check_null(_flows[j],
-                   "cannot create flow");
+                   "create flow");
     }
 }
 
@@ -339,8 +344,10 @@ void Verbs::destroy_flows() {
     
     if( _flows ) {
         for(int i=0; i<_nflows; i++) {
-            if( ibv_destroy_flow(_flows[i]) ) {
-                failures += 1;
+	    if( _flows[i] ) {
+                if( ibv_destroy_flow(_flows[i]) ) {
+                    failures += 1;
+		}
             }
         }
         free(_flows);

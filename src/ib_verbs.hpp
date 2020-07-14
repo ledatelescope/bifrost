@@ -154,8 +154,7 @@ class Verbs {
             destroy_context();
             
 			std::stringstream ss;
-			ss << "Failed to " << what << ": (" << errno << ") "
-			   << strerror(errno);
+			ss << "Failed to " << what;
 			throw Verbs::Error(ss.str());
 		}
 	}
