@@ -96,31 +96,55 @@ class Verbs {
     int32_t                  _npkt = BF_VERBS_NPKTBUF;
     int32_t                  _nflows = 1;
     
-    uint64_t get_interface_id() {
-        uint64_t id;
-        uint8_t buf[8] = {0};
-        struct ifreq ethreq;
-        ::ioctl(_fd, SIOCGIFHWADDR, &ethreq);
+    void get_interface_name(char* name) {
+	    struct sockaddr_in sin;
+	    char ip[INET_ADDRSTRLEN];
+        socklen_t len = sizeof(sin);
+        check_error(::getsockname(_fd, (struct sockaddr *)&sin, &len),
+                    "query socket name");
+        inet_ntop(AF_INET, &(sin.sin_addr), ip, INET_ADDRSTRLEN);
         
-        ::memcpy(buf, (unsigned char*) ethreq.ifr_hwaddr.sa_data, 3);
-        buf[0] ^= 2; // Toggle G/L bit per modified EUI-64 spec
-        buf[3] = 0xff;
-        buf[4] = 0xfe;
-        ::memcpy(buf+5, (unsigned char*)  ethreq.ifr_hwaddr.sa_data+3, 3);
-        ::memcpy(&id, buf, 8);
-        return id;
+        // TODO: Is there a better way to find this?
+        char cmd[256] = {'\0'};
+        char line[256] = {'\0'};
+	    sprintf(cmd, "ip route get to %s | grep dev | awk '{print $4}'", ip);
+    	FILE* fp = popen(cmd, "r");
+    	if( fgets(line, sizeof(line), fp) != NULL) {
+    	    if( line[strlen(line)-1] == '\n' ) {
+    	        line[strlen(line)-1] = '\0';
+    	    }
+	        strncpy(name, &(line[0]), IFNAMSIZ);
+	    }
+	    pclose(fp);
     }
-    void get_mac(uint8_t* mac) {
+    void get_mac_address(uint8_t* mac) {
         struct ifreq ethreq;
-        ::ioctl(_fd, SIOCGIFHWADDR, &ethreq);
+        this->get_interface_name(&(ethreq.ifr_name[0]));
+        check_error(::ioctl(_fd, SIOCGIFHWADDR, &ethreq),
+                    "query interface hardware address");
         
         ::memcpy(mac, (uint8_t*) ethreq.ifr_hwaddr.sa_data, 6);
     }
     uint16_t get_port() {
         struct sockaddr_in sin;
         socklen_t len = sizeof(sin);
-        ::getsockname(_fd, (struct sockaddr *)&sin, &len);
+        check_error(::getsockname(_fd, (struct sockaddr *)&sin, &len),
+                    "query socket name");
         return ntohs(sin.sin_port);
+    }
+    uint64_t get_interface_id() {
+        uint64_t id;
+        uint8_t mac[6] = {0};
+        uint8_t buf[8] = {0};
+        this->get_mac_address(&(mac[0]));
+        
+        ::memcpy(buf, (unsigned char*) &(mac[0]), 3);
+        buf[0] ^= 2; // Toggle G/L bit per modified EUI-64 spec
+        buf[3] = 0xff;
+        buf[4] = 0xfe;
+        ::memcpy(buf+5, (unsigned char*)  &(mac[3]), 3);
+        ::memcpy(&id, buf, 8);
+        return id;
     }
     void create_context();
     void destroy_context();

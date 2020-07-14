@@ -80,7 +80,7 @@ void Verbs::create_context() {
        
         if ( found ) {
             /* Save it to the class so that we can use it later */
-	    _ctx = ibv_ctx;
+            _ctx = ibv_ctx;
             ::memcpy(&_dev_attr, &ibv_dev_attr, sizeof(struct ibv_device_attr));
             _port_num = p;
             break;
@@ -169,7 +169,7 @@ void Verbs::create_queues() {
                "create completion channel");
     int flags = ::fcntl(_cc->fd, F_GETFL);
     check_error(::fcntl(_cc->fd, F_SETFL, flags | O_NONBLOCK),
-    		"set completion channel to non-blocking");
+                "set completion channel to non-blocking");
     
     // Setup the completion queues
     _cq = (struct ibv_cq**) ::malloc(BF_VERBS_NQP * sizeof(struct ibv_cq*));
@@ -226,10 +226,10 @@ void Verbs::destroy_queues() {
     
     if( _qp ) {
         for(int i=0; i<BF_VERBS_NQP; i++) {
-	    if( _qp[i] ) {
+            if( _qp[i] ) {
                 if( ibv_destroy_qp(_qp[i]) ) {
                     failures += 1;
-           	}
+                }
             }
         }
         free(_qp);
@@ -237,10 +237,10 @@ void Verbs::destroy_queues() {
     
     if( _cq ) {
         for(int i=0; i<BF_VERBS_NQP; i++) {
-	    if( _cq[i] ) {
+            if( _cq[i] ) {
                 if( ibv_destroy_cq(_cq[i]) ) {
                     failures += 1;
-		}
+                }
             }
         }
         free(_cq);
@@ -256,9 +256,9 @@ void Verbs::destroy_queues() {
 void Verbs::link_work_requests() {
     // Make sure we are ready to go
     check_null(_pkt_buf,
-               "find packet buffer");
+               "find existing packet buffer");
     check_null(_qp,
-               "find queue pairs");
+               "find existing queue pairs");
     
     // Setup the work requests
     int i, j, k;
@@ -321,13 +321,13 @@ void Verbs::create_flows() {
     // Filter on UDP and the port
     flow.attr.size += sizeof(struct ibv_flow_spec_tcp_udp);
     flow.attr.num_of_specs++;
-    flow.spec_tcp_udp.val.dst_port = htobe16(this->get_port());
+    flow.spec_tcp_udp.val.dst_port = htons(this->get_port());
     flow.spec_tcp_udp.mask.dst_port = 0xffff;
     
     // Filter on the destination MAC address
     flow.attr.size += sizeof(struct ibv_flow_spec_eth);
     flow.attr.num_of_specs++;
-    this->get_mac((uint8_t*) &(flow.spec_eth.val.dst_mac));
+    this->get_mac_address((uint8_t*) &(flow.spec_eth.val.dst_mac));
     ::memset(flow.spec_eth.mask.dst_mac, 0xff, 6);
     
     // Create the flows
@@ -344,10 +344,10 @@ void Verbs::destroy_flows() {
     
     if( _flows ) {
         for(int i=0; i<_nflows; i++) {
-	    if( _flows[i] ) {
+            if( _flows[i] ) {
                 if( ibv_destroy_flow(_flows[i]) ) {
                     failures += 1;
-		}
+                }
             }
         }
         free(_flows);
