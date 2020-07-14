@@ -97,8 +97,8 @@ class Verbs {
     int32_t                  _nflows = 1;
     
     void get_interface_name(char* name) {
-	    struct sockaddr_in sin;
-	    char ip[INET_ADDRSTRLEN];
+        struct sockaddr_in sin;
+        char ip[INET_ADDRSTRLEN];
         socklen_t len = sizeof(sin);
         check_error(::getsockname(_fd, (struct sockaddr *)&sin, &len),
                     "query socket name");
@@ -107,15 +107,32 @@ class Verbs {
         // TODO: Is there a better way to find this?
         char cmd[256] = {'\0'};
         char line[256] = {'\0'};
-	    sprintf(cmd, "ip route get to %s | grep dev | awk '{print $4}'", ip);
-    	FILE* fp = popen(cmd, "r");
-    	if( fgets(line, sizeof(line), fp) != NULL) {
-    	    if( line[strlen(line)-1] == '\n' ) {
-    	        line[strlen(line)-1] = '\0';
-    	    }
-	        strncpy(name, &(line[0]), IFNAMSIZ);
-	    }
-	    pclose(fp);
+        int is_lo = 0;
+        sprintf(cmd, "ip route get to %s | grep dev | awk '{print $4}'", ip);
+        FILE* fp = popen(cmd, "r");
+        if( fgets(line, sizeof(line), fp) != NULL) {
+            if( line[strlen(line)-1] == '\n' ) {
+                line[strlen(line)-1] = '\0';
+            }
+            if( strncmp(&(line[0]), "lo", 2) == 0 ) {
+                is_lo = 1;
+            }
+            strncpy(name, &(line[0]), IFNAMSIZ);
+        }
+        pclose(fp);
+        
+        if( is_lo ) {
+            // TODO: Is there a way to avoid having to do this?
+            sprintf(cmd, "ip route show | grep %s | grep -v default | awk '{print $3}'", ip);
+            fp = popen(cmd, "r");
+            if( fgets(line, sizeof(line), fp) != NULL) {
+                if( line[strlen(line)-1] == '\n' ) {
+                    line[strlen(line)-1] = '\0';
+                } 
+                strncpy(name, &(line[0]), IFNAMSIZ);
+            }
+            pclose(fp);
+        }
     }
     void get_mac_address(uint8_t* mac) {
         struct ifreq ethreq;
@@ -158,42 +175,42 @@ class Verbs {
     int release(bf_ibv_recv_pkt*);
     struct bf_ibv_recv_pkt* receive(int timeout_ms=1);
     inline void check_error(int retval, std::string what) {
-		if( retval < 0 ) {
-			destroy_flows();
+        if( retval < 0 ) {
+            destroy_flows();
             destroy_queues();
             destroy_buffers();
             destroy_context();
             
-			std::stringstream ss;
-			ss << "Failed to " << what << ": (" << errno << ") "
-			   << strerror(errno);
-			throw Verbs::Error(ss.str());
-		}
-	}
+            std::stringstream ss;
+            ss << "Failed to " << what << ": (" << errno << ") "
+               << strerror(errno);
+            throw Verbs::Error(ss.str());
+        }
+    }
     inline void check_null(void* ptr, std::string what) {
-		if( ptr == NULL ) {
-			destroy_flows();
+        if( ptr == NULL ) {
+            destroy_flows();
             destroy_queues();
             destroy_buffers();
             destroy_context();
             
-			std::stringstream ss;
-			ss << "Failed to " << what;
-			throw Verbs::Error(ss.str());
-		}
-	}
+            std::stringstream ss;
+            ss << "Failed to " << what;
+            throw Verbs::Error(ss.str());
+        }
+    }
 public:
     class Error : public std::runtime_error {
-		typedef std::runtime_error super_t;
-	protected:
-		virtual const char* what() const throw() {
-			return super_t::what();
-		}
-	public:
-		Error(const std::string& what_arg)
-			: super_t(what_arg) {}
-	};
-	
+        typedef std::runtime_error super_t;
+    protected:
+        virtual const char* what() const throw() {
+            return super_t::what();
+        }
+    public:
+        Error(const std::string& what_arg)
+            : super_t(what_arg) {}
+    };
+    
     Verbs(int fd, size_t pkt_size_max)
         : _fd(fd), _pkt_size_max(pkt_size_max) {
             create_context();
@@ -211,9 +228,9 @@ public:
     inline int recv_packet(uint8_t* buf, size_t bufsize, uint8_t** pkt_ptr, int flags=0) {
         // If we don't have a work-request queue on the go,
         // get some new packets.
-        if ( _pkt ) {
+        if( _pkt ) {
             _pkt = (struct bf_ibv_recv_pkt *)_pkt->wr.next;
-            if ( !_pkt ) {
+            if( !_pkt ) {
                 release(_chain);
                 _chain = NULL;
             }
