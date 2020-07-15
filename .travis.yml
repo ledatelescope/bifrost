@@ -20,6 +20,7 @@ addons:
             - software-properties-common
             - exuberant-ctags
             - python-dev
+            - pylint
 
 jobs:
     include:
