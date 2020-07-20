@@ -338,7 +338,6 @@ void Verbs::create_buffers() {
     _pkt_buf = (struct bf_ibv_recv_pkt*) ::malloc(BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct bf_ibv_recv_pkt));
     check_null(_pkt_buf, 
                "allocate receive packet buffer");
-    std::cout << "_pkt_buf: " << _pkt_buf << std::endl;
     ::memset(_pkt_buf, 0, BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(bf_ibv_recv_pkt));
     _sge = (struct ibv_sge*) ::malloc(BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct ibv_sge));
     check_null(_sge,
@@ -413,9 +412,9 @@ void Verbs::create_queues() {
     ::memset(&qp_init, 0, sizeof(struct ibv_qp_init_attr));
     qp_init.qp_context = NULL;
     qp_init.srq = NULL;
-    qp_init.cap.max_send_wr = 1;
+    qp_init.cap.max_send_wr = 0;
     qp_init.cap.max_recv_wr = BF_VERBS_NPKTBUF;
-    qp_init.cap.max_send_sge = 1;
+    qp_init.cap.max_send_sge = 0;
     qp_init.cap.max_recv_sge = 1;
     qp_init.cap.max_inline_data = 0;
     qp_init.qp_type = IBV_QPT_RAW_PACKET;
@@ -553,12 +552,9 @@ void Verbs::create_flows() {
                "allocate flows");
     ::memset(_flows, 0, BF_VERBS_NQP * sizeof(struct ibv_flow*));
     for(i=0; i<BF_VERBS_NQP; i++) {
-        std::cout << i << ": " << (_qp[i] == NULL) << " & " << int(flow.attr.port) << std::endl;
-        /*
         _flows[i] = ibv_create_flow(_qp[i], (struct ibv_flow_attr*) &flow);
         check_null(_flows[i],
                    "create flow");
-        */
     }
 }
 
