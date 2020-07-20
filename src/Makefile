@@ -104,7 +104,7 @@ endif
 
 ifdef VERBS
   # Requires Mellanox libvma to be installed
-  LIB        += -lvma
+  LIB        += -lvma -libverbs
   CPPFLAGS   += -DBF_VERBS_ENABLED=1
 endif
 
