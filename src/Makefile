@@ -24,7 +24,6 @@ ifndef NOUDPSOCKET
   udp_transmit.o 
 endif
 
-
 ifdef BUILDDP4A
   LIBBIFROST_OBJS += \
   xcorr_lite.o\
@@ -48,12 +47,6 @@ ifndef NOCUDA
   fir.o \
   guantize.o \
   gunpack.o
-endif
-
-ifdef BUILDDP4A
-  LIBBIFROST_OBJS += \
-  xcorr_lite.o\
-  beanfarmer.o
 endif
 
 JIT_SOURCES ?= \
