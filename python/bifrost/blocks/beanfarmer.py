@@ -32,12 +32,13 @@ from bifrost.DataType import DataType
 from bifrost.libbifrost import _bf
 from datetime import datetime
 import numpy as np
+import hickle as hkl
 
 from copy import deepcopy
 
 
 class BeanfarmerDp4aBlock(bf.pipeline.TransformBlock):
-    def __init__(self, iring, n_avg=1, n_beam=32, n_chan=512, n_pol=2, n_ant=12,
+    def __init__(self, iring, n_avg=1, n_beam=32, n_chan=512, n_pol=2, n_ant=12, weights_file='',
                  *args, **kwargs):
         super(BeanfarmerDp4aBlock, self).__init__(iring, *args, **kwargs)
         self.n_avg  = n_avg
@@ -46,9 +47,7 @@ class BeanfarmerDp4aBlock(bf.pipeline.TransformBlock):
         self.n_chan = n_chan
         self.n_ant  = n_ant
         self.frame_count    = 0
-
-        w = np.ones((self.n_chan, self.n_beam, self.n_pol, self.n_ant), dtype='int8')
-        self.weights = bf.ndarray(w, dtype='ci8', space='cuda')
+        self.weights_file = weights_file
 
     def define_valid_input_spaces(self):
         """Return set of valid spaces (or 'any') for each input"""
@@ -58,6 +57,27 @@ class BeanfarmerDp4aBlock(bf.pipeline.TransformBlock):
         self.frame_count = 0
         ihdr = iseq.header
         itensor = ihdr['_tensor']
+
+        to_raise = False
+        
+        if self.weights_file in ('', None):
+            to_raise = True
+            print('ERR: need to specify weights hickle file')
+        else:
+            w = hkl.load(self.weights_file)
+
+        try:
+            assert w.shape == (self.n_chan, self.n_beam, self.n_pol, self.n_ant, 2)
+            assert w.dtype.str == '|i1'
+        except AssertionError:
+            print('ERR: beam weight shape/dtype is incorrect')
+            print('ERR: beam weights shape is: %s' % str(w.shape))
+            print('ERR: shape should be %s' % str((self.n_chan, self.n_beam, self.n_pol, self.n_ant, 2)))
+            print('ERR: dtype should be int8, dtype: %s' % w.dtype.str)
+            to_raise = True
+        #w = np.ones((self.n_chan, self.n_beam, self.n_pol, self.n_ant), dtype='int8')
+        self.weights = bf.ndarray(w, dtype='ci8', space='cuda')
+
         try:
             assert(itensor['labels'] == ['time', 'freq', 'fine_time', 'pol', 'station'])
             assert(itensor['dtype'] == 'ci8')
@@ -67,6 +87,9 @@ class BeanfarmerDp4aBlock(bf.pipeline.TransformBlock):
             print('ERR: Frame shape %s' % str(itensor['shape']))
             print('ERR: Frame labels %s' % str(itensor['labels']))
             print('ERR: Frame dtype %s' % itensor['dtype'])
+            to_raise = True
+        
+        if to_raise:
             raise RuntimeError('Correlator block misconfiguration. Check tensor labels, dtype, shape, gulp size).')
 
         ohdr = deepcopy(ihdr)
@@ -79,6 +102,7 @@ class BeanfarmerDp4aBlock(bf.pipeline.TransformBlock):
         otensor['labels'] = ['time', 'freq', 'beam', 'fine_time']
         otensor['scales'] = [itensor['scales'][0], itensor['scales'][1], [0, 0], [ft0, fts / self.n_avg]]
         otensor['units']  = [itensor['units'][0], itensor['units'][1], None, itensor['units'][2]]
+        otensor['dtype'] = 'f32'
 
         return ohdr
 
@@ -86,14 +110,15 @@ class BeanfarmerDp4aBlock(bf.pipeline.TransformBlock):
         idata = ispan.data
         odata = ospan.data
 
-        # Run the cross-correlation
+        # Run the beamformer
+        #print(idata.shape, self.weights.shape, odata.shape, self.n_avg)
         res = _bf.BeanFarmer(idata.as_BFarray(), self.weights.as_BFarray(), odata.as_BFarray(), np.int32(self.n_avg))
 
         ncommit = ispan.data.shape[0]
         return ncommit
 
 
-def beanfarmer_dp4a(iring, n_avg=1, n_beam=32, n_chan=512, n_pol=2, n_ant=12, *args, **kwargs):
+def beanfarmer(iring, n_avg=1, n_beam=32, n_chan=512, n_pol=2, n_ant=12, weights_file='', *args, **kwargs):
     """ Beamform, detect + integrate (filterbank) array using GPU.
 
     ** Tensor Semantics **
@@ -114,12 +139,14 @@ def beanfarmer_dp4a(iring, n_avg=1, n_beam=32, n_chan=512, n_pol=2, n_ant=12, *a
       n_chan (int): Number of channels
       n_pol  (int): Number of polarizations for antennas (1 or 2)
       n_ant  (int): Number of antennas/stands (n_ant=12 and n_pol=2 means 24 inputs)
+      weights_file (str): Path to hickle file in which beam weights are stored. Beam weights
+                          must have the same shape as (chan, pol, ant, beam) etc here.
       *args: Arguments to ``bifrost.pipeline.TransformBlock``.
       **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
     Returns:
         CorrelateDp4aBlock: A new correlator block instance.
     """
 
-    return BeanfarmerDp4aBlock(iring, n_avg, n_beam, n_chan, n_pol, n_ant, *args, **kwargs)
+    return BeanfarmerDp4aBlock(iring, n_avg, n_beam, n_chan, n_pol, n_ant, weights_file, *args, **kwargs)
 
 

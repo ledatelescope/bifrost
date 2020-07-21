@@ -83,9 +83,9 @@ __global__ void bf_aptf_general_k(int2 const *__restrict__ aptf_voltages,
                                   float *__restrict__ tbf_powers,
                                   int const NANTENNAS, int const NPOL,
                                   int const NCHANNELS, int const NBEAMS,
-                                  int const NACCUMULATE) {
+                                  int const NACCUMULATE, int const NSAMPLES) {
   int const NSAMPLES_PER_BLOCK = (NACCUMULATE * NTHREADS / WARP_SIZE);
-  int const NSAMPLES = (NSAMPLES_PER_BLOCK * 100);
+  // int const NSAMPLES = (NSAMPLES_PER_BLOCK * 100);
 
   /**
    * Allocated shared memory to store beamforming weights and temporary space
@@ -224,10 +224,10 @@ void launch_beanfarmer(int2 const *__restrict__ aptf_voltages,
                        int2 const *__restrict__ apbf_weights,
                        float *__restrict__ tbf_powers, const int NANTENNAS,
                        const int NPOL, const int NCHANNELS, const int NBEAMS,
-                       const int NACCUMULATE) {
+                       const int NACCUMULATE, const int NSAMPLES) {
 
   const int NSAMPLES_PER_BLOCK = (NACCUMULATE * NTHREADS / WARP_SIZE);
-  const int NSAMPLES = (NSAMPLES_PER_BLOCK * 100);
+  //const int NSAMPLES = (NSAMPLES_PER_BLOCK * 100);
   int shm_bytes = sizeof(int2) * (NANTENNAS / 4 * NPOL * WARP_SIZE +
                                   NTHREADS / WARP_SIZE * NANTENNAS / 4);
 
@@ -236,8 +236,8 @@ void launch_beanfarmer(int2 const *__restrict__ aptf_voltages,
   dim3 block(NTHREADS, 1, 1);
 
 #ifdef DCP_DEBUG
-  printf("Debug: NANT %d NPOL %d NBEAM %d NCHAN %d NACC %d\n", NANTENNAS, NPOL,
-         NBEAMS, NCHANNELS, NACCUMULATE);
+  printf("Debug: NANT %d NPOL %d NBEAM %d NCHAN %d NACC %d NSAMP %d\n", NANTENNAS, NPOL,
+         NBEAMS, NCHANNELS, NACCUMULATE, NSAMPLES);
   printf("Debug: <<<B: (%d, %d, %d) G: (%d, %d, %d) SHM: %dB >>>\n", block.x,
          block.y, block.z, grid.x, grid.y, grid.z, shm_bytes);
 #endif
@@ -245,7 +245,7 @@ void launch_beanfarmer(int2 const *__restrict__ aptf_voltages,
 
   bf_aptf_general_k<<<grid, NTHREADS, shm_bytes>>>(
       (int2 *)aptf_voltages, (int2 *)apbf_weights, (float *)tbf_powers,
-      NANTENNAS, NPOL, NCHANNELS, NBEAMS, NACCUMULATE);
+      NANTENNAS, NPOL, NCHANNELS, NBEAMS, NACCUMULATE, NSAMPLES);
   cudaDeviceSynchronize();
 }
 
@@ -255,13 +255,15 @@ BFstatus BeanFarmer(BFarray *voltages, BFarray *weights,
   int2 *apbf_weights = (int2 *)weights->data;
   float *tbf_powers = (float *)beamformed_out->data;
 
+  const int NSAMPLES  = voltages->shape[2];
   const int NANTENNAS = weights->shape[3];
   const int NPOL = weights->shape[2];
   const int NBEAMS = weights->shape[1];
   const int NCHANNELS = weights->shape[0];
 
+
   launch_beanfarmer(aptf_voltages, apbf_weights, tbf_powers, NANTENNAS, NPOL,
-                    NCHANNELS, NBEAMS, NACCUMULATE);
+                    NCHANNELS, NBEAMS, NACCUMULATE, NSAMPLES);
 
   BF_CHECK_CUDA(cudaGetLastError(), BF_STATUS_DEVICE_ERROR);
   return BF_STATUS_SUCCESS;
