@@ -293,7 +293,7 @@ public:
         : PacketCaptureMethod(fd, pkt_size_max, BF_IO_VERBS), _ibv(fd, pkt_size_max) {}
     inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
         *pkt_ptr = 0;
-        return _ibv.recv_packet(&_buf[0], _buf.size(), pkt_ptr, flags);
+        return _ibv.recv_packet(pkt_ptr, flags);
     }
     inline const char* get_name() { return "udp_verbs_capture"; }
 };
