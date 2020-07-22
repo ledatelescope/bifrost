@@ -120,7 +120,7 @@ void Verbs::destroy_context() {
     }
 }
 
-void Verbs::create_buffers() {
+void Verbs::create_buffers(size_t pkt_size_max) {
     // Setup the protected domain
     _verbs.pd = ibv_alloc_pd(_verbs.ctx);
     
@@ -133,9 +133,8 @@ void Verbs::create_buffers() {
     check_null(_verbs.sge,
                "allocate scatter/gather entries");
     ::memset(_verbs.sge, 0, BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(ibv_sge));
-    _verbs.mr_size = (size_t) BF_VERBS_NPKTBUF*BF_VERBS_NQP * 9000;
+    _verbs.mr_size = (size_t) BF_VERBS_NPKTBUF*BF_VERBS_NQP * pkt_size_max;
     _verbs.mr_buf = (uint8_t *) ::malloc(_verbs.mr_size);
-    std::cout << "mr_size: " << _verbs.mr_size << " & " << 9000 << std::endl;
     check_null(_verbs.mr_buf,
                "allocate memory region buffer");
     ::memset(_verbs.mr_buf, 0, _verbs.mr_size);
@@ -270,7 +269,7 @@ void Verbs::destroy_queues() {
     }
 }
 
-void Verbs::link_work_requests() {
+void Verbs::link_work_requests(size_t pkt_size_max) {
     // Make sure we are ready to go
     check_null(_verbs.pkt_buf,
                "find existing packet buffer");
@@ -284,8 +283,8 @@ void Verbs::link_work_requests() {
     for(i=0; i<BF_VERBS_NPKTBUF*BF_VERBS_NQP; i++) {
         _verbs.pkt_buf[i].wr.wr_id = i;
         _verbs.pkt_buf[i].wr.num_sge = 1;
-        _verbs.sge[i].addr = (uint64_t) _verbs.mr_buf + i * 9000;
-        _verbs.sge[i].length = 9000;
+        _verbs.sge[i].addr = (uint64_t) _verbs.mr_buf + i * pkt_size_max;
+        _verbs.sge[i].length = pkt_size_max;
         
         if( i == 0 ) {
             _verbs.pkt_buf[i].wr.sg_list = &(_verbs.sge[0]);

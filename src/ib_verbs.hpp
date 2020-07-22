@@ -177,11 +177,11 @@ class Verbs {
     }
     void create_context();
     void destroy_context();
-    void create_buffers();
+    void create_buffers(size_t pkt_size_max);
     void destroy_buffers();
     void create_queues();
     void destroy_queues();
-    void link_work_requests();
+    void link_work_requests(size_t pkt_size_max);
     void create_flows();
     void destroy_flows();
     int release(bf_ibv_recv_pkt*);
@@ -229,9 +229,9 @@ public:
             ::memset(&_verbs, 0, sizeof(_verbs));
             
             create_context();
-            create_buffers();
+            create_buffers(pkt_size_max);
             create_queues();
-            link_work_requests();
+            link_work_requests(pkt_size_max);
             create_flows();
     }
     ~Verbs() {
