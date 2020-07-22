@@ -44,10 +44,12 @@ void Verbs::create_context() {
     this->get_mac_address(&(mac[0]));
     uint64_t gid = this->get_interface_gid();
     
+    /*
     std::cout << "MAC: " << std::hex << int(mac[0]) << ":" << int(mac[1]) << ":" << int(mac[2]) 
                               << ":" << int(mac[3]) << ":" << int(mac[4]) << ":" << int(mac[5]) << std::dec << std::endl;
     std::cout << "GID: " << std::hex << int(htons( gid        & 0xFFFF)) << ":" << int(htons((gid >> 16) & 0xFFFF))
                               << ":" << int(htons((gid >> 32) & 0xFFFF)) << ":" << int(htons((gid >> 48) & 0xFFFF)) << std::dec << std::endl;
+    */
     
     // Find the right device
     /* Query all devices */
@@ -107,8 +109,6 @@ void Verbs::create_context() {
         destroy_context();
         throw Verbs::Error("specified device not found");
     }
-    
-    std::cout << "Here? " << 9000 << " & " << _pkt_size_max << std::endl;
 }
 
 void Verbs::destroy_context() {
@@ -351,8 +351,10 @@ void Verbs::create_flows() {
     this->get_mac_address(&(mac[0]));
     if( ((ip & 0xFF) >= 224) && ((ip & 0xFF) < 240) ) {
         ETHER_MAP_IP_MULTICAST(&ip, mac);
+        /*
         std::cout << "Multicast MAC: " << std::hex << int(mac[0]) << ":" << int(mac[1]) << ":" << int(mac[2])
                                             << ":" << int(mac[3]) << ":" << int(mac[4]) << ":" << int(mac[5]) << std::dec << std::endl;
+        */
     }
     ::memcpy(&flow.eth.val.dst_mac, &mac, 6);
     ::memset(&flow.eth.mask.dst_mac, 0xff, 6);
@@ -446,7 +448,6 @@ bf_ibv_recv_pkt* Verbs::receive(int timeout_ms) {
     
     // Ensure the queue pairs are in a state suitable for receiving
     for(i=0; i<BF_VERBS_NQP; i++) {
-        //std::cout << "state[" << i << "]: " << _verbs.qp[i]->state << std::endl;
         switch(_verbs.qp[i]->state) {
             case IBV_QPS_RESET: // Unexpected, but maybe user reset it
                 qp_attr.qp_state = IBV_QPS_INIT;
@@ -505,12 +506,6 @@ bf_ibv_recv_pkt* Verbs::receive(int timeout_ms) {
             wr_id = wc[i].wr_id;
             // Set length to 0 for unsuccessful work requests
             if( wc[i].status != IBV_WC_SUCCESS ) {
-                /*
-                fprintf(stderr,
-                        "wr %lu (%#016lx) got completion status 0x%x (%s) vendor error 0x%x (QP %d)\n",
-                        wr_id, wr_id, wc[i].status, ibv_wc_status_str(wc[i].status),
-                        wc[i].vendor_err, (int)ev_cq_ctx);
-                */
                 _verbs.pkt_buf[wr_id].length = 0;
             } else {
                 // Copy byte_len from completion to length of pkt srtuct
@@ -540,15 +535,8 @@ int Verbs::recv_packet(uint8_t** pkt_ptr, int flags) {
     // If we don't have a work-request queue on the go,
     // get some new packets.
     
-    /*
-    std::cout << "Here with qp: " << &(_verbs.qp) << std::endl;
-    std::cout << "        _pkt: " << (_verbs.pkt != NULL) << std::endl;
-    */
-    
     if( _verbs.pkt != NULL) {
-        //std::cout << "inside" << std::endl;
         _verbs.pkt = (bf_ibv_recv_pkt *) _verbs.pkt->wr.next;
-        //std::cout << "        next: " << (_verbs.pkt != NULL) << std::endl;
         if( _verbs.pkt == NULL ) {
             this->release(_verbs.pkt_batch);
             _verbs.pkt_batch = NULL;
@@ -560,6 +548,5 @@ int Verbs::recv_packet(uint8_t** pkt_ptr, int flags) {
     }
     // IBV returns Eth/UDP/IP headers. Strip them off here.
     *pkt_ptr = (uint8_t *)_verbs.pkt->wr.sg_list->addr + BF_VERBS_PAYLOAD_OFFSET;
-    //std::cout << "size: " << _verbs.pkt->length << " & " << _verbs.pkt->length - BF_VERBS_PAYLOAD_OFFSET << std::endl;
     return _verbs.pkt->length - BF_VERBS_PAYLOAD_OFFSET;
 }
