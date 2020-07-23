@@ -28,10 +28,9 @@
 
 import ctypes
 import numpy as np
-from memory import raw_malloc, raw_free, memset, memcpy, memcpy2D
-from libbifrost import _check, _string2space
-from bifrost.libbifrost import _bf
-from array import _array2bifrost
+from bifrost.memory import raw_malloc, raw_free, memset, memcpy, memcpy2D
+from bifrost.libbifrost import _bf, _check, _string2space
+from bifrost.array import _array2bifrost # This doesn't exist!
 
 class GPUArray(object):
     def __init__(self, shape, dtype, buffer=None, offset=0, strides=None):

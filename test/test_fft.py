@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 on the bifrost FFT wrapper."""
 import ctypes
 import unittest
+from functools import reduce
 import numpy as np
 # Note: Numpy FFTs are always double precision, which is good for this purpose
 from numpy.fft import fftn as gold_fftn, ifftn as gold_ifftn
@@ -108,9 +109,9 @@ class TestFFT(unittest.TestCase):
         # Note: Misalignment is not currently supported for fp32
         #self.run_test_r2c_dtype(shape, axes, np.float32, misalign=1)
         #self.run_test_r2c_dtype(shape, axes, np.float16) # TODO: fp16 support
-        for misalign in xrange(4):
+        for misalign in range(4):
             self.run_test_r2c_dtype(shape, axes, np.int16, (1 << 15) - 1, misalign=misalign)
-        for misalign in xrange(8):
+        for misalign in range(8):
             self.run_test_r2c_dtype(shape, axes, np.int8,  (1 << 7 ) - 1, misalign=misalign)
     def run_test_c2r_impl(self, shape, axes, fftshift=False):
         ishape = list(shape)

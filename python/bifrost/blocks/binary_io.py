@@ -47,7 +47,7 @@ class BinaryFileRead(object):
     """
     def __init__(self, filename, gulp_size, dtype):
         super(BinaryFileRead, self).__init__()
-        self.file_obj = open(filename, 'r')
+        self.file_obj = open(filename, 'rb')
         self.dtype = dtype
         self.gulp_size = gulp_size
 
@@ -112,7 +112,7 @@ class BinaryFileWriteBlock(bfp.SinkBlock):
             self.current_fileobj.close()
 
         new_filename = iseq.header['name'] + '.' + self.file_ext
-        self.current_fileobj = open(new_filename, 'w')
+        self.current_fileobj = open(new_filename, 'wb')
 
     def on_data(self, ispan):
         self.current_fileobj.write(ispan.data.tobytes())
