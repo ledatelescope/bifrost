@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -51,6 +51,8 @@ refdm:         0.0 [pc/cm^3]
 period:        <delete>
 data:          [time][pol][nbit] (General case: [time][if/pol][chan][nbit])
 """
+
+from __future__ import print_function
 
 import struct
 import numpy as np
@@ -128,6 +130,11 @@ def _header_write_string(file_object, key):
     """Writes a single key name to the header,
     which will be followed by the value"""
     file_object.write(struct.pack('=i', len(key)))
+    try:
+        key = key.encode()
+    except AttributeError:
+        # Catch for Python2
+        pass
     file_object.write(key)
 
 def _header_write_value(file_object, key, value):
@@ -148,7 +155,13 @@ def _header_read_one_parameter(file_object):
     length = struct.unpack('=i', file_object.read(4))[0]
     if length <= 0 or length >= 80:
         return None
-    return file_object.read(length)
+    s = file_object.read(length)
+    try:
+        s = s.decode()
+    except AttributeError:
+        # Python2 catch
+        pass
+    return s
 
 def _write_header(hdr, file_object):
     """write the entire header to the current position of a file"""
@@ -165,7 +178,7 @@ def _write_header(hdr, file_object):
             pass
         else:
             #raise KeyError("Unknown sigproc header key: %s"%key)
-            print "WARNING: Unknown sigproc header key: %s" % key
+            print("WARNING: Unknown sigproc header key: %s" % key)
     _header_write_string(file_object, "HEADER_END")
 
 def _read_header(file_object):
@@ -194,7 +207,7 @@ def _read_header(file_object):
             header[expecting] = key
             expecting = None
         else:
-            print "WARNING: Unknown header key", key
+            print("WARNING: Unknown header key", key)
     if 'nchans' not in header:
         header['nchans'] = 1
     header['header_size'] = file_object.tell()
@@ -226,7 +239,7 @@ def seek_to_data(file_object):
             header[expecting] = key
             expecting = None
         else:
-            print "WARNING: Unknown header key", key
+            print("WARNING: Unknown header key", key)
     return
 
 def pack(data, nbit):

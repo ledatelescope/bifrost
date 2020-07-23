@@ -42,11 +42,16 @@ extern "C" {
 #endif
 
 typedef enum BFreduce_op_ {
-	BF_REDUCE_SUM,    // sum(x)
-	BF_REDUCE_MEAN,   // sum(x) / n
-	BF_REDUCE_MIN,    // min(x)
-	BF_REDUCE_MAX,    // max(x)
-	BF_REDUCE_STDERR, // sum(x) / sqrt(n)
+	BF_REDUCE_SUM,          // sum(x)
+	BF_REDUCE_MEAN,         // sum(x) / n
+	BF_REDUCE_MIN,          // min(x)
+	BF_REDUCE_MAX,          // max(x)
+	BF_REDUCE_STDERR,       // sum(x) / sqrt(n)
+	BF_REDUCE_POWER_SUM,    // sum(|x|^2)
+	BF_REDUCE_POWER_MEAN,   // sum(|x|^2) / n
+	BF_REDUCE_POWER_MIN,    // min(|x|^2)
+	BF_REDUCE_POWER_MAX,    // max(|x|^2)
+	BF_REDUCE_POWER_STDERR, // sum(|x|^2) / sqrt(n)
 } BFreduce_op;
 
 BFstatus bfReduce(BFarray const* in, BFarray const* out, BFreduce_op op);

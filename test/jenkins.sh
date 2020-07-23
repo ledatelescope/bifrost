@@ -1,5 +1,5 @@
 #!/bin/bash
-# This file runs CPU-safe tests for travis-ci
+# This file runs CPU and GPU tests for jenkins
 ./download_test_data.sh
 export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 coverage run --source=bifrost.ring,bifrost,bifrost.pipeline -m unittest \
@@ -12,7 +12,15 @@ coverage run --source=bifrost.ring,bifrost,bifrost.pipeline -m unittest \
   test_pipeline_cpu \
   test_serialize \
   test_binary_io \
-  test_disk_io \
-  test_udp_io \
   test_address \
-  test_scripts
+  test_fdmt \
+  test_fft \
+  test_fir \
+  test_guantize \
+  test_gunpack \
+  test_linalg \
+  test_map \
+  test_reduce \
+  test_romein \
+  test_scrunch \
+  test_transpose
