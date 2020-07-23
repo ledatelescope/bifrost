@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@ import unittest
 import numpy as np
 import bifrost as bf
 import bifrost.transpose
+from functools import reduce
 from itertools import permutations
 
 class TransposeTest(unittest.TestCase):
@@ -43,7 +44,7 @@ class TransposeTest(unittest.TestCase):
         np.testing.assert_array_equal(oarray, odata_gold)
 
     def run_simple_test_shmoo(self, dtype):
-        for perm in permutations(xrange(3)):
+        for perm in permutations(range(3)):
             for shape in [(23,37,51),
                           (100, 200, 2),
                           (2, 200, 100)]:

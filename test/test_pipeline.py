@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -121,7 +121,7 @@ class PipelineTest(unittest.TestCase):
         gulp_nframe = 101
         with bf.Pipeline() as pipeline:
             data = read_sigproc([self.fil_file], gulp_nframe, space=space)
-            for _ in xrange(10):
+            for _ in range(10):
                 data = copy(data, space='cuda')
                 data = copy(data, space='cuda_host')
             ref = {}

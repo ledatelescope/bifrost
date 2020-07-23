@@ -50,10 +50,10 @@ using std::cout;
 using std::endl;
 
 template<typename InType, typename OutType>
-__global__ void fir_kernel(int                        ncoeff,
-                           int                        decim, 
-                           int                        ntime, 
-                           int                        nantpol,
+__global__ void fir_kernel(unsigned int               ncoeff,
+                           unsigned int               decim, 
+                           unsigned int               ntime, 
+                           unsigned int               nantpol,
                            const double* __restrict__ coeffs,
                            Complex64*                 state0,
                            Complex64*                 state1,
@@ -96,10 +96,10 @@ __global__ void fir_kernel(int                        ncoeff,
 }
 
 template<typename InType, typename OutType>
-inline void launch_fir_kernel(int          ncoeff,
-                              int          decim, 
-                              int          ntime, 
-                              int          nantpol,
+inline void launch_fir_kernel(unsigned int ncoeff,
+                              unsigned int decim, 
+                              unsigned int ntime, 
+                              unsigned int nantpol,
                               double*      coeffs,
                               Complex64*   state0,
                               Complex64*   state1,
@@ -107,7 +107,7 @@ inline void launch_fir_kernel(int          ncoeff,
                               OutType*     d_out,
                               cudaStream_t stream=0) {
 	//cout << "LAUNCH for " << nelement << endl;
-	dim3 block(std::min(256, nantpol), 256/std::min(256, nantpol));
+	dim3 block(std::min(256u, nantpol), 256u/std::min(256u, nantpol));
 	int first = std::min((nantpol-1)/block.x+1, 65535u);
 	int secnd = std::min((ntime/decim-1)/block.y+1, 65535u);
 	int third = std::min((ntime/decim-secnd*block.y-1)/secnd+2, 65535u);
@@ -141,14 +141,15 @@ inline void launch_fir_kernel(int          ncoeff,
 }
 
 class BFfir_impl {
-	typedef int    IType;
-	typedef double FType;
+	typedef int          IType;
+	typedef unsigned int UType;
+	typedef double       FType;
 public: // HACK WAR for what looks like a bug in the CUDA 7.0 compiler
 	typedef float  DType;
 private:
-	IType        _ncoeff;
-	IType        _decim;
-	IType        _nantpol;
+	UType        _ncoeff;
+	UType        _decim;
+	UType        _nantpol;
 	double*      _coeffs = NULL;
 	Complex64*   _state0 = NULL;
 	Complex64*   _state1 = NULL;
@@ -159,12 +160,12 @@ private:
 	cudaStream_t _stream;
 public:
 	BFfir_impl() : _coeffs(NULL), _decim(1), _stream(g_cuda_stream) {}
-	inline IType ncoeff()   const { return _ncoeff;  }
-	inline IType decim()    const { return _decim;   }
-	inline IType nantpol()  const { return _nantpol; }
-	void init(IType ncoeffs,
-	          IType nantpol, 
-	          IType decim) {
+	inline UType ncoeff()   const { return _ncoeff;  }
+	inline UType decim()    const { return _decim;   }
+	inline UType nantpol()  const { return _nantpol; }
+	void init(UType ncoeffs,
+	          UType nantpol, 
+	          UType decim) {
 		BF_TRACE();
 		_decim   = decim;
 		_ncoeff  = ncoeffs;
@@ -337,7 +338,7 @@ BFstatus bfFirInit(BFfir          plan,
 	// Discover the dimensions of the FIR coefficients.  This uses the 
 	// first dimension to set the number of coefficients.  All following
 	// dimensions are merged together to get the the number of ant/pols.
-	int ncoeff, nantpols;
+	unsigned int ncoeff, nantpols;
 	ncoeff = coeffs->shape[0];
 	nantpols = 1;
 	for(int i=1; i<coeffs->ndim; ++i) {

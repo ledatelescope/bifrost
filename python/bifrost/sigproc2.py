@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -52,6 +52,8 @@ data:          [time][pol][nbit] (General case: [time][if/pol][chan][nbit])
 
 # See here for details of the different data formats:
 #   https://github.com/SixByNine/sigproc
+
+from __future__ import print_function, division
 
 import struct
 import numpy as np
@@ -141,6 +143,11 @@ def machine2id(name):
 
 def _header_write_string(f, key):
     f.write(struct.pack('=i', len(key)))
+    try:
+        key = key.encode('ascii')
+    except AttributeError:
+        # Catch for Python2
+        pass
     f.write(key)
 def _header_write(f, key, value, fmt=None):
     if fmt is not None:
@@ -161,6 +168,11 @@ def _header_read(f):
     if length < 0 or length >= 80:
         return None
     s = f.read(length)
+    try:
+        s = s.decode()
+    except AttributeError:
+        # Python2 catch
+        pass
     return s
 
 def write_header(hdr, f):
@@ -180,7 +192,7 @@ def write_header(hdr, f):
             _header_write(f, key, int(val), fmt='=b')
         else:
             #raise KeyError("Unknown sigproc header key: %s"%key)
-            print "WARNING: Unknown sigproc header key: %s" % key
+            print("WARNING: Unknown sigproc header key: %s" % key)
     _header_write_string(f, "HEADER_END")
 
 def _read_header(f):
@@ -207,14 +219,14 @@ def _read_header(f):
             header[expecting] = key
             expecting = None
         else:
-            print "WARNING: Unknown header key", key
+            print("WARNING: Unknown header key", key)
     if 'nchans' not in header:
         header['nchans'] = 1
     header['header_size'] = f.tell()
     #frame_bits = header['nifs'] * header['nchans'] * header['nbits']
     #if 'nsamples' not in header or header['nsamples'] == 0:
     #    f.seek(0, 2) # Seek to end of file
-    #    header['nsamples'] = (f.tell() - header['header_size'])*8 / frame_bits
+    #    header['nsamples'] = (f.tell() - header['header_size'])*8 // frame_bits
     #    f.seek(header['header_size'], 0) # Seek back to end of header
     return header
 
@@ -257,7 +269,7 @@ class SigprocFile(object):
         if filename is not None:
             self.open(filename)
     def open(self, filename):
-        # Note: If nbit < 8, pack_factor = 8 / nbit and the last dimension
+        # Note: If nbit < 8, pack_factor = 8 // nbit and the last dimension
         #         is divided by pack_factor, with dtype set to uint8.
         self.f = open(filename, 'rb')
         self.header = _read_header(self.f)
@@ -288,10 +300,10 @@ class SigprocFile(object):
             #               E.g., nchan=1,nbit=4 => read/write size must be a
             #                 multiple of 2 frames.
             #self.dtype = np.int8 if self.signed else np.uint8
-            #pack_factor = 8 / self.nbit
+            #pack_factor = 8 // self.nbit
             #self.frame_shape = (self.frame_shape[0],
-            #                    self.frame_shape[1]/pack_factor)
-            ##self.frame_shape[-1] /= pack_factor
+            #                    self.frame_shape[1]//pack_factor)
+            ##self.frame_shape[-1] //= pack_factor
             self.dtype = None
         self.frame_size = self.frame_shape[0] * self.frame_shape[1]
         #self.frame_nbyte = self.frame_size*self.dtype().itemsize
@@ -322,7 +334,7 @@ class SigprocFile(object):
             self.f.seek(0, 2) # Seek to end of file
             frame_bits = self.header['nifs'] * self.header['nchans'] * self.header['nbits']
             nframe = ((self.f.tell() - self.header['header_size']) *
-                      8 / frame_bits)
+                      8 // frame_bits)
             self.header['nsamples'] = nframe
             self.f.seek(curpos, 0) # Seek back to where we were
         return self.header['nsamples']

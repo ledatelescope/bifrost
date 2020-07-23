@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,13 +36,19 @@ TODO: Some calls result in segfault with space=cuda (e.g., __getitem__
 
 """
 
+# Python2 compatibility
+from __future__ import absolute_import
+import sys
+if sys.version_info < (3,):
+    range = xrange
+    
 import ctypes
 import numpy as np
-from memory import raw_malloc, raw_free, raw_get_space, space_accessible
+from bifrost.memory import raw_malloc, raw_free, raw_get_space, space_accessible
 from bifrost.libbifrost import _bf, _check
-import device
-from DataType import DataType
-from Space import Space
+from bifrost import device
+from bifrost.DataType import DataType
+from bifrost.Space import Space
 import sys
 
 # TODO: The stuff here makes array.py redundant (and outdated)
@@ -60,8 +66,15 @@ def _address_as_buffer(address, nbyte, readonly=False):
     # Note: This works as a buffer in regular python and pypy
     # Note: int_asbuffer is undocumented; see here:
     # https://mail.scipy.org/pipermail/numpy-discussion/2008-January/030938.html
-    return np.core.multiarray.int_asbuffer(
-        address, nbyte, readonly=readonly, check=False)
+    try:
+        int_asbuffer = ctypes.pythonapi.PyMemoryView_FromMemory
+        int_asbuffer.restype = ctypes.py_object
+        int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
+        return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
+    except AttributeError:
+        # Python2 catch
+        return np.core.multiarray.int_asbuffer(
+                   address, nbyte, readonly=readonly, check=False)
 
 def asarray(arr, space=None):
     if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
@@ -288,13 +301,13 @@ class ndarray(np.ndarray):
             a.ndim = 1
             a.shape[0] = 1
             a.strides[0] = self.bf.dtype.itemsize
-        for d in xrange(len(self.shape)):
+        for d in range(len(self.shape)):
             a.shape[d] = self.shape[d]
         # HACK TESTING support for 'packed' arrays
         itemsize_bits = self.bf.dtype.itemsize_bits
         if itemsize_bits < 8:
             a.shape[a.ndim - 1] *= 8 // itemsize_bits
-        for d in xrange(len(self.strides)):
+        for d in range(len(self.strides)):
             a.strides[d] = self.strides[d]
         a.big_endian = not self.bf.native
         a.conjugated = self.bf.conjugated
