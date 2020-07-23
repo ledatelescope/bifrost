@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -128,7 +128,7 @@ class PipelineTestCPU(unittest.TestCase):
                 data = bf.views.delete_axis(data, 'phony_axis')
                 data = bf.views.custom(
                     data, lambda hdr: rename_sequence(hdr, hdr['name']))
-            for i in xrange(20):
+            for i in range(20):
                 if gulp_nframe_inc != 0:
                     data = copy(data, guarantee=guarantee,
                                 gulp_nframe=gulp_nframe+i*gulp_nframe_inc)

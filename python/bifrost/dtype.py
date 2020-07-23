@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -41,7 +41,10 @@ cf32: 32+32-bit complex floating point
 
 """
 
-from libbifrost import _bf
+# Python2 compatibility
+from __future__ import absolute_import
+
+from bifrost.libbifrost import _bf
 import numpy as np
 
 def split_name_nbit(dtype_str):
