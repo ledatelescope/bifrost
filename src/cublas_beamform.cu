@@ -143,7 +143,9 @@ static struct beamform_context context;
 
 void cublas_beamform_destroy(){
   cudaFree(context.in32_d);
-  cudaFree(context.out_d);
+  if (context.ntimeblocks > 0) {
+    cudaFree(context.out_d);
+  }
 }
 
 void cublas_beamform_init(int device, int ninputs, int nchans, int ntimes, int nbeams, int ntimeblocks) {
@@ -164,10 +166,14 @@ void cublas_beamform_init(int device, int ninputs, int nchans, int ntimes, int n
 
   // Internally allocate intermediate buffers
   gpuErrchk( cudaMalloc(&context.in32_d,  ninputs * nchans * ntimes * 2 * sizeof(float)) );
-  gpuErrchk( cudaMalloc(&context.out_d,   ntimes * nchans * nbeams * 2 * sizeof(float)) );
+  // If the context is initialized with ntimeblocks=0, then we do no summing so don't
+  // need the intermediate buffer
+  if (ntimeblocks > 0) {
+    gpuErrchk( cudaMalloc(&context.out_d,   ntimes * nchans * nbeams * 2 * sizeof(float)) );
+  }
 }
 
-void cublas_beamform(unsigned char *in4_d, float *sum_out_d, float *weights_d) {
+void cublas_beamform(unsigned char *in4_d, float *out_d, float *weights_d) {
   // Transpose input data and promote to float.
   // CUBLAS doesn't support float coeffs with int8 data
   dim3 transBlockGrid(context.ntimes, context.nchans);
@@ -181,6 +187,17 @@ void cublas_beamform(unsigned char *in4_d, float *sum_out_d, float *weights_d) {
   );
   cudaStreamSynchronize(context.stream);
 
+  // If we are integrating beam powers, put the
+  // GEM output in the context-defined intermediate
+  // buffer. If not, then write beamformer output
+  // to the address given by the user.
+  float *gem_out_d;
+  if (context.ntimeblocks > 0) {
+    gem_out_d = context.out_d;
+  } else {
+    gem_out_d = out_d;
+  }
+
   // Beamform using GEMM
   float alpha = 1.0;
   float beta = 0.0;
@@ -190,6 +207,7 @@ void cublas_beamform(unsigned char *in4_d, float *sum_out_d, float *weights_d) {
   // beta = 0.0
   // A matrix: beamforming coeffs (NBEAMS * NANTS)
   // B matrix: data matrix (NANTS * NTIMES)
+    
   gpuBLASchk(cublasGemmStridedBatchedEx(
     context.handle,
     CUBLAS_OP_N, // transpose A?
@@ -210,7 +228,7 @@ void cublas_beamform(unsigned char *in4_d, float *sum_out_d, float *weights_d) {
     context.ninputs*context.ntimes,// strideB : stride size
     &beta,       // beta
     // Results
-    context.out_d,       // C
+    gem_out_d,       // C
     CUDA_C_32F,          // Ctype 
     context.nbeams,      // Ldc
     context.nbeams*context.ntimes,// Stride C
@@ -220,14 +238,34 @@ void cublas_beamform(unsigned char *in4_d, float *sum_out_d, float *weights_d) {
     ));
   cudaStreamSynchronize(context.stream);
 
+  // Optionally:
+  if (context.ntimeblocks > 0) {
+    // Create XX, YY, XY beam powers.
+    // Sum over `ntimes_sum` samples
+    int ntimes_sum = context.ntimes / context.ntimeblocks;
+    dim3 sumBlockGrid(context.nchans, context.nbeams/2);
+    dim3 sumThreadGrid(context.ntimes / ntimes_sum);
+    trans_output_and_sum<<<sumBlockGrid, sumThreadGrid, 0, context.stream>>>(
+      gem_out_d,
+      out_d,
+      context.nchans,
+      context.nbeams/2,
+      context.ntimes,
+      ntimes_sum
+    );
+    cudaStreamSynchronize(context.stream);
+  }
+}
+
+void cublas_beamform_integrate(float *in_d, float *out_d) {
   // Create XX, YY, XY beam powers.
   // Sum over `ntimes_sum` samples
   int ntimes_sum = context.ntimes / context.ntimeblocks;
   dim3 sumBlockGrid(context.nchans, context.nbeams/2);
   dim3 sumThreadGrid(context.ntimes / ntimes_sum);
   trans_output_and_sum<<<sumBlockGrid, sumThreadGrid, 0, context.stream>>>(
-    context.out_d,
-    sum_out_d,
+    in_d,
+    out_d,
     context.nchans,
     context.nbeams/2,
     context.ntimes,

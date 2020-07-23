@@ -30,6 +30,7 @@ __global__ void complex2pow(float *in, float *out, int N);
 
 void cublas_beamform_destroy();
 void cublas_beamform(unsigned char *in4_d, float *sum_out_d, float *weights_d);
+void cublas_beamform_integrate(float *in_d, float *sum_out_d);
 void cublas_beamform_init(int device, int ninputs, int nchans, int ntimes, int nbeams, int ntimeblocks);
 
 #endif

@@ -59,4 +59,16 @@ BFstatus bfBeamformRun(BFarray *in, BFarray *out, BFarray *weights) {
   return BF_STATUS_SUCCESS;
 }
   
+BFstatus bfBeamformIntegrate(BFarray *in, BFarray *out) {
+  if (in->space != BF_SPACE_CUDA) {
+    fprintf(stderr, "Beamformer input buffer must be in CUDA space\n");
+    return BF_STATUS_INVALID_SPACE;
+  }
+  if (out->space != BF_SPACE_CUDA) {
+    fprintf(stderr, "Beamformer output buffer must be in CUDA space\n");
+    return BF_STATUS_INVALID_SPACE;
+  }
+  cublas_beamform_integrate((float *)in->data, (float *)out->data);
+  return BF_STATUS_SUCCESS;
+}
 } // C

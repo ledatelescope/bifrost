@@ -15,3 +15,8 @@ BFstatus bfBeamformRun(
   BFarray *out,
   BFarray *weights
 );
+
+BFstatus bfBeamformIntegrate(
+  BFarray *in,
+  BFarray *out
+);
