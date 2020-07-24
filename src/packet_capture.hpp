@@ -1184,8 +1184,10 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         method = new DiskPacketReader(fd, max_payload_size);
     } else if( backend == BF_IO_UDP ) {
         method = new UDPPacketReceiver(fd, max_payload_size);
+#if BF_HPIBV_ENABLED
     } else if( backend == BF_IO_IBV_UDP ) {
         method = new IBVUDPPacketReceiver(fd, max_payload_size);
+#endif
     } else if( backend == BF_IO_SNIFFER ) {
         method = new UDPPacketSniffer(fd, max_payload_size);
     } else {
