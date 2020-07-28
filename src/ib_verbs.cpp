@@ -139,7 +139,6 @@ void Verbs::create_buffers(size_t pkt_size_max) {
                 "allocate memory region buffer");
     check_error(::mlock(_verbs.mr_buf, _verbs.mr_size),
                 "lock memory region buffer");
-    ::memset(_verbs.mr_buf, 0, _verbs.mr_size);
     _verbs.mr = ibv_reg_mr(_verbs.pd, _verbs.mr_buf, _verbs.mr_size, IBV_ACCESS_LOCAL_WRITE);
     check_null(_verbs.mr,
                "register memory region");
