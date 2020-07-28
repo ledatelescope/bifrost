@@ -28,6 +28,8 @@
 
 #pragma once
 
+#include "hw_locality.hpp"
+
 #include <stdexcept>
 #include <string>
 #include <sstream>
@@ -96,7 +98,7 @@ struct bf_ibv {
 
 } // extern "C"
 
-class Verbs {
+class Verbs : public BoundThread {
     int              _fd;
     size_t           _pkt_size_max;
     bf_ibv           _verbs;
@@ -224,8 +226,8 @@ public:
             : super_t(what_arg) {}
     };
     
-    Verbs(int fd, size_t pkt_size_max)
-        : _fd(fd), _pkt_size_max(pkt_size_max) {
+    Verbs(int fd, size_t pkt_size_max, int core)
+        : BoundThread(core), _fd(fd), _pkt_size_max(pkt_size_max) {
             ::memset(&_verbs, 0, sizeof(_verbs));
             
             create_context();
