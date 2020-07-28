@@ -42,6 +42,7 @@
 #include <arpa/inet.h>
 #include <linux/if_ether.h>
 #include <netinet/if_ether.h>
+#include <sys/mman.h>
 
 extern "C" {
 #include <infiniband/verbs.h>

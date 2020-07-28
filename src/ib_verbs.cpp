@@ -134,9 +134,11 @@ void Verbs::create_buffers(size_t pkt_size_max) {
                "allocate scatter/gather entries");
     ::memset(_verbs.sge, 0, BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(ibv_sge));
     _verbs.mr_size = (size_t) BF_VERBS_NPKTBUF*BF_VERBS_NQP * pkt_size_max;
-    _verbs.mr_buf = (uint8_t *) ::malloc(_verbs.mr_size);
-    check_null(_verbs.mr_buf,
-               "allocate memory region buffer");
+    _verbs.mr_buf = (uint8_t *) ::mmap(NULL, _verbs.mr_size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_LOCKED, -1, 0);
+    check_error(_verbs.mr_buf == MAP_FAILED,
+                "allocate memory region buffer");
+    check_error(::mlock(_verbs.mr_buf, _verbs.mr_size),
+                "lock memory region buffer");
     ::memset(_verbs.mr_buf, 0, _verbs.mr_size);
     _verbs.mr = ibv_reg_mr(_verbs.pd, _verbs.mr_buf, _verbs.mr_size, IBV_ACCESS_LOCAL_WRITE);
     check_null(_verbs.mr,
@@ -152,7 +154,9 @@ void Verbs::destroy_buffers() {
     }
     
     if( _verbs.mr_buf ) {
-        free(_verbs.mr_buf);
+        if( ::munmap(_verbs.mr_buf, _verbs.mr_size) ) {
+            failures += 1;
+        }
     }
     
     if( _verbs.sge ) {
