@@ -1045,6 +1045,7 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                 BFring           ring,
                                 BFsize           nsrc,
                                 BFsize           src0,
+                                BFsize           max_payload_size,
                                 BFsize           buffer_ntime,
                                 BFsize           slot_ntime,
                                 BFpacketcapture_callback sequence_callback,
@@ -1052,7 +1053,6 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                 BFiomethod       backend) {
     BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
     
-    size_t max_payload_size = JUMBO_FRAME_SIZE;
     if( std::string(format).substr(0, 5) == std::string("chips") ) {
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
