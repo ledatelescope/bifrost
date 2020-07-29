@@ -40,7 +40,7 @@ typedef enum BFiomethod_ {
     BF_IO_DISK    = 1,
     BF_IO_UDP     = 2,
     BF_IO_SNIFFER = 3,
-    BF_IO_IBV_UDP = 4
+    BF_IO_VERBS   = 4
 } BFiomethod;
 
 typedef enum BFiowhence_ {

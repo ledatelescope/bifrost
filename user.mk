@@ -35,4 +35,4 @@ ALIGNMENT ?= 4096 # Memory allocation alignment
 HWLOC      = 1 # Enable use of hwloc library for memory binding in udp_capture
 VMA        = 1 # Enable use of Mellanox libvma in udp_capture
 XGPU       = 1 # build xGPU integrations (requires the xGPU library)
-IBV        = 1 # Build IB Verbs support using the hashpipe library
+VERBS      = 1 # Enable use of IB verbs with udp_verbs_capture

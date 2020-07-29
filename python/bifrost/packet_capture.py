@@ -115,6 +115,22 @@ class UDPSniffer(_CaptureBase):
             max_payload_size, buffer_ntime, slot_ntime,
             sequence_callback.obj, core)
 
+class UDPVerbsCapture(_CaptureBase):
+    def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
+                 buffer_ntime, slot_ntime, sequence_callback, core=None):
+        try:
+            fmt = fmt.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
+        if core is None:
+            core = -1
+        BifrostObject.__init__(
+            self, _bf.bfUdpVerbsCaptureCreate, _bf.bfPacketCaptureDestroy,
+            fmt, sock.fileno(), ring.obj, nsrc, src0,
+            max_payload_size, buffer_ntime, slot_ntime,
+            sequence_callback.obj, core)
+
 class DiskReader(_CaptureBase):
     def __init__(self, fmt, fh, ring, nsrc, src0,
                  buffer_nframe, slot_nframe, sequence_callback, core=None):
