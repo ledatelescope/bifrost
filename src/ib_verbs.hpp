@@ -53,7 +53,7 @@ extern "C" {
 #endif
 
 #ifndef BF_VERBS_NPKTBUF
-#define BF_VERBS_NPKTBUF 8192
+#define BF_VERBS_NPKTBUF 32768
 #endif
 
 #ifndef BF_VERBS_WCBATCH
