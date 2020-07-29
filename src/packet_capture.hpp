@@ -657,6 +657,7 @@ public:
 class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
 	ProcLog            _type_log;
 	ProcLog            _chan_log;
+    BFoffset           _last_pkt_seq;
 	
 	BFpacketcapture_snap2_sequence_callback _sequence_callback;
 	
@@ -665,7 +666,8 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
 		//         always starts things ~3 seq's before the 1sec boundary anyway.
 		//seq = round_up(pkt->seq, _slot_ntime);
 		//*_seq          = round_nearest(pkt->seq, _slot_ntime);
-		_seq          = round_up(pkt->seq, _slot_ntime);
+		//_seq          = round_up(pkt->seq, _slot_ntime);
+		_seq          = pkt->seq;
 		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
     }
     void on_sequence_active(const PacketDesc* pkt) {
@@ -679,8 +681,12 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
     // Has the configuration changed? I.e., different channels being sent.
 	inline bool has_sequence_changed(const PacketDesc* pkt) {
         // TODO: Decide what a sequence actually is!
-	    return (pkt->seq % 480 == 0);
-        //return false;
+        // Currently a new sequence starts whenever packets come out of order.
+        // This isn't great, but the packet RX code assumes packets are in order too.
+        bool is_new_seq;
+        is_new_seq = ((pkt->seq != _last_pkt_seq) && (pkt->seq != _last_pkt_seq));
+        _last_pkt_seq = pkt->seq;
+	    return is_new_seq;
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
