@@ -20,7 +20,7 @@ LIBBIFROST_OBJS = \
   unpack.o \
   quantize.o \
   proclog.o
-ifdef VERBS:
+ifdef VERBS
   # These files require IB verbs to compile
   LIBBIFROST_OBJS += \
   ib_verbs.o
@@ -48,10 +48,6 @@ ifdef XGPU
   LIBBIFROST_OBJS += \
   bf_xgpu.o
 endif
-endif
-ifdef IBV
-  LIBBIFROST_OBJS += \
-  bf_ibverbs.o
 endif
 
 JIT_SOURCES ?= \
