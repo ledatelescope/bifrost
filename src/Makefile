@@ -20,6 +20,11 @@ LIBBIFROST_OBJS = \
   unpack.o \
   quantize.o \
   proclog.o
+ifdef VERBS:
+  # These files require IB verbs to compile
+  LIBBIFROST_OBJS += \
+  ib_verbs.o
+endif
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
@@ -109,10 +114,10 @@ ifdef VMA
   CPPFLAGS   += -DBF_VMA_ENABLED=1
 endif
 
-ifdef IBV
-  # Requires ibverbs/hashpipe to be installed
-  LIB        += -lhashpipe_ibverbs
-  CPPFLAGS   += -DBF_HPIBV_ENABLED=1
+ifdef VERBS
+  # Requires Mellanox libvma to be installed
+  LIB        += -lvma -libverbs
+  CPPFLAGS   += -DBF_VERBS_ENABLED=1
 endif
 
 ifdef ALIGNMENT

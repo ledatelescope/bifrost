@@ -176,7 +176,6 @@ public:
 // TODO: The VMA API is returning unaligned buffers, which prevents use of SSE
 #ifndef BF_VMA_ENABLED
 #define BF_VMA_ENABLED 0
-//#define BF_VMA_ENABLED 1
 #endif
 
 #if BF_VMA_ENABLED
@@ -256,6 +255,7 @@ public:
 #endif
     {}
     inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
+
 #if BF_VMA_ENABLED
         if( _vma ) {
             *pkt_ptr = 0;
@@ -299,6 +299,26 @@ public:
     }
     inline const char* get_name() { return "udp_sniffer"; }
 };
+
+#ifndef BF_VERBS_ENABLED
+#define BF_VERBS_ENABLED 0
+#endif
+
+#if BF_VERBS_ENABLED
+#include "ib_verbs.hpp"
+
+class UDPVerbsReceiver : public PacketCaptureMethod {
+    Verbs                  _ibv;
+public:
+    UDPVerbsReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE, int core=-1)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_VERBS), _ibv(fd, pkt_size_max, core) {}
+    inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
+        *pkt_ptr = 0;
+        return _ibv.recv_packet(pkt_ptr, flags);
+    }
+    inline const char* get_name() { return "udp_verbs_capture"; }
+};
+#endif // BF_VERBS_ENABLED
 
 struct PacketStats {
 	size_t ninvalid;
@@ -1129,6 +1149,7 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                 BFring           ring,
                                 BFsize           nsrc,
                                 BFsize           src0,
+                                BFsize           max_payload_size,
                                 BFsize           buffer_ntime,
                                 BFsize           slot_ntime,
                                 BFpacketcapture_callback sequence_callback,
@@ -1136,7 +1157,6 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                 BFiomethod       backend) {
     BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
     
-    size_t max_payload_size = JUMBO_FRAME_SIZE;
     if( std::string(format).substr(0, 5) == std::string("chips") ) {
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
@@ -1188,6 +1208,10 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         method = new IBVUDPPacketReceiver(fd, max_payload_size);
     } else if( backend == BF_IO_SNIFFER ) {
         method = new UDPPacketSniffer(fd, max_payload_size);
+#if BF_VERBS_ENABLED
+    } else if( backend == BF_IO_VERBS ) {
+        method = new UDPVerbsReceiver(fd, max_payload_size, core);
+#endif
     } else {
         return BF_STATUS_UNSUPPORTED;
     }
