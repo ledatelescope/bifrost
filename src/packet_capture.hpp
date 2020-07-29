@@ -222,27 +222,6 @@ public:
 };
 #endif // BF_VMA_ENABLED
 
-#ifndef BF_HPIBV_ENABLED
-#define BF_HPIBV_ENABLED 0
-#endif
-
-#if BF_HPIBV_ENABLED
-#include <bifrost/bf_ibverbs.h>
-
-class IBVUDPPacketReceiver : public PacketCaptureMethod {
-public:
-    IBVUDPPacketReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
-        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_IBV_UDP)
-    {
-        ibv_init(pkt_size_max);
-    }
-    inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
-        return ibv_recv_packet(pkt_ptr, flags);
-    }
-    inline const char* get_name() { return "udp_capture"; }
-};
-#endif // BF_HPIBV_ENABLED
-
 class UDPPacketReceiver : public PacketCaptureMethod {
 #if BF_VMA_ENABLED
     VMAReceiver            _vma;
@@ -1204,8 +1183,6 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         method = new DiskPacketReader(fd, max_payload_size);
     } else if( backend == BF_IO_UDP ) {
         method = new UDPPacketReceiver(fd, max_payload_size);
-    } else if( backend == BF_IO_IBV_UDP ) {
-        method = new IBVUDPPacketReceiver(fd, max_payload_size);
     } else if( backend == BF_IO_SNIFFER ) {
         method = new UDPPacketSniffer(fd, max_payload_size);
 #if BF_VERBS_ENABLED
