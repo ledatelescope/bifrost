@@ -143,7 +143,6 @@ public:
             itype const* __restrict__ in  = (itype const*)pkt->payload_ptr;
             otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
 
-            int words_per_chan_in = pkt->npol >> 5; // 32 pols per 256-bit word
             int words_per_chan_out = pkt->npol_tot >> 5;
             int pol_offset_out = pkt->pol0 >> 5;
             int pkt_chan = pkt->chan0;           // The first channel in this packet
@@ -156,7 +155,7 @@ public:
             __m256i *dest_p;
             __m256i vecbuf[2];
             uint64_t *in64 = (uint64_t *)in;
-            int c, i;
+            int c;
             dest_p = (__m256i *)(out + (words_per_chan_out * (pkt_chan)) + pol_offset_out);
             for(c=0; c<pkt->nchan; c++) {
                vecbuf[0] = _mm256_set_epi64x(in64[3], in64[2], in64[1], in64[0]);
