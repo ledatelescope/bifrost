@@ -656,7 +656,7 @@ public:
 class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
 	ProcLog            _type_log;
 	ProcLog            _chan_log;
-    BFoffset           _last_pkt_seq;
+    BFoffset           _last_seq;
 	
 	BFpacketcapture_snap2_sequence_callback _sequence_callback;
 	
@@ -665,8 +665,7 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
 		//         always starts things ~3 seq's before the 1sec boundary anyway.
 		//seq = round_up(pkt->seq, _slot_ntime);
 		//*_seq          = round_nearest(pkt->seq, _slot_ntime);
-		//_seq          = round_up(pkt->seq, _slot_ntime);
-		_seq          = pkt->seq;
+		_seq          = round_up(pkt->seq, _slot_ntime);
 		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
     }
     void on_sequence_active(const PacketDesc* pkt) {
@@ -680,11 +679,12 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
     // Has the configuration changed? I.e., different channels being sent.
 	inline bool has_sequence_changed(const PacketDesc* pkt) {
         // TODO: Decide what a sequence actually is!
-        // Currently a new sequence starts whenever packets come out of order.
-        // This isn't great, but the packet RX code assumes packets are in order too.
+        // Currently a new sequence starts whenever a block finishes and the next
+        // packet isn't from the next block
+        // TODO. Is this actually reasonable? Does it recover from upstream resyncs?
         bool is_new_seq;
-        is_new_seq = ((pkt->seq != _last_pkt_seq) && (pkt->seq != _last_pkt_seq));
-        _last_pkt_seq = pkt->seq;
+        is_new_seq = (pkt->seq != _last_seq + _slot_ntime);
+        _last_seq = pkt->seq;
 	    return is_new_seq;
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
@@ -692,6 +692,7 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
         _chan0 = pkt->chan0;
         _nchan = pkt->nchan;
         _payload_size = pkt->payload_size;
+        _last_seq = _seq;
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
