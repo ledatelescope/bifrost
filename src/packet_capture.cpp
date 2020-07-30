@@ -91,6 +91,14 @@ int PacketCaptureThread::run(uint64_t seq_beg,
 		BF_PRINTD("HERE" << " " << _pkt.seq << " < " << seq_beg);
 		_have_pkt = false;
 		if( less_than(_pkt.seq, seq_beg) ) {
+            // If lots [TODO: what is lots] of packets are late
+            // return. Otherwise a seq reset can lead to being stuck
+            // here endlessly counting late packets.
+            if( less_than(_pkt.seq + nseq_per_obuf, seq_beg) ) {
+		        _have_pkt = true;
+                ret = CAPTURE_SUCCESS;
+                break;
+            }
 			++_stats.nlate;
 			_stats.nlate_bytes += _pkt.payload_size;
 			++_src_stats[_pkt.src].nlate;

@@ -661,11 +661,6 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
 	BFpacketcapture_snap2_sequence_callback _sequence_callback;
 	
 	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
-        // TODO: Might be safer to round to nearest here, but the current firmware
-		//         always starts things ~3 seq's before the 1sec boundary anyway.
-		//seq = round_up(pkt->seq, _slot_ntime);
-		//*_seq          = round_nearest(pkt->seq, _slot_ntime);
-		_seq          = round_up(pkt->seq, _slot_ntime);
 		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
     }
     void on_sequence_active(const PacketDesc* pkt) {
@@ -682,17 +677,22 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
         // Currently a new sequence starts whenever a block finishes and the next
         // packet isn't from the next block
         // TODO. Is this actually reasonable? Does it recover from upstream resyncs?
-        bool is_new_seq;
-        is_new_seq = (pkt->seq != _last_seq + _slot_ntime);
+        bool is_new_seq = false;
+        if ( pkt->seq != _last_seq + _slot_ntime ) {
+            is_new_seq = true;
+            this->flush();
+        }
         _last_seq = pkt->seq;
 	    return is_new_seq;
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+		_seq          = round_up(pkt->seq, _slot_ntime);
+        fprintf(stderr, "New seq start is %d based on pkt->seq %d\n", _seq, (int)pkt->seq);
+        _last_seq     = _seq;
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
         _chan0 = pkt->chan0;
         _nchan = pkt->nchan;
         _payload_size = pkt->payload_size;
-        _last_seq = _seq;
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
