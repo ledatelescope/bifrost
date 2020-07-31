@@ -100,9 +100,10 @@ struct bf_ibv {
 } // extern "C"
 
 class Verbs : public BoundThread {
-    int              _fd;
-    size_t           _pkt_size_max;
-    bf_ibv           _verbs;
+    int    _fd;
+    size_t _pkt_size_max;
+    int    _timeout;
+    bf_ibv _verbs;
     
     void get_interface_name(char* name) {
         sockaddr_in sin;
@@ -163,6 +164,13 @@ class Verbs : public BoundThread {
         check_error(::getsockname(_fd, (sockaddr *)&sin, &len),
                     "query socket name");
         return ntohs(sin.sin_port);
+    }
+    int get_timeout_ms() {
+        timeval value;
+        socklen_t size = sizeof(value);
+        check_error(::getsockopt(_fd, SOL_SOCKET, SO_RCVTIMEO, &value, &size),
+                    "query socket timeout");
+        return int(value.tv_sec*1000) + int(value.tv_usec/1000);
     }
     uint64_t get_interface_gid() {
         uint64_t id;
@@ -230,6 +238,7 @@ public:
     Verbs(int fd, size_t pkt_size_max, int core)
         : BoundThread(core), _fd(fd), _pkt_size_max(pkt_size_max) {
             ::memset(&_verbs, 0, sizeof(_verbs));
+            _timeout = get_timeout_ms();
             
             create_context();
             create_buffers(pkt_size_max);
