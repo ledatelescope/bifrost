@@ -687,7 +687,6 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 		_seq          = round_up(pkt->seq, _slot_ntime);
-        fprintf(stderr, "New seq start is %d based on pkt->seq %d\n", _seq, (int)pkt->seq);
         _last_seq     = _seq;
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
         _chan0 = pkt->chan0;
