@@ -33,8 +33,6 @@
 #include <immintrin.h> // SSE
 #include <emmintrin.h>
 
-#define SNAP2_HEADER_MAGIC 0xaabbccdd
-
 // TODO: parameterize somewhere. This isn't
 // related to the packet formatting
 #define PIPELINE_NPOL 704
@@ -44,9 +42,9 @@
 // All entries are network (i.e. big) endian
 struct snap2_hdr_type {
         uint64_t  seq;       // Spectra counter == packet counter
-        uint32_t  magic;     // = 0xaabbccdd
+        uint32_t  sync_time; // UNIX sync time
         uint16_t  npol;      // Number of pols in this packet
-        uint16_t  npol_tot;      // Number of pols total
+        uint16_t  npol_tot;  // Number of pols total
         uint16_t  nchan;     // Number of channels in this packet
         uint16_t  nchan_tot;     // Number of channels total (for this pipeline)
         uint32_t  chan_block_id; // ID of this block of chans
@@ -92,10 +90,8 @@ public:
         const snap2_hdr_type* pkt_hdr  = (snap2_hdr_type*)pkt_ptr;
         const uint8_t*        pkt_pld  = pkt_ptr  + sizeof(snap2_hdr_type);
         int                   pld_size = pkt_size - sizeof(snap2_hdr_type);
-        if( be32toh(pkt_hdr->magic) != SNAP2_HEADER_MAGIC ) {
-            return false;
-        }
         pkt->seq   = be64toh(pkt_hdr->seq);
+        pkt->time_tag = be32toh(pkt_hdr->sync_time);
         int npol_blocks  = (be16toh(pkt_hdr->npol_tot) / be16toh(pkt_hdr->npol));
         int nchan_blocks = (be16toh(pkt_hdr->nchan_tot) / be16toh(pkt_hdr->nchan));
 
