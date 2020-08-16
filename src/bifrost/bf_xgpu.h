@@ -5,3 +5,4 @@ BFstatus bfXgpuInitialize(BFarray *in, BFarray *out, int gpu_dev);
 BFstatus bfXgpuCorrelate(BFarray *in, BFarray *out, int doDump);
 BFstatus bfXgpuKernel(BFarray *in, BFarray *out, int doDump);
 BFstatus bfXgpuSubSelect(BFarray *in, BFarray *out, BFarray *vismap, int nchan_sum);
+BFstatus bfXgpuGetOrder(BFarray *antpol_to_input, BFarray *antpol_to_bl, BFarray *is_conj, int nstand, int npol);

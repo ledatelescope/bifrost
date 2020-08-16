@@ -158,4 +158,77 @@ BFstatus bfXgpuSubSelect(BFarray *in, BFarray *out, BFarray *vismap, int nchan_s
   }
 }
 
+/* Computes the triangular index of an (i,j) pair as shown here...
+ * NB: Output is valid only if i >= j.
+ *
+ *      i=0  1  2  3  4..
+ *     +---------------
+ * j=0 | 00 01 03 06 10
+ *   1 |    02 04 07 11
+ *   2 |       05 08 12
+ *   3 |          09 13
+ *   4 |             14
+ *   :
+ */
+int tri_index(int i, int j){
+  return (i * (i+1))/2 + j;
+  }
+
+/* Returns index into the GPU's register tile ordered output buffer for the
+ * real component of the cross product of inputs in0 and in1.  Note that in0
+ * and in1 are input indexes (i.e. 0 based) and often represent antenna and
+ * polarization by passing (2*ant_idx+pol_idx) as the input number (NB: ant_idx
+ * and pol_idx are also 0 based).  Return value is valid if in1 >= in0.  The
+ * corresponding imaginary component is located xgpu_info.matLength words after
+ * the real component.
+ */
+int regtile_index(int in0, int in1, int nstand) {
+  int a0, a1, p0, p1;
+  int num_words_per_cell=4;
+  int quadrant, quadrant_index, quadrant_size, cell_index, pol_offset, index;
+  a0 = in0 >> 1;
+  a1 = in1 >> 1;
+  p0 = in0 & 1;
+  p1 = in1 & 1;
+  
+  // Index within a quadrant
+  quadrant_index = tri_index(a1/2, a0/2);
+  // Quadrant for this input pair
+  quadrant = 2*(a0&1) + (a1&1);
+  // Size of quadrant
+  quadrant_size = (nstand/2 + 1) * nstand/4;
+  // Index of cell (in units of cells)
+  cell_index = quadrant*quadrant_size + quadrant_index;
+  // Pol offset
+  pol_offset = 2*p1 + p0;
+  // Word index (in units of words (i.e. floats) of real component
+  index = (cell_index * num_words_per_cell) + pol_offset;
+  return index;
+  }
+
+BFstatus bfXgpuGetOrder(BFarray *antpol_to_input, BFarray *antpol_to_bl, BFarray *is_conj, int nstand, int npol) {
+  int *ip_map = (int *)antpol_to_input->data; // indexed by stand, pol
+  int *bl_map = (int *)antpol_to_bl->data;    // indexed by stand0, stand1, pol0, pol1
+  int *conj_map = (int *)is_conj->data;       // indexed by stand0, stand1, pol0, pol1
+  int s0, s1, p0, p1, i0, i1;
+  for (s0=0; s0<nstand; s0++) {
+    for (s1=0; s1<nstand; s1++) {
+      for (p0=0; p0<npol; p0++) {
+        for (p1=0; p1<npol; p1++) {
+          i0 = ip_map[npol*s0 + p0];
+          i1 = ip_map[npol*s1 + p1];
+          if (i1 >= i0) {
+            bl_map[s0*nstand*npol*npol + s1*npol*npol + p0*npol + p1] = regtile_index(i0, i1, nstand);
+            conj_map[s0*nstand*npol*npol + s1*npol*npol + p0*npol + p1] = 0;
+          } else {
+            bl_map[s0*nstand*npol*npol + s1*npol*npol + p0*npol + p1] = regtile_index(i1, i0, nstand);
+            conj_map[s0*nstand*npol*npol + s1*npol*npol + p0*npol + p1] = 1;
+          }
+        }
+      }
+    }
+  }
+  return BF_STATUS_SUCCESS;
+}
+
 } // C
