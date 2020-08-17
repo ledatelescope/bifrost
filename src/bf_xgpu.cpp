@@ -256,7 +256,6 @@ BFstatus bfXgpuReorder(BFarray *xgpu_output, BFarray *reordered, BFarray *baseli
   int i, c;
   // number of entries per channel
   size_t regtile_chan_len = 4 * 4 * xgpu_n_input/4 * (xgpu_n_input/4+1) / 2;
-  fprintf(stderr, "nbaselines: %d; nchans:%d\n", n_bl, n_chan);
   for (i=0; i<n_bl; i++) {
     for (c=0; c<n_chan; c++) {
       output[2*i*n_chan + 2*c]     = input_r[c*regtile_chan_len + bl[i]];
