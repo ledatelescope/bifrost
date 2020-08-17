@@ -206,11 +206,16 @@ int regtile_index(int in0, int in1, int nstand) {
   return index;
   }
 
-BFstatus bfXgpuGetOrder(BFarray *antpol_to_input, BFarray *antpol_to_bl, BFarray *is_conj, int nstand, int npol) {
+BFstatus bfXgpuGetOrder(BFarray *antpol_to_input, BFarray *antpol_to_bl, BFarray *is_conj) {
   int *ip_map = (int *)antpol_to_input->data; // indexed by stand, pol
   int *bl_map = (int *)antpol_to_bl->data;    // indexed by stand0, stand1, pol0, pol1
   int *conj_map = (int *)is_conj->data;       // indexed by stand0, stand1, pol0, pol1
   int s0, s1, p0, p1, i0, i1;
+  int nstand, npol;
+  XGPUInfo xgpu_info;
+  xgpuInfo(&xgpu_info);
+  nstand = xgpu_info.nstation;
+  npol = xgpu_info.npol;
   for (s0=0; s0<nstand; s0++) {
     for (s1=0; s1<nstand; s1++) {
       for (p0=0; p0<npol; p0++) {
@@ -225,6 +230,40 @@ BFstatus bfXgpuGetOrder(BFarray *antpol_to_input, BFarray *antpol_to_bl, BFarray
             conj_map[s0*nstand*npol*npol + s1*npol*npol + p0*npol + p1] = 1;
           }
         }
+      }
+    }
+  }
+  return BF_STATUS_SUCCESS;
+}
+
+/*
+ * Reorder a DP4A xGPU spec output into something more sane, throwing
+ * away unwanted baselines and re-concatenating real and imag parts in
+ * a reasonable way.
+ */
+BFstatus bfXgpuReorder(BFarray *xgpu_output, BFarray *reordered, BFarray *baselines, BFarray *is_conjugated) {
+  XGPUInfo xgpu_info;
+  xgpuInfo(&xgpu_info);
+
+  int *output = (int *)reordered->data;
+  int *input_r = (int *)xgpu_output->data;
+  int *input_i = input_r + xgpu_info.matLength;
+  int *bl = (int *)baselines->data;
+  int *conj = (int *)is_conjugated->data;
+  int n_bl = num_contiguous_elements(baselines);
+  int xgpu_n_input = xgpu_info.nstation * xgpu_info.npol;
+  int n_chan = xgpu_info.nfrequency;
+  int i, c;
+  // number of entries per channel
+  size_t regtile_chan_len = 4 * 4 * xgpu_n_input/4 * (xgpu_n_input/4+1) / 2;
+  fprintf(stderr, "nbaselines: %d; nchans:%d\n", n_bl, n_chan);
+  for (i=0; i<n_bl; i++) {
+    for (c=0; c<n_chan; c++) {
+      output[2*i*n_chan + 2*c]     = input_r[c*regtile_chan_len + bl[i]];
+      if ( conj[i] ) {
+        output[2*i*n_chan + 2*c + 1] = input_i[c*regtile_chan_len + bl[i]];
+      } else {
+        output[2*i*n_chan + 2*c + 1] = -input_i[c*regtile_chan_len + bl[i]];
       }
     }
   }
