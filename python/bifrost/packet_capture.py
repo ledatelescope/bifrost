@@ -82,7 +82,7 @@ class _CaptureBase(BifrostObject):
 class UDPCapture(_CaptureBase):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
                  buffer_ntime, slot_ntime, sequence_callback, core=None,
-                 ibverbs=False, interface='', port=-1):
+                 interface='', port=-1):
         try:
             fmt = fmt.encode()
         except AttributeError:
@@ -90,19 +90,11 @@ class UDPCapture(_CaptureBase):
             pass
         if core is None:
             core = -1
-        if not ibverbs:
-            BifrostObject.__init__(
-                self, _bf.bfUdpCaptureCreate, _bf.bfPacketCaptureDestroy,
-                fmt, sock.fileno(), ring.obj, nsrc, src0,
-                max_payload_size, buffer_ntime, slot_ntime,
-                sequence_callback.obj, core)
-        else:
-            print("Using IBVerbs")
-            BifrostObject.__init__(
-                self, _bf.bfIbvUdpCaptureCreate, _bf.bfPacketCaptureDestroy,
-                fmt, sock.fileno(), ring.obj, nsrc, src0,
-                max_payload_size, buffer_ntime, slot_ntime,
-                sequence_callback.obj, core)
+        BifrostObject.__init__(
+            self, _bf.bfUdpCaptureCreate, _bf.bfPacketCaptureDestroy,
+            fmt, sock.fileno(), ring.obj, nsrc, src0,
+            max_payload_size, buffer_ntime, slot_ntime,
+            sequence_callback.obj, core)
 
 class UDPSniffer(_CaptureBase):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
