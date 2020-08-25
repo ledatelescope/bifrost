@@ -427,7 +427,7 @@ BFstatus bfQuantize(BFarray const* in,
 		case BF_DTYPE_U8: {
 #ifdef BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
-				
+				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,double,uint8_t);
 			} else {
 				CALL_FOREACH_SIMPLE_CPU_QUANTIZE(float,float,uint8_t);
 			}

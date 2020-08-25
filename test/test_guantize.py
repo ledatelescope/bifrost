@@ -31,6 +31,20 @@ import bifrost as bf
 import bifrost.quantize
 
 class QuantizeTest(unittest.TestCase):
+    def run_quantize_from_f32_test(self, out_dtype):
+        if 'i' in out_dtype:
+            # Signed
+            iarray = bf.ndarray(np.arange(255) - 128, dtype='f32')
+            oarray_known = bf.ndarray(np.arange(255) - 128, dtype=out_dtype)
+        else:
+            # Unsigned
+            iarray = bf.ndarray(np.arange(255), dtype='f32')
+            oarray_known = bf.ndarray(np.arange(255), dtype=out_dtype)
+
+        oarray = bf.ndarray(shape=iarray.shape, dtype=out_dtype, space='cuda')
+        bf.quantize.quantize(iarray.copy(space='cuda'), oarray)
+        oarray = oarray.copy(space='system')
+        np.testing.assert_equal(oarray, oarray_known)
     def run_quantize_from_cf32_test(self, out_dtype):
         iarray = bf.ndarray([[0.4 + 0.5j, 1.4 + 1.5j],
                              [2.4 + 2.5j, 3.4 + 3.5j],
@@ -50,3 +64,16 @@ class QuantizeTest(unittest.TestCase):
         self.run_quantize_from_cf32_test('ci16')
     def test_cf32_to_ci32(self):
         self.run_quantize_from_cf32_test('ci32')
+    def test_f32_to_u8(self):
+        self.run_quantize_from_f32_test('u8')
+    def test_f32_to_u16(self):
+        self.run_quantize_from_f32_test('u16')
+    def test_f32_to_u32(self):
+        self.run_quantize_from_f32_test('u32')
+    def test_f32_to_i8(self):
+        self.run_quantize_from_f32_test('i8')
+    def test_f32_to_i8(self):
+        self.run_quantize_from_f32_test('i16')
+    def test_f32_to_i8(self):
+        self.run_quantize_from_f32_test('i32')
+
