@@ -205,7 +205,8 @@ class SigprocSinkBlock(SinkBlock):
 
         filename = os.path.join(self.path, ihdr['name'])
 
-        if ndim >= 3 and axnames[-3:] == ['time', 'pol', 'freq']:
+
+        if ndim >= 3 and tuple(axnames[-3:]) == ('time', 'pol', 'freq'):
             self.data_format = 'filterbank'
             assert(dtype.is_real)
             sigproc_hdr['data_type'] = 1
