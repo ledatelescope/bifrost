@@ -67,8 +67,10 @@ class BeanfarmerDp4aBlock(bf.pipeline.TransformBlock):
             w = hkl.load(self.weights_file)
 
         try:
-            assert w.shape == (self.n_chan, self.n_beam, self.n_pol, self.n_ant, 2)
-            assert w.dtype.str == '|i1'
+            assert w.shape == (self.n_chan, self.n_beam, self.n_pol, self.n_ant)
+            assert w.dtype.names[0] == 're'
+            assert w.dtype.names[1] == 'im'
+            assert str(w.dtype[0]) == 'int8'
         except AssertionError:
             print('ERR: beam weight shape/dtype is incorrect')
             print('ERR: beam weights shape is: %s' % str(w.shape))
@@ -144,7 +146,7 @@ def beanfarmer(iring, n_avg=1, n_beam=32, n_chan=512, n_pol=2, n_ant=12, weights
       *args: Arguments to ``bifrost.pipeline.TransformBlock``.
       **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
     Returns:
-        CorrelateDp4aBlock: A new correlator block instance.
+        BeanfarmerDp4aBlock: A new beanfarmer block instance.
     """
 
     return BeanfarmerDp4aBlock(iring, n_avg, n_beam, n_chan, n_pol, n_ant, weights_file, *args, **kwargs)
