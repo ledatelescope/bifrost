@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,8 +26,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
+from __future__ import print_function
+
 from setuptools import setup, find_packages
+import os
 import sys
+import glob
 
 # Parse version file to extract __version__ value
 bifrost_version_file = 'bifrost/version.py'
@@ -49,6 +54,9 @@ except IOError:
     print("*************************************************************************")
     raise
 
+# Build up a list of scripts to install
+scripts = glob.glob(os.path.join('..', 'tools', '*.py'))
+
 setup(name='bifrost',
       version=__version__,
       description='Pipeline processing framework',
@@ -56,6 +64,7 @@ setup(name='bifrost',
       author_email='benbarsdell@gmail.com',
       url='https://github.com/ledatelescope/bifrost',
       packages=find_packages(),
+      scripts=scripts,
       install_requires=[
           "numpy>=1.8.1",
           "contextlib2>=0.4.0",

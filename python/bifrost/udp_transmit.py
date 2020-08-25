@@ -28,7 +28,7 @@
 
 # **TODO: Write tests for this class
 
-from libbifrost import _bf, _check, _get, BifrostObject
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
 import ctypes
 

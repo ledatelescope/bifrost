@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,6 +26,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # **TODO: Add tests with beta != 0
+
+# Python2 compatibility
+from __future__ import print_function
 
 import ctypes
 import unittest
@@ -146,22 +149,22 @@ class TestLinAlg(unittest.TestCase):
         b_ = b.copy('system')
 
         np.testing.assert_allclose(b_, b_gold, RTOL, ATOL)
-        '''
+        """
         # Benchmarking
         nrep = 30
         bf.device.stream_synchronize()
         t0 = time.time()
-        for _ in xrange(nrep):
+        for _ in range(nrep):
             self.linalg.matmul(1, w.transpose(1,0,2), x.transpose(1,2,0), 0, b)
         bf.device.stream_synchronize()
         dt = time.time() - t0
         nflop = nrep * ntime * nbeam * nstand*2 * nchan * 8
         nbyte = nrep * (x.nbytes + w.nbytes + b.nbytes)
         nsamp = nrep * ntime * nchan
-        print nbeam, '\t'*1, nflop / dt / 1e9, 'GFLOP/s'
-        print nbeam, '\t'*2, nbyte / dt / 1e9, 'GB/s'
-        print nbeam, '\t'*3, nsamp / dt / 1e6, 'MHz/s'
-        '''
+        print(nbeam, '\t'*1, nflop / dt / 1e9, 'GFLOP/s')
+        print(nbeam, '\t'*2, nbyte / dt / 1e9, 'GB/s')
+        print(nbeam, '\t'*3, nsamp / dt / 1e6, 'MHz/s')
+        """
     def run_test_matmul_aa_correlator_kernel(self, ntime, nstand, nchan, misalign=0):
         x_shape = (ntime, nchan, nstand*2)
         perm = [1,0,2]
@@ -196,30 +199,30 @@ class TestLinAlg(unittest.TestCase):
         bf.device.stream_synchronize();
         t0 = time.time()
         nrep = 200
-        for _ in xrange(nrep):
+        for _ in range(nrep):
             self.linalg.matmul(1, None, x, 0, b)
         bf.device.stream_synchronize();
         dt = time.time() - t0
         nflop = nrep * nchan * ntime * nstand*(nstand+1)/2 * 2*2 * 8
-        print nstand, '\t', nflop / dt / 1e9, 'GFLOP/s'
-        print '\t\t', nrep*ntime*nchan / dt / 1e6, 'MHz'
+        print(nstand, '\t', nflop / dt / 1e9, 'GFLOP/s')
+        print('\t\t', nrep*ntime*nchan / dt / 1e6, 'MHz')
     def test_matmul_ab_beamformer_kernel_small(self):
-        for nchan in xrange(1, 1+3):
-            for ntime in xrange(1, 1+8):
+        for nchan in range(1, 1+3):
+            for ntime in range(1, 1+8):
                 for nstand in [16, 64, 256]:
-                    for nbeam in xrange(1, 1+12):
+                    for nbeam in range(1, 1+12):
                         self.run_test_matmul_ab_beamformer_kernel(
                             ntime=ntime, nbeam=nbeam, nstand=nstand, nchan=nchan)
     def test_matmul_ab_beamformer_kernel_large(self):
-        for nbeam in xrange(1, 1+12):
-            #print "--------------", nbeam, "---------------"
+        for nbeam in range(1, 1+12):
+            #print("--------------", nbeam, "---------------")
             self.run_test_matmul_ab_beamformer_kernel(ntime=512, nbeam=nbeam,
                                                       nstand=256, nchan=10)
     def test_matmul_aa_correlator_kernel_small(self):
-        for nchan in xrange(1, 1+5):
+        for nchan in range(1, 1+5):
             for ntime in [1, 2, 3, 4, 8, 12]:
-                for nstand in xrange(1, 1+65):
-                    for misalign in xrange(0, min(2 * (nstand - 1), 3), 2):
+                for nstand in range(1, 1+65):
+                    for misalign in range(0, min(2 * (nstand - 1), 3), 2):
                         self.run_test_matmul_aa_correlator_kernel(
                             ntime=ntime, nstand=nstand, nchan=nchan,
                             misalign=misalign)
