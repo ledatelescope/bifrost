@@ -222,12 +222,14 @@ BFstatus bfXgpuGetOrder(BFarray *antpol_to_input, BFarray *antpol_to_bl, BFarray
         for (p1=0; p1<npol; p1++) {
           i0 = ip_map[npol*s0 + p0];
           i1 = ip_map[npol*s1 + p1];
-          if (i1 >= i0) {
+          // Set the conj map such that bl_map[stand0, stand1, pol0, pol1] has conjugation convention
+          // stand0,pol0 * conj(stand1,pol1)
+          if (i1 > i0) {
             bl_map[s0*nstand*npol*npol + s1*npol*npol + p0*npol + p1] = regtile_index(i0, i1, nstand);
-            conj_map[s0*nstand*npol*npol + s1*npol*npol + p0*npol + p1] = 0;
+            conj_map[s0*nstand*npol*npol + s1*npol*npol + p0*npol + p1] = 1;
           } else {
             bl_map[s0*nstand*npol*npol + s1*npol*npol + p0*npol + p1] = regtile_index(i1, i0, nstand);
-            conj_map[s0*nstand*npol*npol + s1*npol*npol + p0*npol + p1] = 1;
+            conj_map[s0*nstand*npol*npol + s1*npol*npol + p0*npol + p1] = 0;
           }
         }
       }
@@ -240,6 +242,7 @@ BFstatus bfXgpuGetOrder(BFarray *antpol_to_input, BFarray *antpol_to_bl, BFarray
  * Reorder a DP4A xGPU spec output into something more sane, throwing
  * away unwanted baselines and re-concatenating real and imag parts in
  * a reasonable way.
+ * Also remove conjugation weirdness so baselines a,b has conjugation a*conj(b)
  */
 BFstatus bfXgpuReorder(BFarray *xgpu_output, BFarray *reordered, BFarray *baselines, BFarray *is_conjugated) {
   XGPUInfo xgpu_info;
@@ -259,10 +262,10 @@ BFstatus bfXgpuReorder(BFarray *xgpu_output, BFarray *reordered, BFarray *baseli
   for (i=0; i<n_bl; i++) {
     for (c=0; c<n_chan; c++) {
       output[2*i*n_chan + 2*c]     = input_r[c*regtile_chan_len + bl[i]];
-      if ( conj[i] ) {
-        output[2*i*n_chan + 2*c + 1] = input_i[c*regtile_chan_len + bl[i]];
-      } else {
+      if ( conj[i] == 1 ) {
         output[2*i*n_chan + 2*c + 1] = -input_i[c*regtile_chan_len + bl[i]];
+      } else {
+        output[2*i*n_chan + 2*c + 1] = input_i[c*regtile_chan_len + bl[i]];
       }
     }
   }
