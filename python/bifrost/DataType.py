@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -38,7 +38,15 @@ ci4:  4+4-bit complex signed integer
 cf32: 32+32-bit complex floating point
 """
 
-from libbifrost import _bf
+# Python2 compatibility
+from __future__ import division, absolute_import
+import sys
+string_types = (str,)
+if sys.version_info < (3,):
+    range = xrange
+    string_types = (basestring,)
+    
+from bifrost.libbifrost import _bf
 import numpy as np
 
 # Custom dtypes to represent additional complex types
@@ -100,15 +108,15 @@ def is_vector_structure(dtype):
     if dtype.names is None:
         return False
     ndim = len(dtype.names)
-    vector_field_names = tuple('f%i' % i for i in xrange(ndim))
+    vector_field_names = tuple('f%i' % i for i in range(ndim))
     return (dtype.kind == 'V' and
             dtype.names == vector_field_names and
-            all([dtype[i] == dtype[0] for i in xrange(1, ndim)]))
+            all([dtype[i] == dtype[0] for i in range(1, ndim)]))
 
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
     def __init__(self, t=None):
-        if isinstance(t, basestring):
+        if isinstance(t, string_types):
             for i, char in enumerate(t):
                 if char.isdigit():
                     break
@@ -148,10 +156,10 @@ class DataType(object):
                 t = t[0]
             self._kind = t.kind
             if t.kind == 'c':
-                self._nbit /= 2   # Bifrost convention is nbit per real component
+                self._nbit //= 2   # Bifrost convention is nbit per real component
                 self._kind = 'cf' # Numpy only supports floating-point complex types
             elif t.kind == 'V': # WAR to support custom integer complex types
-                self._nbit /= 2
+                self._nbit //= 2
                 if t in [ci4, ci8, ci16, ci32, ci64]:
                     self._kind = 'ci'
                 elif t in [cf16]:

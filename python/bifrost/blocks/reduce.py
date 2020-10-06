@@ -1,5 +1,5 @@
 
-# Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -51,7 +51,7 @@ class ReduceBlock(TransformBlock):
         otensor['dtype'] = 'f32'
         if itensor['dtype'] == 'cf32' and not self.op.startswith('pwr'):
             otensor['dtype'] = 'cf32'
-        if 'labels' in itensor and isinstance(self.specified_axis, basestring):
+        if 'labels' in itensor and isinstance(self.specified_axis, str):
             # Look up axis by label
             self.axis = itensor['labels'].index(self.specified_axis)
         else:

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,7 +31,10 @@ import io
 import bifrost.pipeline as bfp
 import bifrost.blocks as blocks
 
-from contextlib2 import redirect_stdout, ExitStack
+try:
+    from contextlib import redirect_stdout, ExitStack
+except ImportError:
+    from contextlib2 import redirect_stdout, ExitStack
 
 class TestPrintHeader(unittest.TestCase):
     """Test all aspects of the print header block"""
