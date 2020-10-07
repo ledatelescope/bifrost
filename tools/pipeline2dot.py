@@ -63,7 +63,7 @@ def get_process_details(pid):
 
     data = {'user':'', 'cpu':0.0, 'mem':0.0, 'etime':'00:00', 'threads':0}
     try:
-        output = subprocess.check_output('ps o user,pcpu,pmem,etime,nlwp %i' % pid, shell=True)
+        output = subprocess.check_output('ps o user,pcpu,pmem,etime,nlwp %i' % pid, shell=True).decode()
         output = output.split('\n')[1]
         fields = output.split(None, 4)
         data['user'] = fields[0]
@@ -348,4 +348,3 @@ if __name__ == "__main__":
                         help='exclude associated blocks')
     args = parser.parse_args()
     main(args)
-    
