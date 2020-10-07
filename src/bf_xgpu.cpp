@@ -137,7 +137,7 @@ BFstatus bfXgpuKernel(BFarray *in, BFarray *out, int doDump) {
  * BFarray *vismap : array of visibilities in [[polA, polB], [polC, polD], ... ] form.
  * int nchan_sum: The number of frequency channels to sum over
  */
-BFstatus bfXgpuSubSelect(BFarray *in, BFarray *out, BFarray *vismap, int nchan_sum) {
+BFstatus bfXgpuSubSelect(BFarray *in, BFarray *out, BFarray *vismap, BFarray *conj, int nchan_sum) {
   long long unsigned nvis = num_contiguous_elements(vismap);
   int xgpu_error;
   if (in->space != BF_SPACE_CUDA) {
@@ -149,7 +149,13 @@ BFstatus bfXgpuSubSelect(BFarray *in, BFarray *out, BFarray *vismap, int nchan_s
   if (vismap->space != BF_SPACE_CUDA) {
     return BF_STATUS_UNSUPPORTED_SPACE;
   }
-  xgpu_error = xgpuCudaSubSelect(&context, (Complex *)in->data, (Complex *)out->data, (int *)vismap->data, nvis, nchan_sum);
+  if (conj->space != BF_SPACE_CUDA) {
+    return BF_STATUS_UNSUPPORTED_SPACE;
+  }
+  if (num_contiguous_elements(conj) != nvis) {
+    return BF_STATUS_INVALID_SHAPE;
+  }
+  xgpu_error = xgpuCudaSubSelect(&context, (Complex *)in->data, (Complex *)out->data, (int *)vismap->data, (int *)conj->data, nvis, nchan_sum);
   if (xgpu_error != XGPU_OK) {
     fprintf(stderr, "ERROR: xgpuKernel: kernel call returned %d\n", xgpu_error);
     return BF_STATUS_INTERNAL_ERROR;
