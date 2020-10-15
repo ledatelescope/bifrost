@@ -50,11 +50,9 @@ from bifrost.blocks.serialize import serialize, SerializeBlock, deserialize, Des
 from bifrost.blocks.reduce import reduce, ReduceBlock
 from bifrost.blocks.correlate import correlate, CorrelateBlock
 from bifrost.blocks.convert_visibilities import convert_visibilities, ConvertVisibilitiesBlock
-
 from bifrost.blocks.correlate_dp4a import correlate_dp4a
 from bifrost.blocks.beanfarmer import beanfarmer
 from bifrost.blocks.dada_file import read_dada_file
-
 
 try: # Avoid error if portaudio library not installed
     from bifrost.blocks.audio import read_audio, AudioSourceBlock
