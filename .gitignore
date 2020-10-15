@@ -4,6 +4,7 @@ version.py
 .log*.txt
 test/data/
 *.bin
+*.swp
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
