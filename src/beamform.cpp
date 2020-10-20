@@ -59,7 +59,7 @@ BFstatus bfBeamformRun(BFarray *in, BFarray *out, BFarray *weights) {
   return BF_STATUS_SUCCESS;
 }
   
-BFstatus bfBeamformIntegrate(BFarray *in, BFarray *out) {
+BFstatus bfBeamformIntegrate(BFarray *in, BFarray *out, int ntimes_sum) {
   if (in->space != BF_SPACE_CUDA) {
     fprintf(stderr, "Beamformer input buffer must be in CUDA space\n");
     return BF_STATUS_INVALID_SPACE;
@@ -68,7 +68,20 @@ BFstatus bfBeamformIntegrate(BFarray *in, BFarray *out) {
     fprintf(stderr, "Beamformer output buffer must be in CUDA space\n");
     return BF_STATUS_INVALID_SPACE;
   }
-  cublas_beamform_integrate((float *)in->data, (float *)out->data);
+  cublas_beamform_integrate((float *)in->data, (float *)out->data, ntimes_sum);
+  return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfBeamformIntegrateSingleBeam(BFarray *in, BFarray *out, int ntimes_sum, int beam_index) {
+  if (in->space != BF_SPACE_CUDA) {
+    fprintf(stderr, "Beamformer input buffer must be in CUDA space\n");
+    return BF_STATUS_INVALID_SPACE;
+  }
+  if (out->space != BF_SPACE_CUDA) {
+    fprintf(stderr, "Beamformer output buffer must be in CUDA space\n");
+    return BF_STATUS_INVALID_SPACE;
+  }
+  cublas_beamform_integrate_single_beam((float *)in->data, (float *)out->data, ntimes_sum, beam_index);
   return BF_STATUS_SUCCESS;
 }
 } // C
