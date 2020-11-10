@@ -33,6 +33,8 @@ from bifrost.psrdada import Hdu
 from bifrost.libbifrost import _bf, _check
 import bifrost.ndarray
 
+import numpy as np
+
 from copy import deepcopy
 import os
 
@@ -129,6 +131,63 @@ class PsrDadaSourceBlock(SourceBlock):
         nframe = nbyte // ospan.frame_nbyte
         return [nframe]
 
+def _keyval_to_dadastr(key, val):
+     """ Convert key: value pair into a DADA string """
+     return "{key:20s}{val}\n".format(key=key.upper(), val=val)
+     
+def generate_dada_header(hdr_dict, hdrlen=4096):
+    """ Generate DADA header from header dict 
+    
+    Args:
+        hdr_dict (dict): Header dictionary of key, value pairs
+        hdrlen (int): Size of header, default 4096
+    
+    Returns:
+        s (str): DADA header string with padding to hdrlen
+    """
+    s = "HDR_VERSION         1.0\n"
+    s+= "HDR_SIZE            %i\n" % hdrlen
+    keys_to_skip = ('HDR_VERSION', 'HDR_SIZE')
+    
+    for key, val in hdr_dict.items():
+        if key not in keys_to_skip:
+            if isinstance(val, (str, float, int)):
+                s += _keyval_to_dadastr(key, val)
+    s_padding = "\x00"
+    if len(s) > hdrlen:
+        raise RuntimeError("Header is too large for HDR_SIZE! Increase hdrlen")
+    n_pad = hdrlen - len(s)
+    return s + s_padding * n_pad
+
+class PsrDadaSinkBlock(SinkBlock):
+    def __init__(self, iring, buffer_key, gulp_nframe, space=None, *args, **kwargs):
+        super(PsrDadaSinkBlock, self).__init__(iring, gulp_nframe, *args, **kwargs)
+        self.hdu = Hdu()
+        self.hdu.connect_write(buffer_key)
+
+    def on_sequence(self, iseq):
+        dada_header_str = generate_dada_header(iseq.header)
+        dada_header_buf = next(self.hdu.header_block)            
+        
+        dada_header_buf.data[:] = np.fromstring(dada_header_str.encode('ascii'), dtype='uint8')
+        dada_header_buf.close()
+    
+    def on_sequence_end(self, iseq):
+        self.hdu.disconnect()
+
+    def on_data(self, ispan):
+        
+        # TODO: Make this work in CUDA space 
+        dada_blk = next(self.hdu.data_block)
+        
+        nbyte = ispan.data.nbytes
+        _check(_bf.bfMemcpy(dada_blk.ptr, _bf.BF_SPACE_SYSTEM,
+                            ispan.data.ctypes.data, _bf.BF_SPACE_SYSTEM,
+                            nbyte))        
+    
+        #dada_blk.data[:] = ispan.data.view('u8')        
+        dada_blk.close()
+
 def read_psrdada_buffer(buffer_key, header_callback, gulp_nframe, space=None,
                         *args, **kwargs):
     """Read data from a PSRDADA ring buffer.
@@ -164,3 +223,12 @@ def read_psrdada_buffer(buffer_key, header_callback, gulp_nframe, space=None,
     """
     return PsrDadaSourceBlock(buffer_key, header_callback, gulp_nframe, space,
                               *args, **kwargs)
+
+def write_psrdada_buffer(iring, buffer_key, gulp_nframe, *args, **kwargs):
+    """ Write into a PSRDADA ring buffer 
+    
+    Note:
+        Initial version, currently only supports system space (not CUDA)
+    """
+    return PsrDadaSinkBlock(iring, buffer_key, gulp_nframe)
+
