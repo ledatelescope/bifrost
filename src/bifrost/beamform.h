@@ -53,7 +53,7 @@ BFstatus bfBeamformRun(
 BFstatus bfBeamformIntegrate(
   BFarray *in,
   BFarray *out,
-  int ntimes_sum,
+  int ntimes_sum
 );
 
 /*
