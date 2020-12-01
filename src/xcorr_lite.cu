@@ -9,7 +9,7 @@
 #include <iostream>
 
 
-//#define DCP_DEBUG
+#define DCP_DEBUG
 
 extern "C" {
 
@@ -69,61 +69,74 @@ extern "C" {
     __global__ void xcorrDp4aKernel
         (int *data, float *xcorr, int H, int F, int N, int T, int reset)
         {
-        int x, y; // x not used
+        int x, y;
         int idx, ia, ib;
-   
+
         // Setup thread indexes
-        x = threadIdx.x;
-        y = threadIdx.y;
+        x = blockIdx.x * blockDim.x + threadIdx.x;
+        y = blockIdx.y * blockDim.y + threadIdx.y;
         
-        for (int h = 0; h < H; h++) {
+        // Only run if antenna IDs X and Y are < N_antenna (N)
+        if (x < N && y < N) {
 
-            int chan_offset_in  = blockIdx.x * N * T/2;
-            int chan_offset_out = blockIdx.x * N * N * 2;
-            int ant_offset      = T / 2;  //x2 for complex, but /4 for packed
-            int heap_offset     = h * F * N * T/2;
-            int heap_offset_out = h * F * N * N * 2;
+            // Loop over heap (H)
+            for (int h = 0; h < H; h++) {
 
-            int xy_real = 0;
-            int xy_imag = 0;
-            idx = 2*y + N*2*x + chan_offset_out + heap_offset_out; // Compute index for output array
-            
-            // Note -- using dp4a must be careful of bit growth.
-            // output of each 8-bit dot product is 16 bits
-            // Adding 4x 16-bit numbers = 18-bit number
-            // accumulator is only 32 bits, so using 18 of 32 bits.
-            // Max 14 bits of growth = 2^14 = 4096 integrations
-            for (int t = 0; t < T/2; t++) {
-                if (t == 0 && reset != 0) {
-                    xcorr[idx]   = 0;
-                    xcorr[idx+1] = 0;
+                int chan_offset_in  = blockIdx.z * N * T/2;
+                int chan_offset_out = blockIdx.z * N * N * 2;
+                int ant_offset      = T / 2;  //x2 for complex, but /4 for packed
+                int heap_offset     = h * F * N * T/2;
+                int heap_offset_out = h * F * N * N * 2;
+
+                int xy_real = 0;
+                int xy_imag = 0;
+                idx = 2*y + N*2*x + chan_offset_out + heap_offset_out; // Compute index for output array
+                
+                // Note -- using dp4a must be careful of bit growth.
+                // output of each 8-bit dot product is 16 bits
+                // Adding 4x 16-bit numbers = 18-bit number
+                // accumulator is only 32 bits, so using 18 of 32 bits.
+                // Max 14 bits of growth = 2^14 = 4096 integrations
+                for (int t = 0; t < T/2; t++) {
+                    if (t == 0 && reset != 0) {
+                        xcorr[idx]   = 0;
+                        xcorr[idx+1] = 0;
+                    }
+                    ia  = heap_offset + ant_offset*x + chan_offset_in + t;
+                    ib  = heap_offset + ant_offset*y + chan_offset_in + t;
+                
+                    //printf("idx %d | x%d.y%d | A %dx%d\\n", idx, x, y, ia, ib);
+                    //cmult_dp4a(xcorr[idx], xcorr[idx+1], data[ia], data[ib]);
+                    cmult_dp4a(xy_real, xy_imag, data[ia], data[ib]);
                 }
-                ia  = heap_offset + ant_offset*x + chan_offset_in + t;
-                ib  = heap_offset + ant_offset*y + chan_offset_in + t;
-            
-                //printf("idx %d | x%d.y%d | A %dx%d\\n", idx, x, y, ia, ib);
-                //cmult_dp4a(xcorr[idx], xcorr[idx+1], data[ia], data[ib]);
-                cmult_dp4a(xy_real, xy_imag, data[ia], data[ib]);
-            }
-            // Copy xy* result to device mem
-            xcorr[idx]   += (float) xy_real;
-            xcorr[idx+1] += (float) xy_imag;
-          }
+                // Copy xy* result to device mem
+                xcorr[idx]   += (float) xy_real;
+                xcorr[idx+1] += (float) xy_imag;
+              } // Loop over heap (H)
+           } // if x <= N and y <= N
         }
         
     void launch_xcorr_lite(int *data, float *xcorr, int H, int F, int N, int T, int reset) {
         dim3 block, grid;
-        grid.x = F;
-        grid.y = 1;
-        grid.z = 1;
+        int GS = 1; // Grid size for antenna
+        int NB = N;     // Block size for antenna
+        // Set grid size for N > 32
+        if(N > 32) {
+            GS = ceil(float(N) / 32);
+            NB = 32;
+        }
+
+        grid.x = GS;
+        grid.y = GS;
+        grid.z = F;
         
-        block.x = N;
-        block.y = N;
+        block.x = NB;
+        block.y = NB;
         block.z = 1;
 
 #ifdef DCP_DEBUG
-        printf("N: %d SHM %d\n", N, shm_bytes);
-  printf("Debug: <<<B: (%d, %d, %d) G: (%d, %d, %d) SHM: %dB >>>\n", block.x,
+        //printf("N: %d SHM %d\n", N, shm_bytes);
+  printf("Debug: <<<B: (%d, %d, %d) G: (%d, %d, %d)  >>>\n", block.x,
          block.y, block.z, grid.x, grid.y, grid.z);
 #endif
          int shm = 0;
