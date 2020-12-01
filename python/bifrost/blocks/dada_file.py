@@ -36,6 +36,8 @@ import bifrost as bf
 import bifrost.pipeline as bfp
 from bifrost.dtype import string2numpy
 from astropy.time import Time
+import glob
+import os
 
 def _angle_str_to_sigproc(ang):
     aparts = ang.split(':')
@@ -61,13 +63,14 @@ class DadaFileRead(object):
             self.file_obj = open(filename, 'rb')
             self.nfiles   = 1
         else:
-            self.file_obs = open(filename[0], 'rb')
+            self.file_obj = open(filename[0], 'rb')
             self.nfiles   = len(filename)
 
         self.filenames = filename
         self.fcount = 0
 
-        print("%i/%i: opening %s" % (self.fcount+1, self.nfiles, filename))
+        print("%i/%i: opening %s" % (self.fcount+1, self.nfiles, self.file_obj.name))
+        self._header_callback = header_callback
         self.header = self._read_header(header_callback)
         itensor = self.header['_tensor']
         self.dtype          = string2numpy(itensor['dtype'])
@@ -82,7 +85,7 @@ class DadaFileRead(object):
         Applies header_callback to convert DADA header to bifrost header. Specifically,
         need to generate the '_tensor' from the DADA keywords which have no formal spec.
         """
-        hdr_buf = self.file_obj.read(4096)
+        hdr_buf = self.file_obj.read(4096).decode('ascii')
         hdr = {}
         for line in hdr_buf.split('\n'):
             try:
@@ -97,8 +100,8 @@ class DadaFileRead(object):
         self.file_obj.close()
         self.fcount += 1
         print("%i/%i: opening %s" % (self.fcount+1, self.nfiles, self.filenames[self.fcount]))
-        self.file_obj = open(self.filenames[self.fcount], 'r')
-        _hdr = self._read_header()
+        self.file_obj = open(self.filenames[self.fcount], 'rb')
+        _hdr = self._read_header(self._header_callback)
 
     def _read_data(self):
         d = np.fromfile(self.file_obj, dtype=self.dtype, count=self.block_size)
@@ -145,15 +148,31 @@ class DadaFileRead(object):
         self.close()
 
 
+def generate_dada_filelist(filename):
+    """ Generate a list of DADA files from start filename 
+    
+    Args:
+        filename (str): Path to file. e.g.
+                        /data/dprice/2020-07-23-02:33:07.587_0000000000000000.000000.dada
+
+    Returns:
+        flist (list): A list of all associated files 
+    """
+    bn = os.path.basename(filename)
+    dn = os.path.dirname(filename)
+    bn_root = '_'.join(bn.split('_')[:-1])  # Strips off _000.000.dada bit
+    flist = sorted(glob.glob(os.path.join(dn, bn_root + '_*.dada')))
+    return flist    
+
+
 class DadaFileReadBlock(bfp.SourceBlock):
     def __init__(self, filename, header_callback, gulp_nframe,  *args, **kwargs):
         super(DadaFileReadBlock, self).__init__(filename, gulp_nframe, *args, **kwargs)
         self.header_callback = header_callback
 
     def create_reader(self, filename):
-        print(filename)
-        # Do a lookup on bifrost datatype to numpy datatype
-        return DadaFileRead(filename, self.header_callback)
+       flist = generate_dada_filelist(filename)
+       return DadaFileRead(flist, self.header_callback)
 
     def on_sequence(self, ireader, filename):
         ohdr = ireader.header
