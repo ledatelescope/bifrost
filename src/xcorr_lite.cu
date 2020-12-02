@@ -67,14 +67,12 @@ extern "C" {
 
     // Data array should be (heap H, frequency F, antenna N, fine_time T)
     __global__ void xcorrDp4aKernel
-        (int *data, float *xcorr, int H, int F, int N, int T, int reset)
+        (const __restrict__ int *data, float *xcorr, int H, int N, int T, int reset)
         {
-        int x, y;
-        int idx, ia, ib;
-
         // Setup thread indexes
-        x = blockIdx.x * blockDim.x + threadIdx.x;
-        y = blockIdx.y * blockDim.y + threadIdx.y;
+        const int x = blockIdx.x * blockDim.x + threadIdx.x;
+        const int y = blockIdx.y * blockDim.y + threadIdx.y;
+        // note that F(nchan) is gridDim.z
         
         // Only run if antenna IDs X and Y are < N_antenna (N)
         if (x < N && y < N) {
@@ -82,36 +80,40 @@ extern "C" {
             // Loop over heap (H)
             for (int h = 0; h < H; h++) {
 
-                int chan_offset_in  = blockIdx.z * N * T/2;
                 int chan_offset_out = blockIdx.z * N * N * 2;
                 int ant_offset      = T / 2;  //x2 for complex, but /4 for packed
-                int heap_offset     = h * F * N * T/2;
-                int heap_offset_out = h * F * N * N * 2;
+                int heap_offset_out = h * gridDim.z * N * N * 2;
 
+                //                        heap_offset              +  chan_offset
+                int heapchan_offset_in = (h * gridDim.z * N * T/2) + (blockIdx.z * N * T/2);
+                
                 int xy_real = 0;
                 int xy_imag = 0;
-                idx = 2*y + N*2*x + chan_offset_out + heap_offset_out; // Compute index for output array
+                const int idx = 2*y + N*2*x + chan_offset_out + heap_offset_out; // Compute index for output array
                 
                 // Note -- using dp4a must be careful of bit growth.
                 // output of each 8-bit dot product is 16 bits
                 // Adding 4x 16-bit numbers = 18-bit number
                 // accumulator is only 32 bits, so using 18 of 32 bits.
                 // Max 14 bits of growth = 2^14 = 4096 integrations
-                for (int t = 0; t < T/2; t++) {
-                    if (t == 0 && reset != 0) {
-                        xcorr[idx]   = 0;
-                        xcorr[idx+1] = 0;
-                    }
-                    ia  = heap_offset + ant_offset*x + chan_offset_in + t;
-                    ib  = heap_offset + ant_offset*y + chan_offset_in + t;
                 
-                    //printf("idx %d | x%d.y%d | A %dx%d\\n", idx, x, y, ia, ib);
-                    //cmult_dp4a(xcorr[idx], xcorr[idx+1], data[ia], data[ib]);
-                    cmult_dp4a(xy_real, xy_imag, data[ia], data[ib]);
+                const int ia  = heapchan_offset_in + ant_offset*x;
+                const int ib  = heapchan_offset_in + ant_offset*y;
+               
+                for (int t = 0; t < T/2; t++) {         
+                    //printf("idx %d | x%d.y%d | A %dx%d\\n", idx, x, y, ia + t, ib + t);
+                    //cmult_dp4a(xcorr[idx], xcorr[idx+1], data[ia + t], data[ib + t]);
+                    cmult_dp4a(xy_real, xy_imag, data[ia + t], data[ib + t]);
                 }
+            
                 // Copy xy* result to device mem
-                xcorr[idx]   += (float) xy_real;
-                xcorr[idx+1] += (float) xy_imag;
+                if (reset != 0) {
+                    xcorr[idx]   = (float) xy_real;
+                    xcorr[idx+1] = (float) xy_imag;
+                } else {
+                    xcorr[idx]   += (float) xy_real;
+                    xcorr[idx+1] += (float) xy_imag;
+                }
               } // Loop over heap (H)
            } // if x <= N and y <= N
         }
@@ -140,7 +142,7 @@ extern "C" {
          block.y, block.z, grid.x, grid.y, grid.z);
 #endif
          int shm = 0;
-        xcorrDp4aKernel<<< grid, block, shm, g_cuda_stream >>>(data, xcorr, H, F, N, T, reset);
+        xcorrDp4aKernel<<< grid, block, shm, g_cuda_stream >>>(data, xcorr, H, N, T, reset);
     }
         
 
