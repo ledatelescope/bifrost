@@ -67,7 +67,7 @@ extern "C" {
 
     // Data array should be (heap H, frequency F, antenna N, fine_time T)
     __global__ void xcorrDp4aKernel
-        (const __restrict__ int *data, float *xcorr, int H, int N, int T, int reset)
+        (int *data, float *xcorr, int H, int N, int T, int reset)
         {
         // Setup thread indexes
         const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -115,7 +115,7 @@ extern "C" {
                     xcorr[idx+1] += (float) xy_imag;
                 }
               } // Loop over heap (H)
-           } // if x <= N and y <= N
+           } // if x < N and y < N
         }
         
     void launch_xcorr_lite(int *data, float *xcorr, int H, int F, int N, int T, int reset) {

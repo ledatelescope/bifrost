@@ -72,5 +72,9 @@ def test_multi_accumulate(H, N, F, T, n_cycles):
 
 if __name__ == "__main__":
     test_xcorr(H=7, N=12, F=320, T=1024)
-    test_multi_accumulate(H=3, N=12, F=1, T=1024, n_cycles=4)
+    #test_xcorr(H=7, N=32, F=1, T=1024)
+    #test_xcorr(H=7, N=12, F=1, T=1024)
+    #test_xcorr(H=7, N=12, F=17, T=1024)
+    
+    #test_multi_accumulate(H=3, N=12, F=1, T=1024, n_cycles=4)
 

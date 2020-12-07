@@ -53,7 +53,7 @@ class CorrelateDp4aBlock(bf.pipeline.TransformBlock):
         try:
             assert(itensor['labels'] == ['time', 'freq', 'station', 'fine_time'])
             assert(itensor['dtype'] == 'ci8')
-            assert(itensor['shape'][2] <= 32)   # This kernel only works if N<=32 
+            assert(itensor['shape'][2] <= 1024) 
             if self.nframe_to_avg > 1:
                 assert(ihdr['gulp_nframe'] == 1)
         except AssertionError:
