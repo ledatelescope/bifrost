@@ -6,7 +6,8 @@
  * ninputs: Number of inputs (single-polarization) to the beamformer
  * nchans: Number of frequency channels
  * ntimes: Number of time samples per beamforming call
- * nbeams: Number of beams to generate. If using ntime_blocks > 0, beams=N will deliver
+ * nbeams: Number of beams to generate. If using ntime_blocks > 0, beams=N will deliver N/2 beams.
+ *         (See bfBeamformRun)
  * ntime_blocks: Number of time blocks to output. Eg. if ntimes=1000 and ntime_blocks=10, the beamformer
                  will integrate over 100 samples per call. Set to 0 for no accumulation, in which case
                  raw beam voltages are output.
