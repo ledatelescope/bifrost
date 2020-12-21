@@ -367,18 +367,20 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_chips_impl(writer, nsamples),
                            *obj = 0);
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam2_") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<2>(writer, nsamples),
+#define MATCH_IBEAM_MODE(NBEAM) \
+    } else if( std::string(format).substr(0, 7) == std::string("ibeam"#NBEAM"_") ) { \
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<NBEAM>(writer, nsamples), \
                            *obj = 0);
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam3_") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<3>(writer, nsamples),
+    MATCH_IBEAM_MODE(2)
+    MATCH_IBEAM_MODE(3)
+    MATCH_IBEAM_MODE(4)
+#undef MATCH_IBEAM_MODE
+#define MATCH_PBEAM_MODE(NBEAM) \
+    } else if( std::string(format).substr(0, 7) == std::string("pbeam"#NBEAM"_") ) { \
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_pbeam_impl<NBEAM>(writer, nsamples), \
                            *obj = 0);
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam4_") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<4>(writer, nsamples),
-                           *obj = 0);
-    } else if( std::string(format).substr(0, 7) == std::string("pbeam1_") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_pbeam_impl<1>(writer, nsamples),
-                           *obj = 0);
+    MATCH_PBEAM_MODE(1)
+#undef MATCH_PBEAM_MODE
     } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_cor_impl(writer, nsamples),
                            *obj = 0);

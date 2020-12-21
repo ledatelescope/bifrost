@@ -1170,21 +1170,16 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                                                  buffer_ntime, slot_ntime,
                                                                  sequence_callback),
                            *obj = 0);
-    } else if( std::string(format).substr(0, 6) == std::string("ibeam2") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_ibeam_impl<2>(capture, ring, nsrc, src0,
-                                                                    buffer_ntime, slot_ntime,
-                                                                    sequence_callback),
+#define MATCH_IBEAM_MODE(NBEAM) \
+    } else if( std::string(format).substr(0, 6) == std::string("ibeam"#NBEAM) ) { \
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_ibeam_impl<NBEAM>(capture, ring, nsrc, src0, \
+                                                                        buffer_ntime, slot_ntime, \
+                                                                        sequence_callback), \
                            *obj = 0);
-    } else if( std::string(format).substr(0, 6) == std::string("ibeam3") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_ibeam_impl<3>(capture, ring, nsrc, src0,
-                                                                    buffer_ntime, slot_ntime,
-                                                                    sequence_callback),
-                           *obj = 0);
-    } else if( std::string(format).substr(0, 6) == std::string("ibeam4") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_ibeam_impl<4>(capture, ring, nsrc, src0,
-                                                                    buffer_ntime, slot_ntime,
-                                                                    sequence_callback),
-                           *obj = 0);
+    MATCH_IBEAM_MODE(2)
+    MATCH_IBEAM_MODE(3)
+    MATCH_IBEAM_MODE(4)
+#undef MATCH_IBEAM_MODE
     } else if( std::string(format).substr(0, 5) == std::string("pbeam") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_pbeam_impl(capture, ring, nsrc, src0,
                                                                  buffer_ntime, slot_ntime,
