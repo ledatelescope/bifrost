@@ -65,8 +65,8 @@ public:
 	    pkt->seq   = be64toh(pkt_hdr->seq)  - 1;
 	    //pkt->nsrc  =         pkt_hdr->nserver;
 	    pkt->nsrc  =         _nsrc;
-	    pkt->src   =         (pkt_hdr->beam - _src0) * pkt->hdr_nserver + (pkt_hdr->server - 1);
-			pkt->beam  =         pkt_hdr->beam;
+	    pkt->src   =         (pkt_hdr->beam - _src0) * pkt_hdr->nserver + (pkt_hdr->server - 1);
+			pkt->beam  =         pkt_hdr->nbeam;
 	    pkt->nchan =         pkt_hdr->nchan;
 	    pkt->chan0 =   ntohs(pkt_hdr->chan0) - pkt->nchan * pkt->src;
 	    pkt->payload_size = pld_size;
@@ -108,10 +108,9 @@ public:
 	    int beam_server = pkt->src;
 	    int nchan = pkt->nchan;
 	    
-	    int chan, beam;
+	    int chan;
 	    for(chan=0; chan<nchan; ++chan ) {
 		    ::memcpy(&out[beam_server*nchan + chan], &in[chan], sizeof(otype));
-		    }
 	    }
     }
 
