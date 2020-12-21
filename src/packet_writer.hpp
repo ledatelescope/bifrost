@@ -272,6 +272,20 @@ public:
     }
 };
 
+template<uint8_t B>
+class BFpacketwriter_pbeam_impl : public BFpacketwriter_impl {
+    uint8_t            _nbeam = B;
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_pbeam_impl(PacketWriterThread* writer,
+                                     int                 nsamples)
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_F32),
+          _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new PBeamHeaderFiller<B>();
+        _type_log.update("type : %s%i\n", "pbeam", _nbeam);
+    }
+};
+
 class BFpacketwriter_cor_impl : public BFpacketwriter_impl {
     ProcLog            _type_log;
 public:
@@ -334,7 +348,7 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
         int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
         nsamples = 32*nchan;
     } else if( std::string(format).substr(0, 5) == std::string("ibeam") ) {
-        int nbeam = std::stoi(std::string(format).stdstr(5, 1));
+        int nbeam = std::stoi(std::string(format).substr(5, 1));
         int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
         nsamples = 2*nbeam*nchan;
     } else if( std::string(format).substr(0, 7) == std::string("pbeam") ) {

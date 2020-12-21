@@ -709,6 +709,7 @@ public:
 };
 
 class BFpacketcapture_pbeam_impl : public BFpacketcapture_impl {
+    uint8_t            _nbeam;
     ProcLog            _type_log;
     ProcLog            _chan_log;
     
@@ -1125,7 +1126,7 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
     } else if( std::string(format).substr(0, 5) == std::string("ibeam") ) {
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
-            int nbeam = std::atoi((std::string(format).substr(5, 1).c_str());
+            int nbeam = std::atoi((std::string(format).substr(5, 1).c_str()));
             int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
             max_payload_size = sizeof(ibeam_hdr_type) + 64*2*nbeam*nchan;
         }
