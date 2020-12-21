@@ -44,6 +44,10 @@ class PacketCaptureCallback(BifrostObject):
         self._ref_cache['ibeam'] = _bf.BFpacketcapture_ibeam_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetIBeam(
                self.obj, self._ref_cache['ibeam']))
+    def set_pbeam(self, fnc):
+        self._ref_cache['pbeam'] = _bf.BFpacketcapture_pbeam_sequence_callback(fnc)
+        _check(_bf.bfPacketCaptureCallbackSetPBeam(
+               self.obj, self._ref_cache['pbeam']))
     def set_cor(self, fnc):
         self._ref_cache['cor'] = _bf.BFpacketcapture_cor_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetCOR(
