@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -333,15 +333,13 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
         nsamples = 32*nchan;
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam2_") ) {
+    } else if( std::string(format).substr(0, 5) == std::string("ibeam") ) {
+        int nbeam = std::stoi(std::string(format).stdstr(5, 1));
         int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
-        nsamples = 2*2*nchan;
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam3_") ) {
+        nsamples = 2*nbeam*nchan;
+    } else if( std::string(format).substr(0, 7) == std::string("pbeam") ) {
         int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
-        nsamples = 2*3*nchan;
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam4_") ) {
-        int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
-        nsamples = 2*4*nchan;
+        nsamples = 4*nchan;
     } else if(std::string(format).substr(0, 4) == std::string("cor_") ) {
         int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
         nsamples = 4*nchan;
@@ -377,6 +375,9 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
                            *obj = 0);
     } else if( std::string(format).substr(0, 7) == std::string("ibeam4_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<4>(writer, nsamples),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 7) == std::string("pbeam1_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_pbeam_impl<1>(writer, nsamples),
                            *obj = 0);
     } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_cor_impl(writer, nsamples),
