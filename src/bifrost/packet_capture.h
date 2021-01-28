@@ -33,6 +33,7 @@
 extern "C" {
 #endif
 
+#inclue <bifrost/io.h>
 #include <bifrost/ring.h>
 
 // Callback setup
