@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#inclue <bifrost/io.h>
+#include <bifrost/io.h>
 #include <bifrost/ring.h>
 
 // Callback setup
