@@ -376,7 +376,7 @@ public:
     inline void set_pbeam(BFpacketcapture_pbeam_sequence_callback callback) {
         _pbeam_callback = callback;
     }
-    inline BFpacketcapture_ibeam_sequence_callback get_pbeam() {
+    inline BFpacketcapture_pbeam_sequence_callback get_pbeam() {
         return _pbeam_callback;
     }
     inline void set_cor(BFpacketcapture_cor_sequence_callback callback) {
