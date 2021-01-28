@@ -351,7 +351,7 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
         int nbeam = std::stoi(std::string(format).substr(5, 1));
         int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
         nsamples = 2*nbeam*nchan;
-    } else if( std::string(format).substr(0, 7) == std::string("pbeam") ) {
+    } else if( std::string(format).substr(0, 5) == std::string("pbeam") ) {
         int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
         nsamples = 4*nchan;
     } else if(std::string(format).substr(0, 4) == std::string("cor_") ) {
