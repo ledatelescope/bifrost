@@ -720,8 +720,7 @@ class BFpacketcapture_pbeam_impl : public BFpacketcapture_impl {
         // TODO: Might be safer to round to nearest here, but the current firmware
         //         always starts things ~3 seq's before the 1sec boundary anyway.
         //seq = round_up(pkt->seq, _slot_ntime);
-        //*_seq          = round_nearest(pkt->seq, _slot_ntime);
-        _seq          = round_up(pkt->seq, _slot_ntime);
+        _seq          = round_nearest(pkt->seq, _slot_ntime);
         this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
     }
     void on_sequence_active(const PacketDesc* pkt) {
@@ -739,6 +738,7 @@ class BFpacketcapture_pbeam_impl : public BFpacketcapture_impl {
     }
     void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
         *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+        *time_tag = pkt->time_tag;
         _chan0 = pkt->chan0;
         _nchan = pkt->nchan;
         _nbeam = pkt->beam;
