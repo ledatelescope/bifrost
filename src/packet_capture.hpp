@@ -710,6 +710,7 @@ public:
 
 class BFpacketcapture_pbeam_impl : public BFpacketcapture_impl {
     uint8_t            _nbeam;
+    uint8_t            _navg;
     ProcLog            _type_log;
     ProcLog            _chan_log;
     
@@ -733,18 +734,21 @@ class BFpacketcapture_pbeam_impl : public BFpacketcapture_impl {
     }
     inline bool has_sequence_changed(const PacketDesc* pkt) {
         return (pkt->chan0 != _chan0) \
-               || (pkt->nchan != _nchan);
+               || (pkt->nchan != _nchan) \
+               || (pkt->decimation != _navg);
     }
     void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
         *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
         _chan0 = pkt->chan0;
         _nchan = pkt->nchan;
         _nbeam = pkt->beam;
+        _navg  = pkt->decimation;
         _payload_size = pkt->payload_size;
         
         if( _sequence_callback ) {
             int status = (*_sequence_callback)(*seq0,
                                                *time_tag,
+                                               _navg,
                                                _chan0,
                                                _nchan*_nsrc/_nbeam,
                                                _nbeam,
@@ -764,6 +768,7 @@ class BFpacketcapture_pbeam_impl : public BFpacketcapture_impl {
         _chan_log.update() << "chan0        : " << _chan0 << "\n"
                            << "nchan        : " << _nchan << "\n"
                            << "nbeam        : " << _nbeam << "\n"
+                           << "navg         : " << _navg << "\n"
                            << "payload_size : " << _payload_size << "\n";
     }
 public:

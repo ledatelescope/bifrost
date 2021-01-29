@@ -41,6 +41,7 @@ struct pbeam_hdr_type {
 	uint8_t  nbeam;    // 2
 	uint8_t  nserver;  // 6
 	// Note: Big endian
+	uint16_t navg;     // Number of raw spectra averaged
 	uint16_t chan0;    // First chan in packet
 	uint64_t seq;      // Note: 1-based
 };
@@ -62,7 +63,8 @@ public:
 	    const pbeam_hdr_type* pkt_hdr  = (pbeam_hdr_type*)pkt_ptr;
 	    const uint8_t*        pkt_pld  = pkt_ptr  + sizeof(pbeam_hdr_type);
 	    int                   pld_size = pkt_size - sizeof(pbeam_hdr_type);
-	    pkt->seq   = be64toh(pkt_hdr->seq)  - 1;
+	    pkt->decimation   = be16toh(pkt_hdr->navg);
+	    pkt->seq   = (be64toh(pkt_hdr->seq)  - 1) / pkt->decimation;
 	    //pkt->nsrc  =         pkt_hdr->nserver;
 	    pkt->nsrc  =         _nsrc;
 	    pkt->src   =         (pkt_hdr->beam - _src0) * pkt_hdr->nserver + (pkt_hdr->server - 1);
@@ -148,6 +150,7 @@ public:
         header->nchan    = hdr_base->nchan;
         header->nbeam    = _nbeam;
         header->nserver  = nserver;
+        header->navg     = htons(hdr_base->decimation);
         header->chan0    = htons(hdr_base->chan0);
         header->seq      = htobe64(hdr_base->seq);
     }
