@@ -30,6 +30,8 @@
 from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
 import ctypes
+from functools import reduce
+
 
 class PacketCaptureCallback(BifrostObject):
     _ref_cache = {}
@@ -66,6 +68,13 @@ class PacketCaptureCallback(BifrostObject):
             self.obj, self._ref_cache['drx']))
 
 class _CaptureBase(BifrostObject):
+    @staticmethod
+    def _flatten_value(value):
+        try:
+            value = reduce(lambda x,y: x*y, value, 1 if value else 0)
+        except TypeError:
+            pass
+        return value
     def __enter__(self):
         return self
     def __exit__(self, type, value, tb):
@@ -87,6 +96,7 @@ class UDPCapture(_CaptureBase):
         except AttributeError:
             # Python2 catch
             pass
+        nsrc = self._flatten_value(nsrc)
         if core is None:
             core = -1
         BifrostObject.__init__(
@@ -98,6 +108,12 @@ class UDPCapture(_CaptureBase):
 class UDPSniffer(_CaptureBase):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
                  buffer_ntime, slot_ntime, sequence_callback, core=None):
+        try:
+            fmt = fmt.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
+        nsrc = self._flatten_value(nsrc)
         if core is None:
             core = -1
         BifrostObject.__init__(
@@ -109,6 +125,12 @@ class UDPSniffer(_CaptureBase):
 class DiskReader(_CaptureBase):
     def __init__(self, fmt, fh, ring, nsrc, src0,
                  buffer_nframe, slot_nframe, sequence_callback, core=None):
+        try:
+            fmt = fmt.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
+        nsrc = self._flatten_value(nsrc)
         if core is None:
             core = -1
         BifrostObject.__init__(
