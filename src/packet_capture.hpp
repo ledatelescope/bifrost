@@ -744,10 +744,10 @@ class BFpacketcapture_pbeam_impl : public BFpacketcapture_impl {
         
         if( _sequence_callback ) {
             int status = (*_sequence_callback)(*seq0,
+                                               *time_tag,
                                                _chan0,
                                                _nchan*_nsrc/_nbeam,
                                                _nbeam,
-                                               time_tag,
                                                hdr,
                                                hdr_size);
             if( status != 0 ) {
@@ -1121,20 +1121,20 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
             int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
-            max_payload_size = sizeof(chips_hdr_type) + 32*nchan;
+            max_payload_size = sizeof(chips_hdr_type) + (4*nchan);
         }
     } else if( std::string(format).substr(0, 5) == std::string("ibeam") ) {
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
             int nbeam = std::atoi((std::string(format).substr(5, 1).c_str()));
             int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
-            max_payload_size = sizeof(ibeam_hdr_type) + 64*2*nbeam*nchan;
+            max_payload_size = sizeof(ibeam_hdr_type) + (8*2*nbeam*nchan);
         }
     } else if( std::string(format).substr(0, 5) == std::string("pbeam") ) {
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
-            int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
-            max_payload_size = sizeof(pbeam_hdr_type) + 32*4*nchan;
+            int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
+            max_payload_size = sizeof(pbeam_hdr_type) + (4*4*nchan);
         }
     } else if(std::string(format).substr(0, 3) == std::string("cor") ) {
         if( backend == BF_IO_DISK ) {
