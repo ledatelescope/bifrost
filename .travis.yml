@@ -27,7 +27,7 @@ addons:
 jobs:
     include:
         - stage: docker and deploy docs
-          python: 2.7
+          python: 3.6
           script:
             - make docker-cpu
             - make docker
