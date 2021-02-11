@@ -54,16 +54,16 @@ __global__ void trans_output_and_sum(float *in,
   int chan = blockIdx.x;
   int beam = blockIdx.y;
   int time = threadIdx.x;
-  long long int old_index = chan*n_beam*n_time*2 + beam*n_time*2 + time*n_time_sum; // start index for n_time/n_time_sum samples
+  long long int old_index = chan*n_beam*n_time*2 + beam*n_time*2 + time*n_time_sum*2; // start index for n_time/n_time_sum samples
   long long int new_index = beam*(n_time / n_time_sum)*n_chan + time*n_chan + chan;
   float xx=0., yy=0., xy_r=0., xy_i=0.;
   float x_r, x_i, y_r, y_i;
   int t;
   for (t=0; t<n_time_sum; t++) {
-    x_r = in[2*old_index + 2*t];
-    x_i = in[2*old_index + 2*t + 1];
-    y_r = in[2*old_index + n_time + 2*t];
-    y_i = in[2*old_index + n_time + 2*t + 1];
+    x_r = in[old_index + 2*t];
+    x_i = in[old_index + 2*t + 1];
+    y_r = in[old_index + 2*n_time + 2*t];
+    y_i = in[old_index + 2*n_time + 2*t + 1];
     xx = xx + x_r*x_r + x_i*x_i;
     yy = yy + y_r*y_r + y_i*y_i;
     xy_r = xy_r + x_r*y_r + x_i*y_i;
@@ -73,6 +73,42 @@ __global__ void trans_output_and_sum(float *in,
   out[4*new_index+1] = yy;
   out[4*new_index+2] = xy_r;
   out[4*new_index+3] = xy_i;
+}
+
+// Take an input of order chan x beam x pol x time x 32+32 float and generate
+// a single beam of time[part-summed] x chan x [XX,YY,XY*_r,XY*_i] x 32 float
+// Each thread deals with two pols of a beam (beam_index and beam_index+1)
+// and sums over n_time_sum time samples
+__global__ void trans_output_and_sum_single_beam(float *in,
+                                                 float *out,
+                                                 int n_chan,
+                                                 int n_beam,
+                                                 int n_time,
+                                                 int n_time_sum,
+                                                 int beam_index
+                                                ) {
+  int chan = blockIdx.x;
+  int beam = beam_index;
+  int time = threadIdx.x;
+  long long int old_index = chan*n_beam*n_time*2 + beam*n_time*2 + time*n_time_sum*2; // start index for n_time/n_time_sum samples
+  long long int new_index = time*n_chan*4 + chan*4;
+  float xx=0., yy=0., xy_r=0., xy_i=0.;
+  float x_r, x_i, y_r, y_i;
+  int t;
+  for (t=0; t<n_time_sum; t++) {
+    x_r = in[old_index + 2*t];
+    x_i = in[old_index + 2*t + 1];
+    y_r = in[old_index + 2*n_time + 2*t];
+    y_i = in[old_index + 2*n_time + 2*t + 1];
+    xx = xx + x_r*x_r + x_i*x_i;
+    yy = yy + y_r*y_r + y_i*y_i;
+    xy_r = xy_r + x_r*y_r + x_i*y_i;
+    xy_i = xy_i + x_i*y_r - x_r*y_i;
+  }
+  out[new_index] = xx;
+  out[new_index+1] = yy;
+  out[new_index+2] = xy_r;
+  out[new_index+3] = xy_i;
 }
 
 __global__ void complex2pow(float *in, float *out, int N) {
@@ -126,11 +162,11 @@ struct beamform_context {
   cublasHandle_t handle;
   cudaStream_t stream;
   // GPU buffers for intermediate data products
-  float *in32_d; // Reordered, floatified 4-bit input data
-  float *out_d;  // CUBLAS beamformer output
+  float *in32_d; // Reordered [to inputs x chans x times x complexity], floatified 4-bit input data
+  float *out_d;  // CUBLAS beamformer output [ntime x nchan x nbeam x complexity]
   float *weights_d; // Beamformer coefficients
   unsigned char *in4_d;     // 4-bit input data
-  float *sum_out_d; // Time-summed output data
+  float *sum_out_d; // Time-summed output data, used only if ntimeblocks > 0
   int ninputs;   // Number of inputs (ants * pols)
   int npols;     // Number of polarizations per antenna
   int nchans;    // Number of channels input
@@ -167,7 +203,7 @@ void cublas_beamform_init(int device, int ninputs, int nchans, int ntimes, int n
   // Internally allocate intermediate buffers
   gpuErrchk( cudaMalloc(&context.in32_d,  ninputs * nchans * ntimes * 2 * sizeof(float)) );
   // If the context is initialized with ntimeblocks=0, then we do no summing so don't
-  // need the intermediate buffer
+  // need the intermediate buffer allocated internally.
   if (ntimeblocks > 0) {
     gpuErrchk( cudaMalloc(&context.out_d,   ntimes * nchans * nbeams * 2 * sizeof(float)) );
   }
@@ -188,7 +224,7 @@ void cublas_beamform(unsigned char *in4_d, float *out_d, float *weights_d) {
   cudaStreamSynchronize(context.stream);
 
   // If we are integrating beam powers, put the
-  // GEM output in the context-defined intermediate
+  // GEM output in the internal intermediate
   // buffer. If not, then write beamformer output
   // to the address given by the user.
   float *gem_out_d;
@@ -242,6 +278,7 @@ void cublas_beamform(unsigned char *in4_d, float *out_d, float *weights_d) {
   if (context.ntimeblocks > 0) {
     // Create XX, YY, XY beam powers.
     // Sum over `ntimes_sum` samples
+    // Write to the user-provided output buffer
     int ntimes_sum = context.ntimes / context.ntimeblocks;
     dim3 sumBlockGrid(context.nchans, context.nbeams/2);
     dim3 sumThreadGrid(context.ntimes / ntimes_sum);
@@ -257,13 +294,12 @@ void cublas_beamform(unsigned char *in4_d, float *out_d, float *weights_d) {
   }
 }
 
-void cublas_beamform_integrate(float *in_d, float *out_d) {
+void cublas_beamform_integrate(float *in_d, float *out_d, int ntimes_sum) {
   // Create XX, YY, XY beam powers.
   // Sum over `ntimes_sum` samples
-  int ntimes_sum = context.ntimes / context.ntimeblocks;
   dim3 sumBlockGrid(context.nchans, context.nbeams/2);
   dim3 sumThreadGrid(context.ntimes / ntimes_sum);
-  trans_output_and_sum<<<sumBlockGrid, sumThreadGrid, 0, context.stream>>>(
+  trans_output_and_sum<<<sumBlockGrid, sumThreadGrid>>>(
     in_d,
     out_d,
     context.nchans,
@@ -271,5 +307,20 @@ void cublas_beamform_integrate(float *in_d, float *out_d) {
     context.ntimes,
     ntimes_sum
   );
-  cudaStreamSynchronize(context.stream);
+}
+
+void cublas_beamform_integrate_single_beam(float *in_d, float *out_d, int ntimes_sum, int beam_index) {
+  // Create XX, YY, XY beam powers.
+  // Sum over `ntimes_sum` samples
+  dim3 sumBlockGrid(context.nchans);
+  dim3 sumThreadGrid(context.ntimes / ntimes_sum);
+  trans_output_and_sum_single_beam<<<sumBlockGrid, sumThreadGrid>>>(
+    in_d,
+    out_d,
+    context.nchans,
+    context.nbeams/2,
+    context.ntimes,
+    ntimes_sum,
+    beam_index
+  );
 }

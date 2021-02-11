@@ -112,8 +112,11 @@ class Ring(BifrostObject):
     def read(self, whence='earliest', guarantee=True):
         with ReadSequence(self, which=whence, guarantee=guarantee) as cur_seq:
             while True:
-                yield cur_seq
-                cur_seq.increment()
+                try:
+                    yield cur_seq
+                    cur_seq.increment()
+                except StopIteration:
+                    return
     #def _data(self):
     #    data_ptr = _get(self.lib.bfRingLockedGetData, self.obj)
     #    #data_ptr = c_void_p()
@@ -273,9 +276,12 @@ class ReadSequence(SequenceBase):
             stride = span_size
         offset = begin
         while True:
-            with self.acquire(offset, span_size) as ispan:
-                yield ispan
-            offset += stride
+            try:
+                with self.acquire(offset, span_size) as ispan:
+                    yield ispan
+                offset += stride
+            except StopIteration:
+                return
 
 class SpanBase(object):
     def __init__(self, ring, writeable):

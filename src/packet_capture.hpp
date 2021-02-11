@@ -664,6 +664,7 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
 	ProcLog            _type_log;
 	ProcLog            _chan_log;
     BFoffset           _last_seq;
+    BFoffset           _last_time_tag;
 	
 	BFpacketcapture_snap2_sequence_callback _sequence_callback;
 	
@@ -685,7 +686,7 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
         // packet isn't from the next block
         // TODO. Is this actually reasonable? Does it recover from upstream resyncs?
         bool is_new_seq = false;
-        if ( pkt->seq != _last_seq + _slot_ntime ) {
+        if ( (_last_time_tag != pkt->time_tag) || (pkt->seq != _last_seq + _slot_ntime) ) {
             is_new_seq = true;
             this->flush();
         }
@@ -694,8 +695,9 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 		_seq          = round_up(pkt->seq, _slot_ntime);
-        fprintf(stderr, "New seq start is %d based on pkt->seq %d\n", _seq, (int)pkt->seq);
-        _last_seq     = _seq;
+        *time_tag      = (BFoffset) pkt->time_tag;
+        _last_time_tag = pkt->time_tag;
+        _last_seq      = _seq;
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
         _chan0 = pkt->chan0;
         _nchan = pkt->nchan;

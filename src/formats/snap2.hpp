@@ -33,8 +33,6 @@
 #include <immintrin.h> // SSE
 #include <emmintrin.h>
 
-#define SNAP2_HEADER_MAGIC 0xaabbccdd
-
 // TODO: parameterize somewhere. This isn't
 // related to the packet formatting
 #define PIPELINE_NPOL 704
@@ -44,9 +42,9 @@
 // All entries are network (i.e. big) endian
 struct snap2_hdr_type {
         uint64_t  seq;       // Spectra counter == packet counter
-        uint32_t  magic;     // = 0xaabbccdd
+        uint32_t  sync_time; // UNIX sync time
         uint16_t  npol;      // Number of pols in this packet
-        uint16_t  npol_tot;      // Number of pols total
+        uint16_t  npol_tot;  // Number of pols total
         uint16_t  nchan;     // Number of channels in this packet
         uint16_t  nchan_tot;     // Number of channels total (for this pipeline)
         uint32_t  chan_block_id; // ID of this block of chans
@@ -92,21 +90,19 @@ public:
         const snap2_hdr_type* pkt_hdr  = (snap2_hdr_type*)pkt_ptr;
         const uint8_t*        pkt_pld  = pkt_ptr  + sizeof(snap2_hdr_type);
         int                   pld_size = pkt_size - sizeof(snap2_hdr_type);
-        if( be32toh(pkt_hdr->magic) != SNAP2_HEADER_MAGIC ) {
-            return false;
-        }
         pkt->seq   = be64toh(pkt_hdr->seq);
+        pkt->time_tag = be32toh(pkt_hdr->sync_time);
         int npol_blocks  = (be16toh(pkt_hdr->npol_tot) / be16toh(pkt_hdr->npol));
         int nchan_blocks = (be16toh(pkt_hdr->nchan_tot) / be16toh(pkt_hdr->nchan));
 
         pkt->nsrc = npol_blocks * nchan_blocks;// _nsrc;
-        pkt->src = (npol_blocks * be16toh(pkt_hdr->chan_block_id)) +  (be16toh(pkt_hdr->npol_tot) / be16toh(pkt_hdr->npol));
         pkt->nchan  = be16toh(pkt_hdr->nchan);
         pkt->chan0  = be32toh(pkt_hdr->chan_block_id) * be16toh(pkt_hdr->nchan);
         pkt->nchan_tot  = be16toh(pkt_hdr->nchan_tot);
         pkt->npol  = be16toh(pkt_hdr->npol);
         pkt->npol_tot  = be16toh(pkt_hdr->npol_tot);
         pkt->pol0  = be32toh(pkt_hdr->pol0);
+        pkt->src = (pkt->pol0 / pkt->npol) + be32toh(pkt_hdr->chan_block_id) * npol_blocks;
         pkt->payload_size = pld_size;
         pkt->payload_ptr  = pkt_pld;
         return this->valid_packet(pkt);
@@ -157,6 +153,9 @@ public:
             uint64_t *in64 = (uint64_t *)in;
             int c;
             dest_p = (__m256i *)(out + (words_per_chan_out * (pkt_chan)) + pol_offset_out);
+            //if((pol_offset_out == 0) && (pkt_chan==0) && ((pkt->seq % 120)==0) ){
+            //   fprintf(stderr, "nsrc: %d seq: %d, dest_p: %p obuf idx %d, obuf offset %lu, nseq_per_obuf %d, seq0 %d, nbuf: %d\n", pkt->nsrc, pkt->seq, dest_p, obuf_idx, obuf_offset, nseq_per_obuf, seq0, nbuf);
+            //}
             for(c=0; c<pkt->nchan; c++) {
                vecbuf[0] = _mm256_set_epi64x(in64[3], in64[2], in64[1], in64[0]);
                vecbuf[1] = _mm256_set_epi64x(in64[7], in64[6], in64[5], in64[4]);
@@ -172,14 +171,16 @@ public:
                                      int      nsrc,
                                      int      nchan,
                                      int      nseq) {
-            typedef aligned256_type otype;
-            otype* __restrict__ aligned_data = (otype*)data;
-            for( int t=0; t<nseq; ++t ) {
-                    for( int c=0; c<nchan; ++c ) {
-                            ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
-                                     0, sizeof(otype));
-                    }
-            }
+            fprintf(stderr, "TRYING TO BLANK OUT A SOURCE WITH MISSING PACKETS. BUT BLANKING NOT IMPLEMENTED\n");
+            //typedef aligned256_type otype;
+            //fprintf(stderr, "You really better not be here\n");
+            //otype* __restrict__ aligned_data = (otype*)data;
+            //for( int t=0; t<nseq; ++t ) {
+            //        for( int c=0; c<nchan; ++c ) {
+            //                ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
+            //                         0, sizeof(otype));
+            //        }
+            //}
     }
 };
 
