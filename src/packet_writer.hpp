@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -272,6 +272,20 @@ public:
     }
 };
 
+template<uint8_t B>
+class BFpacketwriter_pbeam_impl : public BFpacketwriter_impl {
+    uint8_t            _nbeam = B;
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_pbeam_impl(PacketWriterThread* writer,
+                                     int                 nsamples)
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_F32),
+          _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new PBeamHeaderFiller<B>();
+        _type_log.update("type : %s%i\n", "pbeam", _nbeam);
+    }
+};
+
 class BFpacketwriter_cor_impl : public BFpacketwriter_impl {
     ProcLog            _type_log;
 public:
@@ -333,15 +347,13 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
         nsamples = 32*nchan;
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam2_") ) {
+    } else if( std::string(format).substr(0, 5) == std::string("ibeam") ) {
+        int nbeam = std::stoi(std::string(format).substr(5, 1));
         int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
-        nsamples = 2*2*nchan;
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam3_") ) {
+        nsamples = 2*nbeam*nchan;
+    } else if( std::string(format).substr(0, 5) == std::string("pbeam") ) {
         int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
-        nsamples = 2*3*nchan;
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam4_") ) {
-        int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
-        nsamples = 2*4*nchan;
+        nsamples = 4*nchan;
     } else if(std::string(format).substr(0, 4) == std::string("cor_") ) {
         int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
         nsamples = 4*nchan;
@@ -369,15 +381,20 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_chips_impl(writer, nsamples),
                            *obj = 0);
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam2_") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<2>(writer, nsamples),
+#define MATCH_IBEAM_MODE(NBEAM) \
+    } else if( std::string(format).substr(0, 7) == std::string("ibeam"#NBEAM"_") ) { \
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<NBEAM>(writer, nsamples), \
                            *obj = 0);
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam3_") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<3>(writer, nsamples),
+    MATCH_IBEAM_MODE(2)
+    MATCH_IBEAM_MODE(3)
+    MATCH_IBEAM_MODE(4)
+#undef MATCH_IBEAM_MODE
+#define MATCH_PBEAM_MODE(NBEAM) \
+    } else if( std::string(format).substr(0, 7) == std::string("pbeam"#NBEAM"_") ) { \
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_pbeam_impl<NBEAM>(writer, nsamples), \
                            *obj = 0);
-    } else if( std::string(format).substr(0, 7) == std::string("ibeam4_") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<4>(writer, nsamples),
-                           *obj = 0);
+    MATCH_PBEAM_MODE(1)
+#undef MATCH_PBEAM_MODE
     } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_cor_impl(writer, nsamples),
                            *obj = 0);

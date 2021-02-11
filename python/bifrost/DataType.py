@@ -41,8 +41,10 @@ cf32: 32+32-bit complex floating point
 # Python2 compatibility
 from __future__ import division, absolute_import
 import sys
+string_types = (str,)
 if sys.version_info < (3,):
     range = xrange
+    string_types = (basestring,)
     
 from bifrost.libbifrost import _bf
 import numpy as np
@@ -114,12 +116,7 @@ def is_vector_structure(dtype):
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
     def __init__(self, t=None):
-        if isinstance(t, (str, bytes)):
-            try:
-                t = t.decode()
-            except AttributeError:
-                # Python2 catch
-                pass
+        if isinstance(t, string_types):
             for i, char in enumerate(t):
                 if char.isdigit():
                     break

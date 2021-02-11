@@ -30,6 +30,8 @@
 from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
 import ctypes
+from functools import reduce
+
 
 class PacketCaptureCallback(BifrostObject):
     _ref_cache = {}
@@ -40,14 +42,14 @@ class PacketCaptureCallback(BifrostObject):
         self._ref_cache['chips'] = _bf.BFpacketcapture_chips_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetCHIPS(
                self.obj, self._ref_cache['chips']))
-    def set_snap2(self, fnc):
-        self._ref_cache['snap2'] = _bf.BFpacketcapture_snap2_sequence_callback(fnc)
-        _check(_bf.bfPacketCaptureCallbackSetSNAP2(
-               self.obj, self._ref_cache['snap2']))
     def set_ibeam(self, fnc):
         self._ref_cache['ibeam'] = _bf.BFpacketcapture_ibeam_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetIBeam(
                self.obj, self._ref_cache['ibeam']))
+    def set_pbeam(self, fnc):
+        self._ref_cache['pbeam'] = _bf.BFpacketcapture_pbeam_sequence_callback(fnc)
+        _check(_bf.bfPacketCaptureCallbackSetPBeam(
+               self.obj, self._ref_cache['pbeam']))
     def set_cor(self, fnc):
         self._ref_cache['cor'] = _bf.BFpacketcapture_cor_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetCOR(
@@ -66,6 +68,13 @@ class PacketCaptureCallback(BifrostObject):
             self.obj, self._ref_cache['drx']))
 
 class _CaptureBase(BifrostObject):
+    @staticmethod
+    def _flatten_value(value):
+        try:
+            value = reduce(lambda x,y: x*y, value, 1 if value else 0)
+        except TypeError:
+            pass
+        return value
     def __enter__(self):
         return self
     def __exit__(self, type, value, tb):
@@ -81,32 +90,30 @@ class _CaptureBase(BifrostObject):
 
 class UDPCapture(_CaptureBase):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
-                 buffer_ntime, slot_ntime, sequence_callback, core=None,
-                 ibverbs=False, interface='', port=-1):
+                 buffer_ntime, slot_ntime, sequence_callback, core=None):
         try:
             fmt = fmt.encode()
         except AttributeError:
             # Python2 catch
             pass
+        nsrc = self._flatten_value(nsrc)
         if core is None:
             core = -1
-        if not ibverbs:
-            BifrostObject.__init__(
-                self, _bf.bfUdpCaptureCreate, _bf.bfPacketCaptureDestroy,
-                fmt, sock.fileno(), ring.obj, nsrc, src0,
-                max_payload_size, buffer_ntime, slot_ntime,
-                sequence_callback.obj, core)
-        else:
-            print("Using IBVerbs")
-            BifrostObject.__init__(
-                self, _bf.bfIbvUdpCaptureCreate, _bf.bfPacketCaptureDestroy,
-                fmt, sock.fileno(), ring.obj, nsrc, src0,
-                max_payload_size, buffer_ntime, slot_ntime,
-                sequence_callback.obj, core)
+        BifrostObject.__init__(
+            self, _bf.bfUdpCaptureCreate, _bf.bfPacketCaptureDestroy,
+            fmt, sock.fileno(), ring.obj, nsrc, src0,
+            max_payload_size, buffer_ntime, slot_ntime,
+            sequence_callback.obj, core)
 
 class UDPSniffer(_CaptureBase):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
                  buffer_ntime, slot_ntime, sequence_callback, core=None):
+        try:
+            fmt = fmt.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
+        nsrc = self._flatten_value(nsrc)
         if core is None:
             core = -1
         BifrostObject.__init__(
@@ -115,25 +122,15 @@ class UDPSniffer(_CaptureBase):
             max_payload_size, buffer_ntime, slot_ntime,
             sequence_callback.obj, core)
 
-class UDPVerbsCapture(_CaptureBase):
-    def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
-                 buffer_ntime, slot_ntime, sequence_callback, core=None):
+class DiskReader(_CaptureBase):
+    def __init__(self, fmt, fh, ring, nsrc, src0,
+                 buffer_nframe, slot_nframe, sequence_callback, core=None):
         try:
             fmt = fmt.encode()
         except AttributeError:
             # Python2 catch
             pass
-        if core is None:
-            core = -1
-        BifrostObject.__init__(
-            self, _bf.bfUdpVerbsCaptureCreate, _bf.bfPacketCaptureDestroy,
-            fmt, sock.fileno(), ring.obj, nsrc, src0,
-            max_payload_size, buffer_ntime, slot_ntime,
-            sequence_callback.obj, core)
-
-class DiskReader(_CaptureBase):
-    def __init__(self, fmt, fh, ring, nsrc, src0,
-                 buffer_nframe, slot_nframe, sequence_callback, core=None):
+        nsrc = self._flatten_value(nsrc)
         if core is None:
             core = -1
         BifrostObject.__init__(

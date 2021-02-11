@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,3 +36,4 @@
 #include "tbf.hpp"
 #include "ibeam.hpp"
 #include "snap2.hpp"
+#include "pbeam.hpp"
