@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,13 +28,30 @@
 
 #pragma once
 
-#include "chips.hpp"
-#include "cor.hpp"
-#include "vdif.hpp"
-#include "drx.hpp"
-#include "tbn.hpp"
-#include "tbf.hpp"
-#include "ibeam.hpp"
-#include "snap2.hpp"
-#include "pbeam.hpp"
-#include "lwa352_vbeam.hpp"
+#include "base.hpp"
+
+#pragma pack(1)
+struct lwa352_vbeam_hdr_type {
+    uint64_t sync_word;
+    uint64_t sync_time;
+    uint64_t time_tag;
+    double   bw_hz;
+    double   sfreq;
+    uint32_t nchan;
+    uint32_t chan0;
+    uint32_t npol;
+};
+
+class LWA352VBeamHeaderFiller : virtual public PacketHeaderFiller {
+public:
+    inline int get_size() { return sizeof(lwa352_vbeam_hdr_type); }
+    inline void operator()(const PacketDesc* hdr_base,
+                           BFoffset          framecount,
+                           char*             hdr) {
+        lwa352_vbeam_hdr_type* header = reinterpret_cast<lwa352_vbeam_hdr_type*>(hdr);
+        memset(header, 0, sizeof(lwa352_vbeam_hdr_type));
+        
+        header->sync_word        = 0xAABBCCDD00000000L;
+        header->time_tag         = htobe64(hdr_base->seq);
+    }
+};

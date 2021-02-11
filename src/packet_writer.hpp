@@ -334,6 +334,18 @@ public:
     }
 };
 
+class BFpacketwriter_lwa352_vbeam_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_lwa352_vbeam_impl(PacketWriterThread* writer,
+                                   int                 nsamples)
+     : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CF32),
+       _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new LWA352VBeamHeaderFiller();
+        _type_log.update("type : %s\n", "tbf");
+    }
+};
+
 BFstatus BFpacketwriter_create(BFpacketwriter* obj,
                                const char*     format,
                                int             fd,
@@ -363,6 +375,10 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
         nsamples = 4096;
     } else if( format == std::string("tbf") ) {
         nsamples = 6144;
+    } else if( std::string(format).substr(0, 13) == std::string("lwa352_vbeam_") ) {
+        // e.g. "lwa352_vbeam_184" is a 184-channel voltage beam"
+        int nchan = std::atoi((std::string(format).substr(13, std::string(format).length())).c_str());
+        nsamples = 2*nchan; // 2 polarizations. Natively 32-bit floating complex (see implementation class)
     }
     
     PacketWriterMethod* method;
@@ -406,6 +422,9 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
                            *obj = 0);
     } else if( format == std::string("tbf") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_tbf_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 13) == std::string("lwa352_vbeam_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_lwa352_vbeam_impl(writer, nsamples),
                            *obj = 0);
     } else {
         return BF_STATUS_UNSUPPORTED;
