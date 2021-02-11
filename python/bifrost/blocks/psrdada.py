@@ -35,6 +35,7 @@ import bifrost.ndarray
 
 import numpy as np
 
+from datetime import datetime
 from copy import deepcopy
 import os
 
@@ -80,13 +81,16 @@ class PsrDadaBufferReader(object):
     def __exit__(self, type, value, tb):
         self.close()
 
-def psrdada_read_sequence_iterator(buffer_key):
+def psrdada_read_sequence_iterator(buffer_key, single=False):
     hdu = Hdu()
     hdu.connect_read(buffer_key)
     for hdr in hdu.header_block:
         with hdr:
             hdr_string = hdr.data.tostring()
         yield hdu, hdr_string
+        if single:
+            hdu.disconnect()
+            break
     hdu.disconnect()
 
 def _cast_to_type(string):
@@ -111,9 +115,9 @@ def parse_dada_header(headerstr, cast_types=True):
     return header
 
 class PsrDadaSourceBlock(SourceBlock):
-    def __init__(self, buffer_key, header_callback, gulp_nframe, space=None,
-                 *args, **kwargs):
-        buffer_iterator = psrdada_read_sequence_iterator(buffer_key)
+    def __init__(self, buffer_key, header_callback, gulp_nframe, space=None, 
+                 single=False, *args, **kwargs):
+	buffer_iterator = psrdada_read_sequence_iterator(buffer_key, single)
         super(PsrDadaSourceBlock, self).__init__(buffer_iterator, gulp_nframe,
                                                  space, *args, **kwargs)
         self.header_callback = header_callback
@@ -148,7 +152,56 @@ def generate_dada_header(hdr_dict, hdrlen=4096):
     s = "HDR_VERSION         1.0\n"
     s+= "HDR_SIZE            %i\n" % hdrlen
     keys_to_skip = ('HDR_VERSION', 'HDR_SIZE')
-    
+
+    # update parameters from bifrost tensor
+    if '_tensor' in hdr_dict.keys():
+        dtype = hdr_dict['_tensor']['dtype']
+        dtype_vals = {
+            'cf32': { 'NBIT': '32', 'NDIM': '2' },
+            'ci8': { 'NBIT': '8', 'NDIM': '2' },
+            'i8': { 'NBIT': '8', 'NDIM': '1' } }
+	if dtype in dtype_vals.keys():
+	    hdr_dict['NBIT'] = dtype_vals[dtype]['NBIT']
+	    hdr_dict['NDIM'] = dtype_vals[dtype]['NDIM']
+
+    idx = 0
+    fine_time = 1
+    for label in hdr_dict['_tensor']['labels']:
+        if label == 'time':
+             ts = hdr_dict['_tensor']['scales'][idx][0]
+             ts_integer = int(ts)
+             # ts_picoseconds = int(float(ts - ts_integer) * 1e12)
+             hdr_dict['UTC_START'] = datetime.utcfromtimestamp(ts_integer).strftime("%Y-%m-%d-%H:%M:%S")
+             print("converted " + str(ts) + " to UTC_START=" + str(hdr_dict['UTC_START']))
+             # This information is lost at the moment...
+             # hdr_dict['PICOSECONDS'] = ts_picoseconds
+
+        if label == 'freq':
+             nchan = hdr_dict['_tensor']['shape'][idx]
+             f0 = hdr_dict['_tensor']['scales'][idx][0]
+             chan_bw = hdr_dict['_tensor']['scales'][idx][1]
+             bw = chan_bw * nchan
+             hdr_dict['NCHAN'] = nchan
+             hdr_dict['BW'] = bw
+             hdr_dict['FREQ'] = f0 + bw / 2
+             # print("converted f0=" + str(f0) + " to " + str(hdr_dict['FREQ']))
+        if label == 'station':
+             hdr_dict['NANT'] = hdr_dict['_tensor']['shape'][idx]
+        if label == 'pol':
+             hdr_dict['NPOL'] = hdr_dict['_tensor']['shape'][idx]
+        if label == 'fine_time':
+	     fine_time = int(hdr_dict['_tensor']['shape'][idx])
+        idx += 1
+
+    resolution = (int(hdr_dict['NANT']) * \
+                  int(hdr_dict['NPOL']) * \
+                  int(hdr_dict['NBIT']) * \
+                  int(hdr_dict['NDIM']) * \
+                  int(hdr_dict['NCHAN']) * \
+                  fine_time) / 8
+
+    hdr_dict['RESOLUTION'] = resolution
+
     for key, val in hdr_dict.items():
         if key not in keys_to_skip:
             if isinstance(val, (str, float, int)):
@@ -164,9 +217,16 @@ class PsrDadaSinkBlock(SinkBlock):
         super(PsrDadaSinkBlock, self).__init__(iring, gulp_nframe, *args, **kwargs)
         self.hdu = Hdu()
         self.hdu.connect_write(buffer_key)
+        self.additional_keywords = {}
+
+    def add_header_keywords(self, hdr_dict):
+        """Add additional keywords to outgoing header dict"""
+        self.additional_keywords = hdr_dict
 
     def on_sequence(self, iseq):
-        dada_header_str = generate_dada_header(iseq.header)
+        updated_header = iseq.header.copy()
+        updated_header.update(self.additional_keywords)
+        dada_header_str = generate_dada_header(updated_header)
         dada_header_buf = next(self.hdu.header_block)            
         
         dada_header_buf.data[:] = np.fromstring(dada_header_str.encode('ascii'), dtype='uint8')
@@ -188,7 +248,7 @@ class PsrDadaSinkBlock(SinkBlock):
         #dada_blk.data[:] = ispan.data.view('u8')        
         dada_blk.close()
 
-def read_psrdada_buffer(buffer_key, header_callback, gulp_nframe, space=None,
+def read_psrdada_buffer(buffer_key, header_callback, gulp_nframe, space=None, single=False,
                         *args, **kwargs):
     """Read data from a PSRDADA ring buffer.
 
@@ -198,6 +258,7 @@ def read_psrdada_buffer(buffer_key, header_callback, gulp_nframe, space=None,
         header_callback (func): A function f(psrdata_header_dict) -> bifrost_header_dict.
         gulp_nframe (int): No. frames to process at a time.
         space (string): The output memory space (all Bifrost spaces are supported).
+        single (bool): Only process a single data stream with the block
         *args: Arguments to ``bifrost.pipeline.SourceBlock``.
         **kwargs: Keyword Arguments to ``bifrost.pipeline.SourceBlock``.
 
@@ -221,7 +282,7 @@ def read_psrdada_buffer(buffer_key, header_callback, gulp_nframe, space=None,
     References:
         http://psrdada.sourceforge.net/
     """
-    return PsrDadaSourceBlock(buffer_key, header_callback, gulp_nframe, space,
+    return PsrDadaSourceBlock(buffer_key, header_callback, gulp_nframe, space, single,
                               *args, **kwargs)
 
 def write_psrdada_buffer(iring, buffer_key, gulp_nframe, *args, **kwargs):
