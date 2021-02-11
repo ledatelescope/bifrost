@@ -1,6 +1,6 @@
-CXX           ?= /opt/gcc-4.9.4/bin/g++ 
+CXX           ?= /opt/gcc-5.4.0/bin/g++ 
 NVCC          ?= nvcc
-LINKER        ?= /opt/gcc-4.9.4/bin/g++
+LINKER        ?= /opt/gcc-5.4.0/bin/g++
 CPPFLAGS      ?=
 CXXFLAGS      ?= -O3 -Wall -pedantic -mno-avx2
 NVCCFLAGS     ?= -O3 -Xcompiler "-Wall" #-Xptxas -v
@@ -9,20 +9,18 @@ DOXYGEN       ?= doxygen
 PYBUILDFLAGS   ?=
 PYINSTALLFLAGS ?=
 
-#GPU_ARCHS     ?= 30 32 35 37 50 52 53 # Nap time!
-#GPU_ARCHS     ?= 35 52
-GPU_ARCHS     ?= 61
+GPU_ARCHS     ?= 52 61 75
 
 GPU_SHAREDMEM ?= 16384 # GPU shared memory size
 
-CUDA_HOME     ?= /usr/local/cuda
+CUDA_HOME     ?= /opt/cuda-10.2.89
 CUDA_LIBDIR   ?= $(CUDA_HOME)/lib
 CUDA_LIBDIR64 ?= $(CUDA_HOME)/lib64
 CUDA_INCDIR   ?= $(CUDA_HOME)/include
 
 ALIGNMENT ?= 4096 # Memory allocation alignment
 
-PSRHOME  ?= /home/dada/linux_64
+PSRDADA_PATH  ?= /home/npsr/software/psrdada/latest
 NOUDPSOCKET = 1  # Disable UDP code compilation
 BUILDDP4A   = 1  # Build beanfarmer + xcorr_lite
 #NODEBUG    = 1 # Disable debugging mode (use this for production releases)
