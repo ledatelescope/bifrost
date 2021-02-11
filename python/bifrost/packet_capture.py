@@ -109,6 +109,17 @@ class UDPCapture(_CaptureBase):
 class UDPSniffer(_CaptureBase):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
                  buffer_ntime, slot_ntime, sequence_callback, core=None):
+        if core is None:
+            core = -1
+        BifrostObject.__init__(
+            self, _bf.bfUdpSnifferCreate, _bf.bfPacketCaptureDestroy,
+            fmt, sock.fileno(), ring.obj, nsrc, src0,
+            max_payload_size, buffer_ntime, slot_ntime,
+            sequence_callback.obj, core)
+
+class UDPVerbsCapture(_CaptureBase):
+    def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
+                 buffer_ntime, slot_ntime, sequence_callback, core=None):
         try:
             fmt = fmt.encode()
         except AttributeError:
