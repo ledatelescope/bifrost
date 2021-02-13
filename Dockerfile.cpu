@@ -8,15 +8,13 @@ ENV TERM xterm
 
 # Get dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        python-pip \
         pylint \
         && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # Update ctypesgen
-RUN curl -fSsL -O https://bootstrap.pypa.io/get-pip.py && \
-    python get-pip.py && \
-    rm get-pip.py
 RUN pip --no-cache-dir install \
         git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f
 
