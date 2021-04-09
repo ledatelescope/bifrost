@@ -50,16 +50,19 @@ class PsrDadaBufferReader(object):
     def __init__(self, hdu, hdr):
         self.hdu = hdu
         self.header = hdr
-        self._open_next_block()
+        self.block = None
     def _open_next_block(self):
         self.block = next(self.hdu.data_block)
         self.nbyte = self.block.size_bytes()
         self.byte0 = 0
     def readinto(self, buf):
+        if self.block is None:
+            self._open_next_block()
         dst_space = Space(_get_space(buf)).as_BFspace()
         byte0 = 0
         nbyte = buf.nbytes
         nbyte_copy = min(nbyte - byte0, self.nbyte - self.byte0)
+
         while nbyte_copy:
             _check(_bf.bfMemcpy(buf.ctypes.data + byte0, dst_space,
                                 self.block.ptr + self.byte0, _bf.BF_SPACE_SYSTEM,
@@ -117,7 +120,7 @@ def parse_dada_header(headerstr, cast_types=True):
 class PsrDadaSourceBlock(SourceBlock):
     def __init__(self, buffer_key, header_callback, gulp_nframe, space=None, 
                  single=False, *args, **kwargs):
-	buffer_iterator = psrdada_read_sequence_iterator(buffer_key, single)
+        buffer_iterator = psrdada_read_sequence_iterator(buffer_key, single)
         super(PsrDadaSourceBlock, self).__init__(buffer_iterator, gulp_nframe,
                                                  space, *args, **kwargs)
         self.header_callback = header_callback
@@ -125,6 +128,7 @@ class PsrDadaSourceBlock(SourceBlock):
         hdu, hdr = hdu_hdr
         return PsrDadaBufferReader(hdu, hdr)
     def on_sequence(self, reader, hdu_hdr):
+        print("PsrDadaSourceBlock::on_sequence")
         ihdr_dict = parse_dada_header(reader.header)
         return [self.header_callback(ihdr_dict)]
     def on_data(self, reader, ospans):
@@ -138,6 +142,23 @@ class PsrDadaSourceBlock(SourceBlock):
 def _keyval_to_dadastr(key, val):
      """ Convert key: value pair into a DADA string """
      return "{key:20s}{val}\n".format(key=key.upper(), val=val)
+
+
+def _extract_tensor_scale(key, tensor):
+    try:
+        idx = tensor['labels'].index(key)
+        return tensor['scales'][idx]
+    except ValueError as e:
+        return [0, 0]
+
+
+def _extract_tensor_shape(key, tensor):
+    try:
+        idx = tensor['labels'].index(key)
+        return tensor['shape'][idx]
+    except ValueError as e:
+        return 1
+
      
 def generate_dada_header(hdr_dict, hdrlen=4096):
     """ Generate DADA header from header dict 
@@ -155,52 +176,61 @@ def generate_dada_header(hdr_dict, hdrlen=4096):
 
     # update parameters from bifrost tensor
     if '_tensor' in hdr_dict.keys():
+        print(hdr_dict['_tensor'])
         dtype = hdr_dict['_tensor']['dtype']
         dtype_vals = {
             'cf32': { 'NBIT': '32', 'NDIM': '2' },
+            'f32': { 'NBIT': '32', 'NDIM': '1' },
             'ci8': { 'NBIT': '8', 'NDIM': '2' },
             'i8': { 'NBIT': '8', 'NDIM': '1' } }
-	if dtype in dtype_vals.keys():
-	    hdr_dict['NBIT'] = dtype_vals[dtype]['NBIT']
-	    hdr_dict['NDIM'] = dtype_vals[dtype]['NDIM']
+        if dtype in dtype_vals.keys():
+            hdr_dict['NBIT'] = dtype_vals[dtype]['NBIT']
+            hdr_dict['NDIM'] = dtype_vals[dtype]['NDIM']
 
-    idx = 0
-    fine_time = 1
-    for label in hdr_dict['_tensor']['labels']:
-        if label == 'time':
-             ts = hdr_dict['_tensor']['scales'][idx][0]
-             ts_integer = int(ts)
-             # ts_picoseconds = int(float(ts - ts_integer) * 1e12)
-             hdr_dict['UTC_START'] = datetime.utcfromtimestamp(ts_integer).strftime("%Y-%m-%d-%H:%M:%S")
-             print("converted " + str(ts) + " to UTC_START=" + str(hdr_dict['UTC_START']))
-             # This information is lost at the moment...
-             # hdr_dict['PICOSECONDS'] = ts_picoseconds
+        hdr_dict['NBEAM'] =  _extract_tensor_shape("beam", hdr_dict['_tensor'])
+        hdr_dict['NANT'] =  _extract_tensor_shape("station", hdr_dict['_tensor'])
+        hdr_dict['NPOL'] = _extract_tensor_shape("pol", hdr_dict['_tensor'])
+        hdr_dict['NCHAN'] = _extract_tensor_shape("freq", hdr_dict['_tensor'])
 
-        if label == 'freq':
-             nchan = hdr_dict['_tensor']['shape'][idx]
-             f0 = hdr_dict['_tensor']['scales'][idx][0]
-             chan_bw = hdr_dict['_tensor']['scales'][idx][1]
-             bw = chan_bw * nchan
-             hdr_dict['NCHAN'] = nchan
-             hdr_dict['BW'] = bw
-             hdr_dict['FREQ'] = f0 + bw / 2
-             # print("converted f0=" + str(f0) + " to " + str(hdr_dict['FREQ']))
-        if label == 'station':
-             hdr_dict['NANT'] = hdr_dict['_tensor']['shape'][idx]
-        if label == 'pol':
-             hdr_dict['NPOL'] = hdr_dict['_tensor']['shape'][idx]
-        if label == 'fine_time':
-	     fine_time = int(hdr_dict['_tensor']['shape'][idx])
-        idx += 1
+        f0 = _extract_tensor_scale("freq", hdr_dict['_tensor'])[0]
+        chan_bw = _extract_tensor_scale("freq", hdr_dict['_tensor'])[1]
+        bw = chan_bw * int(hdr_dict['NCHAN'])
+        hdr_dict['BW'] = bw
+        hdr_dict['FREQ'] = f0 + bw / 2
 
-    resolution = (int(hdr_dict['NANT']) * \
-                  int(hdr_dict['NPOL']) * \
-                  int(hdr_dict['NBIT']) * \
-                  int(hdr_dict['NDIM']) * \
-                  int(hdr_dict['NCHAN']) * \
-                  fine_time) / 8
+        # print(hdr_dict['_tensor'])
+        ts = _extract_tensor_scale("time", hdr_dict['_tensor'])[0]
 
-    hdr_dict['RESOLUTION'] = resolution
+        tsamp = _extract_tensor_scale("fine_time", hdr_dict['_tensor'])[1]
+        if tsamp == 0:
+            tsamp = _extract_tensor_scale("time", hdr_dict['_tensor'])[1]
+            if tsamp == 0:
+                print("TSAMP was 0, changing to 10.24 us")
+                tsamp = 0.00001024
+
+        hdr_dict['TSAMP'] = tsamp * 1e6
+        ts_integer = int(ts)
+        hdr_dict['UTC_START'] = datetime.utcfromtimestamp(ts_integer).strftime("%Y-%m-%d-%H:%M:%S")
+
+        fine_time = _extract_tensor_shape("fine_time", hdr_dict['_tensor'])
+
+        bits_per_sample = int(hdr_dict['NBEAM']) * \
+                          int(hdr_dict['NANT']) * \
+                          int(hdr_dict['NPOL']) * \
+                          int(hdr_dict['NBIT']) * \
+                          int(hdr_dict['NDIM']) * \
+                          int(hdr_dict['NCHAN'])
+
+        resolution = (bits_per_sample * fine_time) / 8
+        hdr_dict['RESOLUTION'] = resolution
+   
+        bytes_per_second = int((bits_per_sample / 8) / tsamp)
+        hdr_dict['BYTES_PER_SECOND'] = bytes_per_second
+
+        hdr_dict['FILE_SIZE'] = bytes_per_second * 8
+
+        if hdr_dict['_tensor']['labels'] == ['time', 'beam', 'freq', 'fine_time']:
+            hdr_dict['ORDER'] = 'SFT'
 
     for key, val in hdr_dict.items():
         if key not in keys_to_skip:
@@ -217,15 +247,43 @@ class PsrDadaSinkBlock(SinkBlock):
         super(PsrDadaSinkBlock, self).__init__(iring, gulp_nframe, *args, **kwargs)
         self.hdu = Hdu()
         self.hdu.connect_write(buffer_key)
-        self.additional_keywords = {}
+        self.keywords_to_add = {}
+        self.keywords_to_sub = []
+        self.keywords_to_change = {}
 
     def add_header_keywords(self, hdr_dict):
-        """Add additional keywords to outgoing header dict"""
-        self.additional_keywords = hdr_dict
+        """Add specified keywords to outgoing header dict"""
+        for key, value in hdr_dict.items():
+            self.keywords_to_add[key] = value
+
+    def sub_header_keywords(self, hdr_dict):
+        """Remove specified keywords from outgoing header dict"""
+        for key in hdr_dict:
+            self.keywords_to_sub.append(key)
+
+    def remap_prefixed_keywords(self, prefix, suffixes):
+        """Remap the keywords in suffixes, removing the prefix"""
+        for suffix in suffixes:
+            self.keywords_to_change[prefix + suffix] = suffix
 
     def on_sequence(self, iseq):
+        print("PsrDadaSinkBlock::on_sequence")
         updated_header = iseq.header.copy()
-        updated_header.update(self.additional_keywords)
+        # rename some header keywords
+        for key, value in self.keywords_to_change.items():
+            try:
+                self.keywords_to_add[value] = updated_header[key]
+                self.keywords_to_sub.append(key)
+            except KeyError:
+                pass
+        # insert the additional keywords
+        updated_header.update(self.keywords_to_add)
+        # remove the keywords
+        for key in self.keywords_to_sub:
+            try:
+                del updated_header[key]
+            except KeyError:
+                pass
         dada_header_str = generate_dada_header(updated_header)
         dada_header_buf = next(self.hdu.header_block)            
         
