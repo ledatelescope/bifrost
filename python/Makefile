@@ -10,6 +10,7 @@ PSRDADA_PATH ?= /usr/local
 PSRDADA_PYTHON_BINDINGS_FILE = bifrost/libpsrdada_generated.py
 PSRDADA_HEADERS = \
 	$(PSRDADA_PATH)/include/dada_hdu.h \
+	$(PSRDADA_PATH)/include/dada_cuda.h \
 	$(PSRDADA_PATH)/include/ipcio.h \
 	$(PSRDADA_PATH)/include/ipcbuf.h \
 	$(PSRDADA_PATH)/include/multilog.h
