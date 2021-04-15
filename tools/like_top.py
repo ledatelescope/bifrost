@@ -185,6 +185,9 @@ def get_gpu_memory_usage():
     try:
         p = subprocess.Popen(['nvidia-smi', q_flag, fmt_flag], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, err = p.communicate()
+        if sys.version_info.major > 2 and isinstance(output, bytes):
+            # decode the output to utf-8 in python 3
+            output = output.decode("utf-8")
     except (OSError, ValueError) as e:
         pass
     else:
