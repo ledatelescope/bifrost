@@ -386,7 +386,7 @@ def main(args):
     curses.endwin()
 
     try:
-        print("%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), traceback.tb_lineno(exc_traceback)))
+        print("%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), exc_traceback.tb_lineno))
         for line in tbString.split('\n'):
             print(line)
     except NameError:
