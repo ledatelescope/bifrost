@@ -1206,6 +1206,7 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                                                         buffer_ntime, slot_ntime, \
                                                                         sequence_callback), \
                            *obj = 0);
+    MATCH_IBEAM_MODE(1)
     MATCH_IBEAM_MODE(2)
     MATCH_IBEAM_MODE(3)
     MATCH_IBEAM_MODE(4)

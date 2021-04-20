@@ -385,6 +385,7 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( std::string(format).substr(0, 7) == std::string("ibeam"#NBEAM"_") ) { \
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<NBEAM>(writer, nsamples), \
                            *obj = 0);
+    MATCH_IBEAM_MODE(1)
     MATCH_IBEAM_MODE(2)
     MATCH_IBEAM_MODE(3)
     MATCH_IBEAM_MODE(4)
