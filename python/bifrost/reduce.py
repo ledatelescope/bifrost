@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,15 +25,23 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check
-from bifrost import asarray
+# Python2 compatibility
+from __future__ import absolute_import
+
+from bifrost.libbifrost import _bf, _check
+from bifrost.ndarray import asarray
 
 REDUCE_MAP = {
-    'sum':    _bf.BF_REDUCE_SUM,
-    'mean':   _bf.BF_REDUCE_MEAN,
-    'min':    _bf.BF_REDUCE_MIN,
-    'max':    _bf.BF_REDUCE_MAX,
-    'stderr': _bf.BF_REDUCE_STDERR
+    'sum':       _bf.BF_REDUCE_SUM,
+    'mean':      _bf.BF_REDUCE_MEAN,
+    'min':       _bf.BF_REDUCE_MIN,
+    'max':       _bf.BF_REDUCE_MAX,
+    'stderr':    _bf.BF_REDUCE_STDERR,
+    'pwrsum':    _bf.BF_REDUCE_POWER_SUM,
+    'pwrmean':   _bf.BF_REDUCE_POWER_MEAN,
+    'pwrmin':    _bf.BF_REDUCE_POWER_MIN,
+    'pwrmax':    _bf.BF_REDUCE_POWER_MAX,
+    'pwrstderr': _bf.BF_REDUCE_POWER_STDERR,
 }
 
 def reduce(idata, odata, op='sum'):

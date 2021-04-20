@@ -14,4 +14,5 @@ coverage run --source=bifrost.ring,bifrost,bifrost.pipeline -m unittest \
   test_binary_io \
   test_disk_io \
   test_udp_io \
-  test_address
+  test_address \
+  test_scripts

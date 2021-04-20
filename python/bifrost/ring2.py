@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,10 +28,13 @@
 # TODO: Some of this code has gotten a bit hacky
 #         Also consider merging some of the logic into the backend
 
-from libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string
-from DataType import DataType
-from ndarray import ndarray, _address_as_buffer
+from __future__ import print_function, absolute_import
+
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string
+from bifrost.DataType import DataType
+from bifrost.ndarray import ndarray, _address_as_buffer
 from copy import copy, deepcopy
+from functools import reduce
 
 import ctypes
 import string
@@ -41,7 +43,7 @@ import numpy as np
 try:
     import simplejson as json
 except ImportError:
-    print "WARNING: Install simplejson for better performance"
+    print("WARNING: Install simplejson for better performance")
     import json
 
 def _slugify(name):
@@ -84,6 +86,11 @@ class Ring(BifrostObject):
             name = 'ring_%i' % Ring.instance_count
             Ring.instance_count += 1
         name = _slugify(name)
+        try:
+            name = name.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         BifrostObject.__init__(self, _bf.bfRingCreate, _bf.bfRingDestroy,
                                name, _string2space(self.space))
         if core is not None:
@@ -108,7 +115,13 @@ class Ring(BifrostObject):
                                  nringlet) )
     @property
     def name(self):
-        return _get(_bf.bfRingGetName, self.obj)
+        n = _get(_bf.bfRingGetName, self.obj)
+        try:
+            n = n.decode()
+        except AttributeError:
+            # Python2 catch
+            pass
+        return n
     @property
     def core(self):
         return _get(_bf.bfRingGetAffinity, self.obj)
@@ -162,7 +175,12 @@ class SequenceBase(object):
         return self._ring
     @property
     def name(self):
-        return _get(_bf.bfRingSequenceGetName, self._base_obj)
+        n = _get(_bf.bfRingSequenceGetName, self._base_obj)
+        try:
+            n = n.decode()
+        except AttributeError:
+            pass
+        return n
     @property
     def time_tag(self):
         return _get(_bf.bfRingSequenceGetTimeTag, self._base_obj)
@@ -185,6 +203,11 @@ class SequenceBase(object):
         nringlet       = reduce(lambda x, y: x * y, ringlet_shape, 1)
         frame_nelement = reduce(lambda x, y: x * y, frame_shape,   1)
         dtype = header['_tensor']['dtype']
+        try:
+            dtype = dtype.decode()
+        except AttributeError:
+            # Python2 catch
+            pass
         nbit = DataType(dtype).itemsize_bits
         assert(nbit % 8 == 0)
         frame_nbyte = frame_nelement * nbit // 8
@@ -228,13 +251,20 @@ class WriteSequence(SequenceBase):
         offset_from_head = 0
         # TODO: How to allow time_tag to be optional? Probably need to plumb support through to backend.
         self.obj = _bf.BFwsequence()
+        try:
+            hname = header['name'].encode()
+            hstr = header_str.encode()
+        except AttributeError:
+            # Python2 catch
+            hname = header['name']
+            hstr = header_str
         _check(_bf.bfRingSequenceBegin(
             self.obj,
             ring.obj,
-            header['name'],
+            hname,
             header['time_tag'],
             header_size,
-            header_str,
+            hstr,
             tensor['nringlet'],
             offset_from_head))
     def __enter__(self):
@@ -425,7 +455,7 @@ class SpanBase(object):
                              buffer=data_ptr,
                              dtype=self.dtype)
         data_array.flags['WRITEABLE'] = self.writeable
-
+        
         return data_array
 
 class WriteSpan(SpanBase):

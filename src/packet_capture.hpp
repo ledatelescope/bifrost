@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -310,8 +310,8 @@ struct PacketStats {
 
 class PacketCaptureThread : public BoundThread {
 private:
-    PacketCaptureMethod*     _method;
-    PacketStats              _stats;
+	PacketCaptureMethod*     _method;
+	PacketStats              _stats;
 	std::vector<PacketStats> _src_stats;
 	bool                     _have_pkt;
 	PacketDesc               _pkt;
@@ -371,14 +371,16 @@ inline uint64_t round_nearest(uint64_t val, uint64_t mult) {
 class BFpacketcapture_callback_impl {
     BFpacketcapture_chips_sequence_callback _chips_callback;
     BFpacketcapture_ibeam_sequence_callback _ibeam_callback;
+    BFpacketcapture_pbeam_sequence_callback _pbeam_callback;
     BFpacketcapture_cor_sequence_callback   _cor_callback;
     BFpacketcapture_vdif_sequence_callback  _vdif_callback;
     BFpacketcapture_tbn_sequence_callback   _tbn_callback;
     BFpacketcapture_drx_sequence_callback   _drx_callback;
 public:
     BFpacketcapture_callback_impl()
-     : _chips_callback(NULL), _ibeam_callback(NULL), _cor_callback(NULL), 
-        _vdif_callback(NULL), _tbn_callback(NULL), _drx_callback(NULL) {}
+     : _chips_callback(NULL), _ibeam_callback(NULL), _pbeam_callback(NULL), 
+		    _cor_callback(NULL), _vdif_callback(NULL), _tbn_callback(NULL), 
+				_drx_callback(NULL) {}
     inline void set_chips(BFpacketcapture_chips_sequence_callback callback) {
         _chips_callback = callback;
     }
@@ -390,6 +392,12 @@ public:
     }
     inline BFpacketcapture_ibeam_sequence_callback get_ibeam() {
         return _ibeam_callback;
+    }
+    inline void set_pbeam(BFpacketcapture_pbeam_sequence_callback callback) {
+        _pbeam_callback = callback;
+    }
+    inline BFpacketcapture_pbeam_sequence_callback get_pbeam() {
+        return _pbeam_callback;
     }
     inline void set_cor(BFpacketcapture_cor_sequence_callback callback) {
         _cor_callback = callback;
@@ -440,7 +448,7 @@ protected:
 	bool                 _active;
 
 private:
-    std::chrono::high_resolution_clock::time_point _t0;
+	std::chrono::high_resolution_clock::time_point _t0;
 	std::chrono::high_resolution_clock::time_point _t1;
 	std::chrono::high_resolution_clock::time_point _t2;
 	std::chrono::duration<double> _process_time;
@@ -717,6 +725,87 @@ public:
         _decoder = new IBeamDecoder<B>(nsrc, src0);
         _processor = new IBeamProcessor<B>();
         _type_log.update("type : %s%i\n", "ibeam", _nbeam);
+    }
+};
+
+class BFpacketcapture_pbeam_impl : public BFpacketcapture_impl {
+    uint8_t            _nbeam;
+    uint8_t            _navg;
+    ProcLog            _type_log;
+    ProcLog            _chan_log;
+    
+    BFpacketcapture_pbeam_sequence_callback _sequence_callback;
+    
+    void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
+        // TODO: Might be safer to round to nearest here, but the current firmware
+        //         always starts things ~3 seq's before the 1sec boundary anyway.
+        //seq = round_up(pkt->seq, _slot_ntime);
+        _seq          = round_nearest(pkt->seq, _slot_ntime);
+        this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
+    }
+    void on_sequence_active(const PacketDesc* pkt) {
+        if( pkt ) {
+            //cout << "Latest nchan, chan0 = " << pkt->nchan << ", " << pkt->chan0 << endl;
+        }
+        else {
+            //cout << "No latest packet" << endl;
+        }
+    }
+    inline bool has_sequence_changed(const PacketDesc* pkt) {
+        return (pkt->chan0 != _chan0) \
+               || (pkt->nchan != _nchan) \
+               || (pkt->decimation != _navg);
+    }
+    void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+        *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+        *time_tag = pkt->time_tag;
+        _chan0 = pkt->chan0;
+        _nchan = pkt->nchan;
+        _nbeam = pkt->beam;
+        _navg  = pkt->decimation;
+        _payload_size = pkt->payload_size;
+        
+        if( _sequence_callback ) {
+            int status = (*_sequence_callback)(*seq0,
+                                               *time_tag,
+                                               _navg,
+                                               _chan0,
+                                               _nchan*_nsrc/_nbeam,
+                                               _nbeam,
+                                               hdr,
+                                               hdr_size);
+            if( status != 0 ) {
+                // TODO: What to do here? Needed?
+                throw std::runtime_error("BAD HEADER CALLBACK STATUS");
+            }
+        } else {
+            // Simple default for easy testing
+            *time_tag = *seq0;
+            *hdr      = NULL;
+            *hdr_size = 0;
+        }
+        
+        _chan_log.update() << "chan0        : " << _chan0 << "\n"
+                           << "nchan        : " << _nchan << "\n"
+                           << "nbeam        : " << _nbeam << "\n"
+                           << "navg         : " << _navg << "\n"
+                           << "payload_size : " << _payload_size << "\n";
+    }
+public:
+    inline BFpacketcapture_pbeam_impl(PacketCaptureThread* capture,
+                                      BFring               ring,
+                                      int                  nsrc,
+                                      int                  src0,
+                                      int                  buffer_ntime,
+                                      int                  slot_ntime,
+                                      BFpacketcapture_callback sequence_callback)
+        : BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+          _type_log((std::string(capture->get_name())+"/type").c_str()),
+          _chan_log((std::string(capture->get_name())+"/chans").c_str()),
+          _sequence_callback(sequence_callback->get_pbeam()) {
+        _decoder = new PBeamDecoder(nsrc, src0);
+        _processor = new PBeamProcessor();
+        _type_log.update("type : %s\n", "pbeam");
     }
 };
 
@@ -1057,25 +1146,20 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
             int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
-            max_payload_size = sizeof(chips_hdr_type) + 32*nchan;
+            max_payload_size = sizeof(chips_hdr_type) + (4*nchan);
         }
-    } else if( std::string(format).substr(0, 6) == std::string("ibeam2") ) {
+    } else if( std::string(format).substr(0, 5) == std::string("ibeam") ) {
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
+            int nbeam = std::atoi((std::string(format).substr(5, 1).c_str()));
             int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
-            max_payload_size = sizeof(ibeam_hdr_type) + 64*2*2*nchan;
+            max_payload_size = sizeof(ibeam_hdr_type) + (8*2*nbeam*nchan);
         }
-    } else if( std::string(format).substr(0, 6) == std::string("ibeam3") ) {
+    } else if( std::string(format).substr(0, 5) == std::string("pbeam") ) {
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
-            int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
-            max_payload_size = sizeof(ibeam_hdr_type) + 64*2*3*nchan;
-        }
-    } else if( std::string(format).substr(0, 6) == std::string("ibeam4") ) {
-        if( backend == BF_IO_DISK ) {
-            // Need to know how much to read at a time
-            int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
-            max_payload_size = sizeof(ibeam_hdr_type) + 64*2*4*nchan;
+            int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
+            max_payload_size = sizeof(pbeam_hdr_type) + (4*4*nchan);
         }
     } else if(std::string(format).substr(0, 3) == std::string("cor") ) {
         if( backend == BF_IO_DISK ) {
@@ -1116,20 +1200,20 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                                                  buffer_ntime, slot_ntime,
                                                                  sequence_callback),
                            *obj = 0);
-    } else if( std::string(format).substr(0, 6) == std::string("ibeam2") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_ibeam_impl<2>(capture, ring, nsrc, src0,
-                                                                    buffer_ntime, slot_ntime,
-                                                                    sequence_callback),
+#define MATCH_IBEAM_MODE(NBEAM) \
+    } else if( std::string(format).substr(0, 6) == std::string("ibeam"#NBEAM) ) { \
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_ibeam_impl<NBEAM>(capture, ring, nsrc, src0, \
+                                                                        buffer_ntime, slot_ntime, \
+                                                                        sequence_callback), \
                            *obj = 0);
-    } else if( std::string(format).substr(0, 6) == std::string("ibeam3") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_ibeam_impl<3>(capture, ring, nsrc, src0,
-                                                                    buffer_ntime, slot_ntime,
-                                                                    sequence_callback),
-                           *obj = 0);
-    } else if( std::string(format).substr(0, 6) == std::string("ibeam4") ) {
-        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_ibeam_impl<4>(capture, ring, nsrc, src0,
-                                                                    buffer_ntime, slot_ntime,
-                                                                    sequence_callback),
+    MATCH_IBEAM_MODE(2)
+    MATCH_IBEAM_MODE(3)
+    MATCH_IBEAM_MODE(4)
+#undef MATCH_IBEAM_MODE
+    } else if( std::string(format).substr(0, 5) == std::string("pbeam") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_pbeam_impl(capture, ring, nsrc, src0,
+                                                                 buffer_ntime, slot_ntime,
+                                                                 sequence_callback),
                            *obj = 0);
     } else if( std::string(format).substr(0, 3) == std::string("cor") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_cor_impl(capture, ring, nsrc, src0,

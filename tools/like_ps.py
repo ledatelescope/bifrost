@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-# Copyright (c) 2017, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,11 +27,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
+from __future__ import print_function
+
 import os
 import sys
 import glob
 import time
-import getopt
+import argparse
 import subprocess
 
 os.environ['VMA_TRACELEVEL'] = '0'
@@ -41,49 +43,8 @@ from bifrost.proclog import load_by_pid
 
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
 
-def usage(exitCode=None):
-    print """%s - Display details of running bifrost processes
 
-Usage: %s [OPTIONS]
-
-Options:
--h, --help                  Display this help information
-""" % (os.path.basename(__file__), os.path.basename(__file__))
-
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    # Command line flags - default values
-    config['args'] = []
-
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "h", ["help",])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        else:
-            assert False
-
-    # Add in arguments
-    config['args'] = args
-
-    # Return configuration
-    return config
-
-
-def _getProcessDetails(pid):
+def get_process_details(pid):
     """
     Use a call to 'ps' to get details about the specified PID.  These details
     include:
@@ -104,6 +65,11 @@ def _getProcessDetails(pid):
     data = {'user':'', 'cpu':0.0, 'mem':0.0, 'etime':'00:00', 'threads':0}
     try:
         output = subprocess.check_output('ps o user,pcpu,pmem,etime,nlwp %i' % pid, shell=True)
+        try:
+            output = output.decode()
+        except AttributeError:
+            # Python2 catch
+            pass
         output = output.split('\n')[1]
         fields = output.split(None, 4)
         data['user'] = fields[0]
@@ -116,7 +82,7 @@ def _getProcessDetails(pid):
     return data
 
 
-def _getCommandLine(pid):
+def get_command_line(pid):
     """
     Given a PID, use the /proc interface to get the full command line for 
     the process.  Return an empty string if the PID doesn't have an entry in
@@ -135,7 +101,7 @@ def _getCommandLine(pid):
     return cmd
 
 
-def _getBestSize(value):
+def get_best_size(value):
     """
     Give a size in bytes, convert it into a nice, human-readable value 
     with units.
@@ -159,8 +125,6 @@ def _getBestSize(value):
 
 
 def main(args):
-    config = parseOptions(args)
-
     pidDirs = glob.glob(os.path.join(BIFROST_STATS_BASE_DIR, '*'))
     pidDirs.sort()
 
@@ -168,20 +132,20 @@ def main(args):
         pid = int(os.path.basename(pidDir), 10)
         contents = load_by_pid(pid)
 
-        details = _getProcessDetails(pid)
-        cmd = _getCommandLine(pid)
+        details = get_process_details(pid)
+        cmd = get_command_line(pid)
 
         if cmd == '' and details['user'] == '':
             continue
 
-        print "PID: %i" % pid
-        print "  Command: %s" % cmd
-        print "  User: %s" % details['user']
-        print "  CPU Usage: %.1f%%" % details['cpu']
-        print "  Memory Usage: %.1f%%" % details['mem']
-        print "  Elapsed Time: %s" % details['etime']
-        print "  Thread Count: %i" % details['threads']
-        print "  Rings:"
+        print("PID: %i" % pid)
+        print("  Command: %s" % cmd)
+        print("  User: %s" % details['user'])
+        print("  CPU Usage: %.1f%%" % details['cpu'])
+        print("  Memory Usage: %.1f%%" % details['mem'])
+        print("  Elapsed Time: %s" % details['etime'])
+        print("  Thread Count: %i" % details['threads'])
+        print("  Rings:")
         rings = []
         ring_details = {}
         for block in contents.keys():
@@ -203,11 +167,11 @@ def main(args):
         for i,ring in enumerate(rings):
             try:
                 dtls = ring_details[ring]
-                sz, un = _getBestSize(dtls['stride']*dtls['nringlet'])
-                print "    %i: %s on %s of size %.1f %s" % (i, ring, dtls['space'], sz, un)
+                sz, un = get_best_size(dtls['stride']*dtls['nringlet'])
+                print("    %i: %s on %s of size %.1f %s" % (i, ring, dtls['space'], sz, un))
             except KeyError:
-                print "    %i: %s" % (i, ring)
-        print "  Blocks:"
+                print("    %i: %s" % (i, ring))
+        print("  Blocks:")
         for block in contents.keys():
             if block == 'rings':
                 continue
@@ -225,15 +189,20 @@ def main(args):
                         else:
                             if value not in routs:
                                 routs.append( value )
-            print "    %s" % block
+            print("    %s" % block)
             if len(rins) > 0:
-                print "      -> read ring(s): %s" % (" ".join(["%i" % rings.index(v) for v in rins]),)
+                print("      -> read ring(s): %s" % (" ".join(["%i" % rings.index(v) for v in rins]),))
             if len(routs) > 0:
-                print "      -> write ring(s): %s" % (" ".join(["%i" % rings.index(v) for v in routs]),)
+                print("      -> write ring(s): %s" % (" ".join(["%i" % rings.index(v) for v in routs]),))
             if len(contents[block].keys()) > 0:
-                print "      -> log(s): %s" % (" ".join(contents[block].keys()),)
+                print("      -> log(s): %s" % (" ".join(contents[block].keys()),))
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='Display details of running Bifrost pipelines',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    args = parser.parse_args()
+    main(args)
     

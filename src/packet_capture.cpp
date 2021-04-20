@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -136,6 +136,13 @@ BFstatus bfPacketCaptureCallbackSetIBeam(BFpacketcapture_callback obj,
                                          BFpacketcapture_ibeam_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_ibeam(callback);
+    return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketCaptureCallbackSetPBeam(BFpacketcapture_callback obj,
+                                         BFpacketcapture_pbeam_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_pbeam(callback);
     return BF_STATUS_SUCCESS;
 }
 

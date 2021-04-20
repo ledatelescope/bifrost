@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 extern "C" {
 #endif
 
+#include <bifrost/io.h>
 #include <bifrost/ring.h>
 
 // Callback setup
@@ -41,6 +42,8 @@ typedef int (*BFpacketcapture_chips_sequence_callback)(BFoffset, int, int, int,
                                                        BFoffset*, void const**, size_t*);
 typedef int (*BFpacketcapture_ibeam_sequence_callback)(BFoffset, int, int, int,
                                                        BFoffset*, void const**, size_t*);
+typedef int (*BFpacketcapture_pbeam_sequence_callback)(BFoffset, BFoffset, int, int, int,
+                                                       int, void const**, size_t*);
 typedef int (*BFpacketcapture_cor_sequence_callback)(BFoffset, BFoffset, int, int,
                                                      int, int, void const**, size_t*);
 typedef int (*BFpacketcapture_vdif_sequence_callback)(BFoffset, BFoffset, int, int, int,
@@ -58,6 +61,8 @@ BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
                                          BFpacketcapture_chips_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetIBeam(BFpacketcapture_callback obj,
                                          BFpacketcapture_ibeam_sequence_callback callback);
+BFstatus bfPacketCaptureCallbackSetPBeam(BFpacketcapture_callback obj,
+                                         BFpacketcapture_pbeam_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetCOR(BFpacketcapture_callback obj,
                                        BFpacketcapture_cor_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetVDIF(BFpacketcapture_callback obj,

@@ -25,6 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 import bifrost
 
 class _BlockChainerProxy(object):
@@ -48,7 +50,7 @@ class BlockChainer(object):
         bc.blocks.copy('cuda_host')
         bc.custom(my_block)(arg1, arg2, ...)
         bc.blocks.write_sigproc()
-        print bc.last_block # The last added block (this can also be set)
+        print(bc.last_block) # The last added block (this can also be set)
     """
     @property
     def blocks(self):

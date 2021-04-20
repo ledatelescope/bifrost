@@ -70,7 +70,7 @@ struct PacketDesc {
 	int            tuning1 = 0;
 	uint8_t        beam;
 	uint16_t       gain;
-	uint16_t       decimation;
+	uint32_t       decimation;
 	uint8_t        valid_mode;
 	int            payload_size;
 	const uint8_t* payload_ptr;

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -54,6 +54,11 @@ def get_sigproc_file_size(filename):
         head = ''
         while 'HEADER_END' not in head:
             more_data = f.read(4096)
+            try:
+                more_data = more_data.decode(errors='replace')
+            except AttributeError:
+                # Python2 catch
+                pass
             if len(more_data) == 0:
                 raise IOError("Not a valid sigproc file: " + filename)
             head += more_data
@@ -86,7 +91,7 @@ class SerializeTest(unittest.TestCase):
     def run_test_serialize_with_name_no_ringlets(self, gulp_nframe_inc=0):
         with bf.Pipeline() as pipeline:
             data = read_sigproc([self.fil_file], self.gulp_nframe, core=0)
-            for i in xrange(5):
+            for i in range(5):
                 if gulp_nframe_inc != 0:
                     data = copy(data,
                                 gulp_nframe=self.gulp_nframe+i*gulp_nframe_inc)

@@ -21,7 +21,7 @@ $(BIFROST_PYTHON_VERSION_FILE): ../config.mk
 	@echo "__version__ = \"$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR).$(LIBBIFROST_PATCH)\"" > $@
 
 define run_ctypesgen
-	ctypesgen.py -l$1 -I$2 $^ -o $@
+	python -c 'from ctypesgen import main as ctypeswrap; ctypeswrap.main()' -l$1 -I$2 $^ -o $@
 	# WAR for 'const char**' being generated as POINTER(POINTER(c_char)) instead of POINTER(c_char_p)
 	sed -i 's/POINTER(c_char)/c_char_p/g' $@
 	# WAR for a buggy WAR in ctypesgen that breaks type checking and auto-byref functionality

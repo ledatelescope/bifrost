@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-# Copyright (c) 2017, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,11 +27,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
+from __future__ import print_function
+
 import os
 import sys
 import glob
 import time
-import getopt
+import argparse
 import subprocess
 
 from bifrost.proclog import load_by_pid
@@ -40,62 +42,8 @@ from bifrost.proclog import load_by_pid
 
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
 
-def usage(exitCode=None):
-    print """%s - Create a DOT file that encapsulates the data flow inside the pipeline running
-under the specified PID.
 
-Usage: %s [OPTIONS] pid
-
-Options:
--h, --help                  Display this help information
--s, --source-name           Name for network sources (Default = sources)
--n, --no-associations       Exclude associated blocked (Default = include)
-""" % (os.path.basename(__file__), os.path.basename(__file__))
-
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    # Command line flags - default values
-    config['sourceName'] = 'sources'
-    config['includeAssociations'] = True
-    config['args'] = []
-
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "hs:n", ["help", "source-name=", "no-associations"])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        elif opt in ('-s', '--source-name'):
-            config['sourceName'] = value
-        elif opt in ('-n', '--no-associations'):
-            config['includeAssociations'] = False
-        else:
-            assert False
-
-    # Add in arguments
-    config['args'] = args
-
-    # Validate
-    if len(config['args']) != 1:
-        raise RuntimeError("Need to specify a PID to diagram")
-
-    # Return configuration
-    return config
-
-
-def _getProcessDetails(pid):
+def get_process_details(pid):
     """
     Use a call to 'ps' to get details about the specified PID.  These details
     include:
@@ -116,6 +64,9 @@ def _getProcessDetails(pid):
     data = {'user':'', 'cpu':0.0, 'mem':0.0, 'etime':'00:00', 'threads':0}
     try:
         output = subprocess.check_output('ps o user,pcpu,pmem,etime,nlwp %i' % pid, shell=True)
+        if sys.version_info.major > 2 and isinstance(output, bytes):
+            # decode the output to utf-8 in python 3
+            output = output.decode("utf-8")
         output = output.split('\n')[1]
         fields = output.split(None, 4)
         data['user'] = fields[0]
@@ -128,7 +79,7 @@ def _getProcessDetails(pid):
     return data
 
 
-def _getCommandLine(pid):
+def get_command_line(pid):
     """
     Given a PID, use the /proc interface to get the full command line for 
     the process.  Return an empty string if the PID doesn't have an entry in
@@ -147,7 +98,7 @@ def _getCommandLine(pid):
     return cmd
 
 
-def _getDataFlows(blocks):
+def get_data_flows(blocks):
     """
     Given a block dictonary from bifrost.proclog.load_by_pid(), return a list
     of chains that give the data flow.
@@ -235,7 +186,7 @@ def _getDataFlows(blocks):
 
                     for ring in rins:
                         if ring in refROuts:
-                            #print refRing, rins, block
+                            #print(refRing, rins, block)
                             chains.append( {'link':(refBlock,block), 'dtype':dtype} )
 
     # Find out the associations (based on core binding)
@@ -243,7 +194,7 @@ def _getDataFlows(blocks):
     for block in blocks:
         refBlock = block
         refCores = []
-        for i in xrange(32):
+        for i in range(32):
             try:
                 refCores.append( blocks[block]['bind']['core%i' % i] )
             except KeyError:
@@ -257,7 +208,7 @@ def _getDataFlows(blocks):
                 continue
 
             cores = []
-            for i in xrange(32):
+            for i in range(32):
                 try:
                     cores.append( blocks[block]['bind']['core%i' % i] )
                 except KeyError:
@@ -276,21 +227,18 @@ def _getDataFlows(blocks):
 
 
 def main(args):
-    config = parseOptions(args)
-    pidToUse = int(config['args'][0], 10)
-
     pidDirs = glob.glob(os.path.join(BIFROST_STATS_BASE_DIR, '*'))
     pidDirs.sort()
 
     for pidDir in pidDirs:
         pid = int(os.path.basename(pidDir), 10)
-        if pid != pidToUse:
+        if pid != args.pid:
             continue
 
         contents = load_by_pid(pid)
 
-        details = _getProcessDetails(pid)
-        cmd = _getCommandLine(pid)
+        details = get_process_details(pid)
+        cmd = get_command_line(pid)
 
         if cmd == '' and details['user'] == '':
             continue
@@ -301,7 +249,7 @@ def main(args):
             lut[block] = chr(i+97)
 
         # Find chains of linked blocks
-        sources, sinks, chains, associations = _getDataFlows(contents)
+        sources, sinks, chains, associations = get_data_flows(contents)
 
         # Add in network sources, if needed
         i = len(contents.keys())
@@ -314,7 +262,7 @@ def main(args):
                     pass
 
                 if nsrc is not None:
-                    name = '%s\\nx%i' % (config['sourceName'], nsrc)
+                    name = '%s\\nx%i' % (args.source_name, nsrc)
                     lut[name] = chr(i+97)
                     i += 1
 
@@ -327,10 +275,10 @@ def main(args):
         cmd = os.path.basename(cmd)
 
         # Create the DOT output
-        print "digraph graph%i {" % pid
+        print("digraph graph%i {" % pid)
         ## Graph label
-        print '  labelloc="t"'
-        print '  label="Pipeline: %s\\n "' % cmd
+        print('  labelloc="t"')
+        print('  label="Pipeline: %s\\n "' % cmd)
         ## Block identiers
         for block in sorted(lut):
             ### Is the block actually used?
@@ -342,7 +290,7 @@ def main(args):
                         break
                 if found:
                     break
-            if not found and config['includeAssociations']:
+            if not found and not args.no_associations:
                 for assoc0,assoc1 in associations:
                     if assoc0 == block:
                         found = True
@@ -354,7 +302,7 @@ def main(args):
             if found:
                 ### Yes, add it to the graph with the correct label
                 ## CPU info - if avaliable
-                if not block.startswith('%s\\nx' % config['sourceName']):
+                if not block.startswith('%s\\nx' % args.source_name):
                     try:
                         cpu = contents[block]['bind']['core0']
                         cpu = '\\nCPU%i' % cpu
@@ -369,7 +317,7 @@ def main(args):
                 if block in sinks:
                     shape = 'diamond'
                 ## Add it to the list
-                print '  %s [label="%s%s" shape="%s"]' % (lut[block], block, cpu, shape)
+                print('  %s [label="%s%s" shape="%s"]' % (lut[block], block, cpu, shape))
 
         ## Chains
         for chain in chains:
@@ -380,16 +328,27 @@ def main(args):
             else:
                 dtype = ' %s' % dtype
             ### Add it to the list
-            print '  %s -> %s [label="%s"]' % (lut[chain['link'][0]], lut[chain['link'][1]], dtype)
+            print('  %s -> %s [label="%s"]' % (lut[chain['link'][0]], lut[chain['link'][1]], dtype))
 
         ## Associations
-        if config['includeAssociations']:
+        if not args.no_associations:
             for assoc0,assoc1 in associations:
-                print '  %s -> %s [style="dotted" dir="both"]' % (lut[assoc0], lut[assoc1])
+                print('  %s -> %s [style="dotted" dir="both"]' % (lut[assoc0], lut[assoc1]))
 
-        print "}"
+        print("}")
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
-
+    parser = argparse.ArgumentParser(
+        description='Create a DOT file that encapsulates the data flow inside the specified Bifrost pipeline',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('pid', type=int,
+                        help='process ID')
+    parser.add_argument('-s', '--source-name', type=str, default='sources',
+                        help='name for network sources')
+    parser.add_argument('-n', '--no-associations', action='store_true',
+                        help='exclude associated blocks')
+    args = parser.parse_args()
+    main(args)
+    

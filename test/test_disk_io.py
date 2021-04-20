@@ -1,4 +1,4 @@
-# Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -115,18 +115,61 @@ class DRXReader(object):
         del capture
 
 
+class PBeamReader(object):
+    def __init__(self, sock, ring, nchan, nsrc=1):
+        self.sock = sock
+        self.ring = ring
+        self.nchan = nchan
+        self.nsrc = nsrc
+    def callback(self, seq0, time_tag, navg, chan0, nchan, nbeam, hdr_ptr, hdr_size_ptr):
+        #print "++++++++++++++++ seq0     =", seq0
+        #print "                 time_tag =", time_tag
+        hdr = {'time_tag': time_tag,
+               'seq0':     seq0, 
+               'chan0':    chan0,
+               'cfreq0':   chan0*(196e6/8192),
+               'bw':       nchan*(196e6/8192),
+               'navg':     navg,
+               'nbeam':    nbeam,
+               'npol':     4,
+               'complex':  False,
+               'nbit':     32}
+        #print("******** HDR:", hdr)
+        hdr_str = json.dumps(hdr)
+        # TODO: Can't pad with NULL because returned as C-string
+        #hdr_str = json.dumps(hdr).ljust(4096, '\0')
+        #hdr_str = json.dumps(hdr).ljust(4096, ' ')
+        header_buf = ctypes.create_string_buffer(hdr_str)
+        hdr_ptr[0]      = ctypes.cast(header_buf, ctypes.c_void_p)
+        hdr_size_ptr[0] = len(hdr_str)
+        return 0
+    def main(self):
+        seq_callback = PacketCaptureCallback()
+        seq_callback.set_pbeam(self.callback)
+        with DiskReader("pbeam_%i" % self.nchan, self.sock, self.ring, self.nsrc, 1, 240, 240,
+                        sequence_callback=seq_callback) as capture:
+            while True:
+                status = capture.recv()
+                if status in (1,4,5,6):
+                    break
+        del capture
+
+
 class AccumulateOp(object):
-    def __init__(self, ring, output, size):
+    def __init__(self, ring, output, size, dtype=np.uint8):
         self.ring = ring
         self.output = output
-        self.size = size
+        self.size = size*(dtype().nbytes)
+        self.dtype = dtype
+        
+        self.ring.resize(self.size*10)
         
     def main(self):
         for iseq in self.ring.read(guarantee=True):
             iseq_spans = iseq.read(self.size)
             while not self.ring.writing_ended():
                 for ispan in iseq_spans:
-                    idata = ispan.data_view(np.uint8)
+                    idata = ispan.data_view(self.dtype)
                     self.output.append(idata)
 
             
@@ -346,6 +389,79 @@ class DiskIOTest(unittest.TestCase):
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
         data = data[:,[0,1],:]
+        for i in range(1, data.shape[0]):
+            np.testing.assert_equal(final[i,...], data[i,...])
+            
+        # Clean up
+        del oop
+        fh.close()
+        
+    def _get_pbeam_data(self):
+        # Setup the packet HeaderInfo
+        desc = HeaderInfo()
+        desc.set_tuning(2)
+        desc.set_chan0(1034)
+        desc.set_nchan(128)
+        desc.set_decimation(24)
+        
+        # Reorder as packets, beam, chan/pol
+        data = self.s0.reshape(128*4,1,-1)
+        data = data.transpose(2,1,0)
+        data = data.real.copy()
+        
+        # Update the number of data sources and return
+        desc.set_nsrc(data.shape[1])
+        return desc, data
+    def test_write_pbeam(self):
+       fh = self._open('test_pbeam.dat', 'wb')
+       oop = DiskWriter('pbeam1_128', fh)
+       
+       # Get PBeam data
+       desc, data = self._get_pbeam_data()
+       
+       # Go!
+       oop.send(desc, 0, 24, 0, 2, data)
+       fh.close()
+       
+       self.assertEqual(os.path.getsize('test_pbeam.dat'), \
+                       (18+128*4*4)*data.shape[0]*data.shape[1])
+    def test_read_pbeam(self):
+        # Write
+        fh = self._open('test_pbeam.dat', 'wb')
+        oop = DiskWriter('pbeam1_128', fh)
+        
+        # Get PBeam data
+        desc, data = self._get_pbeam_data()
+        
+        # Go!
+        oop.send(desc, 1, 24, 0, 1, data)
+        fh.close()
+        
+        # Read
+        fh = self._open('test_pbeam.dat', 'rb')
+        ring = Ring(name="capture_pbeam")
+        iop = PBeamReader(fh, ring, 128, nsrc=1)
+        ## Data accumulation
+        final = []
+        aop = AccumulateOp(ring, final, 240*128*4, dtype=np.float32)
+        
+        # Start the reader and accumlator threads
+        reader = threading.Thread(target=iop.main)
+        accumu = threading.Thread(target=aop.main)
+        reader.start()
+        accumu.start()
+        
+        # Get TBN data
+        reader.join()
+        accumu.join()
+        
+        # Compare
+        ## Reorder to match what we sent out
+        final = np.array(final, dtype=np.float32)
+        final = final.reshape(-1,128*4,1)
+        final = final.transpose(0,2,1).copy()
+        ## Reduce to match the capture block size
+        data = data[:(final.shape[0]//240-1)*240,...]
         for i in range(1, data.shape[0]):
             np.testing.assert_equal(final[i,...], data[i,...])
             
