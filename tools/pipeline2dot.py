@@ -64,6 +64,9 @@ def get_process_details(pid):
     data = {'user':'', 'cpu':0.0, 'mem':0.0, 'etime':'00:00', 'threads':0}
     try:
         output = subprocess.check_output('ps o user,pcpu,pmem,etime,nlwp %i' % pid, shell=True)
+        if sys.version_info.major > 2 and isinstance(output, bytes):
+            # decode the output to utf-8 in python 3
+            output = output.decode("utf-8")
         output = output.split('\n')[1]
         fields = output.split(None, 4)
         data['user'] = fields[0]
