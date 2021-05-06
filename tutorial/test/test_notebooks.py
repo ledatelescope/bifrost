@@ -13,6 +13,8 @@ import glob
 import sys
 import re
 import os
+from tempfile import mkdtemp
+from shutil import rmtree
 
 
 run_notebooks_tests = False
@@ -65,6 +67,10 @@ class notebooks_tests(unittest.TestCase):
     def setUp(self):
         self.maxDiff = 8192
         
+        self.tempDir = mkdtemp(prefix='btnbt')
+        self.cwd = os.getcwd()
+        os.chdir(self.tempDir)
+        
         self._kernel = jupyter_client.KernelManager()
         self._kernel.start_kernel()
         self.kernel_name = self._kernel.kernel_name
@@ -72,6 +78,12 @@ class notebooks_tests(unittest.TestCase):
     def tearDown(self):
         self._kernel.shutdown_kernel()
         self.kernel_name = None
+        
+        os.chdir(self.cwd)
+        try:
+            rmtree(self.tempDir)
+        except OSError:
+            pass
 
 
 def _test_generator(notebook):
