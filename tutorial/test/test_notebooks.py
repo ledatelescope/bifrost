@@ -45,7 +45,7 @@ def run_notebook(notebook_path, run_path=None, kernel_name=None):
         
     cleanup = False
     if run_path is None:
-        run_path = mkdtemp(prefix='btnbt')
+        run_path = mkdtemp(prefix='test-notebooks-', suffix='.tmp')
         cleanup = True
         
     proc = ExecutePreprocessor(timeout=600, kernel_name=kernel_name)
