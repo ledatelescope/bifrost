@@ -31,7 +31,7 @@ __version__  = "0.1"
 __author__   = "Jayce Dowell"
 
 
-def run_notebook(notebook_path, kernel_name=None):
+def run_notebook(notebook_path, run_path=None, kernel_name=None):
     """
     From:
         http://www.blog.pythonlibrary.org/2018/10/16/testing-jupyter-notebooks/
@@ -43,7 +43,13 @@ def run_notebook(notebook_path, kernel_name=None):
     with open(notebook_path) as f:
         nb = nbformat.read(f, as_version=4)
         
-    proc = ExecutePreprocessor(timeout=600, kernel_name=kernel_name)
+    cleanup = False
+    if run_path is None:
+        run_path = mkdtemp(prefix='btnbt')
+        cleanup = True
+        
+    proc = ExecutePreprocessor(resources={'metadata': {'path': run_path}},
+                               timeout=600, kernel_name=kernel_name)
     proc.allow_errors = True
     
     proc.preprocess(nb, {'metadata': {'path': '/'}})
@@ -57,6 +63,13 @@ def run_notebook(notebook_path, kernel_name=None):
             for output in cell['outputs']:
                 if output.output_type == 'error':
                     errors.append(output)
+                    
+    if cleanup:
+        try:
+            rmtree(run_path)
+        except OSError:
+            pass
+            
     return nb, errors
 
 
@@ -67,10 +80,6 @@ class notebooks_tests(unittest.TestCase):
     def setUp(self):
         self.maxDiff = 8192
         
-        self.tempDir = mkdtemp(prefix='btnbt')
-        self.cwd = os.getcwd()
-        os.chdir(self.tempDir)
-        
         self._kernel = jupyter_client.KernelManager()
         self._kernel.start_kernel()
         self.kernel_name = self._kernel.kernel_name
@@ -78,12 +87,6 @@ class notebooks_tests(unittest.TestCase):
     def tearDown(self):
         self._kernel.shutdown_kernel()
         self.kernel_name = None
-        
-        os.chdir(self.cwd)
-        try:
-            rmtree(self.tempDir)
-        except OSError:
-            pass
 
 
 def _test_generator(notebook):
