@@ -48,11 +48,10 @@ def run_notebook(notebook_path, run_path=None, kernel_name=None):
         run_path = mkdtemp(prefix='btnbt')
         cleanup = True
         
-    proc = ExecutePreprocessor(resources={'metadata': {'path': run_path}},
-                               timeout=600, kernel_name=kernel_name)
+    proc = ExecutePreprocessor(timeout=600, kernel_name=kernel_name)
     proc.allow_errors = True
     
-    proc.preprocess(nb, {'metadata': {'path': '/'}})
+    proc.preprocess(nb, {'metadata': {'path': run_path}})
     output_path = os.path.join(dirname, '{}_all_output.ipynb'.format(nb_name))
     
     with open(output_path, mode='wt') as f:
