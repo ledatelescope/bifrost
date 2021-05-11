@@ -133,7 +133,7 @@ class UDPVerbsCapture(_CaptureBase):
         if core is None:
             core = -1
         BifrostObject.__init__(
-            self, _bf.bfUdpSnifferCreate, _bf.bfPacketCaptureDestroy,
+            self, _bf.bfUdpVerbsCaptureCreate, _bf.bfPacketCaptureDestroy,
             fmt, sock.fileno(), ring.obj, nsrc, src0,
             max_payload_size, buffer_ntime, slot_ntime,
             sequence_callback.obj, core)
