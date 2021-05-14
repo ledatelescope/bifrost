@@ -64,13 +64,13 @@ struct snap2_hdr_type {
 class SNAP2Decoder : virtual public PacketDecoder {
 protected:
     inline bool valid_packet(const PacketDesc* pkt) const {
-#if BFSNAP2_DEBUG
-        cout << "seq: "<< pkt->seq << endl;
-        cout << "src: "<< pkt->src << endl;
-        cout << "nsrc: "<< pkt->nsrc << endl;
-        cout << "nchan: "<< pkt->nchan << endl;
-        cout << "chan0: "<< pkt->chan0 << endl;
-#endif
+//#if BF_SNAP2_DEBUG
+//        cout << "seq: "<< pkt->seq << endl;
+//        cout << "src: "<< pkt->src << endl;
+//        cout << "nsrc: "<< pkt->nsrc << endl;
+//        cout << "nchan: "<< pkt->nchan << endl;
+//        cout << "chan0: "<< pkt->chan0 << endl;
+//#endif
         return ( 
                  pkt->seq >= 0
                  && pkt->src >= 0
@@ -92,6 +92,12 @@ public:
         int                   pld_size = pkt_size - sizeof(snap2_hdr_type);
         pkt->seq   = be64toh(pkt_hdr->seq);
         pkt->time_tag = be32toh(pkt_hdr->sync_time);
+#if BF_SNAP2_DEBUG
+	fprintf(stderr, "seq: %lu\t", pkt->seq);
+	fprintf(stderr, "sync_time: %lu\t", pkt->time_tag);
+	fprintf(stderr, "nchan: %lu\t", be16toh(pkt_hdr->nchan));
+	fprintf(stderr, "npol: %lu\t", be16toh(pkt_hdr->npol));
+#endif
         int npol_blocks  = (be16toh(pkt_hdr->npol_tot) / be16toh(pkt_hdr->npol));
         int nchan_blocks = (be16toh(pkt_hdr->nchan_tot) / be16toh(pkt_hdr->nchan));
 
@@ -105,6 +111,15 @@ public:
         pkt->src = (pkt->pol0 / pkt->npol) + be32toh(pkt_hdr->chan_block_id) * npol_blocks;
         pkt->payload_size = pld_size;
         pkt->payload_ptr  = pkt_pld;
+#if BF_SNAP2_DEBUG
+	fprintf(stderr, "nsrc: %lu\t", pkt->nsrc);
+	fprintf(stderr, "src: %lu\t", pkt->src);
+	fprintf(stderr, "chan0: %lu\t", pkt->chan0);
+	fprintf(stderr, "chan_block_id: %lu\t", be32toh(pkt_hdr->chan_block_id));
+	fprintf(stderr, "nchan_tot: %lu\t", pkt->nchan_tot);
+	fprintf(stderr, "npol_tot: %lu\t", pkt->npol_tot);
+	fprintf(stderr, "pol0: %lu\n", pkt->pol0);
+#endif
         return this->valid_packet(pkt);
     }
 };
