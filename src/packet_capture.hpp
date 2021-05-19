@@ -686,7 +686,8 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
         // packet isn't from the next block
         // TODO. Is this actually reasonable? Does it recover from upstream resyncs?
         bool is_new_seq = false;
-        if ( (_last_time_tag != pkt->time_tag) || (pkt->seq != _last_seq + _slot_ntime) ) {
+        if ( (_last_time_tag != pkt->time_tag) || (pkt->seq != _last_seq + _nseq_per_buf) ) {
+	    //fprintf(stderr, "packet seq was %lu. Expected %lu + %lu\r\n", pkt->seq, _last_seq, _nseq_per_buf);
             is_new_seq = true;
             this->flush();
         }
