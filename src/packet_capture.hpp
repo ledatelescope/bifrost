@@ -687,9 +687,13 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
         // TODO. Is this actually reasonable? Does it recover from upstream resyncs?
         bool is_new_seq = false;
         if ( (_last_time_tag != pkt->time_tag) || (pkt->seq != _last_seq + _nseq_per_buf) ) {
-	    //fprintf(stderr, "packet seq was %lu. Expected %lu + %lu\r\n", pkt->seq, _last_seq, _nseq_per_buf);
-            is_new_seq = true;
-            this->flush();
+	    	// We could have a packet sequence number which isn't what we expect
+	    	// but is only wrong because of missing packets. Set an upper bound on
+	    	// two slots of loss
+	    	if (pkt->seq > _last_seq + 2*_slot_ntime) {
+			    is_new_seq = true;
+				this->flush();
+	    	}
         }
         _last_seq = pkt->seq;
 	    return is_new_seq;
