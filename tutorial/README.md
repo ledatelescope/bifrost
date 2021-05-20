@@ -7,6 +7,7 @@ A collection of examples that show how to use various features in the [Bifrost f
  * Bifrost is described in [Cranmer et al.](https://arxiv.org/abs/1708.00720)
  * Documentation for the Python APIs can be found [here](http://ledatelescope.github.io/bifrost/)
  * There is an [overview talk of Bifrost](https://www.youtube.com/watch?v=DXH89rOVVzg) from the 2019 CASPER workshop.
+ * There is a [walk through of this tutorial](https://youtu.be/ktk2dkUssAA?t=20170) from the 2021 CASPER workshop.
 
 ## Docker Image
 
