@@ -118,7 +118,7 @@ def get_statistics(blockList, prevList):
     # Loop over the blocks to find udp_capture and udp_transmit blocks
     output = {'updated': datetime.now()}
     for block in blockList:
-        if block.find('udp_capture') != -1:
+        if block.find('udp_capture') != -1 or block.find('udp_sniffer') != -1:
             ## udp_capture is RX
             good = True
             type = 'rx'
@@ -386,7 +386,7 @@ def main(args):
     curses.endwin()
 
     try:
-        print("%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), traceback.tb_lineno(exc_traceback)))
+        print("%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), exc_traceback.tb_lineno))
         for line in tbString.split('\n'):
             print(line)
     except NameError:

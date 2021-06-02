@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,32 +26,36 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_ADDRESS_H_INCLUDE_GUARD_
-#define BF_ADDRESS_H_INCLUDE_GUARD_
+#pragma once
 
-#include <bifrost/common.h>
+#include "base.hpp"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#define TBF_FRAME_SIZE 6168
 
-typedef struct sockaddr* BFaddress;
+#pragma pack(1)
+struct tbf_hdr_type {
+    uint32_t sync_word;
+    uint32_t frame_count_word;
+    uint32_t seconds_count;
+    uint16_t first_chan;
+    uint16_t unassinged;
+    uint64_t time_tag;
+};
 
-BFstatus bfAddressCreate(BFaddress*  addr,
-                         const char* addr_string,
-                         int         port,
-                         unsigned    family);
-BFstatus bfAddressDestroy(BFaddress addr);
-BFstatus bfAddressGetFamily(BFaddress addr, unsigned* family);
-BFstatus bfAddressGetPort(BFaddress addr, int* port);
-BFstatus bfAddressIsMulticast(BFaddress addr, int* multicast);
-BFstatus bfAddressGetMTU(BFaddress addr, int* mtu);
-BFstatus bfAddressGetString(BFaddress addr,
-                            BFsize    bufsize, // 128 should always be enough
-                            char*     buf);
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
-#endif // BF_ADDRESS_H_INCLUDE_GUARD_
+class TBFHeaderFiller : virtual public PacketHeaderFiller {
+public:
+    inline int get_size() { return sizeof(tbf_hdr_type); }
+    inline void operator()(const PacketDesc* hdr_base,
+                           BFoffset          framecount,
+                           char*             hdr) {
+        tbf_hdr_type* header = reinterpret_cast<tbf_hdr_type*>(hdr);
+        memset(header, 0, sizeof(tbf_hdr_type));
+        
+        header->sync_word        = 0x5CDEC0DE;
+        // Bits 9-32 are the frame count; bits 1-8 are the TBF packet flag
+        header->frame_count_word = htobe32((framecount & 0xFFFFFF) \
+                                           | ((uint32_t) 0x01 << 24));
+        header->first_chan       = htons(hdr_base->src);
+        header->time_tag         = htobe64(hdr_base->seq);
+    }
+};

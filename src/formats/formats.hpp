@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,32 +26,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_ADDRESS_H_INCLUDE_GUARD_
-#define BF_ADDRESS_H_INCLUDE_GUARD_
+#pragma once
 
-#include <bifrost/common.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct sockaddr* BFaddress;
-
-BFstatus bfAddressCreate(BFaddress*  addr,
-                         const char* addr_string,
-                         int         port,
-                         unsigned    family);
-BFstatus bfAddressDestroy(BFaddress addr);
-BFstatus bfAddressGetFamily(BFaddress addr, unsigned* family);
-BFstatus bfAddressGetPort(BFaddress addr, int* port);
-BFstatus bfAddressIsMulticast(BFaddress addr, int* multicast);
-BFstatus bfAddressGetMTU(BFaddress addr, int* mtu);
-BFstatus bfAddressGetString(BFaddress addr,
-                            BFsize    bufsize, // 128 should always be enough
-                            char*     buf);
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
-#endif // BF_ADDRESS_H_INCLUDE_GUARD_
+#include "chips.hpp"
+#include "cor.hpp"
+#include "vdif.hpp"
+#include "drx.hpp"
+#include "tbn.hpp"
+#include "tbf.hpp"
+#include "ibeam.hpp"
+#include "pbeam.hpp"

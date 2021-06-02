@@ -125,6 +125,8 @@ client.send/recv_block/packet(...);
 #include <net/if.h>
 #include <ifaddrs.h>
 //#include <linux/net.h>
+#include <linux/if_ether.h>
+#include <linux/if_packet.h>
 
 class Socket {
 	// Not copy-assignable
@@ -186,6 +188,8 @@ public:
 	
 	// Server initialisation
 	inline void bind(sockaddr_storage local_address,
+	          int              max_conn_queue=DEFAULT_MAX_CONN_QUEUE);
+	inline void sniff(sockaddr_storage local_address,
 	          int              max_conn_queue=DEFAULT_MAX_CONN_QUEUE);
 	// Client initialisation
 	inline void connect(sockaddr_storage remote_address);
@@ -279,8 +283,11 @@ public:
 		timeval timeout = self->get_option<timeval>(SO_RCVTIMEO);
 		return timeout.tv_sec + timeout.tv_usec*1e-6;
 	}
+	inline void set_promiscuous(int state);
+	inline int get_promiscuous();
+	
 private:
-	inline void open(sa_family_t family);
+	inline void open(sa_family_t family, int protocol=0);
 	inline void set_default_options();
 	inline void check_error(int retval, std::string what) {
 		if( retval < 0 ) {
@@ -308,6 +315,10 @@ private:
 	inline static int addr_from_interface(const char* ifname,
 	                               sockaddr*   address,
 	                               sa_family_t family=AF_UNSPEC);
+	inline static int interface_from_addr(sockaddr*   address,
+	                               char* ifname,
+	                               sa_family_t family=AF_UNSPEC);
+	                                                              
 	int         _fd;
 	sock_type   _type;
 	sa_family_t _family;
@@ -359,7 +370,7 @@ sockaddr_storage Socket::address(//const char*    addrstr,
 		}
 		return sas;
 	}
-	if( family == AF_UNIX || port < 0 ) {
+	if( family == AF_UNIX || port < 0) {
 		// UNIX path
 		saU->sun_family = AF_UNIX;
 		std::strncpy(saU->sun_path, addrstr.c_str(),
@@ -450,16 +461,100 @@ void Socket::bind(sockaddr_storage local_address,
 	#warning "Kernel version does not support SO_REUSEPORT; multithreaded send/recv will not be possible"
 #endif
 	
-	check_error(::bind(_fd, (struct sockaddr*)&local_address, sizeof(local_address)),
-	            "bind socket");
-	if( _type == SOCK_STREAM ) {
-		check_error(::listen(_fd, max_conn_queue),
-		            "set socket to listen");
-		_mode = Socket::MODE_LISTENING;
+    // Determine multicast status...
+    int multicast = 0;
+    if( local_address.ss_family == AF_INET ) {
+        sockaddr_in *sa4 = reinterpret_cast<sockaddr_in*>(&local_address);
+        if( ((sa4->sin_addr.s_addr & 0xFF) >= 224) \
+            && ((sa4->sin_addr.s_addr & 0xFF) < 240) ) {
+            multicast = 1;
+        }
+    }
+    
+    // ... and work accordingly
+    if( !multicast ) {
+        // Normal address
+        check_error(::bind(_fd, (struct sockaddr*)&local_address, sizeof(local_address)),
+                    "bind socket");
+        if( _type == SOCK_STREAM ) {
+            check_error(::listen(_fd, max_conn_queue),
+                        "set socket to listen");
+            _mode = Socket::MODE_LISTENING;
+        }
+        else {
+            _mode = Socket::MODE_BOUND;
+        }
+    } else {
+        // Multicast address
+        // Setup the INADDR_ANY socket base to bind to
+        struct sockaddr_in base_address;
+        memset(&base_address, 0, sizeof(sockaddr_in));
+        base_address.sin_family = reinterpret_cast<sockaddr_in*>(&local_address)->sin_family;
+        base_address.sin_addr.s_addr = htonl(INADDR_ANY);
+        base_address.sin_port = htons(reinterpret_cast<sockaddr_in*>(&local_address)->sin_port);
+        check_error(::bind(_fd, (struct sockaddr*)&local_address, sizeof(local_address)),
+                    "bind socket");
+        
+        if( _type == SOCK_STREAM ) {
+            throw Socket::Error("SOCK_STREAM is not supported with multicast receive");
+        } else {
+            // Deal with joining the multicast group
+            struct ip_mreq mreq;
+            memset(&mreq, 0, sizeof(ip_mreq));
+            mreq.imr_multiaddr.s_addr = reinterpret_cast<sockaddr_in*>(&local_address)->sin_addr.s_addr;
+            mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+            this->set_option(IP_ADD_MEMBERSHIP, mreq, IPPROTO_IP);
+            _mode = Socket::MODE_BOUND;
+        }
+    }
+}
+void Socket::sniff(sockaddr_storage local_address,
+                   int              max_conn_queue) {
+	if( _mode != Socket::MODE_CLOSED ) {
+		throw Socket::Error("Socket is already open");
 	}
-	else {
-		_mode = Socket::MODE_BOUND;
-	}
+	this->open(AF_PACKET, htons(ETH_P_IP));
+		
+	// Allow binding multiple sockets to one port
+	//   See here for more info: https://lwn.net/Articles/542629/
+	// TODO: This must be done before calling ::bind, which is slightly
+	//         awkward with how this method is set up, as the user has
+	//         no way to do it themselves. However, doing it by default
+	//         is probably not a bad idea anyway.
+#ifdef SO_REUSEPORT
+	this->set_option(SO_REUSEPORT, 1);
+#else
+	#warning "Kernel version does not support SO_REUSEPORT; multithreaded send/recv will not be possible"
+#endif
+	struct ifreq ethreq;
+    memset(&ethreq, 0, sizeof(ethreq));
+    
+    // Find out which interface this address corresponds to
+    this->interface_from_addr((struct sockaddr*)(&local_address), 
+                                 ethreq.ifr_name,
+                                 local_address.ss_family);
+    check_error(::ioctl(_fd, SIOCGIFINDEX, &ethreq),
+                "find sniff interface index");
+    
+    // Bind to that interface
+    sockaddr_storage sas;
+    memset(&sas, 0, sizeof(sas));
+    sockaddr_ll* sll = reinterpret_cast<sockaddr_ll*>(&sas);
+    sll->sll_family = AF_PACKET;
+    sll->sll_ifindex = ethreq.ifr_ifindex;
+    sll->sll_protocol = htons(ETH_P_IP);
+    check_error(::bind(_fd, (struct sockaddr*)(&sas), sizeof(sas)),
+                "bind sniff socket");
+                
+    // Final check to make sure we are golden
+    if( _type == SOCK_STREAM ) {
+        throw Socket::Error("SOCK_STREAM is not supported with packet sniffing");
+    } else {
+        _mode = Socket::MODE_BOUND;
+    }
+    
+    // Make the socket promiscuous
+    this->set_promiscuous(true);
 }
 // TODO: Add timeout support? Bit of a pain to implement.
 void Socket::connect(sockaddr_storage remote_address) {
@@ -698,10 +793,10 @@ size_t Socket::send_packet(void const*             header_buf,
 	                        payload_buf, 0, &payload_size,
 	                        packet_dest, timeout_secs);
 }
-void Socket::open(sa_family_t family) {
+void Socket::open(sa_family_t family, int protocol) {
 	this->close();
 	_family = family;
-	check_error(_fd = ::socket(_family, _type, 0),
+	check_error(_fd = ::socket(_family, _type, protocol),
 	            "create socket");
 	this->set_default_options();
 }
@@ -739,6 +834,10 @@ sockaddr_storage Socket::get_local_address() /*const*/ {
 }
 void Socket::close() {
 	if( _fd >= 0 ) {
+            try {
+	        this->set_promiscuous(false);
+            }
+            catch( Socket::Error ) {}
 		::close(_fd);
 		_fd     = -1;
 		_family = AF_UNSPEC;
@@ -777,15 +876,15 @@ int Socket::addr_from_interface(const char* ifname,
 	}
 	bool found = false;
 	for( ifaddrs* ifa=ifaddr; ifa!=NULL; ifa=ifa->ifa_next ) {
-		if( std::strcmp(ifa->ifa_name, ifname) != 0 ||
+	    if( std::strcmp(ifa->ifa_name, ifname) != 0 ||
 		    ifa->ifa_addr == NULL ) {
 			continue;
 		}
 		sa_family_t ifa_family = ifa->ifa_addr->sa_family;
-		if( (family == AF_UNSPEC && (ifa_family == AF_INET ||
-		                             ifa_family == AF_INET6)) ||
-		    ifa_family == family ) {
-			size_t addr_size = ((ifa_family == AF_INET) ?
+		if( (family == AF_UNSPEC && (ifa_family == AF_INET \
+		                             || ifa_family == AF_INET6) \
+		    ) || ifa_family == family ) {
+		    size_t addr_size = ((ifa_family == AF_INET) ?
 			                    sizeof(struct sockaddr_in) :
 			                    sizeof(struct sockaddr_in6));
 			::memcpy(address, ifa->ifa_addr, addr_size);
@@ -796,6 +895,121 @@ int Socket::addr_from_interface(const char* ifname,
 	::freeifaddrs(ifaddr);
 	return found;
 }
+int Socket::interface_from_addr(sockaddr*   address,
+                                char*       ifname, 
+                                sa_family_t family) {
+    ifaddrs* ifaddr;
+    if( ::getifaddrs(&ifaddr) == -1 ) {
+		return 0;
+	}
+	bool found = false;
+	for( ifaddrs* ifa=ifaddr; ifa!=NULL; ifa=ifa->ifa_next ) {      
+	    if( ifa->ifa_name == NULL ||
+		    ifa->ifa_addr == NULL ) {
+			continue;
+		}
+		sa_family_t ifa_family = ifa->ifa_addr->sa_family;
+		if( (family == AF_UNSPEC && (ifa_family == AF_INET \
+		                             || ifa_family == AF_INET6) \
+		    ) || ifa_family == family ) {
+		    switch(ifa_family) {
+		        case AF_INET: {
+		            struct sockaddr_in* inaddr = (struct sockaddr_in*) ifa->ifa_addr;
+		            struct sockaddr_in* inmask = (struct sockaddr_in*) ifa->ifa_netmask;
+		            sockaddr_in* sa4 = reinterpret_cast<sockaddr_in*>(address);
+		            
+		            if( (inaddr->sin_addr.s_addr & inmask->sin_addr.s_addr) \
+		                == (sa4->sin_addr.s_addr & inmask->sin_addr.s_addr) ) {
+                        found = true;
+                    }
+		            break;
+		        }
+		        case AF_INET6: {
+		            struct sockaddr_in6* inaddr6 = (struct sockaddr_in6*) ifa->ifa_addr;
+		            struct sockaddr_in6* inmask6 = (struct sockaddr_in6*) ifa->ifa_netmask;
+		            sockaddr_in6* sa6 = reinterpret_cast<sockaddr_in6*>(address);
+		            
+		            uint64_t lowerIA=0, upperIA=0, lowerIM=0, upperIM=0;
+		            uint64_t lowerAA=0, upperAA=0;
+		            for(int i=0; i<8; i++) {
+		                lowerIA |= inaddr6->sin6_addr.s6_addr[i] << (8*i);
+		                upperIA |= inaddr6->sin6_addr.s6_addr[8+i] << (8*i);
+		                lowerIM |= inmask6->sin6_addr.s6_addr[i] << (8*i);
+		                upperIM |= inmask6->sin6_addr.s6_addr[8+i] << (8*i);
+		                
+		                lowerAA |= sa6->sin6_addr.s6_addr[i] << (8*i);
+		                upperAA |= sa6->sin6_addr.s6_addr[8+i] << (8*i);
+		            }
+		            
+		            if( ((lowerIA & lowerIM) == (lowerAA & lowerIM)) \
+		                && ((upperIA & upperIM) == (upperAA & upperIM)) ) {
+                        found = true;
+                    }
+		            break;
+		        }
+		        default: break;
+		    }
+		    if( found ) {
+		        std::strcpy(ifname, ifa->ifa_name);
+		        break;  // Return first match
+		    }
+		}
+	}
+    ::freeifaddrs(ifaddr);
+	return found;
+}
+void Socket::set_promiscuous(int state) {
+    sockaddr_storage addr = this->get_local_address();
+    
+    struct ifreq ethreq;
+    memset(&ethreq, 0, sizeof(ethreq));
+    if( ((sockaddr*)(&addr))->sa_family == AF_PACKET ) {
+        sockaddr_ll* sll = reinterpret_cast<sockaddr_ll*>(&addr);
+        ethreq.ifr_ifindex = sll->sll_ifindex;
+        check_error(::ioctl(_fd, SIOCGIFNAME, &ethreq),
+                    "find interface name");
+    } else {
+        this->interface_from_addr((sockaddr*)&addr, ethreq.ifr_name, _family);
+    }
+    
+    check_error(ioctl(_fd, SIOCGIFFLAGS, &ethreq),
+                "read interface setup");
+    if( state && (ethreq.ifr_flags & IFF_PROMISC) ) { 
+        // Oh good, it's already done
+    } else if ( state && !(ethreq.ifr_flags & IFF_PROMISC) ) {
+        ethreq.ifr_flags |= IFF_PROMISC;
+        check_error(ioctl(_fd, SIOCSIFFLAGS, &ethreq), 
+                    "change interface setup");
+    } else if ( !state && (ethreq.ifr_flags & IFF_PROMISC) ){
+        ethreq.ifr_flags ^= IFF_PROMISC;
+        check_error(ioctl(_fd, SIOCSIFFLAGS, &ethreq),
+                    "change interface setup");
+    }
+        
+}
+int Socket::get_promiscuous() {
+    sockaddr_storage addr = this->get_local_address();
+    
+    struct ifreq ethreq;
+    memset(&ethreq, 0, sizeof(ethreq));
+    if( ((sockaddr*)(&addr))->sa_family == AF_PACKET ) {
+        sockaddr_ll* sll = reinterpret_cast<sockaddr_ll*>(&addr);
+        ethreq.ifr_ifindex = sll->sll_ifindex;
+        check_error(::ioctl(_fd, SIOCGIFNAME, &ethreq),
+                    "find interface name");
+    } else {
+        this->interface_from_addr((sockaddr*)&addr, ethreq.ifr_name, _family);
+    }
+    
+    check_error(ioctl(_fd, SIOCGIFFLAGS, &ethreq),
+                "read interface setup");
+    if( ethreq.ifr_flags & IFF_PROMISC ) {
+        return true;
+    } else {
+        return false;
+    }
+}
+   
 #if __cplusplus >= 201103L
 void Socket::replace(Socket& s) {
 	_fd          = s._fd; s._fd = -1;
