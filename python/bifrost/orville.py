@@ -1,4 +1,4 @@
-# Copyright (c) 2018, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2018-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -24,8 +24,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, BifrostObject, _string2space
-from ndarray import ndarray, zeros, asarray, memset_array, copy_array
+# Python2 compatibility
+from __future__ import absolute_import, print_function, division
+
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space
+from bifrost.ndarray import ndarray, zeros, asarray, memset_array, copy_array
 
 from bifrost.fft import Fft
 from bifrost.map import map
@@ -106,7 +109,7 @@ class Orville(BifrostObject):
             self._npol = npol
             self._nplane = nplane
             self._midpoints = midpoints
-            print "Working with %i planes" % self._nplane
+            print("Working with %i planes" % self._nplane)
             
     def _set_image_correction_kernel(self, force=False):
         self._get_gridding_setup(force=force)
@@ -119,21 +122,21 @@ class Orville(BifrostObject):
             
         # Get the new image correction kernel
         corr = numpy.zeros(self._gridsize*self._oversample, dtype=self._dtype)
-        c = corr.size/2
-        d = self._kernel.size/2
+        c = corr.size//2
+        d = self._kernel.size//2
         corr[c-d:c+d] = self._kernel.copy(space='system')
         corr[:c-d] = numpy.arange(c-d) * corr[c-d]/(c-d)
         corr[c+d:] = corr[c-d] - numpy.arange(c-d) * corr[c-d]/(c-d)
         corr = numpy.fft.ifftshift(corr)
         corr = numpy.fft.ifft(corr).real
         corr = numpy.fft.fftshift(corr)
-        corr = corr[corr.size/2-self._gridsize/2-self._gridsize%2:corr.size/2+self._gridsize/2] * self._oversample
+        corr = corr[corr.size//2-self._gridsize//2-self._gridsize%2:corr.size//2+self._gridsize//2] * self._oversample
         corr = numpy.fft.fftshift(corr)
         self._img_correction = ndarray(corr, dtype='f32', space='cuda')
         
     def _get_lm(self, gridsize, gridres):
         m,l = numpy.indices((gridsize,gridsize))
-        l,m = numpy.where(l > gridsize/2, gridsize-l, -l), numpy.where(m > gridsize/2, m-gridsize, m)
+        l,m = numpy.where(l > gridsize//2, gridsize-l, -l), numpy.where(m > gridsize//2, m-gridsize, m)
         l,m = l.astype(numpy.float32)/gridsize/gridres, m.astype(numpy.float32)/gridsize/gridres
         return l,m
         
