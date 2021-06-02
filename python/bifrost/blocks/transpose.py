@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -55,7 +55,7 @@ class TransposeBlock(TransformBlock):
         # Allow axes to be specified by label
         if 'labels' in itensor:
             labels = itensor['labels']
-            self.axes = [labels.index(ax) if isinstance(ax, basestring)
+            self.axes = [labels.index(ax) if isinstance(ax, str)
                          else ax
                          for ax in self.specified_axes]
         else:

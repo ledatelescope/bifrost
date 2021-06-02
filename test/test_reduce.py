@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -73,12 +73,12 @@ class ReduceTest(unittest.TestCase):
         a = bf.asarray(a, space='cuda')
         b = bf.empty_like(b_gold, space='cuda')
         bf.reduce(a, b, op)
-        #for _ in xrange(10):
+        #for _ in range(10):
         #    bf.reduce(a, b, op)
         #bf.device.stream_synchronize();
         #t0 = time.time()
         #nrep = 30
-        #for _ in xrange(nrep):
+        #for _ in range(nrep):
         #    bf.reduce(a, b, op)
         #bf.device.stream_synchronize();
         #dt = time.time() - t0
@@ -88,7 +88,7 @@ class ReduceTest(unittest.TestCase):
     def test_reduce(self):
         self.run_reduce_test((3,6,5), axis=1, n=2, op='sum', dtype=np.float32)
         for shape in [(20,20,40), (20,40,60), (40,100,200)]:
-            for axis in xrange(3):
+            for axis in range(3):
                 for n in [2, 4, 5, 10, None]:
                     for op in ['sum', 'mean', 'pwrsum', 'pwrmean']:#, 'min', 'max', 'stderr']:
                         for dtype in [np.float32, np.int16, np.int8]:
@@ -96,7 +96,7 @@ class ReduceTest(unittest.TestCase):
                             self.run_reduce_test(shape, axis, n, op, dtype)
     def test_reduce_pow2(self):
         for shape in [(16,32,64), (16,64,256), (256,64,16)]:#, (256, 256, 512)]:
-            for axis in xrange(3):
+            for axis in range(3):
                 for n in [2, 4, 8, 16, None]:
                     for op in ['sum', 'mean', 'pwrsum', 'pwrmean']:#, 'min', 'max', 'stderr']:
                         for dtype in [np.float32, np.int16, np.int8]:
@@ -113,12 +113,12 @@ class ReduceTest(unittest.TestCase):
         a = bf.asarray(a, space='cuda')
         b = bf.empty_like(b_gold, space='cuda')
         bf.reduce(a, b, op)
-        #for _ in xrange(10):
+        #for _ in range(10):
         #    bf.reduce(a, b, op)
         #bf.device.stream_synchronize();
         #t0 = time.time()
         #nrep = 30
-        #for _ in xrange(nrep):
+        #for _ in range(nrep):
         #    bf.reduce(a, b, op)
         #bf.device.stream_synchronize();
         #dt = time.time() - t0
@@ -128,7 +128,7 @@ class ReduceTest(unittest.TestCase):
     def test_complex_reduce(self):
         self.run_complex_reduce_test((3,6,5), axis=1, n=2, op='pwrsum', dtype=np.complex64)
         for shape in [(20,20,40), (20,40,60), (40,100,200)]:
-            for axis in xrange(3):
+            for axis in range(3):
                 for n in [2, 4, 5, 10, None]:
                     for op in ['sum', 'mean', 'pwrsum', 'pwrmean']:#, 'min', 'max', 'stderr']:
                         for dtype in [np.complex64,]:
@@ -136,7 +136,7 @@ class ReduceTest(unittest.TestCase):
                             self.run_complex_reduce_test(shape, axis, n, op, dtype)
     def test_complex_reduce_pow2(self):
         for shape in [(16,32,64), (16,64,256), (256,64,16)]:#, (256, 256, 512)]:
-            for axis in xrange(3):
+            for axis in range(3):
                 for n in [2, 4, 8, 16, None]:
                     for op in ['sum', 'mean', 'pwrsum', 'pwrmean']:#, 'min', 'max', 'stderr']:
                         for dtype in [np.complex64,]:

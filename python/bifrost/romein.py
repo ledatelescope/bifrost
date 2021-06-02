@@ -1,6 +1,5 @@
-#!/usr/bin/env python
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2018-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,46 +25,32 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""
-# test_file_read_write.py
-
-This testbench initializes a simple bifrost pipeline that reads from a binary file,
-and then writes the data to an output file. 
-"""
-
 # Python2 compatibility
-from __future__ import print_function
+from __future__ import absolute_import
 
-import os
-import numpy as np
-import bifrost.pipeline as bfp
-from bifrost.blocks import BinaryFileReadBlock, BinaryFileWriteBlock
-import glob
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject
+import ctypes
+from bifrost.ndarray import asarray
 
+class Romein(BifrostObject):
+    def __init__(self):
+        BifrostObject.__init__(self, _bf.bfRomeinCreate, _bf.bfRomeinDestroy)
+    def init(self, positions, kernels, ngrid, polmajor=True):
+        _check( _bf.bfRomeinInit(self.obj, 
+                                 asarray(positions).as_BFarray(), 
+                                 asarray(kernels).as_BFarray(),
+                                 ngrid,
+                                 polmajor) )
+    def set_positions(self, positions):
+        _check( _bf.bfRomeinSetPositions(self.obj, 
+                                         asarray(positions).as_BFarray()) )
+    def set_kernels(self, kernels):
+        _check( _bf.bfRomeinSetKernels(self.obj, 
+                                       asarray(kernels).as_BFarray()) )
+    def execute(self, idata, odata):
+        # TODO: Work out how to integrate CUDA stream
+        _check( _bf.bfRomeinExecute(self.obj,
+                                    asarray(idata).as_BFarray(),
+                                    asarray(odata).as_BFarray()) )
+        return odata
 
-if __name__ == "__main__":
-    # Setup pipeline
-    filenames   = sorted(glob.glob('testdata/sin_data*.bin'))
-    b_read      = BinaryFileReadBlock(filenames, 32768, 1, 'f32')
-    b_write     = BinaryFileWriteBlock(b_read)
-
-    # Run pipeline
-    pipeline = bfp.get_default_pipeline()
-    print(pipeline.dot_graph())
-    pipeline.run()
-
-    # Check the output files match the input files
-    for filename in filenames:
-        try:
-            print(filename)
-            indata  = np.fromfile(filename, dtype='float32')
-            outdata = np.fromfile('%s.out' % filename, dtype='float32')
-            assert np.allclose(indata, outdata)
-            print("    Input data and output data match.")
-        except AssertionError:
-            print("    Error: input and output data do not match.")
-            raise
-        finally:
-            print("    Cleaning up...")
-            os.remove(filename + '.out')
-            print("    Done.")

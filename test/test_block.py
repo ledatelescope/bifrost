@@ -467,11 +467,11 @@ class TestMultiTransformBlock(unittest.TestCase):
             if self.i > 1 and self.i < 11:
                 with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
                     span_gen = curr_seq.read(1)
-                    self.all_sequence_starts.append(int(span_gen.next().data[0]))
+                    self.all_sequence_starts.append(int(next(span_gen).data[0]))
             if self.i > 12:
                 with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
                     span_gen = curr_seq.read(1)
-                    self.all_sequence_starts.append(int(span_gen.next().data[0]))
+                    self.all_sequence_starts.append(int(next(span_gen).data[0]))
             self.i += 1
             return array
 
@@ -543,7 +543,7 @@ class TestNumpyBlock(unittest.TestCase):
         def first_half(array):
             """Only return the first half of the input vector"""
             array = np.array(array)
-            return array[:int(array.size / 2)]
+            return array[:int(array.size // 2)]
         self.blocks.append([
             NumpyBlock(function=first_half),
             {'in_1': 0, 'out_1': 1}])

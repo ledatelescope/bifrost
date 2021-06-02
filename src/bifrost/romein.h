@@ -29,21 +29,6 @@ BFstatus bfRomeinExecute(BFromein          plan,
                          BFarray const* out);
 BFstatus bfRomeinDestroy(BFromein plan);
 
-/*****************************
-    Host Functions
- *****************************/
-
-BFstatus romein_float(BFarray const* data,
-		      BFarray const* uvgrid,
-		      BFarray const* illum,
-		      BFarray const* data_xloc,
-		      BFarray const* data_yloc,
-		      BFarray const* data_zloc,
-		      int max_support,
-		      int grid_size,
-		      int data_size,
-		      int nbatch);
-
 #ifdef __cplusplus
 }
 #endif

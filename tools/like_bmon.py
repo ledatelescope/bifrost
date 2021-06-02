@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-# Copyright (c) 2017, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,19 +27,22 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
+from __future__ import print_function
+
 import os
 import sys
 import glob
 import time
 import curses
-import getopt
 import socket
+import argparse
 import traceback
 from datetime import datetime
 try:
     import cStringIO as StringIO
 except ImportError:
-    import StringIO
+    from io import StringIO
 
 os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
@@ -48,50 +50,8 @@ from bifrost.proclog import load_by_pid
 
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
 
-def usage(exitCode=None):
-    print """%s - Monitor the packets capture/transmit status of a 
-bifrost pipeline.
 
-Usage: %s [OPTIONS] pid
-
-Options:
--h, --help                  Display this help information
-""" % (os.path.basename(__file__), os.path.basename(__file__))
-
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    # Command line flags - default values
-    config['args'] = []
-
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "h", ["help",])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        else:
-            assert False
-
-    # Add in arguments
-    config['args'] = args
-
-    # Return configuration
-    return config
-
-
-def _getTransmitReceive():
+def get_transmit_receive():
     """
     Read in the /dev/bifrost ProcLog data and return block-level information 
     about udp* blocks.
@@ -130,7 +90,7 @@ def _getTransmitReceive():
     return blockList
 
 
-def _getCommandLine(pid):
+def get_command_line(pid):
     """
     Given a PID, use the /proc interface to get the full command line for 
     the process.  Return an empty string if the PID doesn't have an entry in
@@ -149,7 +109,7 @@ def _getCommandLine(pid):
     return cmd
 
 
-def _getStatistics(blockList, prevList):
+def get_statistics(blockList, prevList):
     """
     Given a list of running blocks and a previous version of that, compute 
     basic statistics for the UDP blocks.
@@ -214,22 +174,22 @@ def _getStatistics(blockList, prevList):
             output[pid] = {}
             output[pid]['rx' ] = {'good':0, 'missing':0, 'invalid':0, 'late':0, 'drate':0.0, 'prate':0.0, 'gloss':0.0, 'closs':0.0}
             output[pid]['tx' ] = {'good':0, 'missing':0, 'invalid':0, 'late':0, 'drate':0.0, 'prate':0.0, 'gloss':0.0, 'closs':0.0}
-            output[pid]['cmd'] = _getCommandLine(pid)
+            output[pid]['cmd'] = get_command_line(pid)
         ### Actual data
-        output[pid][type]['good'   ] = curr['good'   ]
-        output[pid][type]['missing'] = curr['missing']
-        output[pid][type]['invalid'] = curr['invalid']
-        output[pid][type]['late'   ] = curr['late'   ]
-        output[pid][type]['drate'  ] = max([0.0, drate])
-        output[pid][type]['prate'  ] = max([0.0, prate])
-        output[pid][type]['gloss'  ] = max([0.0, min([gloss, 100.0])])
-        output[pid][type]['closs'  ] = max([0.0, min([closs, 100.0])])
+        output[pid][type]['good'   ] += curr['good'   ]
+        output[pid][type]['missing'] += curr['missing']
+        output[pid][type]['invalid'] += curr['invalid']
+        output[pid][type]['late'   ] += curr['late'   ]
+        output[pid][type]['drate'  ] += max([0.0, drate])
+        output[pid][type]['prate'  ] += max([0.0, prate])
+        output[pid][type]['gloss'  ] = max([output[pid][type]['gloss'  ], min([gloss, 100.0])])
+        output[pid][type]['closs'  ] = max([output[pid][type]['closs'  ], min([closs, 100.0])])
 
     # Done
     return output
 
 
-def _setUnits(value):
+def _set_units(value):
     """
     Convert a value in bytes so a human-readable format with units.
     """
@@ -248,7 +208,7 @@ def _setUnits(value):
     return value, unit
 
 
-def _addLine(screen, y, x, string, *args):
+def _add_line(screen, y, x, string, *args):
     """
     Helper function for curses to add a line, clear the line to the end of 
     the screen, and update the line number counter.
@@ -263,11 +223,9 @@ _REDRAW_INTERVAL_SEC = 0.2
 
 
 def main(args):
-    config = parseOptions(args)
-
     hostname = socket.gethostname()
 
-    blockList = _getTransmitReceive()
+    blockList = get_transmit_receive()
     order = sorted([blockList[key]['pid'] for key in blockList])
     order = set(order)
     nPID = len(order)
@@ -317,7 +275,7 @@ def main(args):
                 pidDirs.sort()
 
                 ## Load the data
-                blockList = _getTransmitReceive()
+                blockList = get_transmit_receive()
 
                 ## Sort
                 order = sorted([blockList[key]['pid'] for key in blockList])
@@ -325,7 +283,7 @@ def main(args):
                 nPID = len(order)
 
                 ## Stats
-                stats = _getStatistics(blockList, prevList)
+                stats = get_statistics(blockList, prevList)
 
                 ## Mark
                 tLastPoll = time.time()
@@ -347,13 +305,13 @@ def main(args):
             output += ' '*(size[1]-len(output)-len(os.path.basename(__file__))-1)
             output += os.path.basename(__file__)+' '
             output += '\n'
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - header
-            k = _addLine(scr, k, 0, ' ', std)
+            k = _add_line(scr, k, 0, ' ', std)
             output = '%6s        %9s        %6s        %9s        %6s' % ('PID', 'RX Rate', 'RX #/s', 'TX Rate', 'TX #/s')
             output += ' '*(size[1]-len(output))
             output += '\n'
-            k = _addLine(scr, k, 0, output, rev)
+            k = _add_line(scr, k, 0, output, rev)
             ### Data
             for o in order:
                 curr = stats[o]
@@ -361,10 +319,10 @@ def main(args):
                     act = curr
 
                 drateR, prateR = curr['rx']['drate'], curr['rx']['prate']
-                drateR, drateuR = _setUnits(drateR)
+                drateR, drateuR = _set_units(drateR)
 
                 drateT, prateT = curr['tx']['drate'], curr['tx']['prate']
-                drateT, drateuT = _setUnits(drateT)
+                drateT, drateuT = _set_units(drateT)
 
 
                 output = '%6i        %7.2f%2s        %6i        %7.2f%2s        %6i\n' % (o, drateR, drateuR, prateR, drateT, drateuT, prateT)
@@ -375,34 +333,34 @@ def main(args):
                         sty = std
                 except IndexError:
                     sty = std
-                k = _addLine(scr, k, 0, output, sty)
+                k = _add_line(scr, k, 0, output, sty)
 
                 if k > size[0]-9:
                     break
             while k < size[0]-9:
                 output = ' '
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
 
             ### Details of selected
             output = 'Details - %8s     %19s           %19s' % (stats['updated'].strftime("%H:%M:%S"), 'RX', 'TX')
             output += ' '*(size[1]-len(output))
             output += '\n'
-            k = _addLine(scr, k, 0, output, rev)
+            k = _add_line(scr, k, 0, output, rev)
             if act is not None:
                 output = 'Good:                  %18iB           %18iB\n' % (act['rx']['good'   ], act['tx']['good'   ])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Missing:               %18iB           %18iB\n' % (act['rx']['missing'], act['tx']['missing'])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Invalid:               %18iB           %18iB\n' % (act['rx']['invalid'], act['tx']['invalid'])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Late:                  %18iB           %18iB\n' % (act['rx']['late'   ], act['tx']['late'   ])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Global Missing:        %18.2f%%           %18.2f%%\n' % (act['rx']['gloss'  ], act['tx']['gloss'  ])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Current Missing:       %18.2f%%           %18.2f%%\n' % (act['rx']['closs'  ], act['tx']['closs'  ])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 output = 'Command:               %s' % act['cmd']
-                k = _addLine(scr, k, 0, output[:size[1]], std)
+                k = _add_line(scr, k, 0, output[:size[1]], std)
 
             ### Clear to the bottom
             scr.clrtobot()
@@ -417,7 +375,7 @@ def main(args):
 
     except Exception as error:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        fileObject = StringIO.StringIO()
+        fileObject = StringIO()
         traceback.print_tb(exc_traceback, file=fileObject)
         tbString = fileObject.getvalue()
         fileObject.close()
@@ -428,13 +386,18 @@ def main(args):
     curses.endwin()
 
     try:
-        print "%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), traceback.tb_lineno(exc_traceback))
+        print("%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), traceback.tb_lineno(exc_traceback)))
         for line in tbString.split('\n'):
-            print line
+            print(line)
     except NameError:
         pass
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='Monitor the packets capture/transmit status of Bifrost pipelines',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    args = parser.parse_args()
+    main(args)
     
