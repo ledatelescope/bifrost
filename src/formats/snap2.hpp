@@ -186,7 +186,7 @@ public:
                                      int      nsrc,
                                      int      nchan,
                                      int      nseq) {
-            fprintf(stderr, "TRYING TO BLANK OUT A SOURCE WITH MISSING PACKETS. BUT BLANKING NOT IMPLEMENTED\n");
+            //fprintf(stderr, "TRYING TO BLANK OUT A SOURCE WITH MISSING PACKETS. BUT BLANKING NOT IMPLEMENTED\n");
             //typedef aligned256_type otype;
             //fprintf(stderr, "You really better not be here\n");
             //otype* __restrict__ aligned_data = (otype*)data;
