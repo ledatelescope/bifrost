@@ -20,7 +20,7 @@ LIBBIFROST_OBJS = \
   unpack.o \
   quantize.o \
   proclog.o
-ifdef VERBS:
+ifdef VERBS
   # These files require IB verbs to compile
   LIBBIFROST_OBJS += \
   ib_verbs.o
