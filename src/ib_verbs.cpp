@@ -545,7 +545,8 @@ int Verbs::recv_packet(uint8_t** pkt_ptr, int flags) {
         }
     }
     while( _verbs.pkt_batch == NULL ) {
-        _verbs.pkt_batch = this->receive(_timeout);
+        //_verbs.pkt_batch = this->receive(_timeout);
+        _verbs.pkt_batch = this->receive(1);
         _verbs.pkt = _verbs.pkt_batch;
     }
     // IBV returns Eth/UDP/IP headers. Strip them off here.
