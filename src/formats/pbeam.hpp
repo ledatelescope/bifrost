@@ -151,8 +151,8 @@ public:
         header->nchan    = hdr_base->nchan;
         header->nbeam    = _nbeam;
         header->nserver  = nserver;
-        header->navg     = htons(hdr_base->decimation);
-        header->chan0    = htons(hdr_base->chan0);
+        header->navg     = htons((uint16_t) hdr_base->decimation);
+        header->chan0    = htons((uint16_t) hdr_base->chan0);
         header->seq      = htobe64(hdr_base->seq);
     }
 };
