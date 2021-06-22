@@ -103,6 +103,7 @@ class Verbs : public BoundThread {
     int    _fd;
     size_t _pkt_size_max;
     int    _timeout;
+    int    _alignment_filler; // Why is this needed?
     bf_ibv _verbs;
     
     void get_interface_name(char* name) {
@@ -254,4 +255,3 @@ public:
     }
     int recv_packet(uint8_t** pkt_ptr, int flags=0);
 };
-
