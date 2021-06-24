@@ -124,8 +124,8 @@ BFstatus bfHeaderInfoSetGain(BFheaderinfo       obj,
     return BF_STATUS_SUCCESS;
 }
 
-BFstatus bfHeaderInfoSetDecimation(BFheaderinfo       obj,
-                                   unsigned short int decimation) {
+BFstatus bfHeaderInfoSetDecimation(BFheaderinfo obj,
+                                   unsigned int decimation) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_decimation(decimation);
     return BF_STATUS_SUCCESS;
