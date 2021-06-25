@@ -102,7 +102,8 @@ struct bf_ibv {
 class Verbs : public BoundThread {
     int    _fd;
     size_t _pkt_size_max;
-    //int    _timeout;
+    int    _timeout;
+    int    _alignment_filler; // Why is this needed?
     bf_ibv _verbs;
     
     void get_interface_name(char* name) {
@@ -238,7 +239,7 @@ public:
     Verbs(int fd, size_t pkt_size_max, int core)
         : BoundThread(core), _fd(fd), _pkt_size_max(pkt_size_max) {
             ::memset(&_verbs, 0, sizeof(_verbs));
-            //_timeout = get_timeout_ms();
+            _timeout = get_timeout_ms();
             
             create_context();
             create_buffers(pkt_size_max);
@@ -254,4 +255,3 @@ public:
     }
     int recv_packet(uint8_t** pkt_ptr, int flags=0);
 };
-

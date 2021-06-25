@@ -49,8 +49,8 @@ BFstatus bfHeaderInfoSetTuning(BFheaderinfo obj,
                                int          tuning);
 BFstatus bfHeaderInfoSetGain(BFheaderinfo       obj,
                              unsigned short int gain);
-BFstatus bfHeaderInfoSetDecimation(BFheaderinfo       obj,
-                                   unsigned short int decimation);
+BFstatus bfHeaderInfoSetDecimation(BFheaderinfo obj,
+                                   unsigned int decimation);
 
 typedef struct BFpacketwriter_impl* BFpacketwriter;
 
