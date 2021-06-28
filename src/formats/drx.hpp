@@ -32,8 +32,7 @@
 
 #define DRX_FRAME_SIZE 4128
 
-#pragma pack(1)
-struct drx_hdr_type {
+struct __attribute__((packed)) drx_hdr_type {
 	uint32_t sync_word;
 	uint32_t frame_count_word;
 	uint32_t seconds_count;

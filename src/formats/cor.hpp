@@ -31,8 +31,7 @@
 #include "base.hpp"
 #include <cmath>
 
-#pragma pack(1)
-struct cor_hdr_type {
+struct __attribute__((packed)) cor_hdr_type {
 	uint32_t sync_word;
 	uint32_t frame_count_word;
 	uint32_t second_count;
