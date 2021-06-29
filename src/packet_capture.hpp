@@ -710,7 +710,7 @@ class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
-			                                   _chan0,
+			                                   pkt->tuning, // Hacked to contain chan0
 			                                   _nchan,
 			                                   _nsrc,
 			                                   time_tag,
