@@ -32,8 +32,7 @@
 
 #define TBF_FRAME_SIZE 6168
 
-#pragma pack(1)
-struct tbf_hdr_type {
+struct __attribute__((packed)) tbf_hdr_type {
     uint32_t sync_word;
     uint32_t frame_count_word;
     uint32_t seconds_count;

@@ -32,8 +32,7 @@
 
 //#include <immintrin.h> // SSE
 
-#pragma pack(1)
-struct pbeam_hdr_type {
+struct __attribute__((packed)) pbeam_hdr_type {
 	uint8_t  server;   // Note: 1-based
 	uint8_t  beam;     // Note: 1-based
 	uint8_t  gbe;      // (AKA tuning)
