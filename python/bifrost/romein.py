@@ -1,5 +1,5 @@
 
-# Copyright (c) 2018-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2018-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,8 +28,7 @@
 # Python2 compatibility
 from __future__ import absolute_import
 
-from bifrost.libbifrost import _bf, _check, _get, BifrostObject
-import ctypes
+from bifrost.libbifrost import _bf, _check, BifrostObject
 from bifrost.ndarray import asarray
 
 class Romein(BifrostObject):
@@ -53,4 +52,3 @@ class Romein(BifrostObject):
                                     asarray(idata).as_BFarray(),
                                     asarray(odata).as_BFarray()) )
         return odata
-
