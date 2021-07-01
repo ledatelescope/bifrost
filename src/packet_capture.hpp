@@ -289,8 +289,8 @@ public:
 class UDPVerbsReceiver : public PacketCaptureMethod {
     Verbs                  _ibv;
 public:
-    UDPVerbsReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE, int core=-1)
-        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_VERBS), _ibv(fd, pkt_size_max, core) {}
+    UDPVerbsReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_VERBS), _ibv(fd, pkt_size_max) {}
     inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
         *pkt_ptr = 0;
         return _ibv.recv_packet(pkt_ptr, flags);
@@ -1188,7 +1188,7 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         method = new UDPPacketSniffer(fd, max_payload_size);
 #if BF_VERBS_ENABLED
     } else if( backend == BF_IO_VERBS ) {
-        method = new UDPVerbsReceiver(fd, max_payload_size, core);
+        method = new UDPVerbsReceiver(fd, max_payload_size);
 #endif
     } else {
         return BF_STATUS_UNSUPPORTED;
