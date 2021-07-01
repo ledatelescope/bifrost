@@ -419,7 +419,6 @@ def main(args):
         for j in range(x):
             d = scr.inch(i,j)
             c = d&0xFF
-            a = (d>>8)&0xFF
             contents += chr(c)
 
     # Tear down curses
