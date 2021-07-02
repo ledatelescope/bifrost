@@ -112,7 +112,7 @@ _telescopes = defaultdict(lambda: 'unknown',
                            9:  'ATA',
                            10: 'UTR-2',
                            11: 'LOFAR',
-			   12: 'MWA', # DCP added at random
+			               12: 'MWA', # DCP added at random
                            52: 'LWA-OV',
                            53: 'LWA-SV'})
 _machines   = defaultdict(lambda: 'unknown',
