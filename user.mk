@@ -3,8 +3,11 @@ CXX           ?= g++
 NVCC          ?= nvcc
 LINKER        ?= g++
 CXX_FLAGS     ?= -O3 -Wall 
-NVCC_FLAGS    ?= -O3 -Xcompiler "-Wall" -Xptxas -v
+NVCC_FLAGS    ?= -O3 -Xcompiler "-Wall" --ptxas-options=-v
 LINKER_FLAGS  ?=
+
+
+GPU_SHAREDMEM ?= 16384 # GPU shared memory size
 
 #GPU_ARCHS     ?= 52
 GPU_ARCHS     ?= 61
@@ -25,6 +28,6 @@ TRACE      = 1 # Enable tracing mode (generates annotations for use with nvprof/
 #NOCUDA     = 1 # Disable CUDA support
 ANY_ARCH   = 1 # Disable native architecture compilation
 #CUDA_DEBUG = 1 # Enable CUDA debugging (nvcc -G)
-#NUMA       = 1 # Enable use of numa library for setting affinity of ring memory
-#HWLOC      = 1 # Enable use of hwloc library for memory binding in udp_capture
+NUMA       = 1 # Enable use of numa library for setting affinity of ring memory
+HWLOC      = 1 # Enable use of hwloc library for memory binding in udp_capture
 #VMA        = 1 # Enable use of Mellanox libvma in udp_capture
