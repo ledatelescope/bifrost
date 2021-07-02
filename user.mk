@@ -20,10 +20,10 @@ CUDA_INCDIR   ?= $(CUDA_HOME)/include
 ALIGNMENT ?= 4096 # Memory allocation alignment
 
 PSRDADA_PATH  ?= /home/npsr/software/psrdada/latest
-NOUDPSOCKET = 1  # Disable UDP code compilation
 BUILDDP4A   = 1  # Build beanfarmer + xcorr_lite
 BUILDROMEIN   = 1  # Build Romein kernels
 #NODEBUG    = 1 # Disable debugging mode (use this for production releases)
+#NOUDPSOCKET = 1  # Disable UDP code compilation
 TRACE      = 1 # Enable tracing mode (generates annotations for use with nvprof/nvvp)
 #NOCUDA     = 1 # Disable CUDA support
 ANY_ARCH   = 1 # Disable native architecture compilation
