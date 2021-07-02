@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -46,7 +46,7 @@ except ImportError:
     from contextlib2 import ExitStack
 import numpy as np
 import bifrost
-from bifrost import affinity
+from bifrost import affinity, memory
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
 
@@ -589,7 +589,7 @@ class CopyBlock(TransformBlock):
         input_ring = input_rings[0]
         for output_ring in output_rings:
             for ispan, ospan in self.ring_transfer(input_ring, output_ring):
-                bifrost.memory.memcpy2D(ospan.data, ispan.data)
+                memory.memcpy2D(ospan.data, ispan.data)
 class SigprocReadBlock(SourceBlock):
     """This block reads in a sigproc filterbank
     (.fil) file into a ring buffer"""
@@ -804,7 +804,7 @@ class FoldBlock(TransformBlock):
         self.out_gulp_size = self.bins * 4
         out_span_generator = self.iterate_ring_write(output_rings[0])
         out_span = next(out_span_generator)
-        bifrost.memory.memcpy(
+        memory.memcpy(
             out_span.data_view(dtype=np.float32),
             histogram)
 
