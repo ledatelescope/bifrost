@@ -202,6 +202,7 @@ class Hdu(object):
         self.log = MultiLog()
         self.hdu = _dada.dada_hdu_create(self.log.obj)
         self.connected = False
+        self.registered = False
     def __del__(self):
         self.disconnect()
         _dada.dada_hdu_destroy(self.hdu)
@@ -231,6 +232,16 @@ class Hdu(object):
     def relock(self):
         self._unlock()
         self._lock(self.mode)
+    def _register(self):
+        if not self.registered:
+            if _dada.dada_cuda_dbregister(self.hdu) < 0:
+                raise IOError("Failed to register memory with CUDA driver")
+            self.registered = True
+    def _unregister(self):
+        if self.registered:
+            if _dada.dada_cuda_dbunregister(self.hdu) < 0:
+                raise IOError("Failed to unregister memory with CUDA driver")
+            self.registered = False
     def open_HACK(self):
         if _dada.ipcio_open(self.data_block.io, 'w') < 0:
             raise IOError("ipcio_open failed")
@@ -240,6 +251,7 @@ class Hdu(object):
         self.header_block = IpcReadHeaderBuf(self.hdu.contents.header_block)
         self.data_block   = IpcReadDataBuf(self.hdu.contents.data_block)
         self.connected = True
+        self._register()
     def connect_write(self, buffer_key=0xDADA):
         self._connect(buffer_key)
         self._lock('write')
@@ -248,6 +260,7 @@ class Hdu(object):
         self.connected = True
     def disconnect(self):
         if self.connected:
+            self._unregister()
             self._unlock()
             self._disconnect()
             self.connected = False

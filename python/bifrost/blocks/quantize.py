@@ -41,7 +41,7 @@ class QuantizeBlock(TransformBlock):
         self.scale = scale
     def define_valid_input_spaces(self):
         """Return set of valid spaces (or 'any') for each input"""
-        return ('system',)
+        return ('any')
     def on_sequence(self, iseq):
         ihdr = iseq.header
         ohdr = deepcopy(ihdr)
@@ -72,8 +72,8 @@ def quantize(iring, dtype, scale=1., *args, **kwargs):
 
     **Tensor semantics**::
 
-        Input:  [...], dtype = [c]f32, space = SYSTEM
-        Output: [...], dtype = any (complex) integer type, space = SYSTEM
+        Input:  [...], dtype = [c]f32, space = SYSTEM or CUDA
+        Output: [...], dtype = any (complex) integer type, space = SYSTEM or CUDA
 
     Returns:
         QuantizeBlock: A new block instance.

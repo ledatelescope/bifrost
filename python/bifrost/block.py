@@ -49,6 +49,7 @@ import bifrost
 from bifrost import affinity, memory
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
+from bifrost.libbifrost import EndOfDataStop
 
 class Pipeline(object):
     """Class which connects blocks linearly, with
