@@ -6,13 +6,14 @@ INC_DIR = ../src
 BIFROST_PYTHON_VERSION_FILE  = bifrost/version.py
 BIFROST_PYTHON_BINDINGS_FILE = bifrost/libbifrost_generated.py
 
-PSRHOME ?= /usr/local
+PSRDADA_PATH ?= /usr/local
 PSRDADA_PYTHON_BINDINGS_FILE = bifrost/libpsrdada_generated.py
 PSRDADA_HEADERS = \
-	$(PSRHOME)/include/dada_hdu.h \
-	$(PSRHOME)/include/ipcio.h \
-	$(PSRHOME)/include/ipcbuf.h \
-	$(PSRHOME)/include/multilog.h
+	$(PSRDADA_PATH)/include/dada_hdu.h \
+	$(PSRDADA_PATH)/include/dada_cuda.h \
+	$(PSRDADA_PATH)/include/ipcio.h \
+	$(PSRDADA_PATH)/include/ipcbuf.h \
+	$(PSRDADA_PATH)/include/multilog.h
 
 all: build
 .PHONY: all
@@ -38,7 +39,7 @@ PSRDADA_PYTHON_BINDINGS_FILE =
 endif
 
 $(PSRDADA_PYTHON_BINDINGS_FILE): $(PSRDADA_HEADERS)
-	$(call run_ctypesgen,psrdada,$(PSRHOME)/include)
+	$(call run_ctypesgen,psrdada,$(PSRDADA_PATH)/include)
 	# WAR for psrdada API using char* instead of void* for buffer pointers, which
 	#   otherwise get inadvertently converted to Python strings.
 	sed -i 's/c_char_p/POINTER(c_char)/g' $@
