@@ -39,7 +39,7 @@ class TransposeTest(unittest.TestCase):
         odata_gold = idata.transpose(axes)
         iarray = bf.ndarray(idata, space='cuda')
         oarray = bf.empty_like(iarray.transpose(axes))
-        bf.transpose.transpose(oarray, iarray, axes)
+        bf.transpose(oarray, iarray, axes)
         oarray = oarray.copy('system')
         np.testing.assert_array_equal(oarray, odata_gold)
 
