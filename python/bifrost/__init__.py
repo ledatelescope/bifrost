@@ -45,7 +45,7 @@ from bifrost import blocks
 from bifrost.block_chainer import BlockChainer
 from bifrost.reduce import reduce
 # import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
-# from bifrost.transpose import transpose
+from bifrost.transpose import transpose
 # from bifrost.unpack import unpack
 # from bifrost.quantize import quantize
 
