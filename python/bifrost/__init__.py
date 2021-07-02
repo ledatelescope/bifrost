@@ -34,7 +34,7 @@ Bifrost pipeline processing library
 
 from __future__ import print_function, absolute_import
 
-from bifrost import core, memory, affinity, ring, block, address, udp_socket
+from bifrost import core, memory, affinity, ring,  address, udp_socket
 from bifrost import pipeline
 from bifrost import device
 from bifrost.ndarray import ndarray, asarray, empty_like, empty, zeros_like, zeros
