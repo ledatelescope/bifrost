@@ -232,7 +232,7 @@ class SequenceBase(object):
         hdr_buffer = _address_as_buffer(self._header_ptr, size, readonly=True)
         hdr_array = np.frombuffer(hdr_buffer, dtype=np.uint8)
         hdr_array.flags['WRITEABLE'] = False
-        self._header = json.loads(hdr_array.tostring())
+        self._header = json.loads(hdr_array.tobytes())
         return self._header
 
 class WriteSequence(SequenceBase):
