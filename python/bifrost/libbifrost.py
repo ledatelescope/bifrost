@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -72,7 +72,6 @@ class BifrostObject(object):
         self._destroy()
 
 def _array(size_or_vals, dtype=None):
-    import ctypes
     if size_or_vals is None:
         return None
     try:
@@ -182,4 +181,3 @@ SPACE2STRING = {_bf.BF_SPACE_AUTO:         'auto',
                 _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
 def _space2string(i):
     return SPACE2STRING[i]
-

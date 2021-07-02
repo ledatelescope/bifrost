@@ -1,8 +1,8 @@
 # Bifrost
 
-| **`CPU build`** | **`Coverage`** | 
-|----------------------|----------------------|
-|[![Travis](https://travis-ci.org/ledatelescope/bifrost.svg?branch=master)](https://travis-ci.org/ledatelescope/bifrost) | [![Coverage Status](https://coveralls.io/repos/github/ledatelescope/bifrost/badge.svg)](https://coveralls.io/github/ledatelescope/bifrost) |
+| **`CPU build`** | **`GPU build`** | **`Coverage`** | 
+|-----------------|-----------------|----------------|
+|[![Travis](https://travis-ci.com/ledatelescope/bifrost.svg?branch=master)](https://travis-ci.com/ledatelescope/bifrost) | [![Build Status](https://fornax.phys.unm.edu/jenkins/buildStatus/icon?job=Bifrost)](https://fornax.phys.unm.edu/jenkins/job/Bifrost/) | [![Coverage Status](https://coveralls.io/repos/github/ledatelescope/bifrost/badge.svg)](https://coveralls.io/github/ledatelescope/bifrost) |
 
 A stream processing framework for high-throughput applications.
 
