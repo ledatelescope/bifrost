@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 from __future__ import absolute_import
 
 import bifrost as bf
-import bifrost.quantize
 from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
 
@@ -42,7 +41,7 @@ class QuantizeBlock(TransformBlock):
         self.scale = scale
     def define_valid_input_spaces(self):
         """Return set of valid spaces (or 'any') for each input"""
-        return ('system',)
+        return ('any')
     def on_sequence(self, iseq):
         ihdr = iseq.header
         ohdr = deepcopy(ihdr)
@@ -73,8 +72,8 @@ def quantize(iring, dtype, scale=1., *args, **kwargs):
 
     **Tensor semantics**::
 
-        Input:  [...], dtype = [c]f32, space = SYSTEM
-        Output: [...], dtype = any (complex) integer type, space = SYSTEM
+        Input:  [...], dtype = [c]f32, space = SYSTEM or CUDA
+        Output: [...], dtype = any (complex) integer type, space = SYSTEM or CUDA
 
     Returns:
         QuantizeBlock: A new block instance.

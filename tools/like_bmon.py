@@ -40,7 +40,7 @@ import argparse
 import traceback
 from datetime import datetime
 try:
-    import cStringIO as StringIO
+    from cStringIO import StringIO
 except ImportError:
     from io import StringIO
 

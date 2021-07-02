@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -41,14 +41,10 @@ libtest_la_LDFLAGS = -version-info 0:0:0
 
 from __future__ import absolute_import, print_function
 
-from bifrost.pipeline import SourceBlock, SinkBlock
-from bifrost.DataType import DataType
 import bifrost.libpsrdada_generated as _dada
 import numpy as np
 from bifrost.ndarray import _address_as_buffer
 
-from copy import deepcopy
-import os
 import ctypes
 
 def get_pointer_value(ptr):
@@ -206,6 +202,7 @@ class Hdu(object):
         self.log = MultiLog()
         self.hdu = _dada.dada_hdu_create(self.log.obj)
         self.connected = False
+        self.registered = False
     def __del__(self):
         self.disconnect()
         _dada.dada_hdu_destroy(self.hdu)
@@ -235,6 +232,16 @@ class Hdu(object):
     def relock(self):
         self._unlock()
         self._lock(self.mode)
+    def _register(self):
+        if not self.registered:
+            if _dada.dada_cuda_dbregister(self.hdu) < 0:
+                raise IOError("Failed to register memory with CUDA driver")
+            self.registered = True
+    def _unregister(self):
+        if self.registered:
+            if _dada.dada_cuda_dbunregister(self.hdu) < 0:
+                raise IOError("Failed to unregister memory with CUDA driver")
+            self.registered = False
     def open_HACK(self):
         if _dada.ipcio_open(self.data_block.io, 'w') < 0:
             raise IOError("ipcio_open failed")
@@ -244,6 +251,7 @@ class Hdu(object):
         self.header_block = IpcReadHeaderBuf(self.hdu.contents.header_block)
         self.data_block   = IpcReadDataBuf(self.hdu.contents.data_block)
         self.connected = True
+        self._register()
     def connect_write(self, buffer_key=0xDADA):
         self._connect(buffer_key)
         self._lock('write')
@@ -252,6 +260,7 @@ class Hdu(object):
         self.connected = True
     def disconnect(self):
         if self.connected:
+            self._unregister()
             self._unlock()
             self._disconnect()
             self.connected = False

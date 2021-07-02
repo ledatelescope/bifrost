@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -116,8 +116,9 @@ class BlockScope(object):
     def __enter__(self):
         thread_local.blockscope_stack.append(self)
     def __exit__(self, type, value, tb):
-        if __debug__: assert(thread_local.blockscope_stack.pop() is self)
-        else: thread_local.blockscope_stack.pop()
+        popped = thread_local.blockscope_stack.pop()
+        if __debug__:
+            assert(popped is self)
     def __getattr__(self, name):
         # Use child's value if set, othersize defer to parent
         if '_'+name not in self.__dict__:
@@ -286,8 +287,9 @@ class Pipeline(BlockScope):
         thread_local.pipeline_stack.append(self)
         return self
     def __exit__(self, type, value, tb):
-        if __debug__: assert(thread_local.pipeline_stack.pop() is self)
-        else: thread_local.pipeline_stack.pop()
+        popped = thread_local.pipeline_stack.pop()
+        if __debug__:
+            assert(popped is self)
 
 # Create the default pipeline object
 thread_local.pipeline_stack.append(Pipeline())
