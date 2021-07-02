@@ -53,6 +53,7 @@ class CallbackBlock(blocks.CopyBlock):
 
 class BinaryIOTest(unittest.TestCase):
     """Test simple IO for the binary read/write blocks"""
+    
     def setUp(self):
         """Generate some dummy data to read"""
         # Generate test vector and save to file
@@ -65,6 +66,7 @@ class BinaryIOTest(unittest.TestCase):
 
         # Setup pipeline
         self.filenames = ['numpy_data0.bin', 'numpy_data1.bin']
+    
     def test_read_write(self):
         """Read from a binary file, then write to another one"""
         b_read = blocks.binary_read(self.filenames, 32768, 1, 'f32')
@@ -78,8 +80,6 @@ class BinaryIOTest(unittest.TestCase):
         outdata0 = np.fromfile('numpy_data0.bin.out', dtype='float32')
         outdata1 = np.fromfile('numpy_data1.bin.out', dtype='float32')
         
-        print(self.s0.shape, outdata0.shape)
-        print(self.s1.shape, outdata1.shape)
         np.testing.assert_almost_equal(self.s0, outdata0)
         np.testing.assert_almost_equal(self.s1, outdata1)
 
