@@ -112,6 +112,7 @@ _telescopes = defaultdict(lambda: 'unknown',
                            9:  'ATA',
                            10: 'UTR-2',
                            11: 'LOFAR',
+			   12: 'MWA', # DCP added at random
                            52: 'LWA-OV',
                            53: 'LWA-SV'})
 _machines   = defaultdict(lambda: 'unknown',
@@ -134,12 +135,12 @@ def id2telescope(id_):
     return _telescopes[id_]
 def telescope2id(name):
     # TODO: Would be better to use a pre-made reverse lookup dict
-    return _telescopes.keys()[_telescopes.values().index(name)]
+    return list(_telescopes.keys())[list(_telescopes.values()).index(name)]
 def id2machine(id_):
     return _machines[id_]
 def machine2id(name):
     # TODO: Would be better to use a pre-made reverse lookup dict
-    return _machines.keys()[_machines.values().index(name)]
+    return list(_machines.keys())[list(_machines.values()).index(name)]
 
 def _header_write_string(f, key):
     f.write(struct.pack('=i', len(key)))
