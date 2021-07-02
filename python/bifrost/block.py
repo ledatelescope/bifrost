@@ -49,6 +49,7 @@ import bifrost
 from bifrost import affinity
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
+from bifrost.libbifrost import EndOfDataStop
 
 class Pipeline(object):
     """Class which connects blocks linearly, with
@@ -1078,7 +1079,7 @@ class NumpySourceBlock(MultiTransformBlock):
                         arrays = [output_data]
                     else:
                         arrays = output_data
-            except StopIteration:
+            except EndOfDataStop:
                 break
 
             if self.changing:
