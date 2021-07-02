@@ -68,7 +68,7 @@ class BinaryIOTest(unittest.TestCase):
     def test_read_write(self):
         """Read from a binary file, then write to another one"""
         b_read = blocks.binary_read(self.filenames, 32768, 1, 'f32')
-        b_write = blocks.binary_write(b_read.orings[0])
+        b_write = blocks.binary_write(b_read)
 
         # Run pipeline
         pipeline = bfp.get_default_pipeline()
@@ -77,9 +77,12 @@ class BinaryIOTest(unittest.TestCase):
         # Check the output files match the input files
         outdata0 = np.fromfile('numpy_data0.bin.out', dtype='float32')
         outdata1 = np.fromfile('numpy_data1.bin.out', dtype='float32')
-
+        
+        print(self.s0.shape, outdata0.shape)
+        print(self.s1.shape, outdata1.shape)
         np.testing.assert_almost_equal(self.s0, outdata0)
         np.testing.assert_almost_equal(self.s1, outdata1)
+
     def test_header_compliance(self):
         """Make sure that the binary in has all required header labels"""
         def seq_callback(iseq):

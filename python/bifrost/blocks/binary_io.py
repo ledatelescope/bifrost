@@ -48,16 +48,18 @@ class BinaryFileRead(object):
         self.file_obj = open(filename, 'rb')
         self.dtype = dtype
         self.gulp_size = gulp_size
+        self.count = 0
 
     def read(self):
         d = np.fromfile(self.file_obj, dtype=self.dtype, count=self.gulp_size)
+        self.count += 1
         return d
 
     def __enter__(self):
         return self
 
     def close(self):
-        pass
+        self.file_obj.close()
 
     def __exit__(self, type, value, tb):
         self.close()
@@ -104,6 +106,7 @@ class BinaryFileWriteBlock(bfp.SinkBlock):
         super(BinaryFileWriteBlock, self).__init__(iring, *args, **kwargs)
         self.current_fileobj = None
         self.file_ext = file_ext
+        self.count = 0
 
     def on_sequence(self, iseq):
         if self.current_fileobj is not None:
@@ -114,6 +117,10 @@ class BinaryFileWriteBlock(bfp.SinkBlock):
 
     def on_data(self, ispan):
         self.current_fileobj.write(ispan.data.tobytes())
+        self.count += 1
+
+    def on_sequence_end(self, iseq):
+        self.current_fileobj.close()
 
 def binary_read(filenames, gulp_size, gulp_nframe, dtype, *args, **kwargs):
     """ Block for reading binary data from file and streaming it into a bifrost pipeline
@@ -125,6 +132,7 @@ def binary_read(filenames, gulp_size, gulp_nframe, dtype, *args, **kwargs):
         dtype (bifrost dtype string): dtype, e.g. f32, cf32
     """
     return BinaryFileReadBlock(filenames, gulp_size, gulp_nframe, dtype, *args, **kwargs)
+
 
 def binary_write(iring, file_ext='out', *args, **kwargs):
     """ Write ring data to a binary file
