@@ -103,7 +103,6 @@ class Ring(BifrostObject):
         self.owner = owner
         self.header_transform = None
     def __del__(self):
-        print(f"Deleting ring {self.name}")
         if self.base is not None and not self.is_view:
             BifrostObject.__del__(self)
     def view(self):
