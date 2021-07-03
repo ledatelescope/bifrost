@@ -10,7 +10,7 @@ LINKER_FLAGS  ?=
 GPU_SHAREDMEM ?= 16384 # GPU shared memory size
 
 #GPU_ARCHS     ?= 52
-GPU_ARCHS     ?= 61
+GPU_ARCHS     ?= 60 61
 
 CUDA_HOME     ?= /usr/local/cuda
 CUDA_LIBDIR   ?= $(CUDA_HOME)/lib
