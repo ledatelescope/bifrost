@@ -38,7 +38,6 @@ from bifrost.blocks.guppi_raw import read_guppi_raw, GuppiRawSourceBlock
 from bifrost.blocks.print_header import print_header, PrintHeaderBlock
 from bifrost.blocks.sigproc import read_sigproc, SigprocSourceBlock
 from bifrost.blocks.sigproc import write_sigproc, SigprocSinkBlock
-from bifrost.blocks.scrunch import scrunch, ScrunchBlock
 from bifrost.blocks.accumulate import accumulate, AccumulateBlock
 from bifrost.blocks.binary_io import BinaryFileReadBlock, BinaryFileWriteBlock
 from bifrost.blocks.binary_io import binary_read, binary_write
