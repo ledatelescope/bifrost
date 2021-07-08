@@ -32,8 +32,7 @@
 
 //#include <immintrin.h> // SSE
 
-#pragma pack(1)
-struct chips_hdr_type {
+struct __attribute__((packed)) chips_hdr_type {
 	uint8_t  roach;    // Note: 1-based
 	uint8_t  gbe;      // (AKA tuning)
 	uint8_t  nchan;    // 109
