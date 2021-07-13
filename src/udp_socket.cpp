@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -73,7 +73,7 @@ BFstatus bfUdpSocketGetTimeout(BFudpsocket obj, double* secs) {
 	try {
 		*secs = obj->get_timeout();
 	}
-	catch( Socket::Error ) {
+	catch( Socket::Error& ) {
 		*secs = 0;
 		return BF_STATUS_INVALID_STATE;
 	}
@@ -92,7 +92,7 @@ BFstatus bfUdpSocketGetMTU(BFudpsocket obj, int* mtu) {
 	try {
 		*mtu = obj->get_mtu();
 	}
-	catch( Socket::Error ) {
+	catch( Socket::Error& ) {
 		*mtu = 0;
 		return BF_STATUS_INVALID_STATE;
 	}
