@@ -45,7 +45,6 @@ try:
 except ImportError:
     from contextlib2 import ExitStack
 import numpy as np
-import bifrost
 from bifrost import affinity, memory
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
