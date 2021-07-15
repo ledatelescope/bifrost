@@ -30,8 +30,7 @@
 
 #include "base.hpp"
 
-#pragma pack(1)
-struct lwa352_vbeam_hdr_type {
+struct __attribute__((packed)) lwa352_vbeam_hdr_type {
     uint64_t sync_word;
     uint64_t sync_time;
     uint64_t time_tag;

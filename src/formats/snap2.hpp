@@ -38,9 +38,8 @@
 #define PIPELINE_NPOL 704
 #define PIPELINE_NCHAN 32
 
-#pragma pack(1)
 // All entries are network (i.e. big) endian
-struct snap2_hdr_type {
+struct __attribute__((packed)) snap2_hdr_type {
         uint64_t  seq;       // Spectra counter == packet counter
         uint32_t  sync_time; // UNIX sync time
         uint16_t  npol;      // Number of pols in this packet
