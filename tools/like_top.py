@@ -192,7 +192,7 @@ def get_gpu_memory_usage():
         pass
     else:
         # Parse the ouptut and turn everything into something useful, if possible
-        lines = output.decode().split('\n')[:-1]
+        lines = output.split('\n')[:-1]
         for line in lines:
             used, total, free, draw, limit, load = line.split(',')
             data['devCount'] += 1
