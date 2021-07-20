@@ -647,7 +647,7 @@ class Verbs {
                     recv_head = &(_verbs.pkt_buf[wr_id]);
                     recv_tail = &recv_head->wr;
                 } else {
-                    recv_tail = &(_verbs.pkt_buf[wr_id].wr);
+                    recv_tail->next = &(_verbs.pkt_buf[wr_id].wr);
                     recv_tail = recv_tail->next;
                 }
             } // for each work completion
