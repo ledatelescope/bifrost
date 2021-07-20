@@ -183,7 +183,7 @@ public:
     inline void set_chan0(int chan0)                { _desc.chan0 = chan0;           }
     inline void set_tuning(int tuning)              { _desc.tuning = tuning;         }
     inline void set_gain(uint16_t gain)             { _desc.gain = gain;             }
-    inline void set_decimation(uint16_t decimation) { _desc.decimation = decimation; }
+    inline void set_decimation(uint32_t decimation) { _desc.decimation = decimation; }
 };  
 
 class BFpacketwriter_impl {

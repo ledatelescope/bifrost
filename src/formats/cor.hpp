@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,8 +31,7 @@
 #include "base.hpp"
 #include <cmath>
 
-#pragma pack(1)
-struct cor_hdr_type {
+struct __attribute__((packed)) cor_hdr_type {
 	uint32_t sync_word;
 	uint32_t frame_count_word;
 	uint32_t second_count;
@@ -63,6 +62,7 @@ public:
 	    const cor_hdr_type* pkt_hdr  = (cor_hdr_type*)pkt_ptr;
 	    const uint8_t*      pkt_pld  = pkt_ptr  + sizeof(cor_hdr_type);
 	    int                 pld_size = pkt_size - sizeof(cor_hdr_type);
+	    uint8_t             nchan_decim = (be32toh(pkt_hdr->frame_count_word) >> 16) & 0xFF;
 	    uint8_t             nserver = (be32toh(pkt_hdr->frame_count_word) >> 8) & 0xFF;
 	    uint8_t             server = be32toh(pkt_hdr->frame_count_word) & 0xFF;
 	    uint16_t            nchan_pkt = (pld_size/(8*4));
@@ -77,7 +77,7 @@ public:
 	    pkt->src          = (stand0*(2*(nstand-1)+1-stand0)/2 + stand1 + 1 - _src0)*nserver \
 	                        + (server - 1);
 	    pkt->chan0        = be16toh(pkt_hdr->first_chan) \
-	                        - nchan_pkt * (server - 1);
+	                        - nchan_decim*nchan_pkt * (server - 1);
 	    pkt->nchan        = nchan_pkt;
 	    pkt->tuning       = (nserver << 8) | (server - 1);  // Stores the number of servers and 
                                                             // the server that sent this packet

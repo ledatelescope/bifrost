@@ -30,24 +30,23 @@
 
 #include "base.hpp"
 
-#pragma pack(1)
-struct vdif_hdr_type {
-    struct word_1_ {
+struct __attribute__((packed)) vdif_hdr_type {
+    struct __attribute__((packed)) word_1_ {
         uint32_t seconds_from_epoch:30;
         uint8_t  is_legacy:1;
         uint8_t  is_invalid:1;
     } word_1;
-    struct word_2_ {
+    struct __attribute__((packed)) word_2_ {
         uint32_t frame_in_second:24;
         uint16_t ref_epoch:6;
         uint8_t  unassigned:2;
     } word_2;
-    struct word_3_ {
+    struct __attribute__((packed)) word_3_ {
         uint32_t frame_length:24;
         uint32_t log2_nchan:5;
         uint8_t  version:3;
     } word_3;
-    struct word_4_ {
+    struct __attribute__((packed)) word_4_ {
         uint16_t station_id:16;
         uint16_t thread_id:10;
         uint8_t  bits_per_sample_minus_one:5;
@@ -55,8 +54,7 @@ struct vdif_hdr_type {
     } word_4;
 };
 
-#pragma pack(1)
-struct vdif_ext_type {
+struct __attribute__((packed)) vdif_ext_type {
     uint32_t extended_word_1;
     uint32_t extended_word_2;
     uint32_t extended_word_3;
