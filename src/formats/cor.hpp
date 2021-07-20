@@ -62,7 +62,7 @@ public:
 	    const cor_hdr_type* pkt_hdr  = (cor_hdr_type*)pkt_ptr;
 	    const uint8_t*      pkt_pld  = pkt_ptr  + sizeof(cor_hdr_type);
 	    int                 pld_size = pkt_size - sizeof(cor_hdr_type);
-	    uint8_t             chan_decim = (be32toh(pkt_hdr->frame_count_word) >> 16) & 0xFF;
+	    uint8_t             nchan_decim = (be32toh(pkt_hdr->frame_count_word) >> 16) & 0xFF;
 	    uint8_t             nserver = (be32toh(pkt_hdr->frame_count_word) >> 8) & 0xFF;
 	    uint8_t             server = be32toh(pkt_hdr->frame_count_word) & 0xFF;
 	    uint16_t            nchan_pkt = (pld_size/(8*4));
