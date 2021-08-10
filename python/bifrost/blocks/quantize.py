@@ -78,4 +78,4 @@ def quantize(iring, dtype, scale=1., *args, **kwargs):
     Returns:
         QuantizeBlock: A new block instance.
     """
-    return QuantizeBlock(iring, dtype, *args, **kwargs)
+    return QuantizeBlock(iring, dtype, scale, *args, **kwargs)
