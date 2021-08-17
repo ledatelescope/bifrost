@@ -21,8 +21,8 @@ __global__ void trans_4bit_to_float(unsigned char *in,
   int time = blockIdx.x;
   int chan = blockIdx.y;
   int pol = TRANSPOSE_POL_BLOCK_SIZE*threadIdx.x;
-  unsigned char *in_off = in + time*n_chan*n_pol + chan*n_pol + pol;
-  float *out_off = out + 2*( chan*n_pol*n_time + pol*n_time + time);
+  unsigned char *in_off = in + time*n_chan*n_pol + chan*n_pol + pol; // 4+4 bit
+  float *out_off = out + 2*( chan*n_pol*n_time + pol*n_time + time); // 32+32 bit
   //long long int old_index = time*n_chan*n_pol + chan*n_pol + pol;
   //long long int new_index = chan*n_pol*n_time + pol*n_time + time;
   float real, imag;
@@ -34,10 +34,11 @@ __global__ void trans_4bit_to_float(unsigned char *in,
     //imag = lut[in[old_index+i] & 0b1111];
     //out[2*(new_index+i)] = real;
     //out[2*(new_index+i)+1] = imag;
-    real = lut[temp >> 4];
-    imag = lut[temp & 255];
-    *out_off++ = real;
-    *out_off++ = imag;
+    real = lut[(temp >> 4) & 0b1111];
+    imag = lut[temp & 0b1111];
+    out_off[0] = real;
+    out_off[1] = imag;
+    out_off += 2*n_time;
   }
 }
 
@@ -191,7 +192,7 @@ void cublas_beamform_init(int device, int ninputs, int nchans, int ntimes, int n
   gpuBLASchk(cublasCreate(&(context.handle)));
   gpuBLASchk(cublasSetStream(context.handle, context.stream));
   gpuBLASchk(cublasSetPointerMode(context.handle, CUBLAS_POINTER_MODE_HOST));
-  //gpuBLASchk(cublasSetPointerMode(handle, CUBLAS_POINTER_MODE_DEVICE));
+  //gpuBLASchk(cublasSetPointerMode(context.handle, CUBLAS_POINTER_MODE_DEVICE));
   gpuBLASchk(cublasSetMathMode(context.handle, CUBLAS_TENSOR_OP_MATH));
 
   context.ninputs = ninputs;
@@ -202,6 +203,7 @@ void cublas_beamform_init(int device, int ninputs, int nchans, int ntimes, int n
 
   // Internally allocate intermediate buffers
   gpuErrchk( cudaMalloc(&context.in32_d,  ninputs * nchans * ntimes * 2 * sizeof(float)) );
+  //gpuErrchk( cudaMemcpy(context.in32_d, in32_h, ninputs * nchans * ntimes * 2 * sizeof(float), cudaMemcpyHostToDevice) );
   // If the context is initialized with ntimeblocks=0, then we do no summing so don't
   // need the intermediate buffer allocated internally.
   if (ntimeblocks > 0) {
@@ -244,29 +246,63 @@ void cublas_beamform(unsigned char *in4_d, float *out_d, float *weights_d) {
   // A matrix: beamforming coeffs (NBEAMS * NANTS)
   // B matrix: data matrix (NANTS * NTIMES)
     
+  /*
   gpuBLASchk(cublasGemmStridedBatchedEx(
     context.handle,
-    CUBLAS_OP_N, // transpose A?
-    CUBLAS_OP_N, // transpose B?
+    CUBLAS_OP_T, // transpose A?
+    CUBLAS_OP_T, // transpose B?
     context.nbeams,      // m
     context.ntimes,      // n
     context.ninputs,     // k
-    // Coeffs
+    // Coeffs: [nchans x] nbeams x ninputs (m x k)
     &alpha,              // alpha
     weights_d,           // A
     CUDA_C_32F,          // A type
-    context.nbeams,      // Lda
+    context.ninputs,      // Lda
     context.nbeams*context.ninputs,// strideA : stride size
-    // Data
+    // Data: [nchans x] ninputs x ntimes (k x n)
     context.in32_d,      // B
     CUDA_C_32F,          // B type
-    context.ninputs,     // Ldb
+    context.ntimes,     // Ldb
     context.ninputs*context.ntimes,// strideB : stride size
     &beta,       // beta
     // Results
     gem_out_d,       // C
     CUDA_C_32F,          // Ctype 
     context.nbeams,      // Ldc
+    context.nbeams*context.ntimes,// Stride C
+    context.nchans,      // batchCount
+    CUDA_C_32F,          // compute type
+    CUBLAS_GEMM_DEFAULT_TENSOR_OP // algo
+    ));
+  */
+  
+  gpuBLASchk(cublasGemmStridedBatchedEx(
+    context.handle,
+    CUBLAS_OP_N, // transpose A?
+    CUBLAS_OP_T, // transpose B?
+    context.ntimes,      // n
+    context.nbeams,      // m
+    context.ninputs,     // k
+    &alpha,              // alpha
+    //
+    // Data: [nchans x] ninputs x ntimes (k x n)
+    context.in32_d,      // B
+    CUDA_C_32F,          // B type
+    context.ntimes,     // Ldb
+    context.ninputs*context.ntimes,// strideB : stride size
+    //
+    // Coeffs: [nchans x] nbeams x ninputs (m x k)
+    weights_d,           // A
+    CUDA_C_32F,          // A type
+    context.nbeams,      // Lda
+    context.nbeams*context.ninputs,// strideA : stride size
+    //
+    &beta,       // beta
+    // Results
+    gem_out_d,       // C
+    CUDA_C_32F,          // Ctype 
+    context.ntimes,      // Ldc
     context.nbeams*context.ntimes,// Stride C
     context.nchans,      // batchCount
     CUDA_C_32F,          // compute type
