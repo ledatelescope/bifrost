@@ -15,7 +15,7 @@ __global__ void trans_4bit_to_float(unsigned char *in,
                                     int n_time
                                    );
 
-// Transpose chan x beam x pol x time x 32+32 float to
+// Transpose chan x beam x pol x pol x 32+32 float to
 // beam x time[part-summed] x chan x [XX,YY,XY*_r,XY*_i] x 32 float
 // Each thread deals with two pols of a beam, and sums over n_time_sum time samples
 __global__ void trans_output_and_sum(float *in,

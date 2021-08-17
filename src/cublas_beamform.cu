@@ -45,6 +45,7 @@ __global__ void trans_4bit_to_float(unsigned char *in,
 // Transpose chan x beam x pol x time x 32+32 float to
 // beam x time[part-summed] x chan x [XX,YY,XY*_r,XY*_i] x 32 float
 // Each thread deals with two pols of a beam, and sums over n_time_sum time samples
+// n_beam is the _output_ number of beams. I.e., the number of dual-pol beams
 __global__ void trans_output_and_sum(float *in,
                                     float *out,
                                     int n_chan,
@@ -55,25 +56,28 @@ __global__ void trans_output_and_sum(float *in,
   int chan = blockIdx.x;
   int beam = blockIdx.y;
   int time = threadIdx.x;
-  long long int old_index = chan*n_beam*n_time*2 + beam*n_time*2 + time*n_time_sum*2; // start index for n_time/n_time_sum samples
-  long long int new_index = beam*(n_time / n_time_sum)*n_chan + time*n_chan + chan;
-  float xx=0., yy=0., xy_r=0., xy_i=0.;
+  // n_beam here is a dual pol beam
+  // input is: chan x beam x pol [2] x time x complexity
+  long long int old_index = 2*(chan*n_beam*2*n_time + beam*2*n_time + time*n_time_sum); // start index for n_time/n_time_sum samples
+  // output is: beam x time x chan x pol-products [4]
+  long long int new_index = 4*(beam*(n_time / n_time_sum)*n_chan + time*n_chan + chan);
+  float xx=0., yy=0., xy_r=0., xy_i=0.; // accumulator registers
   float x_r, x_i, y_r, y_i;
   int t;
   for (t=0; t<n_time_sum; t++) {
     x_r = in[old_index + 2*t];
     x_i = in[old_index + 2*t + 1];
-    y_r = in[old_index + 2*n_time + 2*t];
-    y_i = in[old_index + 2*n_time + 2*t + 1];
+    y_r = in[old_index + 2*(n_time + t)];
+    y_i = in[old_index + 2*(n_time + t) + 1];
     xx = xx + x_r*x_r + x_i*x_i;
     yy = yy + y_r*y_r + y_i*y_i;
     xy_r = xy_r + x_r*y_r + x_i*y_i;
     xy_i = xy_i + x_i*y_r - x_r*y_i;
   }
-  out[4*new_index] = xx;
-  out[4*new_index+1] = yy;
-  out[4*new_index+2] = xy_r;
-  out[4*new_index+3] = xy_i;
+  out[new_index] = xx;
+  out[new_index+1] = yy;
+  out[new_index+2] = xy_r;
+  out[new_index+3] = xy_i;
 }
 
 // Take an input of order chan x beam x pol x time x 32+32 float and generate
@@ -330,6 +334,13 @@ void cublas_beamform(unsigned char *in4_d, float *out_d, float *weights_d) {
   }
 }
 
+/* Take input data of form
+   nchan x nbeam x time x complex64 [i.e. the output of cublas_beamform],
+   sum over ``ntimes_sum``, interpret beams `2n` and `2n+1` as a dual pol pair,
+   and generate an output array of form
+   nbeam x ntime / ntime_sum x nchan x nbeam / 2 x 4 x complex64.
+   The last 4-element axis holds XX, YY, Re(XY), Im(XY
+*/
 void cublas_beamform_integrate(float *in_d, float *out_d, int ntimes_sum) {
   // Create XX, YY, XY beam powers.
   // Sum over `ntimes_sum` samples

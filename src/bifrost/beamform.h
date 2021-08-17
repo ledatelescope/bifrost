@@ -24,7 +24,7 @@ BFstatus bfBeamformInitialize(
 /*
  * in:  Pointer to ntime x nchan x ninputs x 4+4 bit data block
  * out: Pointer to output data.
- *        If ntime_blocks > 0:
+ *        If ntime_blocks > 0: !!!!UNTESTED, probably broken!!!!
  *          For the purposes of generating dynamic spectra, beam 2n and 2n+1 are considered
  *          to be two pols of the same pointing, and are cross-multipled and summed over
  *          ntimes/ntime_blocks to form the output array:
@@ -35,7 +35,7 @@ BFstatus bfBeamformInitialize(
  *          coefficients can make appropriate single-pol beam pairs).
  *        If ntime_blocks = 0:
  *          Data are returned as voltages, in order:
- *            ntimes x nchan x nbeam x complex64 beamformer block
+ *            nchan x nbeam x ntime x complex64 beamformer block
  *                            
  * weights -- pointer to nbeams x nchans x ninputs x complex64 weights
  */
@@ -49,7 +49,7 @@ BFstatus bfBeamformRun(
  * Take the output of bfBeamformRun with ntime_blocks = 0, and perform transposing and integration
  * of data, to deliver a time integrated dual-pol dynamic spectra of the form:
  *   nbeam/2 x ntime/ntimes_sum x nchan x 4 x float32 (powers, XX, YY, re(XY, im(XY))
- * I.e., the format which would be returned by bfBeamformRun is ntime_blocks > 0
+ * I.e., the format which would be returned by bfBeamformRun if ntime_blocks > 0
  */
 BFstatus bfBeamformIntegrate(
   BFarray *in,
