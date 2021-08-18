@@ -284,7 +284,7 @@ void cublas_beamform(unsigned char *in4_d, float *out_d, float *weights_d) {
   gpuBLASchk(cublasGemmStridedBatchedEx(
     context.handle,
     CUBLAS_OP_N, // transpose A?
-    CUBLAS_OP_T, // transpose B?
+    CUBLAS_OP_N, // transpose B?
     context.ntimes,      // n
     context.nbeams,      // m
     context.ninputs,     // k
@@ -299,7 +299,7 @@ void cublas_beamform(unsigned char *in4_d, float *out_d, float *weights_d) {
     // Coeffs: [nchans x] nbeams x ninputs (m x k)
     weights_d,           // A
     CUDA_C_32F,          // A type
-    context.nbeams,      // Lda
+    context.ninputs,      // Lda
     context.nbeams*context.ninputs,// strideA : stride size
     //
     &beta,       // beta
