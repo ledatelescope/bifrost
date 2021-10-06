@@ -195,7 +195,8 @@ telemetry.disable()
 
 or by using the included `bifrost_telemetry.py` script:
 
-```python bifrost_telemetry.py --disable
+```
+python bifrost_telemetry.py --disable
 ```
 
 This command will set a disk-based flag that disables the reporting process.
