@@ -34,6 +34,9 @@ import numpy as np
 import bifrost.pipeline as bfp
 from bifrost.dtype import name_nbit2numpy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class BinaryFileRead(object):
     """ Simple file-like reading object for pipeline testing
 

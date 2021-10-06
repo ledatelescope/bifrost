@@ -52,6 +52,9 @@ from bifrost.temp_storage import TempStorage
 from bifrost.proclog import ProcLog
 from bifrost.ndarray import memset_array # TODO: This feels a bit hacky
 
+from bifrost import telemetry
+telemetry.track_module()
+
 # Note: This must be called before any devices are initialized. It's also
 #          almost always desirable when running pipelines, so we do it here at
 #          module import time to make things easy.

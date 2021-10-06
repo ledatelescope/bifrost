@@ -40,6 +40,9 @@ import numpy as np
 import os, sys, ephem, datetime
 from dateutil import tz
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class DadaReader(object):
     """
     Dada file reader for raw LEDA correlator data.

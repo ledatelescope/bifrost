@@ -42,6 +42,8 @@ import json
 import numpy as np
 from bifrost import block
 
+from bifrost import telemetry
+telemetry.track_module()
 
 # Read a collection of DADA files and form an array of time series data over
 # many frequencies.

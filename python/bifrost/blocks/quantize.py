@@ -33,6 +33,9 @@ from bifrost.DataType import DataType
 
 from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class QuantizeBlock(TransformBlock):
     def __init__(self, iring, dtype, scale=1.,
                  *args, **kwargs):

@@ -30,6 +30,9 @@ from __future__ import absolute_import
 from bifrost.pipeline import SourceBlock
 import bifrost.guppi_raw as guppi_raw
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def _get_with_default(obj, key, default=None):
     return obj[key] if key in obj else default
 

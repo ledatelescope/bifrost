@@ -32,6 +32,9 @@ from bifrost.ndarray import copy_array
 
 from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class CopyBlock(TransformBlock):
     def __init__(self, iring, space=None, *args, **kwargs):
         super(CopyBlock, self).__init__(iring, *args, **kwargs)

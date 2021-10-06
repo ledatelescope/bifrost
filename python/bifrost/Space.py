@@ -27,6 +27,9 @@
 
 from bifrost.libbifrost import _bf
 
+from bifrost import telemetry
+telemetry.track_module()
+
 SPACEMAP_TO_STR = {_bf.BF_SPACE_AUTO:         'auto',
                    _bf.BF_SPACE_SYSTEM:       'system',
                    _bf.BF_SPACE_CUDA:         'cuda',

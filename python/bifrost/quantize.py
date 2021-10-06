@@ -31,6 +31,9 @@ from __future__ import absolute_import
 from bifrost.libbifrost import _bf, _check
 from bifrost.ndarray import asarray
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def quantize(src, dst, scale=1.):
     src_bf = asarray(src).as_BFarray()
     dst_bf = asarray(dst).as_BFarray()

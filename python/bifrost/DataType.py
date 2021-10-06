@@ -49,6 +49,9 @@ if sys.version_info < (3,):
 from bifrost.libbifrost import _bf
 import numpy as np
 
+from bifrost import telemetry
+telemetry.track_module()
+
 # Custom dtypes to represent additional complex types
 # Note: These can be constructed using tuples
 #   E.g., np.ndarray([(0x10,), (0x32,)], dtype=ci4) # Special case

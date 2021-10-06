@@ -36,6 +36,9 @@ from bifrost.pipeline import TransformBlock
 
 from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class ReverseBlock(TransformBlock):
     def __init__(self, iring, axes, *args, **kwargs):
         super(ReverseBlock, self).__init__(iring, *args, **kwargs)

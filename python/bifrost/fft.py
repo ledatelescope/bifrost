@@ -32,6 +32,9 @@ from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 from bifrost.ndarray import asarray
 import ctypes
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class Fft(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfFftCreate, _bf.bfFftDestroy)
