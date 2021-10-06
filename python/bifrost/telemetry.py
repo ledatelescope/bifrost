@@ -45,7 +45,7 @@ except ImportError:
 from threading import RLock
 from functools import wraps
 
-import bifrost
+import bifrost.version
 
 # Create the cache directory
 if not os.path.exists(os.path.join(os.path.expanduser('~'), '.bifrost')):
@@ -78,7 +78,7 @@ class _TelemetryClient(object):
     """
     _lock = RLock()
     
-    def __init__(self, key, version=bifrost.__version__):
+    def __init__(self, key, version=bifrost.version.__version__):
         # Setup
         self.key = key
         self.version = version
