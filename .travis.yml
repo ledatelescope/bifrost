@@ -48,7 +48,6 @@ script:
     - sudo make -j NOCUDA=1
     - sudo make install
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
-    - python -c "from bifrost import telemetry; telemetry.disable()"
     - cd test && sudo -E bash ./travis.sh && cd ..
 
 env:
