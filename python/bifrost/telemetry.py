@@ -235,19 +235,6 @@ def disable():
     _telemetry_client.disable()
 
 
-def ignore():
-    """
-    Temporarily disable logging of usage data via the Bifrost telemetry client.
-    
-    .. note::
-        This function only stops logging after it is called and until enable()
-        is called again.  For a persistent call use disable().
-    """
-    
-    global _telemetry_client
-    _telemetry_client.ignore()
-
-
 def track_script():
     """
     Record the use of a Bifrost script.
