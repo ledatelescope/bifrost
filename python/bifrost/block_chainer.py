@@ -29,6 +29,9 @@ from __future__ import print_function
 
 import bifrost
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class _BlockChainerProxy(object):
     def __init__(self, parent, module):
         self.parent = parent

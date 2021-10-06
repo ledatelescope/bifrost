@@ -38,6 +38,9 @@ from bifrost.units import convert_units
 import struct
 import os
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def wav_read_chunk_desc(f):
     id_, size, fmt = struct.unpack('<4sI4s', f.read(12))
     try:

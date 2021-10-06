@@ -33,6 +33,9 @@ from bifrost.psrdada import Hdu
 from bifrost.libbifrost import _bf, _check
 import bifrost.ndarray
 
+from bifrost import telemetry
+telemetry.track_module()
+
 # TODO: Move to memory.py?
 def _get_space(arr):
     if isinstance(arr, bifrost.ndarray):

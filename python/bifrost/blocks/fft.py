@@ -34,6 +34,9 @@ from bifrost.DataType import DataType
 
 from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class FftBlock(TransformBlock):
     # TODO: Add support for sizes (aka 's') parameter that defines transform
     #         length in each dimension (i.e., cropped/padded transforms).

@@ -33,6 +33,9 @@ from bifrost.DataType import DataType
 
 from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class UnpackBlock(TransformBlock):
     def __init__(self, iring, dtype, align_msb=False,
                  *args, **kwargs):

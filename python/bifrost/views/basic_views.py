@@ -32,6 +32,8 @@ from bifrost.DataType import DataType
 from bifrost.units import convert_units
 from numpy import isclose
 
+from bifrost import telemetry
+telemetry.track_module()
 
 def custom(block, hdr_transform):
     """An alias to `bifrost.pipeline.block_view`

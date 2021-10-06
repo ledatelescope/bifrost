@@ -57,6 +57,9 @@ Binary data:
 # Python2 compatibility
 from __future__ import division
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def read_header(f):
     RECORD_LEN = 80
     DIRECTIO_ALIGN_NBYTE = 512

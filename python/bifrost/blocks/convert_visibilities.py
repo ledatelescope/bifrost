@@ -34,6 +34,9 @@ import bifrost as bf
 from copy import deepcopy
 from math import sqrt
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class ConvertVisibilitiesBlock(TransformBlock):
     def __init__(self, iring, fmt,
                  *args, **kwargs):
