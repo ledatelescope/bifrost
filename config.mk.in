@@ -1,10 +1,9 @@
-
 ifndef OS
   OS := $(shell uname -s)
 endif
 
 ifeq ($(OS),Linux)
-  SO_EXT      = .so
+  SO_EXT      = @SO_EXT@
   SHARED_FLAG = -shared
   SONAME_FLAG = -soname
 else ifeq ($(OS),Darwin)
@@ -17,19 +16,16 @@ else
   $(error Unsupported OS)
 endif
 
-ifndef INSTALL_LIB_DIR
-	INSTALL_LIB_DIR = /usr/local/lib
-endif
 
-ifndef INSTALL_INC_DIR
-	INSTALL_INC_DIR = /usr/local/include
-endif
+PREFIX_DIR = @prefix@
+INSTALL_LIB_DIR = @LIBDIR@
+INSTALL_INC_DIR = @includedir@
 
-BIFROST_NAME          = bifrost
+BIFROST_NAME          = @PACKAGE_NAME@
 LIBBIFROST_NAME       = lib$(BIFROST_NAME)
-LIBBIFROST_MAJOR      = 0
-LIBBIFROST_MINOR      = 9
-LIBBIFROST_PATCH      = 0
+LIBBIFROST_MAJOR      = $(shell echo @PACKAGE_VERSION@ | awk -F . '{print $1}')
+LIBBIFROST_MINOR      = $(shell echo @PACKAGE_VERSION@ | awk -F . '{print $2}')
+LIBBIFROST_PATCH      = $(shell echo @PACKAGE_VERSION@ | awk -F . '{print $3}')
 LIBBIFROST_SO         = $(LIBBIFROST_NAME)$(SO_EXT)
 LIBBIFROST_SO_MAJ     = $(LIBBIFROST_SO).$(LIBBIFROST_MAJOR)
 LIBBIFROST_SO_MAJ_MIN = $(LIBBIFROST_SO_MAJ).$(LIBBIFROST_MINOR)
