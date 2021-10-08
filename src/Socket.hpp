@@ -126,6 +126,81 @@ client.send/recv_block/packet(...);
 #include <ifaddrs.h>
 //#include <linux/net.h>
 
+#if defined __APPLE__ && __APPLE__
+
+#include <fcntl.h>
+#include <sys/socket.h>
+
+#define SOCK_NONBLOCK O_NONBLOCK
+
+inline static int accept4(int sockfd,
+                          struct sockaddr *addr,
+                          socklen_t *addrlen,
+                          int flags) {
+  return ::accept(sockfd, addr, addrlen);
+}
+
+inline static sa_family_t get_family(int sockfd) {
+  int ret;
+  sockaddr addr;
+  socklen_t len;
+  ret = ::getsockname(sockfd, &addr, &len);
+  if(ret<0) {
+    return AF_UNSPEC;
+  }
+  
+  sockaddr_in* sa = reinterpret_cast<sockaddr_in*> (&addr);
+  return sa->sin_family;
+}
+
+inline static int get_mtu(int sockfd) {
+  ifreq ifr;
+  int mtu = 0;
+  if( ::ioctl(sockfd, SIOCGIFMTU, &ifr) != -1) {
+    mtu = ifr.ifr_mtu;
+	}
+	return mtu;
+}
+
+typedef struct mmsghdr {
+       struct msghdr msg_hdr;  /* Message header */
+       unsigned int  msg_len;  /* Number of bytes transmitted */
+} mmsghdr;
+
+// TODO: What about recvmsg_x?
+inline static int recvmmsg(int sockfd,
+                           struct mmsghdr *msgvec,
+                           unsigned int vlen,
+                           int flags,
+                           struct timespec *timeout) {
+  int count = 0;
+  int recv;
+  for(int i=0; i<vlen; i++) {
+    recv = ::recvmsg(sockfd, &(msgvec[count].msg_hdr), flags);
+    if(recv > 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
+// TODO: What about sendmsg_x?
+inline static int sendmmsg(int sockfd,
+                           struct mmsghdr *msgvec,
+                           unsigned int vlen,
+                           int flags) {
+  int count = 0;
+  int sent;
+  for(int i=0; i<vlen; i++) {
+    sent = ::sendmsg(sockfd, &(msgvec[i].msg_hdr), flags);
+    msgvec[i].msg_len = sent;
+    count++;
+  }
+  return count;
+}
+
+#endif
+
 class Socket {
 	// Not copy-assignable
 	Socket(Socket const& );
@@ -155,8 +230,8 @@ public:
 		DEFAULT_MAX_CONN_QUEUE = 128
 	};
 	enum sock_type {
-		SOCK_DGRAM  = ::SOCK_DGRAM,
-		SOCK_STREAM = ::SOCK_STREAM
+	  BF_SOCK_DGRAM  = SOCK_DGRAM,
+		BF_SOCK_STREAM = SOCK_STREAM
 	};
 	// Manage an existing socket (usually one returned by Socket::accept())
 	// TODO: With C++11 this could return by value (moved), which would be nicer
@@ -245,7 +320,11 @@ public:
 		if( _mode != Socket::MODE_CONNECTED ) {
 			throw Socket::Error("Not connected");
 		}
+#if defined __APPLE__ && __APPLE__
+    return ::get_mtu(_fd);
+#else
 		return this->get_option<int>(IP_MTU, IPPROTO_IP);
+#endif
 	}
 	template<typename T>
 	inline void set_option(int optname, T value, int level=SOL_SOCKET) {
@@ -429,7 +508,11 @@ std::string Socket::address_string(sockaddr_storage addr) {
 int Socket::discover_mtu(sockaddr_storage remote_address) {
 	Socket s(SOCK_DGRAM);
 	s.connect(remote_address);
+#if defined __APPLE__ && __APPLE__
+  return ::get_mtu(s._fd);
+#else
 	return s.get_option<int>(IP_MTU, IPPROTO_IP);
+#endif
 }
 void Socket::bind(sockaddr_storage local_address,
                   int              max_conn_queue) {
@@ -820,7 +903,11 @@ void Socket::swap(Socket& s) {
 }
 Socket::Socket(int fd, ManageTag ) : _fd(fd) {
 	_type   = this->get_option<sock_type>(SO_TYPE);
+#if defined __APPLE__ && __APPLE__
+  _family = get_family(fd);
+#else
 	_family = this->get_option<int>(SO_DOMAIN);
+#endif
 	if( this->get_option<int>(SO_ACCEPTCONN) ) {
 		_mode = Socket::MODE_LISTENING;
 	}

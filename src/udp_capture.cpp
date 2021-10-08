@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -69,6 +69,14 @@ using bifrost::ring::WriteSequence;
 enum {
 	JUMBO_FRAME_SIZE = 9000
 };
+
+#if defined __APPLE__ && __APPLE__
+
+#include <libkern/OSByteOrder.h>
+
+#define be64toh(x) OSSwapBigToHostInt64(x)
+
+#endif
 
 template<typename T>
 inline T atomic_add_and_fetch(T* dst, T val) {
@@ -572,7 +580,7 @@ class BFudpcapture_impl {
 		if( payload_size == -1 ) {
 			payload_size = _payload_size;
 		}
-		return _nseq_per_buf * _nsrc * payload_size * BF_UNPACK_FACTOR;
+		return (size_t) _nseq_per_buf * _nsrc * payload_size * BF_UNPACK_FACTOR;
 	}
 	inline void reserve_buf() {
 		_buf_ngood_bytes.push(0);
