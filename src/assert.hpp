@@ -31,6 +31,7 @@
 
 #include <bifrost/common.h>
 
+#include <string>
 #include <stdexcept>
 
 class BFexception : public std::runtime_error {
