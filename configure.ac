@@ -33,7 +33,7 @@ AS_IF([! ${CTAGS} --version | grep -q Exuberant],
 AC_SUBST(SO_EXT, $shrext_cmds)
 
 #
-# Features
+# System/Compiler Features
 #
 
 AC_C_INLINE
@@ -81,7 +81,7 @@ AC_COMPILE_IFELSE([#include<sys/socket.h>
                    [AC_MSG_RESULT([no])])
 
 #
-# Extras
+# CUDA
 #
 
 AC_ARG_WITH([cuda_home],
@@ -111,37 +111,6 @@ AC_ARG_WITH([nvcc_flags],
             [with_nvcc_flags='-O3 -Xcompiler "-Wall"'])
 AC_SUBST(NVCCFLAGS, $with_nvcc_flags)
 
-
-AC_ARG_ENABLE([numa],
-              AS_HELP_STRING([--enable-numa],
-                             [enable NUMA support (default=yes)]),
-              [],
-              [enable_numa=yes])
-AS_IF([test x$enable_numa != xno],
-      [AC_CHECK_LIB([numa], [numa_tonode_memory],
-                    [CPPFLAGS="$CPPFLAGS -DBF_NUMA_ENABLED=1"
-                     LIBS="$LIBS -lnuma"])])
-
-AC_ARG_ENABLE([hwloc],
-              AS_HELP_STRING([--enable-hwloc],
-                             [enable hwloc support (default=yes)]),
-              [],
-              [enable_hwloc=yes])
-AS_IF([test x$enable_hwloc != xno],
-      [AC_CHECK_LIB([hwloc], [hwloc_topology_init],
-                    [CPPFLAGS="$CPPFLAGS -DBF_HWLOC_ENABLED=1"
-                     LIBS="$LIBS -lhwloc"])])
-
-AC_ARG_ENABLE([vma],
-              AS_HELP_STRING([--enable-vma],
-                             [enable vma support (default=no)]),
-              [],
-              [enable_vma=no])
-AS_IF([test x$enable_vma != xno],
-      [AC_CHECK_LIB([vma], [recvfrom_zcopy],
-                    [CPPFLAGS="$CPPFLAGS -DBF_VMA_ENABLED=1"
-                     LIBS="$LIBS -lvma"])])
-
 AC_ARG_WITH([gpu_archs],
             [AS_HELP_STRING([--with-gpu-archs=...],
                             [default GPU architectures (default='35 61')])],
@@ -157,12 +126,62 @@ AC_ARG_WITH([shared_mem],
 AS_IF([test x$HAVE_CUDA = x1],
       [NVCCFLAGS="$NVCCFLAGS -DBF_GPU_SHAREDMEM=$with_shared_mem"])
 
+#
+# NUMA
+#
+
+AC_ARG_ENABLE([numa],
+              AS_HELP_STRING([--disable-numa],
+                             [disable NUMA support (default=no)]),
+              [enable_numa=no],
+              [enable_numa=yes])
+AS_IF([test x$enable_numa != xno],
+      [AC_CHECK_LIB([numa], [numa_tonode_memory],
+                    [CPPFLAGS="$CPPFLAGS -DBF_NUMA_ENABLED=1"
+                     LIBS="$LIBS -lnuma"])])
+
+#
+# HWLOC
+#
+
+AC_ARG_ENABLE([hwloc],
+              AS_HELP_STRING([--disable-hwloc],
+                             [disable hwloc support (default=no)]),
+              [enable_hwloc=no],
+              [enable_hwloc=yes])
+AS_IF([test x$enable_hwloc != xno],
+      [AC_CHECK_LIB([hwloc], [hwloc_topology_init],
+                    [CPPFLAGS="$CPPFLAGS -DBF_HWLOC_ENABLED=1"
+                     LIBS="$LIBS -lhwloc"])])
+
+#
+# VMA
+#
+
+AC_ARG_ENABLE([vma],
+              AS_HELP_STRING([--enable-vma],
+                             [enable vma support (default=no)]),
+              [enable_vma=yes],
+              [enable_vma=no])
+AS_IF([test x$enable_vma != xno],
+      [AC_CHECK_LIB([vma], [recvfrom_zcopy],
+                    [CPPFLAGS="$CPPFLAGS -DBF_VMA_ENABLED=1"
+                     LIBS="$LIBS -lvma"])])
+
+#
+# Bifrost memory alignment
+#
+
 AC_ARG_WITH([alignment],
             [AS_HELP_STRING([--with-alignment=N],
                             [default memory alignment in bytes (default=4096)])],
             [],
             [with_alignment=4096])
 CPPFLAGS="$CPPFLAGS -DBF_ALIGNMENT=$with_alignment"
+
+#
+# Bifrost Features
+#
 
 AC_ARG_ENABLE([debug],
               [AS_HELP_STRING([--enable-debug],
@@ -249,6 +268,10 @@ DX_XML_FEATURE(OFF)
 DX_PDF_FEATURE(ON)
 DX_PS_FEATURE(ON)
 DX_INIT_DOXYGEN([bifrost])
+
+#
+# Linking flags
+#
 
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
 NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
