@@ -7,6 +7,7 @@ AC_CONFIG_AUX_DIR([config])
 : ${CXXFLAGS="-O3 -Wall -pedantic"}
 
 # Programs
+LT_INIT
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_AWK
@@ -28,6 +29,7 @@ AC_SUBST(SO_EXT, $shrext_cmds)
 
 # Features
 AC_C_INLINE
+AX_CXX_COMPILE_STDCXX(11, noext, mandatory)
 AC_CHECK_FUNCS([memset])
 AC_CHECK_FUNCS([rint])
 AC_CHECK_FUNCS([socket])
@@ -43,6 +45,7 @@ AC_CHECK_HEADER_STDBOOL
 AC_FUNC_MALLOC
 
 AX_OPENMP
+CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"
 
 AC_CHECK_TYPES([ptrdiff_t])
 AC_TYPE_INT16_T
@@ -70,14 +73,14 @@ AC_ARG_ENABLE([cuda],
               [],
               [enable_cuda=yes])
 AS_IF([test x$enable_cuda != xno],
-      [AX_WITH_PROG(NVCC, nvcc)
-       AX_WITH_PROG(NVPRUNE, nvprune)
-       AX_WITH_PROG(CUOBJDUMP, cuobjdump)
-       AC_SUBST(HAVE_CUDA, 1)
-       CPPFLAGS="$CPPFLAGS -DBF_CUDA_ENABLED=1"
-       LDFLAGS="$LDFLAGS -L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-       LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"],
+      [AX_WITH_PROG(NVCC, nvcc, [], [AC_SUBST(HAVE_CUDA, 0)])
+       AX_WITH_PROG(NVPRUNE, nvprune, [], [AC_SUBST(HAVE_CUDA, 0)])
+       AX_WITH_PROG(CUOBJDUMP, cuobjdump, [], [AC_SUBST(HAVE_CUDA, 0)])],
       [AC_SUBST(HAVE_CUDA, 0)])
+AS_IF([test x$HAVE_CUDA = x1],
+       [CPPFLAGS="$CPPFLAGS -DBF_CUDA_ENABLED=1"
+        LDFLAGS="$LDFLAGS -L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+        LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"])
 AC_ARG_WITH([nvcc_flags],
             [AS_HELP_STRING([--with-nvcc-flags],
                             [flags to pass to NVCC (default='-O3 -Xcompiler -Wall')])],
@@ -201,6 +204,9 @@ DX_XML_FEATURE(OFF)
 DX_PDF_FEATURE(ON)
 DX_PS_FEATURE(ON)
 DX_INIT_DOXYGEN([bifrost])
+
+CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
+NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
 
 AC_CONFIG_FILES([config.mk src/Makefile])
 

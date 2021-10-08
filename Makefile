@@ -1,6 +1,5 @@
 
 include config.mk
-include user.mk
 
 LIB_DIR = lib
 INC_DIR = src
