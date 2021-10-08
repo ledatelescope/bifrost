@@ -5,7 +5,7 @@ include ../config.mk
 
 CXX            ?= @CXX@
 NVCC           ?= @NVCC@
-LINKER         ?= @LD@
+LINKER         ?= @CXX@
 CPPFLAGS       ?= @CPPFLAGS@
 CXXFLAGS       ?= @CXXFLAGS@
 NVCCFLAGS      ?= @NVCCFLAGS@
@@ -15,6 +15,7 @@ PYBUILDFLAGS   ?= @PYBUILDFLAGS@
 PYINSTALLFLAGS ?= @PYINSTALLFLAGS@
 
 HAVE_CUDA     ?= @HAVE_CUDA@
+HAVE_MMSG     ?= @HAVE_MMSG@
 
 GPU_ARCHS     ?= @GPU_ARCHS@
 
@@ -33,13 +34,16 @@ LIBBIFROST_OBJS = \
   ring.o \
   ring_impl.o \
   array.o \
-  address.o \
-  udp_socket.o \
-  udp_capture.o \
-  udp_transmit.o \
   unpack.o \
   quantize.o \
   proclog.o
+ifeq (HAVE_MMSG,1)
+  LIBBIFROST_OBJS += \
+	address.o \
+	udp_socket.o \
+  udp_capture.o \
+  udp_transmit.o
+endif
 ifeq (HAVE_CUDA,1)
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \

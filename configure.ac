@@ -1,4 +1,4 @@
-AC_INIT([bifrost], [0.9.0], [], [], [https://github.com/ledatelescope/bifrost/])
+AC_INIT([bifrost], [], [], [], [https://github.com/ledatelescope/bifrost/])
 AC_LANG(C++)
 AC_CONFIG_SRCDIR([src/cuda.cpp])
 
@@ -46,7 +46,7 @@ AC_FUNC_MALLOC
 
 AX_OPENMP
 AS_IF([test x$HAVE_OPENMP != x1],
-      [CPPFLAGS="$CPPFLAGS -DBF_NO_OPENMP=1"
+      [CPPFLAGS="$CPPFLAGS -DBF_OPENMP=0"
        CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"])
 
 AC_CHECK_TYPES([ptrdiff_t])
@@ -61,6 +61,16 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
+
+AC_MSG_CHECKING([if sys/socket.h supports recvmmsg])
+AC_COMPILE_IFELSE([#include<sys/socket.h>
+                   int main(void) {
+                      struct mmsghdr *mmsg = NULL;
+                      return 0;
+                   }],
+                   [AC_MSG_RESULT([yes])
+                    AC_SUBST(HAVE_MMSG, 1)],
+                   [AC_MSG_RESULT([no])])
 
 # Extras
 AC_ARG_WITH([cuda_home],
