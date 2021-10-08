@@ -67,7 +67,7 @@ JIT_SOURCES ?= \
 
 MAKEFILES = ../config.mk Makefile
 
-ifeq (NOCUDA,0)
+ifeq (HAVE_CUDA,1)
 # All CUDA archs supported by this version of nvcc
 GPU_ARCHS_SUPPORTED := $(shell $(NVCC) -h | grep -Po "compute_[0-9]{2}" | cut -d_ -f2 | sort | uniq)
 # Intersection of user-specified archs and supported archs
@@ -109,7 +109,7 @@ $(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
 	echo "    *;"    >> $@
 	echo "};"        >> $@
 
-ifndef NOCUDA
+ifeq (HAVE_CUDA,1)
 # TODO: Need to deal with 32/64 detection here
 LIBCUFFT_STATIC = $(CUDA_LIBDIR64)/libcufft_static.a
 # All PTX archs included in the lib (typically only one)

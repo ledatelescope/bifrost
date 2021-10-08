@@ -45,7 +45,9 @@ AC_CHECK_HEADER_STDBOOL
 AC_FUNC_MALLOC
 
 AX_OPENMP
-CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"
+AS_IF([test x$HAVE_OPENMP != x1],
+      [CPPFLAGS="$CPPFLAGS -DBF_NO_OPENMP=1"
+       CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"])
 
 AC_CHECK_TYPES([ptrdiff_t])
 AC_TYPE_INT16_T
@@ -68,9 +70,9 @@ AC_ARG_WITH([cuda_home],
             [with_cuda_home=/usr/local/cuda])
 AC_SUBST(CUDA_HOME, $with_cuda_home)
 AC_ARG_ENABLE([cuda],
-              [AS_HELP_STRING([--enable-cuda],
-                              [enable cuda support (default=yes)])],
-              [],
+              [AS_HELP_STRING([--disable-cuda],
+                              [disable cuda support (default=no)])],
+              [enable_cuda=no],
               [enable_cuda=yes])
 AS_IF([test x$enable_cuda != xno],
       [AX_WITH_PROG(NVCC, nvcc, [], [AC_SUBST(HAVE_CUDA, 0)])
@@ -83,9 +85,9 @@ AS_IF([test x$HAVE_CUDA = x1],
         LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"])
 AC_ARG_WITH([nvcc_flags],
             [AS_HELP_STRING([--with-nvcc-flags],
-                            [flags to pass to NVCC (default='-O3 -Xcompiler -Wall')])],
+                            [flags to pass to NVCC (default='-O3 -Xcompiler "-Wall"')])],
             [],
-            [with_nvcc_flags='-O3 -Xcompiler -Wall'])
+            [with_nvcc_flags='-O3 -Xcompiler "-Wall"'])
 AC_SUBST(NVCCFLAGS, $with_nvcc_flags)
 
 
@@ -144,7 +146,7 @@ CPPFLAGS="$CPPFLAGS -DBF_ALIGNMENT=$with_alignment"
 AC_ARG_ENABLE([debug],
               [AS_HELP_STRING([--enable-debug],
                               [enable debugging mode (default=no)])],
-              [],
+              [enable_debug=yes],
               [enable_debug=no])
 AS_IF([test x$enable_debug != xno],
       [CPPFLAGS="$CPPFLAGS -DBF_DEBUG=1"
@@ -154,25 +156,25 @@ AS_IF([test x$enable_debug != xno],
 AC_ARG_ENABLE([trace],
               [AS_HELP_STRING([--enable-trace],
                               [enable tracing mode for nvprof/nvvp (default=no)])],
-              [],
+              [enable_trace=yes],
               [enable_trace=no])
 AS_IF([test x$enable_trace != xno],
       [CPPFLAGS="$CPPFLAGS -DBF_TRACE_ENABLED=1"])
 
 AC_ARG_ENABLE([native_arch],
-              [AS_HELP_STRING([--enable-native-arch],
-                              [enable native architecture compilation (default=yes)])],
-              [],
+              [AS_HELP_STRING([--disable-native-arch],
+                              [disable native architecture compilation (default=no)])],
+              [enable_native_arch=no],
               [enable_native_arch=yes])
 AS_IF([test x$enable_native_arch != xyes],
       [],
       [CXXFLAGS="$CXXFLAGS -march=native"
-       NVCCFLAGS="$NVCCFLAGS -Xcompiler -march=native"])
+       NVCCFLAGS="$NVCCFLAGS -Xcompiler \"-march=native\""])
 
 AC_ARG_ENABLE([cuda_debug],
               [AS_HELP_STRING([--enable-cuda-debug],
                               [enable CUDA debugging (nvcc -G; default=no)])],
-              [],
+              [enable_cuda_debug=yes],
               [enable_cuda_debug=no])
 AS_IF([test x$enable_cuda_debug != xno],
       [NVCCFLAGS="$NVCCFLAGS -G"])
@@ -187,7 +189,7 @@ AC_ARG_WITH([pybuild_flags],
 AC_SUBST(PYBUILDFLAGS, $with_pybuild_flags)
 
 AC_ARG_WITH([pyinstall_flags],
-            [AS_HELP_STRING([--with-pyintall-flags],
+            [AS_HELP_STRING([--with-pyinstall-flags],
                             [install flags for python (default='')])],
             [],
             [])
