@@ -30,7 +30,13 @@
 #include <bifrost/affinity.h>
 #include "assert.hpp"
 
+#ifndef BF_OPENMP
+#define BF_OPENMP 1
+#endif
+
+#if BF_OPENMP == 1
 #include <omp.h>
+#endif
 
 #include <pthread.h>
 //#include <sched.h>
@@ -73,6 +79,7 @@ BFstatus bfAffinitySetCore(int core) {
 #endif
 }
 BFstatus bfAffinityGetCore(int* core) {
+#if defined __linux__ && __linux__
 	BF_ASSERT(core, BF_STATUS_INVALID_POINTER);
 	pthread_t tid = pthread_self();
 	cpu_set_t cpuset;
@@ -95,9 +102,14 @@ BFstatus bfAffinityGetCore(int* core) {
 	}
 	// No cores are set! (Not sure if this is possible)
 	return BF_STATUS_INVALID_STATE;
+#else
+#warning CPU core binding/affinity not supported on this OS
+	return BF_STATUS_UNSUPPORTED;
+#endif
 }
 BFstatus bfAffinitySetOpenMPCores(BFsize     nthread,
                                   const int* thread_cores) {
+#if BF_OPENMP == 1
 	int host_core = -1;
 	// TODO: Check these for errors
 	bfAffinityGetCore(&host_core);
@@ -109,4 +121,8 @@ BFstatus bfAffinitySetOpenMPCores(BFsize     nthread,
 		bfAffinitySetCore(thread_cores[tid]);
 	}
 	return bfAffinitySetCore(host_core);
+#else
+#warning CPU core binding/affinity not supported on this OS
+	return BF_STATUS_UNSUPPORTED;
+#endif
 }
