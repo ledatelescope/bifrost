@@ -792,11 +792,11 @@ with_nvcc
 with_nvprune
 with_cuobjdump
 with_nvcc_flags
+with_gpu_archs
+with_shared_mem
 enable_numa
 enable_hwloc
 enable_vma
-with_gpu_archs
-with_shared_mem
 with_alignment
 enable_debug
 enable_trace
@@ -1455,8 +1455,8 @@ Optional Features:
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --disable-cuda          disable cuda support (default=no)
-  --enable-numa           enable NUMA support (default=yes)
-  --enable-hwloc          enable hwloc support (default=yes)
+  --disable-numa          disable NUMA support (default=no)
+  --disable-hwloc         disable hwloc support (default=no)
   --enable-vma            enable vma support (default=no)
   --enable-debug          enable debugging mode (default=no)
   --enable-trace          enable tracing mode for nvprof/nvvp (default=no)
@@ -16421,7 +16421,7 @@ SO_EXT=$shrext_cmds
 
 
 #
-# Features
+# System/Compiler Features
 #
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for inline" >&5
@@ -17345,7 +17345,7 @@ fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
 #
-# Extras
+# CUDA
 #
 
 
@@ -17786,9 +17786,35 @@ NVCCFLAGS=$with_nvcc_flags
 
 
 
+# Check whether --with-gpu_archs was given.
+if test "${with_gpu_archs+set}" = set; then :
+  withval=$with_gpu_archs;
+else
+  with_gpu_archs='35 61'
+fi
+
+GPU_ARCHS=$with_gpu_archs
+
+
+
+# Check whether --with-shared_mem was given.
+if test "${with_shared_mem+set}" = set; then :
+  withval=$with_shared_mem;
+else
+  with_shared_mem=16384
+fi
+
+if test x$HAVE_CUDA = x1; then :
+  NVCCFLAGS="$NVCCFLAGS -DBF_GPU_SHAREDMEM=$with_shared_mem"
+fi
+
+#
+# NUMA
+#
+
 # Check whether --enable-numa was given.
 if test "${enable_numa+set}" = set; then :
-  enableval=$enable_numa;
+  enableval=$enable_numa; enable_numa=no
 else
   enable_numa=yes
 fi
@@ -17837,9 +17863,13 @@ fi
 
 fi
 
+#
+# HWLOC
+#
+
 # Check whether --enable-hwloc was given.
 if test "${enable_hwloc+set}" = set; then :
-  enableval=$enable_hwloc;
+  enableval=$enable_hwloc; enable_hwloc=no
 else
   enable_hwloc=yes
 fi
@@ -17888,9 +17918,13 @@ fi
 
 fi
 
+#
+# VMA
+#
+
 # Check whether --enable-vma was given.
 if test "${enable_vma+set}" = set; then :
-  enableval=$enable_vma;
+  enableval=$enable_vma; enable_vma=yes
 else
   enable_vma=no
 fi
@@ -17939,28 +17973,9 @@ fi
 
 fi
 
-
-# Check whether --with-gpu_archs was given.
-if test "${with_gpu_archs+set}" = set; then :
-  withval=$with_gpu_archs;
-else
-  with_gpu_archs='35 61'
-fi
-
-GPU_ARCHS=$with_gpu_archs
-
-
-
-# Check whether --with-shared_mem was given.
-if test "${with_shared_mem+set}" = set; then :
-  withval=$with_shared_mem;
-else
-  with_shared_mem=16384
-fi
-
-if test x$HAVE_CUDA = x1; then :
-  NVCCFLAGS="$NVCCFLAGS -DBF_GPU_SHAREDMEM=$with_shared_mem"
-fi
+#
+# Bifrost memory alignment
+#
 
 
 # Check whether --with-alignment was given.
@@ -17971,6 +17986,10 @@ else
 fi
 
 CPPFLAGS="$CPPFLAGS -DBF_ALIGNMENT=$with_alignment"
+
+#
+# Bifrost Features
+#
 
 # Check whether --enable-debug was given.
 if test "${enable_debug+set}" = set; then :
@@ -20284,6 +20303,10 @@ DX_RULES="${DX_SNIPPET_doc}"
 #echo DX_FLAG_ps=$DX_FLAG_ps
 #echo DX_ENV=$DX_ENV
 
+
+#
+# Linking flags
+#
 
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
 NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
