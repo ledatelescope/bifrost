@@ -3,14 +3,19 @@ AC_LANG(C++)
 AC_CONFIG_SRCDIR([src/cuda.cpp])
 
 AC_CONFIG_AUX_DIR([config])
+AC_CONFIG_MACRO_DIR([config])
 
 : ${CXXFLAGS="-O3 -Wall -pedantic"}
 
+#
 # Programs
+#
+
 LT_INIT
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_AWK
+AC_PROG_SED
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
 AC_PROG_LN_S
@@ -27,7 +32,10 @@ AS_IF([! ${CTAGS} --version | grep -q Exuberant],
 
 AC_SUBST(SO_EXT, $shrext_cmds)
 
+#
 # Features
+#
+
 AC_C_INLINE
 AX_CXX_COMPILE_STDCXX(11, noext, mandatory)
 AC_CHECK_FUNCS([memset])
@@ -72,7 +80,10 @@ AC_COMPILE_IFELSE([#include<sys/socket.h>
                     AC_SUBST(HAVE_MMSG, 1)],
                    [AC_MSG_RESULT([no])])
 
+#
 # Extras
+#
+
 AC_ARG_WITH([cuda_home],
             [AS_HELP_STRING([--with-cuda-home],
                             [CUDA install path (default=/usr/local/cuda)])],
@@ -189,7 +200,18 @@ AC_ARG_ENABLE([cuda_debug],
 AS_IF([test x$enable_cuda_debug != xno],
       [NVCCFLAGS="$NVCCFLAGS -G"])
 
-AX_PYTHON
+#
+# Python
+#
+
+AX_WITH_PROG(PYTHON, python)
+AS_IF([test x${PYTHON} != x],
+      [AC_MSG_CHECKING([whether $PYTHON as ctypesgen])
+       AS_IF([! test $(PYTHON) -c "import ctypesgen"],
+             [AC_MSG_RESULT([no])
+              AC_MSG_WARN([python module will not be built])],
+             [AC_MSG_RESULT([yes])
+              AC_SUBST(HAVE_PYTHON, 1)])])
 
 AC_ARG_WITH([pybuild_flags],
             [AS_HELP_STRING([--with-pybuild-flags],
@@ -205,7 +227,18 @@ AC_ARG_WITH([pyinstall_flags],
             [])
 AC_SUBST(PYINSTALLFLAGS, $with_pyinstall_flags)
 
+#
+# Docker
+#
+
+AX_WITH_PROG(DOCKER, docker)
+AS_IF([test x${PYTHON} != x],
+      [AC_SUBST(HAVE_DOCKER, 1)])
+
+#
 # Documentation
+#
+
 DX_DOT_FEATURE(OFF)
 DX_HTML_FEATURE(ON)
 DX_CHM_FEATURE(OFF)
@@ -220,6 +253,6 @@ DX_INIT_DOXYGEN([bifrost])
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
 NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
 
-AC_CONFIG_FILES([config.mk src/Makefile])
+AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile])
 
 AC_OUTPUT
