@@ -110,7 +110,7 @@ $(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
 	@echo -n "Generating $(LIBBIFROST_VERSION_FILE)\r"
 	echo "VERS_$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) {" > $@
 	echo "  global:" >> $@
-	ctags -x --c-kinds=p $^ | awk '{print "    " $$1 ";"}' >> $@
+	@CTAGS@ -x --c-kinds=p $^ | awk '{print "    " $$1 ";"}' >> $@
 	echo "  local:"  >> $@
 	echo "    *;"    >> $@
 	echo "};"        >> $@
