@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2017, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2017, The University of New Mexico. All rights reserved.
+ * Copyright (c) 2017-2021, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2017-2021, The University of New Mexico. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include <bifrost/udp_transmit.h>
 #include <bifrost/affinity.h>
 #include "proclog.hpp"
+#include "Socket.hpp"
 
 #include <arpa/inet.h>  // For ntohs
 #include <sys/socket.h> // For recvfrom
@@ -125,10 +126,10 @@ public:
 		ssize_t nsent = sendmmsg(_fd, packets, npackets, 0);
 		if( nsent == -1 ) {
 			_stats.ninvalid += npackets;
-			_stats.ninvalid_bytes += npackets * packets->msg_len;
+			_stats.ninvalid_bytes += (size_t) npackets * packets->msg_len;
 		} else {
 			_stats.nvalid += npackets;
-			_stats.nvalid_bytes += npackets * packets->msg_len;
+			_stats.nvalid_bytes += (size_t) npackets * packets->msg_len;
 		}
 		return nsent;
 	}

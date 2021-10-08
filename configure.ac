@@ -70,16 +70,6 @@ AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
 
-AC_MSG_CHECKING([if sys/socket.h supports recvmmsg])
-AC_COMPILE_IFELSE([#include<sys/socket.h>
-                   int main(void) {
-                      struct mmsghdr *mmsg = NULL;
-                      return 0;
-                   }],
-                   [AC_MSG_RESULT([yes])
-                    AC_SUBST(HAVE_MMSG, 1)],
-                   [AC_MSG_RESULT([no])])
-
 #
 # CUDA
 #
