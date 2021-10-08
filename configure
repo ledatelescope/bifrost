@@ -1449,13 +1449,13 @@ Optional Features:
   --enable-fast-install[=PKGS]
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
-  --enable-cuda           enable cuda support (default=yes)
+  --disable-cuda          disable cuda support (default=no)
   --enable-numa           enable NUMA support (default=yes)
   --enable-hwloc          enable hwloc support (default=yes)
   --enable-vma            enable vma support (default=no)
   --enable-debug          enable debugging mode (default=no)
   --enable-trace          enable tracing mode for nvprof/nvvp (default=no)
-  --enable-native-arch    enable native architecture compilation (default=yes)
+  --disable-native-arch   disable native architecture compilation (default=no)
   --enable-cuda-debug     enable CUDA debugging (nvcc -G; default=no)
   --disable-doxygen-doc   don't generate any doxygen documentation
   --enable-doxygen-dot    generate graphics for doxygen documentation
@@ -1487,12 +1487,12 @@ Optional Packages:
   --with-cuobjdump=[PATH]
                           absolute path to cuobjdump executable
   --with-nvcc-flags       flags to pass to NVCC (default='-O3 -Xcompiler
-                          -Wall')
+                          "-Wall"')
   --with-gpu-archs=...    default GPU architectures (default='35 61')
   --with-shared-mem=N     default GPU shared memory in bytes (default=16384)
   --with-alignment=N      default memory alignment in bytes (default=4096)
   --with-pybuild-flags    build flags for python (default='')
-  --with-pyintall-flags   install flags for python (default='')
+  --with-pyinstall-flags  install flags for python (default='')
 
 Some influential environment variables:
   CC          C compiler command
@@ -17088,7 +17088,10 @@ $as_echo "#define HAVE_OPENMP 1" >>confdefs.h
 
 fi
 
-CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"
+if test x$HAVE_OPENMP != x1; then :
+  CPPFLAGS="$CPPFLAGS -DBF_NO_OPENMP=1"
+       CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"
+fi
 
 ac_fn_cxx_check_type "$LINENO" "ptrdiff_t" "ac_cv_type_ptrdiff_t" "$ac_includes_default"
 if test "x$ac_cv_type_ptrdiff_t" = xyes; then :
@@ -17245,7 +17248,7 @@ CUDA_HOME=$with_cuda_home
 
 # Check whether --enable-cuda was given.
 if test "${enable_cuda+set}" = set; then :
-  enableval=$enable_cuda;
+  enableval=$enable_cuda; enable_cuda=no
 else
   enable_cuda=yes
 fi
@@ -17664,7 +17667,7 @@ fi
 if test "${with_nvcc_flags+set}" = set; then :
   withval=$with_nvcc_flags;
 else
-  with_nvcc_flags='-O3 -Xcompiler -Wall'
+  with_nvcc_flags='-O3 -Xcompiler "-Wall"'
 fi
 
 NVCCFLAGS=$with_nvcc_flags
@@ -17859,7 +17862,7 @@ CPPFLAGS="$CPPFLAGS -DBF_ALIGNMENT=$with_alignment"
 
 # Check whether --enable-debug was given.
 if test "${enable_debug+set}" = set; then :
-  enableval=$enable_debug;
+  enableval=$enable_debug; enable_debug=yes
 else
   enable_debug=no
 fi
@@ -17872,7 +17875,7 @@ fi
 
 # Check whether --enable-trace was given.
 if test "${enable_trace+set}" = set; then :
-  enableval=$enable_trace;
+  enableval=$enable_trace; enable_trace=yes
 else
   enable_trace=no
 fi
@@ -17883,7 +17886,7 @@ fi
 
 # Check whether --enable-native_arch was given.
 if test "${enable_native_arch+set}" = set; then :
-  enableval=$enable_native_arch;
+  enableval=$enable_native_arch; enable_native_arch=no
 else
   enable_native_arch=yes
 fi
@@ -17892,12 +17895,12 @@ if test x$enable_native_arch != xyes; then :
 
 else
   CXXFLAGS="$CXXFLAGS -march=native"
-       NVCCFLAGS="$NVCCFLAGS -Xcompiler -march=native"
+       NVCCFLAGS="$NVCCFLAGS -Xcompiler \"-march=native\""
 fi
 
 # Check whether --enable-cuda_debug was given.
 if test "${enable_cuda_debug+set}" = set; then :
-  enableval=$enable_cuda_debug;
+  enableval=$enable_cuda_debug; enable_cuda_debug=yes
 else
   enable_cuda_debug=no
 fi
