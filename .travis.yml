@@ -17,6 +17,7 @@ addons:
         update: true
         packages:
             - build-essential
+            - ca-certificates
             - curl
             - git
             - pkg-config
