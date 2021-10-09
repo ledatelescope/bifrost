@@ -1,5 +1,7 @@
 sudo: required
 
+dist: bionic
+
 language: python
 
 python:
@@ -14,6 +16,7 @@ services:
 
 addons:
     apt:
+        update: true
         packages:
             - build-essential
             - curl
