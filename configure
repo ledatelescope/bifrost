@@ -17482,7 +17482,7 @@ $as_echo "#define HAVE_OPENMP 1" >>confdefs.h
 
 fi
 
-if ! echo $DEFS | grep OPENMP; then :
+if test x$OPENMP_CXXFLAGS != x; then :
   HAVE_OPENMP=1
 
 fi
@@ -17490,6 +17490,7 @@ if test x$HAVE_OPENMP != x1; then :
   CPPFLAGS="$CPPFLAGS -DBF_OPENMP=0"
 else
   CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"
+       LDFLAGS="$LDFLAGS $OPENMP_CXXFLAGS"
 fi
 
 ac_fn_cxx_check_type "$LINENO" "ptrdiff_t" "ac_cv_type_ptrdiff_t" "$ac_includes_default"
@@ -17693,8 +17694,7 @@ done
   done
 IFS=$as_save_IFS
 
-  test -z "$ac_cv_path_NVCC" && ac_cv_path_NVCC="HAVE_CUDA=0
-"
+  test -z "$ac_cv_path_NVCC" && ac_cv_path_NVCC="no"
   ;;
 esac
 fi
@@ -17736,8 +17736,7 @@ done
   done
 IFS=$as_save_IFS
 
-  test -z "$ac_cv_path_NVPRUNE" && ac_cv_path_NVPRUNE="HAVE_CUDA=0
-"
+  test -z "$ac_cv_path_NVPRUNE" && ac_cv_path_NVPRUNE="no"
   ;;
 esac
 fi
@@ -17779,8 +17778,7 @@ done
   done
 IFS=$as_save_IFS
 
-  test -z "$ac_cv_path_CUOBJDUMP" && ac_cv_path_CUOBJDUMP="HAVE_CUDA=0
-"
+  test -z "$ac_cv_path_CUOBJDUMP" && ac_cv_path_CUOBJDUMP="no"
   ;;
 esac
 fi
@@ -18246,7 +18244,7 @@ fi
 if test x${PYTHON} != x; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $PYTHON as ctypesgen" >&5
 $as_echo_n "checking whether $PYTHON as ctypesgen... " >&6; }
-       if ! ${PYTHON} -c "import ctypesgen"; then :
+       if ! ${PYTHON} -c "import ctypesgen" 2>/dev/null; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
               { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: python module will not be built" >&5
