@@ -18,9 +18,9 @@ AC_DEFUN([AX_CHECK_CUDA],
   if test "$enable_cuda" != "no"; then
     AC_SUBST([HAVE_CUDA], [1])
     
-    AC_PATH_PROG(NVCC, nvcc, [AC_SUBST(HAVE_CUDA, 0)], [$CUDA_HOME/bin:$PATH])
-    AC_PATH_PROG(NVPRUNE, nvprune, [AC_SUBST(HAVE_CUDA, 0)], [$CUDA_HOME/bin:$PATH])
-    AC_PATH_PROG(CUOBJDUMP, cuobjdump, [AC_SUBST(HAVE_CUDA, 0)], [$CUDA_HOME/bin:$PATH])
+    AC_PATH_PROG(NVCC, nvcc, no, [$CUDA_HOME/bin:$PATH])
+    AC_PATH_PROG(NVPRUNE, nvprune, no, [$CUDA_HOME/bin:$PATH])
+    AC_PATH_PROG(CUOBJDUMP, cuobjdump, no, [$CUDA_HOME/bin:$PATH])
   fi
 
   if test "$HAVE_CUDA" = "1"; then

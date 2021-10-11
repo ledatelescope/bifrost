@@ -53,11 +53,12 @@ AC_CHECK_HEADER_STDBOOL
 AC_FUNC_MALLOC
 
 AX_OPENMP
-AS_IF([! echo $DEFS | grep OPENMP],
+AS_IF([test x$OPENMP_CXXFLAGS != x],
       [AC_SUBST(HAVE_OPENMP, 1)])
 AS_IF([test x$HAVE_OPENMP != x1],
       [CPPFLAGS="$CPPFLAGS -DBF_OPENMP=0"],
-      [CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"])
+      [CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"
+       LDFLAGS="$LDFLAGS $OPENMP_CXXFLAGS"])
 
 AC_CHECK_TYPES([ptrdiff_t])
 AC_TYPE_INT16_T
@@ -193,7 +194,7 @@ AS_IF([test x$enable_cuda_debug != xno],
 AX_WITH_PROG(PYTHON, python)
 AS_IF([test x${PYTHON} != x],
       [AC_MSG_CHECKING([whether $PYTHON as ctypesgen])
-       AS_IF([! ${PYTHON} -c "import ctypesgen"],
+       AS_IF([! ${PYTHON} -c "import ctypesgen" 2>/dev/null],
              [AC_MSG_RESULT([no])
               AC_MSG_WARN([python module will not be built])],
              [AC_MSG_RESULT([yes])
