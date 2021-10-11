@@ -18,8 +18,6 @@ HAVE_CUDA     ?= @HAVE_CUDA@
 
 GPU_ARCHS     ?= @GPU_ARCHS@
 
-GPU_SHAREDMEM ?= @GPU_SHAREDMEM@
-
 CUDA_HOME     ?= @CUDA_HOME@
 CUDA_LIBDIR   ?= $(CUDA_HOME)/lib
 CUDA_LIBDIR64 ?= $(CUDA_HOME)/lib64
@@ -40,7 +38,7 @@ LIBBIFROST_OBJS = \
 	udp_socket.o \
   udp_capture.o \
   udp_transmit.o
-ifeq (HAVE_CUDA,1)
+ifeq ($(HAVE_CUDA),1)
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
   transpose.o \
@@ -69,7 +67,7 @@ JIT_SOURCES ?= \
 
 MAKEFILES = ../config.mk Makefile
 
-ifeq (HAVE_CUDA,1)
+ifeq ($(HAVE_CUDA),1)
 # All CUDA archs supported by this version of nvcc
 GPU_ARCHS_SUPPORTED := $(shell $(NVCC) -h | grep -Po "compute_[0-9]{2}" | cut -d_ -f2 | sort | uniq)
 # Intersection of user-specified archs and supported archs
@@ -84,7 +82,7 @@ NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS_VALID), \
 endif
 
 CXXFLAGS  += -std=c++11
-NVCCFLAGS += -std=c++11 $(NVCC_GENCODE) -DBF_GPU_SHAREDMEM=$(GPU_SHAREDMEM)
+NVCCFLAGS += -std=c++11 $(NVCC_GENCODE)
 
 #NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
 #NVCCFLAGS += --expt-relaxed-constexpr
@@ -111,7 +109,7 @@ $(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
 	echo "    *;"    >> $@
 	echo "};"        >> $@
 
-ifeq (HAVE_CUDA,1)
+ifeq ($(HAVE_CUDA),1)
 # TODO: Need to deal with 32/64 detection here
 LIBCUFFT_STATIC = $(CUDA_LIBDIR64)/libcufft_static.a
 # All PTX archs included in the lib (typically only one)
