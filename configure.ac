@@ -53,9 +53,11 @@ AC_CHECK_HEADER_STDBOOL
 AC_FUNC_MALLOC
 
 AX_OPENMP
+AS_IF([! echo $DEFS | grep OPENMP],
+      [AC_SUBST(HAVE_OPENMP, 1)])
 AS_IF([test x$HAVE_OPENMP != x1],
-      [CPPFLAGS="$CPPFLAGS -DBF_OPENMP=0"
-       CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"])
+      [CPPFLAGS="$CPPFLAGS -DBF_OPENMP=0"],
+      [CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"])
 
 AC_CHECK_TYPES([ptrdiff_t])
 AC_TYPE_INT16_T
@@ -74,32 +76,7 @@ AC_TYPE_UINT8_T
 # CUDA
 #
 
-AC_ARG_WITH([cuda_home],
-            [AS_HELP_STRING([--with-cuda-home],
-                            [CUDA install path (default=/usr/local/cuda)])],
-            [],
-            [with_cuda_home=/usr/local/cuda])
-AC_SUBST(CUDA_HOME, $with_cuda_home)
-AC_ARG_ENABLE([cuda],
-              [AS_HELP_STRING([--disable-cuda],
-                              [disable cuda support (default=no)])],
-              [enable_cuda=no],
-              [enable_cuda=yes])
-AS_IF([test x$enable_cuda != xno],
-      [AX_WITH_PROG(NVCC, nvcc, [], [AC_SUBST(HAVE_CUDA, 0)])
-       AX_WITH_PROG(NVPRUNE, nvprune, [], [AC_SUBST(HAVE_CUDA, 0)])
-       AX_WITH_PROG(CUOBJDUMP, cuobjdump, [], [AC_SUBST(HAVE_CUDA, 0)])],
-      [AC_SUBST(HAVE_CUDA, 0)])
-AS_IF([test x$HAVE_CUDA = x1],
-       [CPPFLAGS="$CPPFLAGS -DBF_CUDA_ENABLED=1"
-        LDFLAGS="$LDFLAGS -L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-        LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"])
-AC_ARG_WITH([nvcc_flags],
-            [AS_HELP_STRING([--with-nvcc-flags],
-                            [flags to pass to NVCC (default='-O3 -Xcompiler "-Wall"')])],
-            [],
-            [with_nvcc_flags='-O3 -Xcompiler "-Wall"'])
-AC_SUBST(NVCCFLAGS, $with_nvcc_flags)
+AX_CHECK_CUDA
 
 AC_ARG_WITH([gpu_archs],
             [AS_HELP_STRING([--with-gpu-archs=...],
@@ -122,11 +99,11 @@ AS_IF([test x$HAVE_CUDA = x1],
 
 AC_ARG_ENABLE([numa],
               AS_HELP_STRING([--disable-numa],
-                             [disable NUMA support (default=no)]),
+                             [disable numa support (default=no)]),
               [enable_numa=no],
               [enable_numa=yes])
 AS_IF([test x$enable_numa != xno],
-      [AC_CHECK_LIB([numa], [numa_tonode_memory],
+      [AC_CHECK_LIB([numa], [numa_node_of_cpu],
                     [CPPFLAGS="$CPPFLAGS -DBF_NUMA_ENABLED=1"
                      LIBS="$LIBS -lnuma"])])
 
@@ -216,7 +193,7 @@ AS_IF([test x$enable_cuda_debug != xno],
 AX_WITH_PROG(PYTHON, python)
 AS_IF([test x${PYTHON} != x],
       [AC_MSG_CHECKING([whether $PYTHON as ctypesgen])
-       AS_IF([! test $(PYTHON) -c "import ctypesgen"],
+       AS_IF([! ${PYTHON} -c "import ctypesgen"],
              [AC_MSG_RESULT([no])
               AC_MSG_WARN([python module will not be built])],
              [AC_MSG_RESULT([yes])
@@ -241,7 +218,7 @@ AC_SUBST(PYINSTALLFLAGS, $with_pyinstall_flags)
 #
 
 AX_WITH_PROG(DOCKER, docker)
-AS_IF([test x${PYTHON} != x],
+AS_IF([test x${DOCKER} != x],
       [AC_SUBST(HAVE_DOCKER, 1)])
 
 #
@@ -265,6 +242,8 @@ DX_INIT_DOXYGEN([bifrost])
 
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
 NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
+AS_IF([test x$HAVE_CUDA = x1],
+      [LIBS="$LIBS -L. -lcufft_static_pruned"])
 
 AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile])
 
