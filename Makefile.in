@@ -3,6 +3,7 @@ include config.mk
 
 LIB_DIR = lib
 INC_DIR = src
+DAT_DIR = share
 SRC_DIR = src
 
 HAVE_PYTHON ?= @HAVE_PYTHON@
@@ -25,7 +26,7 @@ clean:
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) clean || true
 	$(MAKE) -C $(SRC_DIR) clean
 .PHONY: clean
-install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME)
+install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME) $(INSTALL_DAT_DIR)/$(BIFROST_NAME)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) install
 .PHONY: install
 uninstall:
@@ -88,6 +89,15 @@ else
 endif
 
 $(INSTALL_INC_DIR)/bifrost: $(INC_DIR)/bifrost/*.h #$(INC_DIR)/bifrost/*.hpp
+ifeq ($(DRY_RUN),0)
+	mkdir -p $@
+	cp $? $@/
+else
+	@echo "mkdir -p $@"
+	@echo "cp $? $@/"
+endif
+
+$(INSTALL_DAT_DIR)/bifrost: $(DAT_DIR)/*
 ifeq ($(DRY_RUN),0)
 	mkdir -p $@
 	cp $? $@/
