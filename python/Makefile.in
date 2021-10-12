@@ -23,14 +23,14 @@ $(BIFROST_PYTHON_VERSION_FILE): ../config.mk
 define run_ctypesgen
 	@PYTHON@ -c 'from ctypesgen import main as ctypeswrap; ctypeswrap.main()' -l$1 -I$2 $^ -o $@
 	# WAR for 'const char**' being generated as POINTER(POINTER(c_char)) instead of POINTER(c_char_p)
-	sed -i -e 's/POINTER(c_char)/c_char_p/g' $@
+	@SED@ -i.orig -e 's/POINTER(c_char)/c_char_p/g' $@
 	# WAR for a buggy WAR in ctypesgen that breaks type checking and auto-byref functionality
-	sed -i -e 's/def POINTER/def POINTER_not_used/' $@
+	@SED@ -i.orig -e 's/def POINTER/def POINTER_not_used/' $@
 	# WAR for a buggy WAR in ctypesgen that breaks string buffer arguments (e.g., as in address.py)
-	sed -i -e 's/class String/String = c_char_p\nclass String_not_used/' $@
-	sed -i -e 's/String.from_param/String_not_used.from_param/g' $@
-	sed -i -e 's/def ReturnString/ReturnString = c_char_p\ndef ReturnString_not_used/' $@
-	sed -i -e '/errcheck = ReturnString/s/^/#/' $@
+	@SED@ -i.orig -e 's/class String/String = c_char_p\nclass String_not_used/' $@
+	@SED@ -i.orig -e 's/String.from_param/String_not_used.from_param/g' $@
+	@SED@ -i.orig -e 's/def ReturnString/ReturnString = c_char_p\ndef ReturnString_not_used/' $@
+	@SED@ -i.orig -e '/errcheck = ReturnString/s/^/#/' $@
 endef
 
 ifeq "$(wildcard $(PSRDADA_HEADERS))" ""
@@ -41,17 +41,17 @@ $(PSRDADA_PYTHON_BINDINGS_FILE): $(PSRDADA_HEADERS)
 	$(call run_ctypesgen,psrdada,$(PSRHOME)/include)
 	# WAR for psrdada API using char* instead of void* for buffer pointers, which
 	#   otherwise get inadvertently converted to Python strings.
-	sed -i -e 's/c_char_p/POINTER(c_char)/g' $@
+	@SED@ -i.orig -e 's/c_char_p/POINTER(c_char)/g' $@
 
 $(BIFROST_PYTHON_BINDINGS_FILE): $(INC_DIR)/bifrost/*.h
 	$(call run_ctypesgen,$(BIFROST_NAME),$(INC_DIR))
 
 build: bifrost/*.py Makefile $(BIFROST_PYTHON_VERSION_FILE) $(BIFROST_PYTHON_BINDINGS_FILE) $(PSRDADA_PYTHON_BINDINGS_FILE)
-	@PYTHON@ setup.py build $(PYBUILDFLAGS)
+	@PYTHON@ setup.py build @PYBUILDFLAGS@
 .PHONY: build
 
 install: build
-	@PYTHON@ setup.py install $(PYINSTALLFLAGS)
+	@PYTHON@ setup.py install @PYINSTALLFLAGS@
 .PHONY: install
 
 clean:
