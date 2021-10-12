@@ -28,6 +28,7 @@
  */
 
 #include "assert.hpp"
+#include <bifrost/config.h>
 #include <bifrost/udp_transmit.h>
 #include <bifrost/affinity.h>
 #include "proclog.hpp"

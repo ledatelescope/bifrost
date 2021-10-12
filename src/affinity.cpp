@@ -27,14 +27,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <bifrost/config.h>
 #include <bifrost/affinity.h>
 #include "assert.hpp"
 
-#ifndef BF_OPENMP
-#define BF_OPENMP 1
-#endif
-
-#if BF_OPENMP == 1
+#if BF_OPENMP_ENABLED
 #include <omp.h>
 #endif
 
@@ -177,7 +174,7 @@ BFstatus bfAffinityGetCore(int* core) {
 }
 BFstatus bfAffinitySetOpenMPCores(BFsize     nthread,
                                   const int* thread_cores) {
-#if BF_OPENMP == 1
+#if BF_OPENMP_ENABLED
 	int host_core = -1;
 	// TODO: Check these for errors
 	bfAffinityGetCore(&host_core);

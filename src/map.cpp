@@ -42,6 +42,7 @@ bfMap(3, c.shape, {"dm", "t"},
 #define BF_MAP_KERNEL_CACHE_SIZE 128
 #endif
 
+#include <bifrost/config.h>
 #include <bifrost/map.h>
 
 #include "cuda.hpp"

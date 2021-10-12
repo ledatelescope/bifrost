@@ -26,6 +26,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <bifrost/config.h>
 #include <bifrost/proclog.h>
 #include "trace.hpp"
 #include "proclog.hpp"
@@ -101,7 +102,7 @@ public:
 };
 
 class ProcLogMgr {
-	static constexpr const char* base_logdir = "/dev/shm/bifrost";
+	static constexpr const char* base_logdir = BF_PROCLOG_DIR;
 	std::string            _logdir;
 	std::set<std::string>  _logs;
 	std::set<std::string>  _created_dirs;

@@ -52,11 +52,12 @@ AC_CHECK_HEADERS([sys/socket.h])
 AC_CHECK_HEADER_STDBOOL
 AC_FUNC_MALLOC
 
+AC_SUBST(HAVE_OPENMP, 0)
 AX_OPENMP
 AS_IF([test x$OPENMP_CXXFLAGS != x],
       [AC_SUBST(HAVE_OPENMP, 1)])
 AS_IF([test x$HAVE_OPENMP != x1],
-      [CPPFLAGS="$CPPFLAGS -DBF_OPENMP=0"],
+      [],
       [CXXFLAGS="$CXXFLAGS $OPENMP_CXXFLAGS"
        LDFLAGS="$LDFLAGS $OPENMP_CXXFLAGS"])
 
@@ -91,8 +92,7 @@ AC_ARG_WITH([shared_mem],
                             [default GPU shared memory in bytes (default=16384)])],
             [],
             [with_shared_mem=16384])
-AS_IF([test x$HAVE_CUDA = x1],
-      [NVCCFLAGS="$NVCCFLAGS -DBF_GPU_SHAREDMEM=$with_shared_mem"])
+AC_SUBST([GPU_SHAREDMEM], [$with_shared_mem])
 
 #
 # NUMA
@@ -103,9 +103,10 @@ AC_ARG_ENABLE([numa],
                              [disable numa support (default=no)]),
               [enable_numa=no],
               [enable_numa=yes])
+AC_SUBST([HAVE_NUMA], [0])
 AS_IF([test x$enable_numa != xno],
       [AC_CHECK_LIB([numa], [numa_node_of_cpu],
-                    [CPPFLAGS="$CPPFLAGS -DBF_NUMA_ENABLED=1"
+                    [AC_SUBST([HAVE_NUMA], [1])
                      LIBS="$LIBS -lnuma"])])
 
 #
@@ -117,9 +118,10 @@ AC_ARG_ENABLE([hwloc],
                              [disable hwloc support (default=no)]),
               [enable_hwloc=no],
               [enable_hwloc=yes])
+AC_SUBST([HAVE_HWLOC], [0])
 AS_IF([test x$enable_hwloc != xno],
       [AC_CHECK_LIB([hwloc], [hwloc_topology_init],
-                    [CPPFLAGS="$CPPFLAGS -DBF_HWLOC_ENABLED=1"
+                    [AC_SUBST([HAVE_HWLOC], [1])
                      LIBS="$LIBS -lhwloc"])])
 
 #
@@ -131,9 +133,10 @@ AC_ARG_ENABLE([vma],
                              [enable vma support (default=no)]),
               [enable_vma=yes],
               [enable_vma=no])
+AC_SUBST([HAVE_VMA], [0])
 AS_IF([test x$enable_vma != xno],
       [AC_CHECK_LIB([vma], [recvfrom_zcopy],
-                    [CPPFLAGS="$CPPFLAGS -DBF_VMA_ENABLED=1"
+                    [AC_SUBST([HAVE_VMA], [1])
                      LIBS="$LIBS -lvma"])])
 
 #
@@ -145,7 +148,13 @@ AC_ARG_WITH([alignment],
                             [default memory alignment in bytes (default=4096)])],
             [],
             [with_alignment=4096])
-CPPFLAGS="$CPPFLAGS -DBF_ALIGNMENT=$with_alignment"
+AC_SUBST([ALIGNMENT], [$with_alignment])
+
+#
+# Bifrost proclog location
+#
+
+AX_CHECK_TMPFS
 
 #
 # Bifrost Features
@@ -156,8 +165,9 @@ AC_ARG_ENABLE([debug],
                               [enable debugging mode (default=no)])],
               [enable_debug=yes],
               [enable_debug=no])
+AC_SUBST([HAVE_DEBUG], [0])
 AS_IF([test x$enable_debug != xno],
-      [CPPFLAGS="$CPPFLAGS -DBF_DEBUG=1"
+      [AC_SUBST([HAVE_DEBUG], [1])
        CXXFLAGS="$CXXFLAGS -g"
        NVCCFLAGS="$NVCCFLAGS -g"])
 
@@ -166,8 +176,9 @@ AC_ARG_ENABLE([trace],
                               [enable tracing mode for nvprof/nvvp (default=no)])],
               [enable_trace=yes],
               [enable_trace=no])
+AC_SUBST([HAVE_TRACE], [0])
 AS_IF([test x$enable_trace != xno],
-      [CPPFLAGS="$CPPFLAGS -DBF_TRACE_ENABLED=1"])
+      [AC_SUBST([HAVE_TRACE], [1])])
 
 AC_ARG_ENABLE([native_arch],
               [AS_HELP_STRING([--disable-native-arch],
@@ -184,8 +195,10 @@ AC_ARG_ENABLE([cuda_debug],
                               [enable CUDA debugging (nvcc -G; default=no)])],
               [enable_cuda_debug=yes],
               [enable_cuda_debug=no])
+AC_SUBST([HAVE_CUDA_DEBUG], [0])
 AS_IF([test x$enable_cuda_debug != xno],
-      [NVCCFLAGS="$NVCCFLAGS -G"])
+      [AC_SUBST([HAVE_CUDA_DEBUG], [1])
+       NVCCFLAGS="$NVCCFLAGS -G"])
 
 #
 # Python
@@ -246,6 +259,6 @@ NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
 AS_IF([test x$HAVE_CUDA = x1],
       [LIBS="$LIBS -L. -lcufft_static_pruned"])
 
-AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile])
+AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile src/bifrost/config.h])
 
 AC_OUTPUT

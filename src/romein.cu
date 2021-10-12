@@ -32,6 +32,7 @@ Implements the Romein convolutional algorithm onto a GPU using CUDA.
 
 */
 #include <iostream>
+#include <bifrost/config.h>
 #include <bifrost/romein.h>
 #include "romein_kernels.cuh"
 

@@ -27,6 +27,7 @@
  */
 
 #include "assert.hpp"
+#include <bifrost/config.h>
 #include <bifrost/udp_capture.h>
 #include <bifrost/affinity.h>
 #include <bifrost/Ring.hpp>

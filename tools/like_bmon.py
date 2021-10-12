@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2021, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -45,10 +45,10 @@ except ImportError:
     from io import StringIO
 
 os.environ['VMA_TRACELEVEL'] = '0'
-from bifrost.proclog import load_by_pid
+from bifrost.proclog import PROCLOG_DIR, load_by_pid
 
 
-BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
+BIFROST_STATS_BASE_DIR = PROCLOG_DIR
 
 
 def get_transmit_receive():
