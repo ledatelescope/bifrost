@@ -50,6 +50,7 @@ addons:
         update: false
         packages:
             - curl
+            - ctags-exuberant
             - git
             - pkg-config
             - python3
