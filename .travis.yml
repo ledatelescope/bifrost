@@ -23,11 +23,11 @@ jobs:
         - HOMEBREW_NO_INSTALL_CLEANUP=1
         - HOMEBREW_NO_ANALYTICS=1
     - stage: docker and deploy docs
-          python: 2.7
-          script:
-            - make docker-cpu
-            - make docker
-            - bash ./.travis_deploy_docs.sh
+      python: 2.7
+      script:
+        - make docker-cpu
+        - make docker
+        - bash ./.travis_deploy_docs.sh
   allow_failures:
     - python: 2.7
     - python: pypy2.7-6.0
