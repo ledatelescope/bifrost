@@ -27,6 +27,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <bifrost/config.h>
 #include <bifrost/memory.h>
 #include "utils.hpp"
 #include "cuda.hpp"

@@ -28,6 +28,7 @@
 
 #pragma once
 
+#include <bifrost/config.h>
 #include <bifrost/common.h>
 #include "assert.hpp"
 

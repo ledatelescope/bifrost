@@ -27,6 +27,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <bifrost/config.h>
 #include <bifrost/common.h>
 
 #include <sstream>
@@ -83,7 +84,7 @@ BFstatus bfSetDebugEnabled(BFbool b) {
 #endif
 }
 BFbool bfGetCudaEnabled() {
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 	return BF_CUDA_ENABLED;
 #else
 	return false;
