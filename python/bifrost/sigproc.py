@@ -249,9 +249,9 @@ def pack(data, nbit):
         raise ValueError("unpack: nbit must divide into 8")
     if data.dtype not in (np.uint8, np.int8):
         raise TypeError("unpack: dtype must be 8-bit")
-    outdata = np.zeros(data.size / (8 / nbit)).astype('uint8')
-    for index in range(1, 8 / nbit):
-        outdata += data[index::8 / nbit] / (2**nbit)**index
+    outdata = np.zeros(data.size // (8 // nbit)).astype('uint8')
+    for index in range(1, 8 // nbit):
+        outdata += data[index::8 // nbit] // (2**nbit)**index
     return outdata
 
 def _write_data(data, nbit, file_object):
