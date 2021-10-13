@@ -804,6 +804,7 @@ enable_numa
 enable_hwloc
 enable_vma
 with_alignment
+with_logging_dir
 enable_debug
 enable_trace
 enable_native_arch
@@ -1495,6 +1496,8 @@ Optional Packages:
   --with-gpu-archs=...    default GPU architectures (default='35 61')
   --with-shared-mem=N     default GPU shared memory in bytes (default=16384)
   --with-alignment=N      default memory alignment in bytes (default=4096)
+  --with-logging-dir=DIR  directory for Bifrost proclog logging
+                          (default=autodetect)
   --with-python=[PATH]  absolute path to python executable
   --with-pybuild-flags    build flags for python (default='')
   --with-pyinstall-flags  install flags for python (default='')
@@ -17761,7 +17764,15 @@ ALIGNMENT=$with_alignment
 
 
 
+
+# Check whether --with-logging_dir was given.
+if test "${with_logging_dir+set}" = set; then :
+  withval=$with_logging_dir; HAVE_TMPFS=$with_logging_dir
+
+else
   HAVE_TMPFS=/tmp
+
+fi
 
 
   if test "$HAVE_TMPFS" = "/tmp"; then
@@ -17836,8 +17847,6 @@ $as_echo "$as_me: WARNING: $HAVE_TMPFS may have performance problems for logging
     HAVE_TMPFS=/tmp/bifrost
 
   fi
-
-  CPPFLAGS="$CPPFLAGS -DBF_PROCLOG_DIR='\"$HAVE_TMPFS\"'"
 
 
 #

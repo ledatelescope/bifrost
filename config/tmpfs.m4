@@ -1,8 +1,12 @@
 AC_DEFUN([AX_CHECK_TMPFS],
 [
   AC_PROVIDE([AX_CHECK_TMPFS])
- 
-  AC_SUBST([HAVE_TMPFS], [/tmp])
+  
+  AC_ARG_WITH([logging_dir],
+              [AS_HELP_STRING([--with-logging-dir=[DIR]],
+                              [directory for Bifrost proclog logging (default=autodetect)])],
+              [AC_SUBST([HAVE_TMPFS], [$with_logging_dir])],
+              [AC_SUBST([HAVE_TMPFS], [/tmp])])
   
   if test "$HAVE_TMPFS" = "/tmp"; then
     AC_CHECK_FILE([/dev/shm],
@@ -20,6 +24,4 @@ AC_DEFUN([AX_CHECK_TMPFS],
     AC_MSG_WARN([$HAVE_TMPFS may have performance problems for logging])
     AC_SUBST([HAVE_TMPFS], [/tmp/bifrost])
   fi
-  
-  CPPFLAGS="$CPPFLAGS -DBF_PROCLOG_DIR='\"$HAVE_TMPFS\"'"
 ])
