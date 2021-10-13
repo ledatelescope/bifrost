@@ -51,7 +51,9 @@ addons:
         packages:
             - curl
             - ctags-exuberant
+            - gawk
             - git
+            - gnu-sed
             - pkg-config
             - python3
 
