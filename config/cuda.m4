@@ -45,17 +45,19 @@ AC_DEFUN([AX_CHECK_CUDA],
     LIBS="$LIBS_save"
   fi
   
-  if test "$HAVE_CUDA" = "1"; then
-    CPPFLAGS="$CPPFLAGS -DBF_CUDA_ENABLED=1"
-    LDFLAGS="$LDFLAGS -L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-    LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"
-  fi
-  
   AC_ARG_WITH([nvcc_flags],
               [AS_HELP_STRING([--with-nvcc-flags],
                               [flags to pass to NVCC (default='-O3 -Xcompiler "-Wall"')])],
               [],
               [with_nvcc_flags='-O3 -Xcompiler "-Wall"'])
   AC_SUBST(NVCCFLAGS, $with_nvcc_flags)
+  
+  if test "$HAVE_CUDA" = "1"; then
+    CPPFLAGS="$CPPFLAGS -DBF_CUDA_ENABLED=1"
+    CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1"
+    NVCCFLAGS="$NVCCFLAGS -DBF_CUDA_ENABLED=1"
+    LDFLAGS="$LDFLAGS -L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+    LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"
+  fi
+  
 ])
-
