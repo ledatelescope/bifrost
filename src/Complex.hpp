@@ -28,8 +28,6 @@
 
 #pragma once
 
-#include <bifrost/config.h>
-
 #if BF_CUDA_ENABLED
 #include <cuda_fp16.h>
 #endif

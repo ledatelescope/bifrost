@@ -17847,12 +17847,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     LIBS="$LIBS_save"
   fi
 
-  if test "$HAVE_CUDA" = "1"; then
-    CPPFLAGS="$CPPFLAGS -DBF_CUDA_ENABLED=1"
-    LDFLAGS="$LDFLAGS -L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-    LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"
-  fi
-
 
 # Check whether --with-nvcc_flags was given.
 if test "${with_nvcc_flags+set}" = set; then :
@@ -17862,6 +17856,15 @@ else
 fi
 
   NVCCFLAGS=$with_nvcc_flags
+
+
+  if test "$HAVE_CUDA" = "1"; then
+    CPPFLAGS="$CPPFLAGS -DBF_CUDA_ENABLED=1"
+    CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1"
+    NVCCFLAGS="$NVCCFLAGS -DBF_CUDA_ENABLED=1"
+    LDFLAGS="$LDFLAGS -L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+    LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"
+  fi
 
 
 
