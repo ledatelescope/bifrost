@@ -256,8 +256,6 @@ DX_INIT_DOXYGEN([bifrost])
 
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
 NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
-AS_IF([test x$HAVE_CUDA = x1],
-      [LIBS="$LIBS -L. -lcufft_static_pruned"])
 
 AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile src/bifrost/config.h])
 
