@@ -48,7 +48,7 @@ AC_DEFUN([AX_CHECK_CUDA],
   if test "$HAVE_CUDA" = "1"; then
     CPPFLAGS="$CPPFLAGS -DBF_CUDA_ENABLED=1"
     LDFLAGS="$LDFLAGS -L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-    LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -lculibos -lnvToolsExt"
+    LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"
   fi
   
   AC_ARG_WITH([nvcc_flags],
