@@ -55,7 +55,7 @@ inline bool should_report_error(BFstatus err) {
 #include <iostream>
 using std::cout;
 using std::endl;
-#if defined(BF_DEBUG) && BF_DEBUG
+#if defined(BF_DEBUG_ENABLED) && BF_DEBUG_ENABLED
 	#define BF_REPORT_ERROR(err) do { \
 		if( bfGetDebugEnabled() && \
 		    should_report_error(err) ) { \
@@ -82,7 +82,7 @@ using std::endl;
 	#define BF_REPORT_ERROR(err)
 	#define BF_DEBUG_PRINT(x)
 	#define BF_REPORT_PREDFAIL(pred, err)
-#endif // BF_DEBUG
+#endif // BF_DEBUG_ENABLED
 #define BF_REPORT_INTERNAL_ERROR(msg) do { \
 		std::cerr << __FILE__ << ":" << __LINE__ \
 		          << " internal error: " \
