@@ -36,9 +36,26 @@ AC_DEFUN([AX_CHECK_CUDA],
           #include <cuda.h>
           #include <cuda_runtime.h>]],
           [[cudaMalloc(0, 0);]])],
-        [AC_MSG_RESULT(yes)],
-        [AC_MSG_RESULT(no)
-         AC_SUBST([HAVE_CUDA], [0])])
+        [],
+        [AC_SUBST([HAVE_CUDA], [0])])
+    
+    if test "$HAVE_CUDA" = "1"; then
+      LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+      LIBS="$LIBS -lcuda -lcudart"
+
+      ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
+      AC_LINK_IFELSE([
+        AC_LANG_PROGRAM([[
+            #include <cuda.h>
+            #include <cuda_runtime.h>]],
+            [[cudaMalloc(0, 0);]])],
+          [AC_MSG_RESULT(yes)],
+          [AC_MSG_RESULT(no)
+           AC_SUBST([HAVE_CUDA], [0])])
+    else
+      AC_MSG_RESULT(no)
+      AC_SUBST([HAVE_CUDA], [0])
+    fi
     
     CXXFLAGS="$CXXFLAGS_save"
     LDFLAGS="$LDFLAGS_save"
@@ -60,4 +77,62 @@ AC_DEFUN([AX_CHECK_CUDA],
     LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"
   fi
   
+  AC_ARG_WITH([gpu_archs],
+              [AS_HELP_STRING([--with-gpu-archs=...],
+                              [default GPU architectures (default=dectect)])],
+              [],
+              [with_gpu_archs='auto'])
+  if test "$HAVE_CUDA" = "1"; then
+    if test "$with_gpu_archs" = "auto"; then
+      AC_MSG_CHECKING([which CUDA architectures to target])
+
+      CXXFLAGS_save="$CXXFLAGS"
+      LDFLAGS_save="$LDFLAGS"
+      LIBS_save="$LIBS"
+      
+      LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+      LIBS="-lcuda -lcudart"
+      ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS conftest.$ac_ext>&5'
+      AC_RUN_IFELSE([
+        AC_LANG_PROGRAM([[
+            #include <cuda.h>
+            #include <cuda_runtime.h>
+            #include <iostream>
+            #include <fstream>
+            #include <set>]],
+            [[
+            std::set<int> archs;
+            int major, minor, arch;
+            int deviceCount = 0;
+            cudaGetDeviceCount(&deviceCount);
+            if( deviceCount == 0 ) {
+              return 1;
+            }
+            std::ofstream fh;
+            fh.open("confarchs.out");
+            for(int dev=0; dev<deviceCount; dev++) {
+              cudaSetDevice(dev);
+              cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, dev);
+              cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, dev);
+              arch = 10*major + minor;
+              if( archs.count(arch) == 0 ) {
+                archs.insert(arch);
+                if( dev > 0 ) {
+                  fh << " ";
+                }
+                fh << arch;
+              }
+            }
+            fh.close();]])],
+            [AC_SUBST([GPU_ARCHS], [`cat confarchs.out`])
+             AC_MSG_RESULT([$GPU_ARCHS])],
+            [AC_MSG_ERROR(failed to find any)])
+
+      CXXFLAGS="$CXXFLAGS_save"
+      LDFLAGS="$LDFLAGS_save"
+      LIBS="$LIBS_save"
+    else
+      AC_SUBST([GPU_ARCHS], [$with_gpu_archs])
+    fi
+  fi 
 ])
