@@ -75,26 +75,6 @@ AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
 
 #
-# CUDA
-#
-
-AX_CHECK_CUDA
-
-AC_ARG_WITH([gpu_archs],
-            [AS_HELP_STRING([--with-gpu-archs=...],
-                            [default GPU architectures (default='35 61')])],
-            [],
-            [with_gpu_archs='35 61'])
-AC_SUBST(GPU_ARCHS, $with_gpu_archs)
-
-AC_ARG_WITH([shared_mem],
-            [AS_HELP_STRING([--with-shared-mem=N],
-                            [default GPU shared memory in bytes (default=16384)])],
-            [],
-            [with_shared_mem=16384])
-AC_SUBST([GPU_SHAREDMEM], [$with_shared_mem])
-
-#
 # NUMA
 #
 
@@ -138,6 +118,27 @@ AS_IF([test x$enable_vma != xno],
       [AC_CHECK_LIB([vma], [recvfrom_zcopy],
                     [AC_SUBST([HAVE_VMA], [1])
                      LIBS="$LIBS -lvma"])])
+
+#
+# CUDA
+#
+
+#################################
+#            NOTE               #
+# This needs to come after all  #
+# other compiler/library tests  #
+# since it changes LIB to       #
+# include CUDA-specific entries #
+#################################
+
+AX_CHECK_CUDA
+
+AC_ARG_WITH([shared_mem],
+           [AS_HELP_STRING([--with-shared-mem=N],
+                           [default GPU shared memory in bytes (default=16384)])],
+           [],
+           [with_shared_mem=16384])
+AC_SUBST([GPU_SHAREDMEM], [$with_shared_mem])
 
 #
 # Bifrost memory alignment

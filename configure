@@ -681,9 +681,6 @@ HAVE_TRACE
 HAVE_DEBUG
 HAVE_TMPFS
 ALIGNMENT
-HAVE_VMA
-HAVE_HWLOC
-HAVE_NUMA
 GPU_SHAREDMEM
 GPU_ARCHS
 NVCCFLAGS
@@ -692,6 +689,9 @@ NVPRUNE
 NVCC
 HAVE_CUDA
 CUDA_HOME
+HAVE_VMA
+HAVE_HWLOC
+HAVE_NUMA
 HAVE_OPENMP
 LIBOBJS
 HAVE_CXX11
@@ -796,14 +796,14 @@ with_gnu_ld
 with_sysroot
 enable_libtool_lock
 with_ctags
+enable_numa
+enable_hwloc
+enable_vma
 with_cuda_home
 enable_cuda
 with_nvcc_flags
 with_gpu_archs
 with_shared_mem
-enable_numa
-enable_hwloc
-enable_vma
 with_alignment
 with_logging_dir
 enable_debug
@@ -1470,10 +1470,10 @@ Optional Features:
   --enable-fast-install[=PKGS]
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
-  --disable-cuda          disable cuda support (default=no)
   --disable-numa          disable numa support (default=no)
   --disable-hwloc         disable hwloc support (default=no)
   --enable-vma            enable vma support (default=no)
+  --disable-cuda          disable cuda support (default=no)
   --enable-debug          enable debugging mode (default=no)
   --enable-trace          enable tracing mode for nvprof/nvvp (default=no)
   --disable-native-arch   disable native architecture compilation (default=no)
@@ -1505,7 +1505,7 @@ Optional Packages:
   --with-cuda-home        CUDA install path (default=/usr/local/cuda)
   --with-nvcc-flags       flags to pass to NVCC (default='-O3 -Xcompiler
                           "-Wall"')
-  --with-gpu-archs=...    default GPU architectures (default='35 61')
+  --with-gpu-archs=...    default GPU architectures (default=dectect)
   --with-shared-mem=N     default GPU shared memory in bytes (default=16384)
   --with-alignment=N      default memory alignment in bytes (default=4096)
   --with-logging-dir=DIR  directory for Bifrost proclog logging
@@ -17650,8 +17650,190 @@ _ACEOF
 
 
 #
+# NUMA
+#
+
+# Check whether --enable-numa was given.
+if test "${enable_numa+set}" = set; then :
+  enableval=$enable_numa; enable_numa=no
+else
+  enable_numa=yes
+fi
+
+HAVE_NUMA=0
+
+if test x$enable_numa != xno; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for numa_node_of_cpu in -lnuma" >&5
+$as_echo_n "checking for numa_node_of_cpu in -lnuma... " >&6; }
+if ${ac_cv_lib_numa_numa_node_of_cpu+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lnuma  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char numa_node_of_cpu ();
+int
+main ()
+{
+return numa_node_of_cpu ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_lib_numa_numa_node_of_cpu=yes
+else
+  ac_cv_lib_numa_numa_node_of_cpu=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_numa_numa_node_of_cpu" >&5
+$as_echo "$ac_cv_lib_numa_numa_node_of_cpu" >&6; }
+if test "x$ac_cv_lib_numa_numa_node_of_cpu" = xyes; then :
+  HAVE_NUMA=1
+
+                     LIBS="$LIBS -lnuma"
+fi
+
+fi
+
+#
+# HWLOC
+#
+
+# Check whether --enable-hwloc was given.
+if test "${enable_hwloc+set}" = set; then :
+  enableval=$enable_hwloc; enable_hwloc=no
+else
+  enable_hwloc=yes
+fi
+
+HAVE_HWLOC=0
+
+if test x$enable_hwloc != xno; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for hwloc_topology_init in -lhwloc" >&5
+$as_echo_n "checking for hwloc_topology_init in -lhwloc... " >&6; }
+if ${ac_cv_lib_hwloc_hwloc_topology_init+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lhwloc  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char hwloc_topology_init ();
+int
+main ()
+{
+return hwloc_topology_init ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_lib_hwloc_hwloc_topology_init=yes
+else
+  ac_cv_lib_hwloc_hwloc_topology_init=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_hwloc_hwloc_topology_init" >&5
+$as_echo "$ac_cv_lib_hwloc_hwloc_topology_init" >&6; }
+if test "x$ac_cv_lib_hwloc_hwloc_topology_init" = xyes; then :
+  HAVE_HWLOC=1
+
+                     LIBS="$LIBS -lhwloc"
+fi
+
+fi
+
+#
+# VMA
+#
+
+# Check whether --enable-vma was given.
+if test "${enable_vma+set}" = set; then :
+  enableval=$enable_vma; enable_vma=yes
+else
+  enable_vma=no
+fi
+
+HAVE_VMA=0
+
+if test x$enable_vma != xno; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for recvfrom_zcopy in -lvma" >&5
+$as_echo_n "checking for recvfrom_zcopy in -lvma... " >&6; }
+if ${ac_cv_lib_vma_recvfrom_zcopy+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lvma  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char recvfrom_zcopy ();
+int
+main ()
+{
+return recvfrom_zcopy ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_lib_vma_recvfrom_zcopy=yes
+else
+  ac_cv_lib_vma_recvfrom_zcopy=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_vma_recvfrom_zcopy" >&5
+$as_echo "$ac_cv_lib_vma_recvfrom_zcopy" >&6; }
+if test "x$ac_cv_lib_vma_recvfrom_zcopy" = xyes; then :
+  HAVE_VMA=1
+
+                     LIBS="$LIBS -lvma"
+fi
+
+fi
+
+#
 # CUDA
 #
+
+#################################
+#            NOTE               #
+# This needs to come after all  #
+# other compiler/library tests  #
+# since it changes LIB to       #
+# include CUDA-specific entries #
+#################################
 
 
 
@@ -17832,15 +18014,49 @@ cudaMalloc(0, 0);
 }
 _ACEOF
 if ac_fn_cxx_try_compile "$LINENO"; then :
+
+else
+  HAVE_CUDA=0
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+    if test "$HAVE_CUDA" = "1"; then
+      LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+      LIBS="$LIBS -lcuda -lcudart"
+
+      ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
+      cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+            #include <cuda.h>
+            #include <cuda_runtime.h>
+int
+main ()
+{
+cudaMalloc(0, 0);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-         HAVE_CUDA=0
+           HAVE_CUDA=0
 
 fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+      HAVE_CUDA=0
+
+    fi
 
     CXXFLAGS="$CXXFLAGS_save"
     LDFLAGS="$LDFLAGS_save"
@@ -17867,16 +18083,92 @@ fi
   fi
 
 
-
-
 # Check whether --with-gpu_archs was given.
 if test "${with_gpu_archs+set}" = set; then :
   withval=$with_gpu_archs;
 else
-  with_gpu_archs='35 61'
+  with_gpu_archs='auto'
 fi
 
-GPU_ARCHS=$with_gpu_archs
+  if test "$HAVE_CUDA" = "1"; then
+    if test "$with_gpu_archs" = "auto"; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking which CUDA architectures to target" >&5
+$as_echo_n "checking which CUDA architectures to target... " >&6; }
+
+      CXXFLAGS_save="$CXXFLAGS"
+      LDFLAGS_save="$LDFLAGS"
+      LIBS_save="$LIBS"
+
+      LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+      LIBS="-lcuda -lcudart"
+      ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS conftest.$ac_ext>&5'
+      if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+            #include <cuda.h>
+            #include <cuda_runtime.h>
+            #include <iostream>
+            #include <fstream>
+            #include <set>
+int
+main ()
+{
+
+            std::set<int> archs;
+            int major, minor, arch;
+            int deviceCount = 0;
+            cudaGetDeviceCount(&deviceCount);
+            if( deviceCount == 0 ) {
+              return 1;
+            }
+            std::ofstream fh;
+            fh.open("confarchs.out");
+            for(int dev=0; dev<deviceCount; dev++) {
+              cudaSetDevice(dev);
+              cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, dev);
+              cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, dev);
+              arch = 10*major + minor;
+              if( archs.count(arch) == 0 ) {
+                archs.insert(arch);
+                if( dev > 0 ) {
+                  fh << " ";
+                }
+                fh << arch;
+              }
+            }
+            fh.close();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_run "$LINENO"; then :
+  GPU_ARCHS=`cat confarchs.out`
+
+             { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GPU_ARCHS" >&5
+$as_echo "$GPU_ARCHS" >&6; }
+else
+  as_fn_error $? "failed to find any" "$LINENO" 5
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+      CXXFLAGS="$CXXFLAGS_save"
+      LDFLAGS="$LDFLAGS_save"
+      LIBS="$LIBS_save"
+    else
+      GPU_ARCHS=$with_gpu_archs
+
+    fi
+  fi
 
 
 
@@ -17889,180 +18181,6 @@ fi
 
 GPU_SHAREDMEM=$with_shared_mem
 
-
-#
-# NUMA
-#
-
-# Check whether --enable-numa was given.
-if test "${enable_numa+set}" = set; then :
-  enableval=$enable_numa; enable_numa=no
-else
-  enable_numa=yes
-fi
-
-HAVE_NUMA=0
-
-if test x$enable_numa != xno; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for numa_node_of_cpu in -lnuma" >&5
-$as_echo_n "checking for numa_node_of_cpu in -lnuma... " >&6; }
-if ${ac_cv_lib_numa_numa_node_of_cpu+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lnuma  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char numa_node_of_cpu ();
-int
-main ()
-{
-return numa_node_of_cpu ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_link "$LINENO"; then :
-  ac_cv_lib_numa_numa_node_of_cpu=yes
-else
-  ac_cv_lib_numa_numa_node_of_cpu=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_numa_numa_node_of_cpu" >&5
-$as_echo "$ac_cv_lib_numa_numa_node_of_cpu" >&6; }
-if test "x$ac_cv_lib_numa_numa_node_of_cpu" = xyes; then :
-  HAVE_NUMA=1
-
-                     LIBS="$LIBS -lnuma"
-fi
-
-fi
-
-#
-# HWLOC
-#
-
-# Check whether --enable-hwloc was given.
-if test "${enable_hwloc+set}" = set; then :
-  enableval=$enable_hwloc; enable_hwloc=no
-else
-  enable_hwloc=yes
-fi
-
-HAVE_HWLOC=0
-
-if test x$enable_hwloc != xno; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for hwloc_topology_init in -lhwloc" >&5
-$as_echo_n "checking for hwloc_topology_init in -lhwloc... " >&6; }
-if ${ac_cv_lib_hwloc_hwloc_topology_init+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lhwloc  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char hwloc_topology_init ();
-int
-main ()
-{
-return hwloc_topology_init ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_link "$LINENO"; then :
-  ac_cv_lib_hwloc_hwloc_topology_init=yes
-else
-  ac_cv_lib_hwloc_hwloc_topology_init=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_hwloc_hwloc_topology_init" >&5
-$as_echo "$ac_cv_lib_hwloc_hwloc_topology_init" >&6; }
-if test "x$ac_cv_lib_hwloc_hwloc_topology_init" = xyes; then :
-  HAVE_HWLOC=1
-
-                     LIBS="$LIBS -lhwloc"
-fi
-
-fi
-
-#
-# VMA
-#
-
-# Check whether --enable-vma was given.
-if test "${enable_vma+set}" = set; then :
-  enableval=$enable_vma; enable_vma=yes
-else
-  enable_vma=no
-fi
-
-HAVE_VMA=0
-
-if test x$enable_vma != xno; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for recvfrom_zcopy in -lvma" >&5
-$as_echo_n "checking for recvfrom_zcopy in -lvma... " >&6; }
-if ${ac_cv_lib_vma_recvfrom_zcopy+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lvma  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char recvfrom_zcopy ();
-int
-main ()
-{
-return recvfrom_zcopy ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_link "$LINENO"; then :
-  ac_cv_lib_vma_recvfrom_zcopy=yes
-else
-  ac_cv_lib_vma_recvfrom_zcopy=no
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_vma_recvfrom_zcopy" >&5
-$as_echo "$ac_cv_lib_vma_recvfrom_zcopy" >&6; }
-if test "x$ac_cv_lib_vma_recvfrom_zcopy" = xyes; then :
-  HAVE_VMA=1
-
-                     LIBS="$LIBS -lvma"
-fi
-
-fi
 
 #
 # Bifrost memory alignment
