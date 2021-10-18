@@ -26,7 +26,7 @@ clean:
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) clean || true
 	$(MAKE) -C $(SRC_DIR) clean
 .PHONY: clean
-install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME) $(INSTALL_DAT_DIR)/$(BIFROST_NAME)
+install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME) $(INSTALL_DAT_DIR)/$(BIFROST_NAME) $(INSTALL_LIB_DIR)/pkgconfig
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) install
 .PHONY: install
 uninstall:
@@ -97,7 +97,16 @@ else
 	@echo "cp $? $@/"
 endif
 
-$(INSTALL_DAT_DIR)/bifrost: $(DAT_DIR)/*
+$(INSTALL_DAT_DIR)/bifrost: $(DAT_DIR)/*.m4
+ifeq ($(DRY_RUN),0)
+	mkdir -p $@
+	cp $? $@/
+else
+	@echo "mkdir -p $@"
+	@echo "cp $? $@/"
+endif
+
+$(INSTALL_LIB_DIR)/pkgconfig: $(DAT_DIR)/*.pc
 ifeq ($(DRY_RUN),0)
 	mkdir -p $@
 	cp $? $@/

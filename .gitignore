@@ -13,6 +13,7 @@ config.mk
 Makefile
 src/Makefile
 python/Makefile
+share/bifrost.pc
 src/bifrost/config.h
 
 # Byte-compiled / optimized / DLL files

@@ -20639,7 +20639,7 @@ PACKAGE_VERSION_MICRO=`echo $PACKAGE_VERSION | $AWK -F. -e '{print $3}'`
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
 NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
 
-ac_config_files="$ac_config_files config.mk Makefile src/Makefile python/Makefile src/bifrost/config.h"
+ac_config_files="$ac_config_files config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h"
 
 
 cat >confcache <<\_ACEOF
@@ -21744,6 +21744,7 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "python/Makefile") CONFIG_FILES="$CONFIG_FILES python/Makefile" ;;
+    "share/bifrost.pc") CONFIG_FILES="$CONFIG_FILES share/bifrost.pc" ;;
     "src/bifrost/config.h") CONFIG_FILES="$CONFIG_FILES src/bifrost/config.h" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
