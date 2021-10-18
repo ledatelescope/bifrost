@@ -69,9 +69,8 @@ script:
         codecov
     - ./configure --disable-cuda
     - make -j
-    - sudo make install
-    - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
-    - cd python && pip install . && cd ..
+    - export LD_LIBRARY_PATH=`realpath ./lib`:${LD_LIBRARY_PATH}
+    - export PYTHONPATH=`realpath ./python`
     - cd test && bash ./travis.sh && cd ..
 
 env:
