@@ -6,8 +6,8 @@ INC_DIR = src
 DAT_DIR = share
 SRC_DIR = src
 
-HAVE_PYTHON ?= @HAVE_PYTHON@
-HAVE_DOCKER ?= @HAVE_DOCKER@
+HAVE_PYTHON = @HAVE_PYTHON@
+HAVE_DOCKER = @HAVE_DOCKER@
 
 BIFROST_PYTHON_DIR = python
 
@@ -20,21 +20,31 @@ libbifrost:
 
 test:
 	#$(MAKE) -C $(SRC_DIR) test
+ifeq ($(HAVE_PYTHON),1)
 	cd test && ./download_test_data.sh ; python -m unittest discover
+endif
 .PHONY: test
 clean:
+ifeq ($(HAVE_PYTHON),1)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) clean || true
+endif
 	$(MAKE) -C $(SRC_DIR) clean
 .PHONY: clean
 install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME) $(INSTALL_DAT_DIR)/$(BIFROST_NAME) $(INSTALL_LIB_DIR)/pkgconfig
+ifeq ($(HAVE_PYTHON),1)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) install
+endif
 .PHONY: install
 uninstall:
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO)
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ)
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN)
 	rm -rf $(INSTALL_INC_DIR)/bifrost/
+	rm -ff $(INSTALL_DAT_DIR)/bifrost/
+	rm -f $(INSTALL_LIB_DIR)/pkgconfig/bifrost.pc
+ifeq ($(HAVE_PYTHON),1)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) uninstall
+endif
 .PHONY: uninstall
 
 doc: $(INC_DIR)/bifrost/*.h Doxyfile

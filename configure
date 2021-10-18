@@ -676,8 +676,8 @@ HAVE_DOCKER
 DOCKER
 PYINSTALLFLAGS
 PYBUILDFLAGS
-HAVE_PYTHON
 PYTHON
+HAVE_PYTHON
 HAVE_CUDA_DEBUG
 HAVE_TRACE
 HAVE_DEBUG
@@ -812,6 +812,7 @@ enable_debug
 enable_trace
 enable_native_arch
 enable_cuda_debug
+enable_python
 with_python
 with_pybuild_flags
 with_pyinstall_flags
@@ -1482,6 +1483,7 @@ Optional Features:
   --enable-trace          enable tracing mode for nvprof/nvvp (default=no)
   --disable-native-arch   disable native architecture compilation (default=no)
   --enable-cuda-debug     enable CUDA debugging (nvcc -G; default=no)
+  --disable-python        disable building the Python bindings (default=no)
   --disable-doxygen-doc   don't generate any doxygen documentation
   --enable-doxygen-dot    generate graphics for doxygen documentation
   --disable-doxygen-man   don't generate doxygen manual pages
@@ -18361,6 +18363,16 @@ fi
 # Python
 #
 
+# Check whether --enable-python was given.
+if test "${enable_python+set}" = set; then :
+  enableval=$enable_python; enable_python=no
+else
+  enable_python=yes
+fi
+
+HAVE_PYTHON=0
+
+if test x$enable_python != xno; then :
 
 
 
@@ -18419,6 +18431,7 @@ done
   done
 IFS=$as_save_IFS
 
+  test -z "$ac_cv_path_PYTHON" && ac_cv_path_PYTHON="no"
   ;;
 esac
 fi
@@ -18468,6 +18481,7 @@ done
   done
 IFS=$as_save_IFS
 
+  test -z "$ac_cv_path_PYTHON" && ac_cv_path_PYTHON="no"
   ;;
 esac
 fi
@@ -18492,22 +18506,22 @@ fi
 
 
 
-if test x${PYTHON} != x; then :
+       if test x${PYTHON} != xno; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether $PYTHON as ctypesgen" >&5
 $as_echo_n "checking whether $PYTHON as ctypesgen... " >&6; }
-       if ! ${PYTHON} -c "import ctypesgen" 2>/dev/null; then :
+              if ! ${PYTHON} -c "import ctypesgen" 2>/dev/null; then :
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-              { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: python module will not be built" >&5
+                     { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: python module will not be built" >&5
 $as_echo "$as_me: WARNING: python module will not be built" >&2;}
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-              HAVE_PYTHON=1
+                     HAVE_PYTHON=1
 
 fi
 fi
-
+fi
 
 # Check whether --with-pybuild_flags was given.
 if test "${with_pybuild_flags+set}" = set; then :
@@ -18588,6 +18602,7 @@ done
   done
 IFS=$as_save_IFS
 
+  test -z "$ac_cv_path_DOCKER" && ac_cv_path_DOCKER="no"
   ;;
 esac
 fi
@@ -18637,6 +18652,7 @@ done
   done
 IFS=$as_save_IFS
 
+  test -z "$ac_cv_path_DOCKER" && ac_cv_path_DOCKER="no"
   ;;
 esac
 fi
@@ -18661,7 +18677,7 @@ fi
 
 
 
-if test x${DOCKER} != x; then :
+if test x${DOCKER} != xno; then :
   HAVE_DOCKER=1
 
 fi
