@@ -71,7 +71,7 @@ script:
     - make -j
     - sudo make install
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
-    - cd test && sudo -E bash ./travis.sh && cd ..
+    - cd test && bash ./travis.sh && cd ..
 
 env:
     global:
