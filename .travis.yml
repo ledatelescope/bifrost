@@ -71,6 +71,7 @@ script:
     - make -j
     - sudo make install
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+    - cd python && make install && cd ..
     - cd test && bash ./travis.sh && cd ..
 
 env:
