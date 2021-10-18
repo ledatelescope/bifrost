@@ -69,7 +69,7 @@ script:
         codecov
     - ./configure --disable-cuda
     - make -j
-    - make install
+    - sudo make install
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
     - cd test && sudo -E bash ./travis.sh && cd ..
 
