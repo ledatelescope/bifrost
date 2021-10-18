@@ -1,5 +1,3 @@
-sudo: required
-
 dist: bionic
 
 language: python
@@ -58,7 +56,7 @@ addons:
             - python3
 
 script:
-    - sudo pip --no-cache-dir install \
+    - pip --no-cache-dir install \
         setuptools \
         numpy \
         matplotlib \
@@ -69,9 +67,9 @@ script:
         git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f \
         coveralls \
         codecov
-    - sudo ./configure --disable-cuda
-    - sudo make -j
-    - sudo make install
+    - ./configure --disable-cuda
+    - make -j
+    - make install
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
     - cd test && sudo -E bash ./travis.sh && cd ..
 
