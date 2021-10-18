@@ -205,15 +205,21 @@ AS_IF([test x$enable_cuda_debug != xno],
 # Python
 #
 
-AX_WITH_PROG(PYTHON, python)
-AS_IF([test x${PYTHON} != x],
-      [AC_MSG_CHECKING([whether $PYTHON as ctypesgen])
-       AS_IF([! ${PYTHON} -c "import ctypesgen" 2>/dev/null],
-             [AC_MSG_RESULT([no])
-              AC_MSG_WARN([python module will not be built])],
-             [AC_MSG_RESULT([yes])
-              AC_SUBST(HAVE_PYTHON, 1)])])
-
+AC_ARG_ENABLE([python],
+              [AS_HELP_STRING([--disable-python],
+                              [disable building the Python bindings (default=no)])],
+              [enable_python=no],
+              [enable_python=yes])
+AC_SUBST([HAVE_PYTHON], [0])
+AS_IF([test x$enable_python != xno],
+      [AX_WITH_PROG(PYTHON, python, no, $PATH)
+       AS_IF([test x${PYTHON} != xno],
+             [AC_MSG_CHECKING([whether $PYTHON as ctypesgen])
+              AS_IF([! ${PYTHON} -c "import ctypesgen" 2>/dev/null],
+                    [AC_MSG_RESULT([no])
+                     AC_MSG_WARN([python module will not be built])],
+                    [AC_MSG_RESULT([yes])
+                     AC_SUBST(HAVE_PYTHON, 1)])])])
 AC_ARG_WITH([pybuild_flags],
             [AS_HELP_STRING([--with-pybuild-flags],
                             [build flags for python (default='')])],
@@ -232,8 +238,8 @@ AC_SUBST(PYINSTALLFLAGS, $with_pyinstall_flags)
 # Docker
 #
 
-AX_WITH_PROG(DOCKER, docker)
-AS_IF([test x${DOCKER} != x],
+AX_WITH_PROG(DOCKER, docker, no, $PATH)
+AS_IF([test x${DOCKER} != xno],
       [AC_SUBST(HAVE_DOCKER, 1)])
 
 #
