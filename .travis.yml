@@ -35,6 +35,9 @@ jobs:
             - make docker-cpu
             - make docker
             - bash ./.travis_deploy_docs.sh
+    allow_failures:
+        - python: 2.7
+        - python: pypy2.7-6.0
 
 script:
     - sudo pip --no-cache-dir install \
