@@ -51,7 +51,11 @@ build: bifrost/*.py Makefile $(BIFROST_PYTHON_VERSION_FILE) $(BIFROST_PYTHON_BIN
 .PHONY: build
 
 install: build
+ifeq ($(DRY_RUN),0)
 	@PYTHON@ setup.py install @PYINSTALLFLAGS@
+else
+	@echo "@PYTHON@ setup.py install @PYINSTALLFLAGS@"
+endif
 .PHONY: install
 
 clean:
