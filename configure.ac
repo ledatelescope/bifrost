@@ -1,4 +1,4 @@
-AC_INIT([bifrost], [], [], [], [https://github.com/ledatelescope/bifrost/])
+AC_INIT([bifrost], [0.9.0], [], [], [https://github.com/ledatelescope/bifrost/])
 AC_LANG(C++)
 AC_CONFIG_SRCDIR([src/cuda.cpp])
 
@@ -250,6 +250,14 @@ DX_XML_FEATURE(OFF)
 DX_PDF_FEATURE(ON)
 DX_PS_FEATURE(ON)
 DX_INIT_DOXYGEN([bifrost])
+
+#
+# Version splitting
+#
+
+AC_SUBST([PACKAGE_VERSION_MAJOR], [`echo $PACKAGE_VERSION | $AWK -F. -e '{print $1}'`])
+AC_SUBST([PACKAGE_VERSION_MINOR], [`echo $PACKAGE_VERSION | $AWK -F. -e '{print $2}'`])
+AC_SUBST([PACKAGE_VERSION_MICRO], [`echo $PACKAGE_VERSION | $AWK -F. -e '{print $3}'`])
 
 #
 # Linking flags
