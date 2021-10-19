@@ -28,6 +28,9 @@
 import unittest
 import numpy as np
 import bifrost as bf
+
+from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+
 #import time
 
 def stderr(data, axis):
@@ -61,6 +64,7 @@ def pwrscrunch(data, factor=2, axis=0, func=np.sum):
     axis = axis + 1 if axis >= 0 else axis
     return func(np.abs(data.reshape(s))**2, axis=axis)
 
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class ReduceTest(unittest.TestCase):
     def setUp(self):
         np.random.seed(1234)

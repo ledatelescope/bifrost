@@ -37,6 +37,8 @@ from numpy.fft import rfftn as gold_rfftn, irfftn as gold_irfftn
 from bifrost.fft import Fft
 import bifrost as bf
 
+from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+
 MTOL = 1e-6 # Relative tolerance at the mean magnitude
 RTOL = 1e-1
 
@@ -48,6 +50,7 @@ def compare(result, gold):
     absmean = np.abs(gold).mean()
     np.testing.assert_allclose(result, gold, rtol=RTOL, atol=MTOL * absmean)
 
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestFFT(unittest.TestCase):
     def setUp(self):
         np.random.seed(1234)

@@ -33,6 +33,8 @@ from bifrost.DataType import DataType
 from bifrost.blocks import *
 from bifrost.pipeline import SourceBlock, TransformBlock, SinkBlock
 
+from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+
 from copy import deepcopy
 
 RTOL = 1e-4
@@ -107,6 +109,7 @@ class CallbackBlock(SinkBlock):
             #         downstream callback blocks from ever executing.
             self.data_ref['idata'] = ispan.data.copy()
 
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class PipelineTest(unittest.TestCase):
     def setUp(self):
         # Note: This file needs to be large enough to fill the minimum-size
