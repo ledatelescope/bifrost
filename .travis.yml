@@ -55,6 +55,11 @@ addons:
             - pkg-config
             - python3
 
+before_script:
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then python3 -m pip install --upgrade virtualenv; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then virtualenv -p python3 "$HOME/venv"; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then source "$HOME/venv/bin/activate"; fi
+
 script:
     - pip --no-cache-dir install \
         setuptools \
