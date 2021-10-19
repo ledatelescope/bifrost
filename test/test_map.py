@@ -30,7 +30,7 @@ import unittest
 import numpy as np
 import bifrost as bf
 
-from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestMap(unittest.TestCase):

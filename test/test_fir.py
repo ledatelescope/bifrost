@@ -38,7 +38,7 @@ from scipy.signal import lfilter, lfiltic
 from bifrost.fir import Fir
 import bifrost as bf
 
-from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 MTOL = 1e-6 # Relative tolerance at the mean magnitude
 RTOL = 1e-1

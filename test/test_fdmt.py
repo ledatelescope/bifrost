@@ -30,7 +30,7 @@ import numpy as np
 import bifrost as bf
 from bifrost.fdmt import Fdmt
 
-from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class FdmtTest(unittest.TestCase):

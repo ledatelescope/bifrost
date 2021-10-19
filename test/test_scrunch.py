@@ -32,7 +32,7 @@ import bifrost as bf
 import bifrost.pipeline as bfp
 import bifrost.blocks as blocks
 
-from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 class CallbackBlock(blocks.CopyBlock):
     """Testing-only block which calls user-defined

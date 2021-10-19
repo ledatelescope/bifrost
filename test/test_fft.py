@@ -37,7 +37,7 @@ from numpy.fft import rfftn as gold_rfftn, irfftn as gold_irfftn
 from bifrost.fft import Fft
 import bifrost as bf
 
-from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 MTOL = 1e-6 # Relative tolerance at the mean magnitude
 RTOL = 1e-1

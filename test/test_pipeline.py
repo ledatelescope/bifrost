@@ -33,7 +33,7 @@ from bifrost.DataType import DataType
 from bifrost.blocks import *
 from bifrost.pipeline import SourceBlock, TransformBlock, SinkBlock
 
-from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 from copy import deepcopy
 
