@@ -114,7 +114,15 @@ AC_DEFUN([AX_CHECK_CUDA],
               cudaSetDevice(dev);
               cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, dev);
               cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, dev);
-              arch = 10*major + minor;
+              arch = 10*major;
+              if( archs.count(arch) == 0 ) {
+                archs.insert(arch);
+                if( dev > 0 ) {
+                  fh << " ";
+                }
+                fh << arch;
+              }
+              arch += minor;
               if( archs.count(arch) == 0 ) {
                 archs.insert(arch);
                 if( dev > 0 ) {
