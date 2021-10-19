@@ -72,7 +72,7 @@ install:
         git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f \
         coveralls \
         codecov
-    - ./configure --disable-cuda --with-pyinstall-flags="--user"
+    - ./configure --disable-cuda
     - make -j all
     - sudo make install
     
