@@ -57,7 +57,7 @@ class BinaryFileRead(object):
         return self
 
     def close(self):
-        pass
+        self.file_obj.close()
 
     def __exit__(self, type, value, tb):
         self.close()
@@ -104,6 +104,12 @@ class BinaryFileWriteBlock(bfp.SinkBlock):
         super(BinaryFileWriteBlock, self).__init__(iring, *args, **kwargs)
         self.current_fileobj = None
         self.file_ext = file_ext
+
+    def __del__(self):
+        try:
+            self.current_fileobj.close()
+        except AttributeError:
+            pass
 
     def on_sequence(self, iseq):
         if self.current_fileobj is not None:
