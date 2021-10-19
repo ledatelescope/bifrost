@@ -37,6 +37,8 @@ from numpy import matmul as gold_matmul
 from bifrost.linalg import LinAlg
 import bifrost as bf
 
+from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+
 import time
 
 RTOL = 1e-4
@@ -45,6 +47,7 @@ ATOL = 1e-5
 def H(c):
     return np.swapaxes(c, -1, -2).conj()
 
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestLinAlg(unittest.TestCase):
     def setUp(self):
         self.linalg = LinAlg()
