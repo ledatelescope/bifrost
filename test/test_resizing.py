@@ -58,7 +58,7 @@ class ModResizeAsciiBlock(SinkBlock):
         """Initiate the writing to file
         @param[in] input_rings First ring in this list will be used"""
         span_generator = self.iterate_ring_read(input_ring)
-        span = span_generator.next()
+        span = next(span_generator)
         text_file = open(self.filename, 'a')
         np.savetxt(text_file, span.data_view(np.float32).reshape((1,-1)))
         text_file.close()
