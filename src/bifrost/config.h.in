@@ -54,7 +54,7 @@ extern "C" {
 
 // Debugging features
 #define BF_DEBUG_ENABLED @HAVE_DEBUG@
-#define BF_HAVE_TRACE @HAVE_TRACE@
+#define BF_TRACE_ENABLED @HAVE_TRACE@
 #define BF_CUDA_DEBUG_ENABLED @HAVE_CUDA_DEBUG@
 
 // Logging directory
