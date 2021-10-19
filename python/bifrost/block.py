@@ -447,8 +447,8 @@ class WriteHeaderBlock(SinkBlock):
     def load_settings(self, input_header):
         """Load the header from json
         @param[in] input_header The header from the ring"""
-        write_file = open(self.filename, 'w')
-        write_file.write(str(json.loads(input_header.tostring())))
+        with open(self.filename, 'w') as write_file:
+            write_file.write(str(json.loads(input_header.tostring())))
     def main(self, input_ring):
         """Put the header into the file
         @param[in] input_ring Contains the header in question"""
@@ -576,9 +576,8 @@ class WriteAsciiBlock(SinkBlock):
                 data_accumulate = np.concatenate((data_accumulate, unpacked_data[0]))
             else:
                 data_accumulate = unpacked_data[0]
-        text_file = open(self.filename, 'a')
-        np.savetxt(text_file, data_accumulate.reshape((1, -1)))
-        text_file.close()
+        with open(self.filename, 'a') as text_file:
+            np.savetxt(text_file, data_accumulate.reshape((1, -1)))
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
