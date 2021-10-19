@@ -55,12 +55,12 @@ addons:
             - pkg-config
             - python3
 
-before_script:
+before_install:
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then python3 -m pip install --upgrade virtualenv; fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then virtualenv -p python3 "$HOME/venv"; fi
     - if [ "$TRAVIS_OS_NAME" = "osx" ]; then source "$HOME/venv/bin/activate"; fi
 
-script:
+install:
     - pip --no-cache-dir install \
         setuptools \
         numpy \
@@ -73,9 +73,14 @@ script:
         coveralls \
         codecov
     - ./configure --disable-cuda
-    - make -j
-    - export LD_LIBRARY_PATH=`realpath ./lib`:${LD_LIBRARY_PATH}
-    - export PYTHONPATH=`realpath ./python`
+    - make -j all
+    - sudo HAVE_PYTHON=0 make install
+    - make -C python install
+    
+script:
+    - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+    - pip --no-cache-dir install \
+        scipy
     - cd test && bash ./travis.sh && cd ..
 
 env:
