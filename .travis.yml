@@ -72,10 +72,9 @@ install:
         git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f \
         coveralls \
         codecov
-    - ./configure --disable-cuda
+    - ./configure --disable-cuda --with-pyinstall-flags="--user"
     - make -j all
-    - sudo HAVE_PYTHON=0 make install
-    - make -C python install
+    - sudo make install
     
 script:
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
