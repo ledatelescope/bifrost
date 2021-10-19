@@ -30,7 +30,7 @@ import numpy as np
 import bifrost as bf
 import bifrost.quantize
 
-from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class QuantizeTest(unittest.TestCase):

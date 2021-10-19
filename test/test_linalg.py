@@ -37,7 +37,7 @@ from numpy import matmul as gold_matmul
 from bifrost.linalg import LinAlg
 import bifrost as bf
 
-from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 import time
 

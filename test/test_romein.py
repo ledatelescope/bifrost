@@ -35,7 +35,7 @@ from bifrost.quantize import quantize
 from bifrost.unpack import unpack
 from bifrost.DataType import ci4
 
-from bifrost.libbifrost.bf import BF_CUDA_ENABLED
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class RomeinTest(unittest.TestCase):
