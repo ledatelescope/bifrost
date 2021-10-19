@@ -132,7 +132,7 @@ def insert_zeros_evenly(input_data, number_zeros):
     insert_index = np.floor(
         np.arange(
             number_zeros,
-            step=1.0) * float(input_data.size) / number_zeros)
+            step=1.0) * float(input_data.size) / number_zeros).astype(int)
     output_data = np.insert(
         input_data, insert_index,
         np.zeros(number_zeros))
