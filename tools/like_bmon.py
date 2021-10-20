@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2021, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -294,7 +294,13 @@ def main(args):
             ## For sel to be valid - this takes care of any changes between when 
             ## we get what to select and when we polled the bifrost logs
             sel = min([nPID-1, sel])
-
+            
+            ## Deal with more pipelines than there is screen space by skipping
+            ## over some at the beginning of the list
+            to_skip = 0
+            if sel > size[0] - 13:
+                to_skip = sel - size[0] + 13
+                
             ## Display
             k = 0
             ### General - selected
@@ -313,7 +319,10 @@ def main(args):
             output += '\n'
             k = _add_line(scr, k, 0, output, rev)
             ### Data
-            for o in order:
+            for i,o in enumerate(order):
+                if i < to_skip:
+                    continue
+                    
                 curr = stats[o]
                 if o == order[sel]:
                     act = curr
@@ -335,7 +344,7 @@ def main(args):
                     sty = std
                 k = _add_line(scr, k, 0, output, sty)
 
-                if k > size[0]-9:
+                if k > size[0]-10:
                     break
             while k < size[0]-9:
                 output = ' '
