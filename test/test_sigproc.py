@@ -136,11 +136,13 @@ class Test_data_manip(unittest.TestCase):
         random_stream = np.random.randint(63, size=10000).astype('uint8').T
         testfile.append_data(random_stream)
         self.assertEqual(testfile.data.shape[0], initial_nframe + 10000)
+        testfile.close()
     def test_data_slice(self):
         testFile = SigprocFile()
         testFile.open(filename='./data/1chan8bitNoDM.fil', mode='r+b')
         testFile.read_header()
         self.assertEqual(testFile.read_data(-1).shape, (1, 1, 1))
+        testFile.close()
     def test_append_untransposed_data(self):
         """test if appending data in different shape affects output"""
         initial_nframe = self.my8bitfile.get_nframe()
@@ -161,6 +163,8 @@ class Test_data_manip(unittest.TestCase):
         testfile1.open(filename='./data/test_write1.fil', mode='rb')
         testfile2.open(filename='./data/test_write1.fil', mode='rb')
         np.testing.assert_array_equal(testfile1.read_data(), testfile2.read_data())
+        testfile1.close()
+        testfile2.close()
 class Test_16bit_2chan(unittest.TestCase):
     def setUp(self):
         self.my16bitfile = SigprocFile()
@@ -187,6 +191,8 @@ class Test_16bit_2chan(unittest.TestCase):
         file2.read_header()
         file2.read_data()
         np.testing.assert_array_equal(file1.read_data(),file2.read_data())
+        file1.close()
+        file2.close()
 class Test_data_slicing(unittest.TestCase):
     def setUp(self):
         self.myfile = SigprocFile()

@@ -392,9 +392,9 @@ class SigprocFile(SigprocSettings):
         return self.data
     def write_to(self, filename):
         """writes data and header to a different file"""
-        file_object = open(filename, 'wb')
-        _write_header(self.header, file_object)
-        _write_data(self.data, self.nbits, file_object)
+        with open(filename, 'wb') as file_object:
+            _write_header(self.header, file_object)
+            _write_data(self.data, self.nbits, file_object)
     def append_data(self, input_data):
         """append data to local data and file"""
         input_frames = input_data.size // self.nifs // self.nchans

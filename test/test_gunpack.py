@@ -30,6 +30,9 @@ import numpy as np
 import bifrost as bf
 import bifrost.unpack
 
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
+
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class UnpackTest(unittest.TestCase):
     def run_unpack_to_ci8_test(self, iarray):
         oarray = bf.ndarray(shape=iarray.shape, dtype='ci8', space='cuda')

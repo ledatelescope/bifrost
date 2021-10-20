@@ -32,6 +32,9 @@ import bifrost.transpose
 from functools import reduce
 from itertools import permutations
 
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
+
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TransposeTest(unittest.TestCase):
     def run_simple_test(self, axes, dtype, shape):
         n = reduce(lambda a,b:a*b, shape)
