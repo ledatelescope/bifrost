@@ -37,7 +37,9 @@ AC_SUBST(SO_EXT, $shrext_cmds)
 #
 
 AC_C_INLINE
-AX_CXX_COMPILE_STDCXX(11, noext, mandatory)
+AX_CXX_COMPILE_STDCXX(14, noext, optional)
+AS_IF([test x$HAVE_CXX14 != x1],
+      [AX_CXX_COMPILE_STDCXX(11, noext, mandatory)])
 AC_CHECK_FUNCS([memset])
 AC_CHECK_FUNCS([rint])
 AC_CHECK_FUNCS([socket])
