@@ -55,15 +55,6 @@ using bifrost::ring::WriteSequence;
 //#include <immintrin.h> // SSE
 
 // TODO: The VMA API is returning unaligned buffers, which prevents use of SSE
-#ifndef BF_VMA_ENABLED
-#define BF_VMA_ENABLED 0
-//#define BF_VMA_ENABLED 1
-#endif
-
-#ifndef BF_HWLOC_ENABLED
-#define BF_HWLOC_ENABLED 0
-//#define BF_HWLOC_ENABLED 1
-#endif
 
 #define BF_UNPACK_FACTOR 1
 
