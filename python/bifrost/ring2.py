@@ -230,11 +230,11 @@ class SequenceBase(object):
             # WAR for hdr_buffer_ptr.contents crashing when size == 0
             hdr_array = np.empty(0, dtype=np.uint8)
             hdr_array.flags['WRITEABLE'] = False
-            return json.loads(hdr_array.tostring())
+            return json.loads(hdr_array.tobytes())
         hdr_buffer = _address_as_buffer(self._header_ptr, size, readonly=True)
         hdr_array = np.frombuffer(hdr_buffer, dtype=np.uint8)
         hdr_array.flags['WRITEABLE'] = False
-        self._header = json.loads(hdr_array.tostring())
+        self._header = json.loads(hdr_array.tobytes())
         return self._header
 
 class WriteSequence(SequenceBase):

@@ -224,7 +224,7 @@ class SinkBlock(object):
         self.core = -1
     def load_settings(self, input_header):
         """Load in settings from input ring header"""
-        self.header = json.loads(input_header.tostring())
+        self.header = json.loads(input_header.tobytes())
     def iterate_ring_read(self, input_ring):
         """Iterate through one input ring
         @param[in] input_ring Ring to read through"""
@@ -292,7 +292,7 @@ class MultiTransformBlock(object):
                                      for ring_name in args]):
             # sequences is a tuple of all sequences
             for ring_name, sequence in self.izip(args, sequences):
-                self.header[ring_name] = json.loads(sequence.header.tostring())
+                self.header[ring_name] = json.loads(sequence.header.tobytes())
             self.load_settings()
             # resize all rings
             for ring_name in args:
@@ -448,7 +448,7 @@ class WriteHeaderBlock(SinkBlock):
         """Load the header from json
         @param[in] input_header The header from the ring"""
         with open(self.filename, 'w') as write_file:
-            write_file.write(str(json.loads(input_header.tostring())))
+            write_file.write(str(json.loads(input_header.tobytes())))
     def main(self, input_ring):
         """Put the header into the file
         @param[in] input_ring Contains the header in question"""
@@ -463,7 +463,7 @@ class FFTBlock(TransformBlock):
         self.dtype = np.uint8
         self.shape = (1, 1)
     def load_settings(self, input_header):
-        header = json.loads(input_header.tostring())
+        header = json.loads(input_header.tobytes())
         self.nbit = header['nbit']
         self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
         if 'frame_shape' in header:
@@ -503,7 +503,7 @@ class IFFTBlock(TransformBlock):
         self.nbit = 8
         self.dtype = np.uint8
     def load_settings(self, input_header):
-        header = json.loads(input_header.tostring())
+        header = json.loads(input_header.tobytes())
         self.nbit = header['nbit']
         try:
             self.dtype = np.dtype(header['dtype']).type
@@ -548,7 +548,7 @@ class WriteAsciiBlock(SinkBlock):
         self.dtype = np.uint8
         open(self.filename, "w").close() # erase file
     def load_settings(self, input_header):
-        header_dict = json.loads(input_header.tostring())
+        header_dict = json.loads(input_header.tobytes())
         self.nbit = header_dict['nbit']
         try:
             self.dtype = np.dtype(header_dict['dtype']).type
@@ -652,7 +652,7 @@ class KurtosisBlock(TransformBlock):
         self.dtype = np.uint8
     def load_settings(self, input_header):
         self.output_header = input_header
-        self.settings = json.loads(input_header.tostring())
+        self.settings = json.loads(input_header.tobytes())
         self.nchan = self.settings["frame_shape"][0]
         dtype_str = self.settings["dtype"].split()[1].split(".")[1].split("'")[0]
         self.dtype = np.dtype(dtype_str)
