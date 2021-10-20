@@ -12,6 +12,25 @@ python:
 services:
     - docker
 
+jobs:
+  include:
+    - os: osx
+      osx_image: xcode12
+      language: sh
+      env:
+        - HOMEBREW_NO_INSTALL_CLEANUP=1
+        - HOMEBREW_NO_ANALYTICS=1
+        - HOMEBREW_NO_AUTO_UPDATE=1
+    - stage: docker and deploy docs
+      python: 2.7
+      script:
+        - make docker-cpu
+        - make docker
+        - bash ./.travis_deploy_docs.sh
+  allow_failures:
+    - python: 2.7
+    - python: pypy2.7-6.0
+
 addons:
     apt:
         update: true
@@ -25,18 +44,24 @@ addons:
             - exuberant-ctags
             - python-dev
             - pylint
+    homebrew:
+        update: false
+        packages:
+            - curl
+            - ctags-exuberant
+            - gawk
+            - git
+            - gnu-sed
+            - pkg-config
+            - python3
 
-jobs:
-    include:
-        - stage: docker and deploy docs
-          python: 2.7
-          script:
-            - make docker-cpu
-            - make docker
-            - bash ./.travis_deploy_docs.sh
+before_install:
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then python3 -m pip install --upgrade virtualenv; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then virtualenv -p python3 "$HOME/venv"; fi
+    - if [ "$TRAVIS_OS_NAME" = "osx" ]; then source "$HOME/venv/bin/activate"; fi
 
-script:
-    - sudo pip --no-cache-dir install \
+install:
+    - pip --no-cache-dir install \
         setuptools \
         numpy \
         matplotlib \
@@ -47,10 +72,15 @@ script:
         git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f \
         coveralls \
         codecov
-    - sudo make -j NOCUDA=1
+    - ./configure --disable-cuda
+    - make -j all
     - sudo make install
+    
+script:
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
-    - cd test && sudo -E bash ./travis.sh && cd ..
+    - pip --no-cache-dir install \
+        scipy
+    - cd test && bash ./travis.sh && cd ..
 
 env:
     global:

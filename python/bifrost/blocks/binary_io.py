@@ -108,6 +108,12 @@ class BinaryFileWriteBlock(bfp.SinkBlock):
         self.file_ext = file_ext
         self.count = 0
 
+    def __del__(self):
+        try:
+            self.current_fileobj.close()
+        except AttributeError:
+            pass
+
     def on_sequence(self, iseq):
         if self.current_fileobj is not None:
             self.current_fileobj.close()

@@ -32,12 +32,12 @@
 #include <bifrost/address.h>
 
 struct BFudpsocket_impl : public Socket {
-	BFudpsocket_impl() : Socket(SOCK_DGRAM) {}
+	BFudpsocket_impl() : Socket(BF_SOCK_DGRAM) {}
 };
 
 BFstatus bfUdpSocketCreate(BFudpsocket* obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
-	BF_TRY_RETURN_ELSE(*obj = (BFudpsocket)new BFudpsocket_impl(),//BFudpsocket_impl::SOCK_DGRAM),
+	BF_TRY_RETURN_ELSE(*obj = (BFudpsocket)new BFudpsocket_impl(),//BFudpsocket_impl::BF_SOCK_DGRAM),
 	                   *obj = 0);
 }
 BFstatus bfUdpSocketDestroy(BFudpsocket obj) {
