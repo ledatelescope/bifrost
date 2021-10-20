@@ -43,6 +43,9 @@ AS_IF([test x$HAVE_CXX14 != x1],
 AC_CHECK_FUNCS([memset])
 AC_CHECK_FUNCS([rint])
 AC_CHECK_FUNCS([socket])
+AC_CHECK_FUNCS([recvmsg],
+               [AC_SUBST([HAVE_RECVMSG], [1])],
+               [AC_SUBST([HAVE_RECVMSG], [0])])
 AC_CHECK_FUNCS([sqrt])
 AC_CHECK_FUNCS([strerror])
 AC_CHECK_HEADERS([arpa/inet.h])

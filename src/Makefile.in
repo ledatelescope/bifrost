@@ -14,6 +14,8 @@ DOXYGEN        ?= @DX_DOXYGEN@
 PYBUILDFLAGS   ?= @PYBUILDFLAGS@
 PYINSTALLFLAGS ?= @PYINSTALLFLAGS@
 
+HAVE_RECVMSG  ?= @HAVE_RECVMSG@
+
 HAVE_CUDA     ?= @HAVE_CUDA@
 
 GPU_ARCHS     ?= @GPU_ARCHS@
@@ -33,11 +35,15 @@ LIBBIFROST_OBJS = \
   array.o \
   unpack.o \
   quantize.o \
-  proclog.o \
+  proclog.o
+ifeq ($(HAVE_RECVMSG),1)
+  # These files require recvmsg to compile
+  LIBBIFROST_OBJS += \
 	address.o \
 	udp_socket.o \
   udp_capture.o \
   udp_transmit.o
+endif
 ifeq ($(HAVE_CUDA),1)
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \

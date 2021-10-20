@@ -723,6 +723,7 @@ HAVE_HWLOC
 HAVE_NUMA
 HAVE_OPENMP
 LIBOBJS
+HAVE_RECVMSG
 HAVE_CXX11
 HAVE_CXX14
 SO_EXT
@@ -18516,6 +18517,21 @@ then :
 
 fi
 
+
+  for ac_func in recvmsg
+do :
+  ac_fn_cxx_check_func "$LINENO" "recvmsg" "ac_cv_func_recvmsg"
+if test "x$ac_cv_func_recvmsg" = xyes
+then :
+  printf "%s\n" "#define HAVE_RECVMSG 1" >>confdefs.h
+ HAVE_RECVMSG=1
+
+else $as_nop
+  HAVE_RECVMSG=0
+
+fi
+
+done
 ac_fn_cxx_check_func "$LINENO" "sqrt" "ac_cv_func_sqrt"
 if test "x$ac_cv_func_sqrt" = xyes
 then :
