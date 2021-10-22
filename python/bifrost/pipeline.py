@@ -62,7 +62,7 @@ def izip(*iterables):
     while True:
         try:
             yield [next(it) for it in iterables]
-        except EndOfDataStop:
+        except (EndOfDataStop, StopIteration):
             return
 
 thread_local = threading.local()
