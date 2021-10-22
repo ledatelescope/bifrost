@@ -44,7 +44,7 @@ class TestPrintHeader(unittest.TestCase):
         """Capture print output, assert it is a long string"""
         gulp_nframe = 101
 
-        stdout = io.BytesIO()
+        stdout = io.StringIO()
         with ExitStack() as stack:
             pipeline = stack.enter_context(bfp.Pipeline())
             stack.enter_context(redirect_stdout(stdout))
