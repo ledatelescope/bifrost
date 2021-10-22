@@ -30,7 +30,7 @@
 
 from __future__ import print_function, absolute_import
 
-from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space, EndOfDataStop
 from bifrost.DataType import DataType
 from bifrost.ndarray import ndarray, _address_as_buffer
 from copy import copy, deepcopy
@@ -146,8 +146,11 @@ class Ring(BifrostObject):
         with ReadSequence(self, which=whence, guarantee=guarantee,
                           header_transform=self.header_transform) as cur_seq:
             while True:
-                yield cur_seq
-                cur_seq.increment()
+                try:
+                    yield cur_seq
+                    cur_seq.increment()
+                except EndOfDataStop:
+                    return
 
 class RingWriter(object):
     def __init__(self, ring):
@@ -319,9 +322,12 @@ class ReadSequence(SequenceBase):
             stride = nframe
         offset = begin
         while True:
-            with self.acquire(offset, nframe) as ispan:
-                yield ispan
-            offset += stride
+            try:
+                with self.acquire(offset, nframe) as ispan:
+                    yield ispan
+                    offset += stride
+            except EndOfDataStop:
+                return
     def resize(self, gulp_nframe, buf_nframe=None, buffer_factor=None):
         if buf_nframe is None:
             if buffer_factor is None:

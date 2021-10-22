@@ -48,6 +48,7 @@ import numpy as np
 from bifrost import affinity, memory
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
+from bifrost.libbifrost import EndOfDataStop
 
 class Pipeline(object):
     """Class which connects blocks linearly, with
@@ -280,8 +281,11 @@ class MultiTransformBlock(object):
         into a single list generator"""
         iterators = [iter(iterable) for iterable in iterables]
         while True:
-            next_set = [next(iterator) for iterator in iterators]
-            yield self.flatten(*next_set)
+            try:
+                next_set = [next(iterator) for iterator in iterators]
+                yield self.flatten(*next_set)
+            except (EndOfDataStop, StopIteration):
+                return
     def load_settings(self):
         """Set by user to interpret input rings"""
         pass
@@ -1076,7 +1080,7 @@ class NumpySourceBlock(MultiTransformBlock):
                         arrays = [output_data]
                     else:
                         arrays = output_data
-            except StopIteration:
+            except (EndOfDataStop, StopIteration):
                 break
 
             if self.changing:
