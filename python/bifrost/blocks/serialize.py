@@ -102,7 +102,7 @@ class BifrostReader(object):
         if nbyte_read % frame_nbyte != 0:
             raise IOError("Unexpected end of file")
         nframe_read += nbyte_read // frame_nbyte
-        while nbyte_read < buf.nbytes:
+        while nbyte_read < buf[0].nbytes:
             self.cur_file += 1
             if self.cur_file == self.nfile:
                 break
@@ -275,4 +275,3 @@ def serialize(iring, path=None, max_file_size=None, *args, **kwargs):
         SerializeBlock: A new block instance.
     """
     return SerializeBlock(iring, path, max_file_size, *args, **kwargs)
-
