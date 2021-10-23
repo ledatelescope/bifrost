@@ -28,7 +28,7 @@
 import unittest
 try:
     from StringIO import StringIO
-except importError:
+except ImportError:
     from io import StringIO
 
 import bifrost.pipeline as bfp
