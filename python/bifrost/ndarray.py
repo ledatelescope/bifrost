@@ -72,9 +72,18 @@ def _address_as_buffer(address, nbyte, readonly=False):
         int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
         return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
     except AttributeError:
-        # Python2 catch
-        return np.core.multiarray.int_asbuffer(
-                   address, nbyte, readonly=readonly, check=False)
+        try:
+            # Python2 catch
+            return np.core.multiarray.int_asbuffer(address,
+                                                   nbyte,
+                                                   readonly=readonly,
+                                                   check=False)
+        except AttributeError:
+            # PyPy3 catch
+            # TODO:  How do we set read only?  Does it matter?
+            #        Should we be using this for everyone?
+            buf = (ctypes.c_char*nbyte).from_address(address)
+            return memoryview(buf)
 
 def asarray(arr, space=None):
     if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
