@@ -44,8 +44,7 @@ class TemporaryDirectory(object):
     def __enter__(self):
         return self.path
     def __exit__(self, type, value, tb):
-        #self.remove()
-        pass
+        self.remove()
 
 def get_sigproc_file_size(filename):
     """Returns the header and data size of a sigproc file without reading
