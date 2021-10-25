@@ -154,11 +154,52 @@ inline static sa_family_t get_family(int sockfd) {
 }
 
 inline static int get_mtu(int sockfd) {
-  ifreq ifr;
   int mtu = 0;
-  if( ::ioctl(sockfd, SIOCGIFMTU, &ifr) != -1) {
-    mtu = ifr.ifr_mtu;
+  sa_family_t family = ::get_family(sockfd);
+  
+  sockaddr addr;
+  socklen_t addr_len = sizeof(addr);
+  sockaddr_in*  addr4 = reinterpret_cast<sockaddr_in*> (&addr);
+	sockaddr_in6* addr6 = reinterpret_cast<sockaddr_in6*>(&addr);
+  ::getsockname(sockfd, (struct sockaddr*)&addr, &addr_len);
+  
+  ifaddrs* ifaddr;
+	if( ::getifaddrs(&ifaddr) == -1 ) {
+		return 0;
 	}
+  
+  ifreq ifr;
+	bool found = false;
+	for( ifaddrs* ifa=ifaddr; ifa!=NULL; ifa=ifa->ifa_next ) {
+		if( ifa->ifa_addr == NULL || found) {
+			continue;
+		}
+		sa_family_t ifa_family = ifa->ifa_addr->sa_family;
+		if( (family == AF_UNSPEC && (ifa_family == AF_INET ||
+		                             ifa_family == AF_INET6)) ||
+		    ifa_family == family ) {
+      if( ifa_family == AF_INET ) {
+        struct sockaddr_in* inaddr = (struct sockaddr_in*) ifa->ifa_addr;
+        if( inaddr->sin_addr.s_addr == addr4->sin_addr.s_addr ) {
+          found = true;
+        }
+      } else if( ifa_family == AF_INET6 ) {
+        struct sockaddr_in6* inaddr6 = (struct sockaddr_in6*) ifa->ifa_addr;
+        if( inaddr6->sin6_addr.s6_addr == addr6->sin6_addr.s6_addr ) {
+          found = true;
+        }
+      }
+    }
+    
+    if( found ) {
+      ::strncpy(ifr.ifr_name, ifa->ifa_name, sizeof(ifr.ifr_name));
+      if( ::ioctl(sockfd, SIOCGIFMTU, &ifr) != -1) {
+        mtu = ifr.ifr_mtu;
+      }
+    }
+  }
+  ::freeifaddrs(ifaddr);
+  
 	return mtu;
 }
 
@@ -225,8 +266,13 @@ public:
 			: super_t(what_arg) {}
 	};
 	enum {
+#if defined __APPLE__ && __APPLE__
+    DEFAULT_SOCK_BUF_SIZE  = 4*1024*1024,
+		DEFAULT_LINGER_SECS    = 1,
+#else
 		DEFAULT_SOCK_BUF_SIZE  = 256*1024*1024,
 		DEFAULT_LINGER_SECS    = 3,
+#endif
 		DEFAULT_MAX_CONN_QUEUE = 128
 	};
 	enum sock_type {
@@ -506,10 +552,10 @@ std::string Socket::address_string(sockaddr_storage addr) {
 	}
 }
 int Socket::discover_mtu(sockaddr_storage remote_address) {
-	Socket s(SOCK_DGRAM);
+  Socket s(SOCK_DGRAM);
 	s.connect(remote_address);
 #if defined __APPLE__ && __APPLE__
-  return ::get_mtu(s._fd);
+  return ::get_mtu(s.get_fd());
 #else
 	return s.get_option<int>(IP_MTU, IPPROTO_IP);
 #endif
@@ -556,7 +602,7 @@ void Socket::connect(sockaddr_storage remote_address) {
 		}
 		this->open(remote_address.ss_family);
 	}
-	check_error(::connect(_fd, (sockaddr*)&remote_address, sizeof(remote_address)),
+	check_error(::connect(_fd, (sockaddr*)&remote_address, sizeof(sockaddr)),
 	            "connect socket");
 	if( remote_address.ss_family == AF_UNSPEC ) {
 		_mode = Socket::MODE_BOUND;
