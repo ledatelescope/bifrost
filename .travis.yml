@@ -39,6 +39,7 @@ addons:
             - ca-certificates
             - curl
             - git
+            - libopenblas-dev
             - pkg-config
             - software-properties-common
             - exuberant-ctags
