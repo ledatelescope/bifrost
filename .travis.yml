@@ -38,6 +38,7 @@ addons:
             - build-essential
             - ca-certificates
             - curl
+            - gfortran
             - git
             - libopenblas-dev
             - pkg-config
