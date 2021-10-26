@@ -38,12 +38,13 @@ from functools import reduce
 
 import ctypes
 import string
+import warnings
 import numpy as np
 
 try:
     import simplejson as json
 except ImportError:
-    print("WARNING: Install simplejson for better performance")
+    warnings.warn("Install simplejson for better performance", RuntimeWarning)
     import json
 
 def _slugify(name):

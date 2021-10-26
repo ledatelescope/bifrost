@@ -38,6 +38,7 @@ except ImportError:
     import Queue as queue
 import time
 import signal
+import warnings
 from copy import copy
 from collections import defaultdict
 try:
@@ -266,7 +267,7 @@ class Pipeline(BlockScope):
         join_all(self.threads, timeout=self.shutdown_timeout)
         for thread in self.threads:
             if thread.is_alive():
-                print("WARNING: Thread %s did not shut down on time and will be killed" % thread.name)
+                warnings.warn("Thread %s did not shut down on time and will be killed" % thread.name, RuntimeWarning)
     def shutdown_on_signals(self, signals=None):
         if signals is None:
             signals = [signal.SIGHUP,
@@ -281,7 +282,7 @@ class Pipeline(BlockScope):
                             reversed(sorted(signal.__dict__.items()))
                             if v.startswith('SIG') and
                             not v.startswith('SIG_'))
-        print("WARNING: Received signal %i %s, shutting down pipeline" % (signum, SIGNAL_NAMES[signum]))
+        warnings.warn("Received signal %i %s, shutting down pipeline" % (signum, SIGNAL_NAMES[signum]), RuntimeWarning)
         self.shutdown()
     def __enter__(self):
         thread_local.pipeline_stack.append(self)
