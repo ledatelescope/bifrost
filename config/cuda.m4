@@ -125,10 +125,7 @@ AC_DEFUN([AX_CHECK_CUDA],
               arch += minor;
               if( archs.count(arch) == 0 ) {
                 archs.insert(arch);
-                if( dev > 0 ) {
-                  fh << " ";
-                }
-                fh << arch;
+                fh << " " << arch;
               }
             }
             fh.close();]])],
