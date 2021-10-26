@@ -33,10 +33,11 @@ if sys.version_info < (3,):
     
 from bifrost.pipeline import SinkBlock, SourceBlock
 import os
+import warnings
 try:
     import simplejson as json
 except ImportError:
-    print("WARNING: Install simplejson for better performance")
+    warnings.warn("Install simplejson for better performance", RuntimeWarning)
     import json
 import glob
 from functools import reduce
