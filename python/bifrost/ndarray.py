@@ -82,6 +82,7 @@ def _address_as_buffer(address, nbyte, readonly=False):
             # PyPy3 catch
             # TODO:  How do we set read only?  Does it matter?
             #        Should we be using this for everyone?
+            nbyte = int(nbyte)
             return (ctypes.c_char*nbyte).from_address(address)
 
 def asarray(arr, space=None):
