@@ -49,7 +49,11 @@ from bifrost.libbifrost import _bf, _check
 from bifrost import device
 from bifrost.DataType import DataType
 from bifrost.Space import Space
-import sys
+
+try:
+    from bifrost._pypy3_compat import PyMemoryView_FromMemory
+except ImportError:
+    pass
 
 # TODO: The stuff here makes array.py redundant (and outdated)
 
@@ -80,10 +84,8 @@ def _address_as_buffer(address, nbyte, readonly=False):
                                                    check=False)
         except AttributeError:
             # PyPy3 catch
-            # TODO:  How do we set read only?  Does it matter?
-            #        Should we be using this for everyone?
-            nbyte = int(nbyte)
-            return (ctypes.c_char*nbyte).from_address(address)
+            int_asbuffer = PyMemoryView_FromMemory
+            return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
 
 def asarray(arr, space=None):
     if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
