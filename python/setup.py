@@ -29,7 +29,7 @@
 # Python2 compatibility
 from __future__ import print_function
 
-from setuptools import setup, find_packages
+from setuptools import setup, Extension, find_packages
 import os
 import sys
 import glob
@@ -54,6 +54,11 @@ except IOError:
     print("*************************************************************************")
     raise
 
+# Build the PyPy3 compatibility module, if needed
+modules = []
+if sys.version.find('PyPy') != -1:
+    modules.append(Extension('_pypy3_compat', ['bifrost/pypy3_compat.c']))
+    
 # Build up a list of scripts to install
 scripts = glob.glob(os.path.join('..', 'tools', '*.py'))
 
@@ -71,4 +76,6 @@ setup(name='bifrost',
           "pint>=0.7.0",
           "graphviz>=0.5.0",
           "matplotlib"
-      ])
+      ],
+      ext_package='bifrost',
+      ext_modules = modules)
