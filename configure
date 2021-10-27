@@ -23862,3 +23862,53 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
 
+
+#
+# User notes
+#
+
+echo ""
+
+if test x$HAVE_CUDA = x1; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Build with CUDA support for arch. $GPU_ARCHS" >&5
+$as_echo "$as_me: Build with CUDA support for arch. $GPU_ARCHS" >&6;}
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Building without CUDA support" >&5
+$as_echo "$as_me: Building without CUDA support" >&6;}
+fi
+
+if test x$HAVE_NUMA = x1; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Building with NUMA support for memory binding" >&5
+$as_echo "$as_me: Building with NUMA support for memory binding" >&6;}
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Building without NUMA support for memory binding" >&5
+$as_echo "$as_me: Building without NUMA support for memory binding" >&6;}
+fi
+
+if test x$HAVE_HWLOC = x1; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Building with hwloc support for thread binding" >&5
+$as_echo "$as_me: Building with hwloc support for thread binding" >&6;}
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Building without hwloc support for thread binding" >&5
+$as_echo "$as_me: Building without hwloc support for thread binding" >&6;}
+fi
+
+if test x$HAVE_VMA = x1; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Building with libvma packet capture acceleration" >&5
+$as_echo "$as_me: Building with libvma packet capture acceleration" >&6;}
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Building without libvma packet capture acceleration" >&5
+$as_echo "$as_me: Building without libvma packet capture acceleration" >&6;}
+fi
+
+if test x$HAVE_PYTHON = x1; then :
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Building the Python API" >&5
+$as_echo "$as_me: Building the Python API" >&6;}
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Not building the Python API" >&5
+$as_echo "$as_me: Not building the Python API" >&6;}
+fi
+
+echo ""
+echo "Bifrost is now ready to be compiled.  Please run 'make'"
+echo ""

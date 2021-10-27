@@ -280,3 +280,33 @@ NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
 AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h])
 
 AC_OUTPUT
+
+#
+# User notes
+#
+
+echo ""
+
+AS_IF([test x$HAVE_CUDA = x1],
+      [AC_MSG_NOTICE(Building with CUDA support for arch. $GPU_ARCHS)],
+      [AC_MSG_NOTICE(Building without CUDA support)])
+
+AS_IF([test x$HAVE_NUMA = x1],
+      [AC_MSG_NOTICE(Building with NUMA support for memory binding)],
+      [AC_MSG_NOTICE(Building without NUMA support for memory binding)])
+
+AS_IF([test x$HAVE_HWLOC = x1],
+      [AC_MSG_NOTICE(Building with hwloc support for thread binding)],
+      [AC_MSG_NOTICE(Building without hwloc support for thread binding)])
+
+AS_IF([test x$HAVE_VMA = x1],
+      [AC_MSG_NOTICE(Building with libvma packet capture acceleration)],
+      [AC_MSG_NOTICE(Building without libvma packet capture acceleration)])
+
+AS_IF([test x$HAVE_PYTHON = x1],
+      [AC_MSG_NOTICE(Building the Python API)],
+      [AC_MSG_NOTICE(Not building the Python API)])
+
+echo ""
+echo "Bifrost is now ready to be compiled.  Please run 'make'"
+echo ""
