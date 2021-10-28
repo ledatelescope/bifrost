@@ -68,7 +68,7 @@ static inline int
 CPU_COUNT(cpu_set_t *cs) {
 	int count = 0;
 	for(int i=0; i<8*sizeof(cpu_set_t); i++) {
-		count += CPU_ISSET(i, cs);
+		count += CPU_ISSET(i, cs) ? 1 : 0;
 	}
 	return count;
 }
@@ -77,15 +77,14 @@ int pthread_getaffinity_np(pthread_t thread,
 	                         size_t    cpu_size,
                            cpu_set_t *cpu_set) {
   thread_port_t mach_thread;
-	mach_msg_type_number_t count;
-	boolean_t get_default;
+	mach_msg_type_number_t count = THREAD_AFFINITY_POLICY_COUNT;
+	boolean_t get_default = false;
 	
 	thread_affinity_policy_data_t policy;
 	mach_thread = pthread_mach_thread_np(thread);
 	thread_policy_get(mach_thread, THREAD_AFFINITY_POLICY,
                     (thread_policy_t)&policy, &count,
 									  &get_default);
-	
 	cpu_set->count |= (1<<(policy.affinity_tag));
 	return 0;
 }
@@ -154,7 +153,7 @@ BFstatus bfAffinityGetCore(int* core) {
 		// Return -1 if more than one core is set
 		// TODO: Should really check if all cores are set, otherwise fail
 		*core = -1;
-		return BF_STATUS_SUCCESS;
+    return BF_STATUS_SUCCESS;
 	}
 	else {
 		int ncore = sysconf(_SC_NPROCESSORS_ONLN);
