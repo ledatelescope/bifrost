@@ -43,6 +43,10 @@
 #include <set>
 #include <mutex>
 
+#if defined __APPLE__ && __APPLE__
+#include <sys/sysctl.h>
+#endif
+
 void make_dir(std::string path, int perms=775) {
 	if( std::system(("mkdir -p "+path+" -m "+std::to_string(perms)).c_str()) ) {
 		throw std::runtime_error("Failed to create path: "+path);
@@ -64,9 +68,40 @@ void remove_file(std::string path) {
 	}
 }
 bool process_exists(pid_t pid) {
+#if defined __APPLE__ && __APPLE__
+
+  // Based on information from:
+	//   https://developer.apple.com/library/archive/qa/qa2001/qa1123.html
+	
+  static const int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
+	kinfo_proc *proclist = NULL;
+	int err, found = 0;
+	size_t len, count;
+	len = 0;
+	err = sysctl((int *) name, (sizeof(name) / sizeof(*name)) - 1,
+               NULL, &len, NULL, 0);
+	if( err == 0 ) {
+		proclist = (kinfo_proc*) ::malloc(len);
+		err = sysctl((int *) name, (sizeof(name) / sizeof(*name)) - 1,
+                 proclist, &len, NULL, 0);
+		if( err == 0 ) {
+			count = len / sizeof(kinfo_proc);
+			for(int i=0; i<count; i++) {
+				pid_t c_pid = proclist[i].kp_proc.p_pid;
+				if( c_pid == pid ) {
+					found = 1;
+					break;
+				}
+			}
+		}
+		::free(proclist);
+	}
+	return (bool) found;
+#else
 	struct stat s;
 	return !(stat(("/proc/"+std::to_string(pid)).c_str(), &s) == -1
 	         && errno == ENOENT);
+#endif
 }
 
 std::string get_dirname(std::string filename) {
@@ -119,7 +154,7 @@ class ProcLogMgr {
 				if( pid && !process_exists(pid) ) {
 					try {
 						remove_all(std::string(base_logdir) + "/" +
-							   std::to_string(pid));
+							         std::to_string(pid));
 					} catch( std::exception& ) {}
 				}
 			}
