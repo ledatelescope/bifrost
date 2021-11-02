@@ -288,25 +288,40 @@ AC_OUTPUT
 echo ""
 
 AS_IF([test x$HAVE_CUDA = x1],
-      [AC_MSG_NOTICE(Building with CUDA support for arch. $GPU_ARCHS)],
-      [AC_MSG_NOTICE(Building without CUDA support)])
+      [AC_MSG_NOTICE(cuda: yes - $GPU_ARCHS)],
+      [AC_MSG_NOTICE(cuda: no)])
 
 AS_IF([test x$HAVE_NUMA = x1],
-      [AC_MSG_NOTICE(Building with NUMA support for memory binding)],
-      [AC_MSG_NOTICE(Building without NUMA support for memory binding)])
+      [AC_MSG_NOTICE(numa: yes)],
+      [AC_MSG_NOTICE(numa: no)])
 
 AS_IF([test x$HAVE_HWLOC = x1],
-      [AC_MSG_NOTICE(Building with hwloc support for thread binding)],
-      [AC_MSG_NOTICE(Building without hwloc support for thread binding)])
+      [AC_MSG_NOTICE(hwloc: yes)],
+      [AC_MSG_NOTICE(hwloc: no)])
 
 AS_IF([test x$HAVE_VMA = x1],
-      [AC_MSG_NOTICE(Building with libvma packet capture acceleration)],
-      [AC_MSG_NOTICE(Building without libvma packet capture acceleration)])
+      [AC_MSG_NOTICE(libvma: yes)],
+      [AC_MSG_NOTICE(libvma: no)])
 
 AS_IF([test x$HAVE_PYTHON = x1],
-      [AC_MSG_NOTICE(Building the Python API)],
-      [AC_MSG_NOTICE(Not building the Python API)])
+      [AC_MSG_NOTICE(python bindings: yes)],
+      [AC_MSG_NOTICE(python bindings: no)])
 
+AC_MSG_NOTICE(memory alignment: $ALIGNMENT)
+      
+AC_MSG_NOTICE(logging directory: $HAVE_TMPFS)
+
+AC_SUBST([OPTIONS], [])
+AS_IF([test x$enable_debug != xno],
+      [AC_SUBST([OPTIONS], ["$OPTIONS debug"])])
+AS_IF([test x$enable_trace != xno],
+      [AC_SUBST([OPTIONS], ["$OPTIONS trace"])])
+AS_IF([test x$enable_cuda_debug != xno],
+      [AC_SUBST([OPTIONS], ["$OPTIONS cuda_debug"])])
+AS_IF([test x$enable_native_arch != xno],
+      [AC_SUBST([OPTIONS], ["$OPTIONS native"])])
+AC_MSG_NOTICE(options:$OPTIONS)
+      
 echo ""
 echo "Bifrost is now ready to be compiled.  Please run 'make'"
 echo ""
