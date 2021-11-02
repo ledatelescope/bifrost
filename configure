@@ -629,7 +629,8 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='LTLIBOBJS
+ac_subst_vars='OPTIONS
+LTLIBOBJS
 PACKAGE_VERSION_MICRO
 PACKAGE_VERSION_MINOR
 PACKAGE_VERSION_MAJOR
@@ -23870,44 +23871,70 @@ fi
 echo ""
 
 if test x$HAVE_CUDA = x1; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Build with CUDA support for arch. $GPU_ARCHS" >&5
-$as_echo "$as_me: Build with CUDA support for arch. $GPU_ARCHS" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: cuda: yes - $GPU_ARCHS" >&5
+$as_echo "$as_me: cuda: yes - $GPU_ARCHS" >&6;}
 else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Building without CUDA support" >&5
-$as_echo "$as_me: Building without CUDA support" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: cuda: no" >&5
+$as_echo "$as_me: cuda: no" >&6;}
 fi
 
 if test x$HAVE_NUMA = x1; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Building with NUMA support for memory binding" >&5
-$as_echo "$as_me: Building with NUMA support for memory binding" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: numa: yes" >&5
+$as_echo "$as_me: numa: yes" >&6;}
 else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Building without NUMA support for memory binding" >&5
-$as_echo "$as_me: Building without NUMA support for memory binding" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: numa: no" >&5
+$as_echo "$as_me: numa: no" >&6;}
 fi
 
 if test x$HAVE_HWLOC = x1; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Building with hwloc support for thread binding" >&5
-$as_echo "$as_me: Building with hwloc support for thread binding" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: hwloc: yes" >&5
+$as_echo "$as_me: hwloc: yes" >&6;}
 else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Building without hwloc support for thread binding" >&5
-$as_echo "$as_me: Building without hwloc support for thread binding" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: hwloc: no" >&5
+$as_echo "$as_me: hwloc: no" >&6;}
 fi
 
 if test x$HAVE_VMA = x1; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Building with libvma packet capture acceleration" >&5
-$as_echo "$as_me: Building with libvma packet capture acceleration" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: libvma: yes" >&5
+$as_echo "$as_me: libvma: yes" >&6;}
 else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Building without libvma packet capture acceleration" >&5
-$as_echo "$as_me: Building without libvma packet capture acceleration" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: libvma: no" >&5
+$as_echo "$as_me: libvma: no" >&6;}
 fi
 
 if test x$HAVE_PYTHON = x1; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Building the Python API" >&5
-$as_echo "$as_me: Building the Python API" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: python bindings: yes" >&5
+$as_echo "$as_me: python bindings: yes" >&6;}
 else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Not building the Python API" >&5
-$as_echo "$as_me: Not building the Python API" >&6;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: python bindings: no" >&5
+$as_echo "$as_me: python bindings: no" >&6;}
 fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: memory alignment: $ALIGNMENT" >&5
+$as_echo "$as_me: memory alignment: $ALIGNMENT" >&6;}
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: logging directory: $HAVE_TMPFS" >&5
+$as_echo "$as_me: logging directory: $HAVE_TMPFS" >&6;}
+
+
+if test x$enable_debug != xno; then :
+  OPTIONS="$OPTIONS debug"
+
+fi
+if test x$enable_trace != xno; then :
+  OPTIONS="$OPTIONS trace"
+
+fi
+if test x$enable_cuda_debug != xno; then :
+  OPTIONS="$OPTIONS cuda_debug"
+
+fi
+if test x$enable_native_arch != xno; then :
+  OPTIONS="$OPTIONS native"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: options:$OPTIONS" >&5
+$as_echo "$as_me: options:$OPTIONS" >&6;}
 
 echo ""
 echo "Bifrost is now ready to be compiled.  Please run 'make'"
