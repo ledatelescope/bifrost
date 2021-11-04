@@ -144,6 +144,8 @@ AC_ARG_WITH([shared_mem],
            [],
            [with_shared_mem=16384])
 AC_SUBST([GPU_SHAREDMEM], [$with_shared_mem])
+AS_IF([test x$HAVE_CUDA = x0],
+      [AC_SUBST([GPU_SHAREDMEM], [0])])
 
 #
 # Bifrost memory alignment
