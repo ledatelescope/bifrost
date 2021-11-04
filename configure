@@ -685,6 +685,7 @@ HAVE_DEBUG
 HAVE_TMPFS
 ALIGNMENT
 GPU_SHAREDMEM
+GPU_PASCAL_MANAGEDMEM
 GPU_ARCHS
 NVCCFLAGS
 CUOBJDUMP
@@ -19105,6 +19106,37 @@ fi
       GPU_ARCHS=$with_gpu_archs
 
     fi
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for valid CUDA architectures" >&5
+$as_echo_n "checking for valid CUDA architectures... " >&6; }
+    ar_requested=$( echo "$GPU_ARCHS" | wc -w )
+    ar_supported=$( ${NVCC} -h | ${GREP} -Po "compute_[0-9]{2,3}" | cut -d_ -f2 | sort | uniq )
+    ar_valid=$( echo $GPU_ARCHS $ar_supported | xargs -n1 | sort | uniq -d | xargs )
+    ar_found=$( echo $ar_valid | wc -w )
+    if test "$ar_requested" = $ar_found; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+    else
+      as_fn_error $? "only architectures $ar_valid are supported" "$LINENO" 5
+    fi
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Pascal-style CUDA managed memory" >&5
+$as_echo_n "checking for Pascal-style CUDA managed memory... " >&6; }
+    cm_invalid=$( echo $GPU_ARCHS | ${SED} -e 's/\b[1-5][0-9]\b/PRE/g;' )
+    if ! echo $cm_invalid | ${GREP} -q PRE; then
+      GPU_PASCAL_MANAGEDMEM=1
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+    else
+      GPU_PASCAL_MANAGEDMEM=0
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+    fi
+  else
+     GPU_PASCAL_MANAGEDMEM=0
+
   fi
 
 
@@ -19118,6 +19150,10 @@ fi
 
 GPU_SHAREDMEM=$with_shared_mem
 
+if test x$HAVE_CUDA = x0; then :
+  GPU_SHAREDMEM=0
+
+fi
 
 #
 # Bifrost memory alignment

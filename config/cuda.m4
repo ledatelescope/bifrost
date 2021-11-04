@@ -139,5 +139,28 @@ AC_DEFUN([AX_CHECK_CUDA],
     else
       AC_SUBST([GPU_ARCHS], [$with_gpu_archs])
     fi
-  fi 
+    
+    AC_MSG_CHECKING([for valid CUDA architectures])
+    ar_requested=$( echo "$GPU_ARCHS" | wc -w )
+    ar_supported=$( ${NVCC} -h | ${GREP} -Po "compute_[[0-9]]{2,3}" | cut -d_ -f2 | sort | uniq )
+    ar_valid=$( echo $GPU_ARCHS $ar_supported | xargs -n1 | sort | uniq -d | xargs )
+    ar_found=$( echo $ar_valid | wc -w )
+    if test "$ar_requested" = $ar_found; then
+      AC_MSG_RESULT([yes])
+    else
+      AC_MSG_ERROR(only architectures $ar_valid are supported)
+    fi
+
+    AC_MSG_CHECKING([for Pascal-style CUDA managed memory])
+    cm_invalid=$( echo $GPU_ARCHS | ${SED} -e 's/\b[[1-5]][[0-9]]\b/PRE/g;' )
+    if ! echo $cm_invalid | ${GREP} -q PRE; then
+      AC_SUBST([GPU_PASCAL_MANAGEDMEM], [1])
+      AC_MSG_RESULT([yes])
+    else
+      AC_SUBST([GPU_PASCAL_MANAGEDMEM], [0])
+      AC_MSG_RESULT([no])
+    fi
+  else
+     AC_SUBST([GPU_PASCAL_MANAGEDMEM], [0])
+  fi
 ])
