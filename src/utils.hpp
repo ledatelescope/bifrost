@@ -218,6 +218,12 @@ inline BFbool space_accessible_from(BFspace space, BFspace from) {
 	                              space == BF_SPACE_CUDA_MANAGED);
 	case BF_SPACE_CUDA:   return (space == BF_SPACE_CUDA ||
 	                              space == BF_SPACE_CUDA_MANAGED);
+#if BF_GPU_MANAGEDMEM
+        case BF_SPACE_CUDA_MANAGED: return (space == BF_SPACE_SYSTEM ||
+                                            space == BF_SPACE_CUDA_HOST ||
+                                            space == BF_SPACE_CUDA_MANAGED ||
+                                            space == BF_SPACE_CUDA);
+#endif
 	// TODO: Need to use something else here?
 	default: throw std::runtime_error("Internal error");
 	}

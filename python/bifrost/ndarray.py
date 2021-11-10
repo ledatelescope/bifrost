@@ -116,6 +116,10 @@ def copy_array(dst, src):
     src_bf = asarray(src)
     if (space_accessible(dst_bf.bf.space, ['system']) and
         space_accessible(src_bf.bf.space, ['system'])):
+        if (src_bf.bf.space == 'cuda_managed' or
+            dst_bf.bf.space == 'cuda_managed'):
+            # TODO: Decide where/when these need to be called
+            device.stream_synchronize()
         np.copyto(dst_bf, src_bf)
     else:
         _check(_bf.bfArrayCopy(dst_bf.as_BFarray(),
