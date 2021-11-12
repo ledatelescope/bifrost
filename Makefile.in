@@ -33,6 +33,10 @@ endif
 install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME) $(INSTALL_DAT_DIR)/$(BIFROST_NAME) $(INSTALL_LIB_DIR)/pkgconfig
 ifeq ($(HAVE_PYTHON),1)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) install
+	@echo "If you have trouble importing Bifrost from Python you may need"
+	@echo "to set LD_LIBRARY_PATH to $(INSTALL_LIB_DIR) or have your"
+	@echo "system administrator add this directory to '/etc/ld.so.conf'."
+	@eho ""
 endif
 	@echo "Libraries have been installed in:"
 	@echo "  $(INSTALL_LIB_DIR)"
