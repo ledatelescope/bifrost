@@ -1,4 +1,4 @@
-name: Bifrost
+name: "Build and Test"
 on: [push, pull_request]
 jobs:
   build:
@@ -42,7 +42,6 @@ jobs:
                simplejson \
                pint \
                graphviz git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f \
-               coveralls \
                codecov
       - run: |
           ./configure
@@ -54,10 +53,6 @@ jobs:
           python -m pip install scipy
           cd test
           bash ./travis.sh
-      - env:
-          GITHUB_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
-        run: |
+      - run: |
           cd test
           codecov
-          coveralls -v --service=github-actions
-    
