@@ -2,7 +2,7 @@
 
 | **`CPU build`** | **`GPU build`** | **`Coverage`** | 
 |-----------------|-----------------|----------------|
-|[![GHA](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml/badge.svg)](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml) | [![Build Status](https://fornax.phys.unm.edu/jenkins/buildStatus/icon?job=Bifrost)](https://fornax.phys.unm.edu/jenkins/job/Bifrost/) | [![Coverage Status](https://coveralls.io/repos/github/ledatelescope/bifrost/badge.svg)](https://coveralls.io/github/ledatelescope/bifrost) |
+|[![GHA](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml/badge.svg)](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml) | [![Build Status](https://fornax.phys.unm.edu/jenkins/buildStatus/icon?job=Bifrost)](https://fornax.phys.unm.edu/jenkins/job/Bifrost/) | [![Coverage Status](https://codecov.io/gh/ledatelescope/bifrost/branch/master/graph/badge.svg?token=f3ge1zWe5P)](https://codecov.io/gh/ledatelescope/bifrost) |
 
 A stream processing framework for high-throughput applications.
 
