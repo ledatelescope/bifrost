@@ -58,6 +58,10 @@ ifeq ($(DRY_RUN),0)
 else
 	@echo "@PYTHON@ -m pip install @PYINSTALLFLAGS@ ."
 endif
+	@echo "If you have trouble importing Bifrost from Python you may need"
+	@echo "to set LD_LIBRARY_PATH to $(INSTALL_LIB_DIR) or have your"
+	@echo "system administrator add this directory to '/etc/ld.so.conf'."
+	@echo ""
 .PHONY: install
 
 clean:
