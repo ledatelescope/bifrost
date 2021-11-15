@@ -10,24 +10,26 @@ jobs:
       fail-fast: false
     steps:
       - if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get install -y \
-               build-essential \
-               ca-certificates \
-               curl \
-               exuberant-ctags \
-               gfortran \
-               git \
-               libopenblas-dev \
-               pkg-config \
-               software-properties-common
+        run: |
+          sudo apt-get install -y \
+            build-essential \
+            ca-certificates \
+            curl \
+            exuberant-ctags \
+            gfortran \
+            git \
+            libopenblas-dev \
+            pkg-config \
+            software-properties-common
       - if: ${{ matrix.os == 'macos-latest' }}
-        run: brew install \
-               curl \
-               ctags-exuberant \
-               gawk \
-               git \
-               gnu-sed \
-               pkg-config
+        run: |
+          brew install \
+            curl \
+            ctags-exuberant \
+            gawk \
+            git \
+            gnu-sed \
+            pkg-config
       - uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
