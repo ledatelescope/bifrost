@@ -54,7 +54,9 @@ jobs:
           python -m pip install scipy
           cd test
           bash ./travis.sh
-      - run: |
+      - env:
+          GITHUB_TOKEN: ${{ secrets.COVERALLS_TOKEN }}
+        run: |
           cd test
           codecov
           coveralls -v --service=github-actions
