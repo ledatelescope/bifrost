@@ -1,0 +1,59 @@
+name: Bifrost
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['2.7', '3.6', '3.8']
+      fail-fast: false
+    steps:
+      - if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: sudo apt-get install -y \
+               build-essential \
+               ca-certificates \
+               curl \
+               exuberant-ctags \
+               gfortran \
+               git \
+               libopenblas-dev \
+               pkg-config \
+               software-properties-common
+      - if: ${{ matrix.os == 'macos-latest' }}
+        run: brew install \
+               curl \
+               ctags-exuberant \
+               gawk \
+               git \
+               gnu-sed \
+               pkg-config
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v2
+      - run: python -m pip install \
+               setuptools \
+               numpy \
+               matplotlib \
+               contextlib2 \
+               simplejson \
+               pint \
+               graphviz git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f \
+               coveralls \
+               codecov
+      - run: |
+          ./configure
+          make -j all
+          sudo make install
+      - env:
+          LD_LIBRARY_PATH: /usr/local/lib:${LD_LIBRARY_PATH}
+        run: |
+          python -m pip install scipy
+          cd test
+          bash ./travis.sh
+      - run: |
+          cd test
+          codecov
+          coveralls -v --service=github-actions
+    
