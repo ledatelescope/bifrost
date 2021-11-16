@@ -5,6 +5,8 @@
  * Added a .m4 file to help other autotools-based software find Bifrost
  * Added a pkg-config file for Bifrost
  * Made the Python API compatible with PEP479
+ * Added support for the cuda_managed space on Pascal and later GPUs
+ * Added support for ci32 in bf.map
 
 0.9.0
  * Added support for Python3
