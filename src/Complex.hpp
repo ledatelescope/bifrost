@@ -180,7 +180,7 @@ Complex<T, typename Complex_detail::enable_if<Complex_detail::is_floating_point<
 	inline __host__ __device__ Complex() {}//: x(0), y(0) {}
 	inline __host__ __device__ Complex(real_type x_, real_type y_=0) : x(x_), y(y_) {}
 	// Implicit conversion from low-precision storage types
-	inline __host__ __device__ Complex(Complex<FourBit> c)     : x((c.real_imag & 0xF0)/4), y(((c.real_imag & 0x0F) << 4)/4) {}
+	inline __host__ __device__ Complex(Complex<FourBit> c)     : x(((signed char) (c.real_imag & 0xF0))/16), y(((signed char) ((c.real_imag & 0x0F) << 4))/16) {}
 	inline __host__ __device__ Complex(Complex<signed char> c) : x(c.x), y(c.y) {}
 	inline __host__ __device__ Complex(Complex<short> c)       : x(c.x), y(c.y) {}
 	inline __host__ __device__ Complex(Complex<int> c)         : x(c.x), y(c.y) {}
