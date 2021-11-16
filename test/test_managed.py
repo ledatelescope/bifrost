@@ -31,6 +31,7 @@ import numpy as np
 import bifrost as bf
 
 from bifrost.libbifrost_generated import BF_GPU_MANAGEDMEM
+from bifrost.device import stream_synchronize
 
 #
 # Map
@@ -48,6 +49,7 @@ class TestManagedMap(unittest.TestCase):
         x.bf.immutable = True # TODO: Is this actually doing anything? (flags is, just not sure about bf.immutable)
         for _ in range(3):
             bf.map(funcstr, {'x': x, 'y': y})
+            stream_synchronize()
         if isinstance(x_orig, bf.ndarray):
             x_orig = x
         # Note: Using func(x) is dangerous because bf.ndarray does things like
@@ -118,6 +120,7 @@ class TestManagedFFT(unittest.TestCase):
         fft = Fft()
         fft.init(idata, odata, axes=axes)
         fft.execute(idata, odata)
+        stream_synchronize()
         known_result = gold_rfftn(known_data.astype(np.float32) / scale, axes=axes)
         compare(odata, known_result)
     def run_test_r2c(self, shape, axes, dtype=np.float32):
@@ -177,6 +180,7 @@ class TestManagedFIR(unittest.TestCase):
         fir = Fir()
         fir.init(coeffs, 1)
         fir.execute(idata, odata)
+        stream_synchronize()
         
         for i in range(known_data.shape[1]):
             zf = lfiltic(self.coeffs, 1.0, 0.0)
@@ -197,6 +201,7 @@ class TestManagedFIR(unittest.TestCase):
         fir.init(coeffs, 1)
         fir.execute(idata, odata)
         fir.execute(idata, odata)
+        stream_synchronize()
         
         for i in range(known_data.shape[1]):
             zf = lfiltic(self.coeffs, 1.0, 0.0)
@@ -252,6 +257,7 @@ class TestManagedReduce(unittest.TestCase):
         a = bf.asarray(a, space='cuda_managed')
         b = bf.empty_like(b_gold, space='cuda_managed')
         bf.reduce(a, b, op)
+        stream_synchronize()
         np.testing.assert_allclose(b, b_gold)
     def test_reduce(self):
         self.run_reduce_test((3,6,5), axis=1, n=2, op='sum', dtype=np.float32)
@@ -277,6 +283,7 @@ class TestManagedUnpack(unittest.TestCase):
                                    [(-8, -7), (-6, -5)]],
                                   dtype='ci8')
         bf.unpack.unpack(iarray.copy(space='cuda_managed'), oarray)
+        stream_synchronize()
         np.testing.assert_equal(oarray, oarray_known)
     def test_ci4_to_ci8(self):
         iarray = bf.ndarray([[(0x10,),(0x32,)],
