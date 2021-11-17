@@ -78,6 +78,10 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
+AC_TYPE_LONG_DOUBLE_WIDER
+AC_SUBST([HAVE_FLOAT128], [0])
+AS_IF([test x$HAVE_HAVE_LONG_DOUBLE_WIDER = x1],
+      [AC_SUBST([HAVE_FLOAT128], [0])])
 
 #
 # NUMA
@@ -188,15 +192,7 @@ AC_SUBST([HAVE_TRACE], [0])
 AS_IF([test x$enable_trace != xno],
       [AC_SUBST([HAVE_TRACE], [1])])
 
-AC_ARG_ENABLE([native_arch],
-              [AS_HELP_STRING([--disable-native-arch],
-                              [disable native architecture compilation (default=no)])],
-              [enable_native_arch=no],
-              [enable_native_arch=yes])
-AS_IF([test x$enable_native_arch != xyes],
-      [],
-      [CXXFLAGS="$CXXFLAGS -march=native"
-       NVCCFLAGS="$NVCCFLAGS -Xcompiler \"-march=native\""])
+AX_CHECK_NATIVE_ARCH
 
 AC_ARG_ENABLE([cuda_debug],
               [AS_HELP_STRING([--enable-cuda-debug],
@@ -322,6 +318,8 @@ AS_IF([test x$enable_cuda_debug != xno],
       [AC_SUBST([OPTIONS], ["$OPTIONS cuda_debug"])])
 AS_IF([test x$enable_native_arch != xno],
       [AC_SUBST([OPTIONS], ["$OPTIONS native"])])
+AS_IF([test x$HAVE_FLOAT128 != x0],
+      [AC_SUBST([OPTIONS], ["$OPTIONS float128"])])
 AC_MSG_NOTICE(options:$OPTIONS)
       
 echo ""
