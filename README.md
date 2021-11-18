@@ -1,6 +1,6 @@
 # Bifrost
 
-| **`CPU build`** | **`GPU build`** | **`Coverage`** | 
+| **`CPU Build`** | **`GPU Build`** | **`Coverage`** | 
 |-----------------|-----------------|----------------|
 |[![Travis](https://travis-ci.com/ledatelescope/bifrost.svg?branch=master)](https://travis-ci.com/ledatelescope/bifrost) | [![Build Status](https://fornax.phys.unm.edu/jenkins/buildStatus/icon?job=Bifrost)](https://fornax.phys.unm.edu/jenkins/job/Bifrost/) | [![Coverage Status](https://coveralls.io/repos/github/ledatelescope/bifrost/badge.svg)](https://coveralls.io/github/ledatelescope/bifrost) |
 
@@ -11,7 +11,7 @@ A stream processing framework for high-throughput applications.
 ### [Bifrost Documentation](http://ledatelescope.github.io/bifrost/)
 ### [Bifrost Roadmap](ROADMAP.md)
 
-## A simple pipeline
+## A Simple Pipeline
 
 Here's a snippet that reads Sigproc filterbank files, applies a
 Fast Dispersion Measure Transform (FDMT) on the GPU, and writes
@@ -36,7 +36,7 @@ bf.get_default_pipeline().run()
 print "All done"
 ```
 
-## A more complex pipeline
+## A More Complex Pipeline
 
 Below is a longer snippet that demonstrates some additional features
 of Bifrost pipelines, including the BlockChainer tool, block scopes,
@@ -73,7 +73,7 @@ pipeline.run()
 print "All done"
 ```
 
-## Feature overview
+## Feature Overview
 
  - Designed for sustained high-throughput stream processing
  - Python API wraps fast C++/CUDA backend
@@ -87,11 +87,11 @@ print "All done"
 
 ## Installation
 
-### C dependencies
+### C Dependencies
 
     $ sudo apt-get install exuberant-ctags
 
-### Python dependencies
+### Python Dependencies
 
  * numpy
  * contextlib2
@@ -102,7 +102,7 @@ print "All done"
 $ sudo pip install numpy contextlib2 pint git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f
 ```
 
-### Bifrost installation
+### Bifrost Installation
 
 Edit **user.mk** to suit your system, then run:
 
@@ -116,7 +116,7 @@ You can call the following for a local Python installation:
 
     $ sudo make install PYINSTALLFLAGS="--prefix=$HOME/usr/local"
 
-### Docker container
+### Docker Container
 
 Install dependencies:
 
@@ -136,7 +136,7 @@ For CPU-only builds:
     $ make docker-cpu
     $ docker run --rm -it ledatelescope/bifrost
 
-### Running tests
+### Running Tests
 
 To run all CPU and GPU tests:
 
@@ -146,7 +146,7 @@ To run all CPU and GPU tests:
 
 ### [Online Bifrost Documentation](http://ledatelescope.github.io/bifrost/)
 
-### Building the docs with Docker
+### Building the Docs with Docker
 
 To quickly build the docs using Docker, ensure that you have
 built a Bifrost container as `ledatelescope/bifrost`.
@@ -156,7 +156,7 @@ run it, and have it complete the docs-building process for you,
 outputting the entire html documentation inside `docs/html` on
 your machine.
 
-### Building the docs from scratch
+### Building the Docs from Scratch
 
 Install sphinx and breathe using pip, and also install Doxygen.
 
@@ -170,6 +170,18 @@ by running
     $ make html
 
 inside the /docs directory.
+
+## Acknowledgement
+
+If you make use of Bifrost as part of your data collection or analysis please
+include the following acknowledgement in your publications:
+
+> This research has made use of Bifrost (Cranmer et al. 2017).  Continued
+> development of Bifrost is supported by NSF award OAC/2103707.
+
+and cite:
+
+> \bibitem[Cranmer et al.(2017)]{2017JAI.....650007C} Cranmer, M.~D., Barsdell, B.~R., Price, D.~C., et al.\ 2017, Journal of Astronomical Instrumentation, 6, 1750007. doi:10.1142/S2251171717500076
 
 ## Contributors
 
