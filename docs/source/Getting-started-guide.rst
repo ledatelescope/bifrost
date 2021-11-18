@@ -21,8 +21,7 @@ but higher ones should also work.
 Python dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-*Bifrost is written in Python 2.7. If you would like us to support
-Python 3.x, please let us know your interest.*
+*Bifrost is compatible with both in Python 2.7. and Python 3.x.*
 
 `pip <https://pip.pypa.io/en/stable/>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,10 +78,25 @@ with
 
 ``git clone https://github.com/ledatelescope/bifrost``.
 
-You will want to edit ``user.mk`` to suit your system. For example, if
-you are not working with GPUs, uncomment the line:
+You will want to run `configure` to tailor Bifrost to you system.  At the end of
+`configure` you will get a summary of how Bifrost will be built:
 
-``#NOCUDA   = 1 # Disable CUDA support``.
+```
+...
+config.status: creating src/bifrost/config.h
+config.status: executing libtool commands
+
+configure: cuda: yes - 50 52
+configure: numa: yes
+configure: hwloc: yes
+configure: libvma: no
+configure: python bindings: yes
+configure: memory alignment: 4096
+configure: logging directory: /dev/shm/bifrost
+configure: options: native
+
+Bifrost is now ready to be compiled.  Please run 'make'
+```
 
 Now you can call ``make``, and ``make install`` to install
 Bifrost.

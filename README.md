@@ -104,17 +104,22 @@ $ sudo pip install numpy contextlib2 pint git+https://github.com/olsonse/ctypesg
 
 ### Bifrost installation
 
-Edit **user.mk** to suit your system, then run:
+To configure Bifrost for you your system and build the library, then run:
 
+    $ ./configure
     $ make -j
     $ sudo make install
 
-which will install the library and headers into /usr/local/lib and
-/usr/local/include respectively.
+By default this will install the library and headers into /usr/local/lib and
+/usr/local/include respectively.  You can use the --prefix option to configure
+to change this.
 
 You can call the following for a local Python installation:
 
-    $ sudo make install PYINSTALLFLAGS="--prefix=$HOME/usr/local"
+    $ ./configure --with-pyinstall-flags=--user
+    $ make -j
+    $ sudo make install HAVE_PYTHON=0
+    $ make -C python install
 
 ### Docker container
 
