@@ -58,6 +58,14 @@ ifeq ($(DRY_RUN),0)
 else
 	@echo "@PYTHON@ -m pip install @PYINSTALLFLAGS@ ."
 endif
+	@echo "*************************************************************************"
+	@echo "By default Bifrost installs with basic Python telemetry enabled in order"
+	@echo "order to help inform how the software is used and to help inform future"
+	@echo "development.  You can opt out of telemetry collection using:"
+	@echo ">>> from bifrost import telemetry"
+	@echo ">>> telemetry.disable()"
+	@echo "*************************************************************************"
+	@echo ""
 	@echo "If you have trouble importing Bifrost from Python you may need"
 	@echo "to set LD_LIBRARY_PATH to $(INSTALL_LIB_DIR) or have your"
 	@echo "system administrator add this directory to '/etc/ld.so.conf'."
