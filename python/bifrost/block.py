@@ -50,6 +50,9 @@ from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
 from bifrost.libbifrost import EndOfDataStop
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class Pipeline(object):
     """Class which connects blocks linearly, with
         one ring between each block. Does this by creating

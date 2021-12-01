@@ -39,6 +39,9 @@ import string
 import numpy as np
 from uuid import uuid4
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def _slugify(name):
     valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
     valid_chars = frozenset(valid_chars)

@@ -36,6 +36,9 @@ from bifrost.pipeline import TransformBlock
 
 from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class FftShiftBlock(TransformBlock):
     def __init__(self, iring, axes, inverse=False,
                  *args, **kwargs):

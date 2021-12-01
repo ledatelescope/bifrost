@@ -31,6 +31,9 @@ from __future__ import print_function
 
 import argparse
 
+from bifrost import telemetry
+telemetry.track_script()
+
 
 def compute_mask(cpu):
     """

@@ -1,6 +1,7 @@
 0.9.1
  * Fixed a problem with like_bmon.py crashing when there are a large number of pipelines
  * Added a CHANGELOG file
+ * Added a lightweight telemetry client for the Python API
  * Switched over to an autotools-based build system
  * Added a .m4 file to help other autotools-based software find Bifrost
  * Added a pkg-config file for Bifrost

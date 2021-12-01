@@ -37,6 +37,9 @@ from bifrost.DataType import DataType
 
 from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class DetectBlock(TransformBlock):
     def __init__(self, iring, mode, axis=None,
                  *args, **kwargs):

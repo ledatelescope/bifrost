@@ -38,6 +38,9 @@ import subprocess
 
 from bifrost.proclog import PROCLOG_DIR, load_by_pid
 
+from bifrost import telemetry
+telemetry.track_script()
+
 
 BIFROST_STATS_BASE_DIR = PROCLOG_DIR
 

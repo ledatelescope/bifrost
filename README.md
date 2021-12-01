@@ -1,6 +1,6 @@
 # Bifrost
 
-| **`CPU build`** | **`GPU build`** | **`Coverage`** | 
+| **`CPU Build`** | **`GPU Build`** | **`Coverage`** | 
 |-----------------|-----------------|----------------|
 |[![GHA](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml/badge.svg)](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml) | [![Build Status](https://fornax.phys.unm.edu/jenkins/buildStatus/icon?job=Bifrost)](https://fornax.phys.unm.edu/jenkins/job/Bifrost/) | [![Coverage Status](https://codecov.io/gh/ledatelescope/bifrost/branch/master/graph/badge.svg?token=f3ge1zWe5P)](https://codecov.io/gh/ledatelescope/bifrost) |
 
@@ -11,7 +11,7 @@ A stream processing framework for high-throughput applications.
 ### [Bifrost Documentation](http://ledatelescope.github.io/bifrost/)
 ### [Bifrost Roadmap](ROADMAP.md)
 
-## A simple pipeline
+## A Simple Pipeline
 
 Here's a snippet that reads Sigproc filterbank files, applies a
 Fast Dispersion Measure Transform (FDMT) on the GPU, and writes
@@ -36,7 +36,7 @@ bf.get_default_pipeline().run()
 print "All done"
 ```
 
-## A more complex pipeline
+## A More Complex Pipeline
 
 Below is a longer snippet that demonstrates some additional features
 of Bifrost pipelines, including the BlockChainer tool, block scopes,
@@ -73,7 +73,7 @@ pipeline.run()
 print "All done"
 ```
 
-## Feature overview
+## Feature Overview
 
  - Designed for sustained high-throughput stream processing
  - Python API wraps fast C++/CUDA backend
@@ -87,11 +87,11 @@ print "All done"
 
 ## Installation
 
-### C dependencies
+### C Dependencies
 
     $ sudo apt-get install exuberant-ctags
 
-### Python dependencies
+### Python Dependencies
 
  * numpy
  * contextlib2
@@ -102,7 +102,7 @@ print "All done"
 $ sudo pip install numpy contextlib2 pint git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f
 ```
 
-### Bifrost installation
+### Bifrost Installation
 
 To configure Bifrost for you your system and build the library, then run:
 
@@ -121,7 +121,7 @@ You can call the following for a local Python installation:
     $ sudo make install HAVE_PYTHON=0
     $ make -C python install
 
-### Docker container
+### Docker Container
 
 Install dependencies:
 
@@ -141,7 +141,7 @@ For CPU-only builds:
     $ make docker-cpu
     $ docker run --rm -it ledatelescope/bifrost
 
-### Running tests
+### Running Tests
 
 To run all CPU and GPU tests:
 
@@ -151,7 +151,7 @@ To run all CPU and GPU tests:
 
 ### [Online Bifrost Documentation](http://ledatelescope.github.io/bifrost/)
 
-### Building the docs with Docker
+### Building the Docs with Docker
 
 To quickly build the docs using Docker, ensure that you have
 built a Bifrost container as `ledatelescope/bifrost`.
@@ -161,7 +161,7 @@ run it, and have it complete the docs-building process for you,
 outputting the entire html documentation inside `docs/html` on
 your machine.
 
-### Building the docs from scratch
+### Building the Docs from Scratch
 
 Install sphinx and breathe using pip, and also install Doxygen.
 
@@ -175,6 +175,48 @@ by running
     $ make html
 
 inside the /docs directory.
+
+## Telemetry
+
+By default Bifrost installs with basic Python telemetry enabled in
+order to help inform how the software is used and to help inform future 
+development.  The data collected as part of this consist seven things:
+ * a timestamp for when the report is generated,
+ * a unique installation identifier,
+ * the Bifrost version being used, 
+ * the execution time of the Python process that imports Bifrost,
+ * which Bifrost modules are imported,
+ * which Bifrost functions are used and their average execution times, and
+ * which Bifrost scripts are used.
+These data are sent to the Bifrost developers using a HTTP POST request where
+they are aggregated.
+
+Users can opt out of telemetry collection using:
+
+```python
+from bifrost import telemetry
+telemetry.disable()
+```
+
+or by using the included `bifrost_telemetry.py` script:
+
+```
+python bifrost_telemetry.py --disable
+```
+
+This command will set a disk-based flag that disables the reporting process.
+
+## Acknowledgement
+
+If you make use of Bifrost as part of your data collection or analysis please
+include the following acknowledgement in your publications:
+
+> This research has made use of Bifrost (Cranmer et al. 2017).  Continued
+> development of Bifrost is supported by NSF award OAC/2103707.
+
+and cite:
+
+> \bibitem[Cranmer et al.(2017)]{2017JAI.....650007C} Cranmer, M.~D., Barsdell, B.~R., Price, D.~C., et al.\ 2017, Journal of Astronomical Instrumentation, 6, 1750007. doi:10.1142/S2251171717500076
 
 ## Contributors
 

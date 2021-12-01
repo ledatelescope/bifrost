@@ -47,6 +47,9 @@ except ImportError:
     warnings.warn("Install simplejson for better performance", RuntimeWarning)
     import json
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def _slugify(name):
     valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
     valid_chars = frozenset(valid_chars)

@@ -43,6 +43,9 @@ Optional parameters (which some blocks require):
 
 """
 
+from bifrost import telemetry
+telemetry.track_module()
+
 # Define a header which we can check passed
 # dictionaries with
 # Format:

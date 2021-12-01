@@ -30,6 +30,9 @@ from __future__ import absolute_import
 from bifrost.pipeline import SourceBlock
 import bifrost.portaudio as audio
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class AudioSourceBlock(SourceBlock):
     def create_reader(self, kwargs):
         self.reader = audio.open(mode='r', **kwargs)

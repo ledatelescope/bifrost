@@ -30,6 +30,9 @@ from __future__ import absolute_import
 
 from bifrost.libbifrost import _bf, _check, _get
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def set_device(device):
     if isinstance(device, int):
         _check(_bf.bfDeviceSet(device))

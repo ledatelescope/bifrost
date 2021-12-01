@@ -35,6 +35,9 @@ import bifrost as bf
 
 from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class ReduceBlock(TransformBlock):
     def __init__(self, iring, axis, factor=None, op='sum', *args, **kwargs):
         super(ReduceBlock, self).__init__(iring, *args, **kwargs)

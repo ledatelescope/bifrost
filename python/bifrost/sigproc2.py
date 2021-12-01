@@ -60,6 +60,9 @@ import warnings
 import numpy as np
 from collections import defaultdict
 
+from bifrost import telemetry
+telemetry.track_module()
+
 _string_values = ['source_name',
                   'rawdatafile']
 _double_values = ['az_start',

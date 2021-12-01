@@ -33,6 +33,9 @@ import bifrost as bf
 from copy import deepcopy
 import numpy as np
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class TransposeBlock(TransformBlock):
     def __init__(self, iring, axes, *args, **kwargs):
         super(TransposeBlock, self).__init__(iring, *args, **kwargs)

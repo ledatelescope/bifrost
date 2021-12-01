@@ -42,6 +42,9 @@ except ImportError:
 import glob
 from functools import reduce
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def _parse_bifrost_filename(fname):
     inds = fname[fname.find('.bf.') + 4:].split('.')[:-1]
     inds = [int(i) for i in inds]

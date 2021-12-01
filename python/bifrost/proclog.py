@@ -36,6 +36,9 @@ from bifrost.libbifrost import _bf, _check, BifrostObject
 import os
 import time
 
+from bifrost import telemetry
+telemetry.track_module()
+
 PROCLOG_DIR = _bf.BF_PROCLOG_DIR
 
 class ProcLog(BifrostObject):

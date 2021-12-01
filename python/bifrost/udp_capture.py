@@ -29,6 +29,9 @@
 
 from bifrost.libbifrost import _bf, _check, BifrostObject
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class UDPCapture(BifrostObject):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
                  buffer_ntime, slot_ntime, sequence_callback, core=None):
