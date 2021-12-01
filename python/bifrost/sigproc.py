@@ -59,6 +59,9 @@ import numpy as np
 from collections import defaultdict
 import os
 
+from bifrost import telemetry
+telemetry.track_module()
+
 #header parameter names which precede strings
 _STRING_VALUES = ['source_name',
                   'rawdatafile']

@@ -47,6 +47,9 @@ from bifrost.ndarray import _address_as_buffer
 
 import ctypes
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def get_pointer_value(ptr):
     return ctypes.c_void_p.from_buffer(ptr).value
 

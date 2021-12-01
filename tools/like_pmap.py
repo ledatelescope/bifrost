@@ -38,6 +38,9 @@ import subprocess
 os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
 
+from bifrost import telemetry
+telemetry.track_script()
+
 
 def get_best_size(value):
     """

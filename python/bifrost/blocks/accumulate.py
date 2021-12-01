@@ -37,6 +37,9 @@ from bifrost.pipeline import TransformBlock
 
 from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class AccumulateBlock(TransformBlock):
     def __init__(self, iring, nframe, dtype=None, gulp_nframe=1,
              *args, **kwargs):

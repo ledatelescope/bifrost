@@ -32,6 +32,9 @@ from bifrost.libbifrost import _bf, _check, BifrostObject
 
 import ctypes
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def _packet2pointer(packet):
     buf = ctypes.c_char_p(packet)
     siz = ctypes.c_uint( len(packet) )

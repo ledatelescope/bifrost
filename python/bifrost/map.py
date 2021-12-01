@@ -36,6 +36,9 @@ from bifrost.ndarray import asarray
 import numpy as np
 import ctypes
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def _is_literal(x):
     return isinstance(x, (int, long, float, complex))
 

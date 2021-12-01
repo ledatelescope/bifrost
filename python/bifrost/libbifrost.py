@@ -41,6 +41,9 @@ import ctypes
 import bifrost.libbifrost_generated as _bf
 bf = _bf # Public access to library
 
+from bifrost import telemetry
+telemetry.track_module()
+
 # Internal helpers below
 
 class BifrostObject(object):

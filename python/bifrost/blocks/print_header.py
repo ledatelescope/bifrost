@@ -31,6 +31,9 @@ from bifrost.pipeline import SinkBlock
 
 from threading import Lock
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class PrintHeaderBlock(SinkBlock):
     lock = Lock()
     def __init__(self, iring, *args, **kwargs):

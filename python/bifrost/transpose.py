@@ -33,6 +33,9 @@ from bifrost.ndarray import asarray
 
 import ctypes
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def transpose(dst, src, axes=None):
     if axes is None:
         axes = reversed(range(len(dst.shape)))

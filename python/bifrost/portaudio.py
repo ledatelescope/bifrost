@@ -38,6 +38,9 @@ import atexit
 from threading import Lock
 import os
 
+from bifrost import telemetry
+telemetry.track_module()
+
 # Note: portaudio is MIT licensed
 _lib = ctypes.cdll.LoadLibrary('libportaudio.so')
 

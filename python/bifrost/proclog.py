@@ -36,6 +36,9 @@ from bifrost.libbifrost import _bf, _check, BifrostObject
 import os
 import time
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class ProcLog(BifrostObject):
     def __init__(self, name):
         try:

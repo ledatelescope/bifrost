@@ -34,6 +34,9 @@ from bifrost.pipeline import TransformBlock
 
 from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class ScrunchBlock(TransformBlock):
     def __init__(self, iring, factor, *args, **kwargs):
         super(ScrunchBlock, self).__init__(iring, *args, **kwargs)

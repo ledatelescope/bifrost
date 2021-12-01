@@ -32,6 +32,9 @@ from __future__ import absolute_import
 from bifrost.libbifrost import _bf, _check, _get, _string2space
 import ctypes
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def space_accessible(space, from_spaces):
     if from_spaces == 'any': # TODO: This is a little bit hacky
         return True

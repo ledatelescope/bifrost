@@ -171,6 +171,36 @@ by running
 
 inside the /docs directory.
 
+## Telemetry
+
+By default Bifrost installs with basic Python telemetry enabled in
+order to help inform how the software is used and to help inform future 
+development.  The data collected as part of this consist seven things:
+ * a timestamp for when the report is generated,
+ * a unique installation identifier,
+ * the Bifrost version being used, 
+ * the execution time of the Python process that imports Bifrost,
+ * which Bifrost modules are imported,
+ * which Bifrost functions are used and their average execution times, and
+ * which Bifrost scripts are used.
+These data are sent to the Bifrost developers using a HTTP POST request where
+they are aggregated.
+
+Users can opt out of telemetry collection using:
+
+```python
+from bifrost import telemetry
+telemetry.disable()
+```
+
+or by using the included `bifrost_telemetry.py` script:
+
+```
+python bifrost_telemetry.py --disable
+```
+
+This command will set a disk-based flag that disables the reporting process.
+
 ## Acknowledgement
 
 If you make use of Bifrost as part of your data collection or analysis please

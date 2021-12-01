@@ -33,6 +33,9 @@ from __future__ import print_function
 import glob
 import argparse
 
+from bifrost import telemetry
+telemetry.track_script()
+
 
 def read_siblings():
     cpus = glob.glob('/sys/devices/system/cpu/cpu*/topology/thread_siblings_list')

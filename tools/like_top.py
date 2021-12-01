@@ -50,6 +50,9 @@ except ImportError:
 os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
 
+from bifrost import telemetry
+telemetry.track_script()
+
 
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
 
