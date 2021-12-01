@@ -101,7 +101,7 @@ class _TelemetryClient(object):
         Add an entry to the telemetry cache with optional timing information.
         """
         
-        if name[:3] != 'bifrost' or not self.active:
+        if name[:7] != 'bifrost' or not self.active:
             return False
             
         with self._lock:
