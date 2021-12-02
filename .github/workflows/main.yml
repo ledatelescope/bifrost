@@ -45,7 +45,7 @@ jobs:
                simplejson \
                pint \
                graphviz git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f \
-               codecov
+               coverage
       - name: "Build and Install"
         run: |
           ./configure
@@ -58,7 +58,11 @@ jobs:
           python -m pip install scipy
           cd test
           bash ./travis.sh
-      - name: "Upload to Codecov"
-        run: |
-          cd test
-          codecov
+          coverage xml
+      - name: "Upload Coverage"
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.8' }}
+        uses: codecov/codecov-action@v2
+        with:
+          directory: ./test/
+          fail_ci_if_error: false
+          verbose: true
