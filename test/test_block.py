@@ -122,7 +122,7 @@ class TestCopyBlock(unittest.TestCase):
         Pipeline(self.blocks).main()
         with open(logfile, 'r') as fh:
             log_nums = fh.read(500).split(' ')
-        test_num = np.float(log_nums[8])
+        test_num = float(log_nums[8])
         self.assertEqual(test_num, 3)
     def test_single_block_multi_copy(self):
         """Test which forces one block to do multiple
@@ -151,7 +151,7 @@ class TestCopyBlock(unittest.TestCase):
         Pipeline(self.blocks).main()
         with open(logfile, 'r') as fh:
             test_bytes = fh.read(500).split(' ')
-        self.assertAlmostEqual(np.float(test_bytes[0]), 0.72650784254)
+        self.assertAlmostEqual(float(test_bytes[0]), 0.72650784254)
 class TestFoldBlock(unittest.TestCase):
     """This tests functionality of the FoldBlock."""
     def setUp(self):
@@ -170,7 +170,7 @@ class TestFoldBlock(unittest.TestCase):
         Pipeline(self.blocks).main()
         with open(logfile, 'r') as fh:
             test_bytes = fh.read().split(' ')
-        histogram = np.array([np.float(x) for x in test_bytes])
+        histogram = np.array([float(x) for x in test_bytes])
         return histogram
     def test_simple_pulsar(self):
         """Test whether a pulsar histogram
