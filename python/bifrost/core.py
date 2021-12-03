@@ -31,6 +31,9 @@ from __future__ import absolute_import
 
 from bifrost.libbifrost import _bf
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def status_string(status):
     return _bf.bfGetStatusString(status)
 def debug_enabled():

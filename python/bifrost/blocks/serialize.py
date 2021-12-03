@@ -41,6 +41,9 @@ except ImportError:
 import glob
 from functools import reduce
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def _parse_bifrost_filename(fname):
     inds = fname[fname.find('.bf.') + 4:].split('.')[:-1]
     inds = [int(i) for i in inds]
@@ -275,4 +278,3 @@ def serialize(iring, path=None, max_file_size=None, *args, **kwargs):
         SerializeBlock: A new block instance.
     """
     return SerializeBlock(iring, path, max_file_size, *args, **kwargs)
-

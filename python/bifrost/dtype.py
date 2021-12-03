@@ -47,6 +47,9 @@ from __future__ import absolute_import
 from bifrost.libbifrost import _bf
 import numpy as np
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def split_name_nbit(dtype_str):
     """Splits a dtype string into (name, nbit)"""
     for i, char in enumerate(dtype_str):

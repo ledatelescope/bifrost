@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -60,14 +60,14 @@ class ProcLogMgr {
 					try {
 						remove_all(std::string(base_logdir) + "/" +
 							   std::to_string(pid));
-					} catch( std::exception ) {}
+					} catch( std::exception& ) {}
 				}
 			}
 			closedir(dp);
 		}
 		// Remove the base_logdir if it's empty
 		try { remove_dir(base_logdir); }
-		catch( std::exception ) {}
+		catch( std::exception& ) {}
 	}
 	ProcLogMgr()
 		: _logdir(std::string(base_logdir) + "/" + std::to_string(getpid())) {
@@ -79,7 +79,7 @@ class ProcLogMgr {
 		try {
 			remove_all(_logdir);
 			this->try_base_logdir_cleanup();
-		} catch( std::exception ) {}
+		} catch( std::exception& ) {}
 	}
 	FILE* open_file(std::string filename) {
 		// Note: Individual log dirs and files are only created if they are

@@ -29,6 +29,7 @@
 # Python2 compatibility
 from __future__ import print_function
 
+from distutils.command.install import install
 from setuptools import setup, find_packages
 import os
 import sys
@@ -54,10 +55,23 @@ except IOError:
     print("*************************************************************************")
     raise
 
+# Override "install" to show the telemetry warning
+class bifrost_install(install):
+    def run(self):
+        install.run(self)
+        print("*************************************************************************")
+        print("By default Bifrost installs with basic Python telemetry enabled in order ")
+        print("order to help inform how the software is used and to help inform future  ")
+        print("development.  You can opt out of telemetry collection using:             ")
+        print(">>> from bifrost import telemetry                                        ")
+        print(">>> telemetry.disable()                                                  ")
+        print("*************************************************************************")
+
 # Build up a list of scripts to install
 scripts = glob.glob(os.path.join('..', 'tools', '*.py'))
 
-setup(name='bifrost',
+setup(cmdclass={'install': bifrost_install,},
+      name='bifrost',
       version=__version__,
       description='Pipeline processing framework',
       author='Ben Barsdell',
