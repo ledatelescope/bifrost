@@ -32,8 +32,16 @@
 #include <sys/stat.h>  // For fstat
 #include <sys/types.h> // For getpid
 #include <unistd.h>    // For getpid
+#include <pwd.h>       // For getpwuid
 #include <system_error>
 
+inline std::string get_home_dir(void) {
+	const char *homedir;
+  if ((homedir = getenv("HOME")) == NULL) {
+    homedir = getpwuid(getuid())->pw_dir;
+  }
+	return std::string(homedir);
+}
 inline void make_dir(std::string path, int perms=775) {
 	if( std::system(("mkdir -p "+path+" -m "+std::to_string(perms)).c_str()) ) {
 		throw std::runtime_error("Failed to create path: "+path);
@@ -96,4 +104,3 @@ public:
 		flock(_fd, LOCK_UN);
 	}
 };
-

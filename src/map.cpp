@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -400,14 +400,13 @@ BFstatus build_map_kernel(int*                 external_ndim,
 
 #if BF_MAPCACHE_ENABLED
 class DiskCacheMgr {
-	static constexpr const char* _cachedir = "/dev/shm/bifrost_cache/";
-	std::string                  _vinfofile = std::string(_cachedir)+"map.ver";
-	std::string                  _indexfile; 
-	std::string                  _cachefile;
-	std::set<std::string>        _created_dirs;
-	mutable std::mutex           _mutex;
-	bool                         _loaded;
-	std::hash<std::string>       _get_name;
+	std::string            _cachedir;
+	std::string            _indexfile;
+	std::string            _cachefile;
+	std::set<std::string>  _created_dirs;
+	mutable std::mutex     _mutex;
+	bool                   _loaded;
+	std::hash<std::string> _get_name;
 	
 	void tag_cache(void) {
 	    // NOTE:  Must be called from within a LockFile lock
@@ -417,9 +416,9 @@ class DiskCacheMgr {
 		
 		std::ofstream info;
 		
-		if( !file_exists(_vinfofile) ) {
+		if( !file_exists(_cachedir + "cache.version") ) {
 		    try {
-		        info.open(_vinfofile, std::ios::out);
+		        info.open(_cachedir + "cache.version", std::ios::out);
 		        info << rt << " " << drv << endl;
 		        info.close();
 		    } catch( std::exception ) {}
@@ -427,16 +426,16 @@ class DiskCacheMgr {
 	}
 	
 	void validate_cache(void) {
-	    // NOTE:  Must be called from within a LockFile lock
-	    bool status = true;
-	    int rt, drv, cached_rt, cached_drv;
+		// NOTE:  Must be called from within a LockFile lock
+		bool status = true;
+		int rt, drv, cached_rt, cached_drv;
 		cudaRuntimeGetVersion(&rt);
 		cudaDriverGetVersion(&drv);
 		
 		std::ifstream info;
 		try {
 		    // Open
-		    info.open(_vinfofile, std::ios::in);
+		    info.open(_cachedir + "cache.version", std::ios::in);
 		    
 		    // Read
 		    info >> cached_rt >> cached_drv;
@@ -454,9 +453,9 @@ class DiskCacheMgr {
 		if( !status ) {
 		    //cout << "INVALIDATING DISK CACHE" << endl;
 		    try {
-		        remove_file(std::string(_cachedir)+"*.inf");
-		        remove_file(std::string(_cachedir)+"*.ptx");
-	            remove_file(_vinfofile);
+		        remove_file(_cachedir + "*.inf");
+		        remove_file(_cachedir + "*.ptx");
+		        remove_file(_cachedir + "cache.version");
 	        } catch( std::exception ) {}
 	    }
 	}
@@ -466,15 +465,15 @@ class DiskCacheMgr {
                        std::string  ptx,  
                        bool         basic_indexing_only) {              
         // Do this with a file lock to avoid interference from other processes
-		LockFile lock(std::string(_cachedir) + ".lock");
+		LockFile lock(_cachedir + ".lock");
 		
         this->tag_cache();
         
         // Get the name to save the kernel to
         std::stringstream basename;
         basename << std::hex << std::uppercase << _get_name(cache_key);
-        _indexfile = std::string(_cachedir) + basename.str() + ".inf";
-        _cachefile = std::string(_cachedir) + basename.str() + ".ptx";
+        _indexfile = _cachedir + basename.str() + ".inf";
+        _cachefile = _cachedir + basename.str() + ".ptx";
         
         std::ofstream index, cache;
         try {
@@ -504,7 +503,7 @@ class DiskCacheMgr {
 	
 	void load_from_disk(ObjectCache<std::string,std::pair<CUDAKernel,bool> > *kernel_cache) {
 	    // Do this with a file lock to avoid interference from other processes
-		LockFile lock(std::string(_cachedir) + ".lock");
+		LockFile lock(_cachedir + ".lock");
 		
         // Validate the cache
 		this->validate_cache();
@@ -520,10 +519,10 @@ class DiskCacheMgr {
         std::string field;
         
         // Find the files
-        DIR* dir = opendir(_cachedir);
+        DIR* dir = opendir(_cachedir.c_str());
         struct dirent *entry;
         while( (entry = readdir(dir)) != NULL ) {
-            _indexfile = std::string(_cachedir) + std::string(entry->d_name);
+            _indexfile = _cachedir + std::string(entry->d_name);
             if( _indexfile.size() < 4 ) {
                 continue;
             }
@@ -578,17 +577,18 @@ class DiskCacheMgr {
 	
 	void clear_cache() {
 	    // Do this with a file lock to avoid interference from other processes
-		LockFile lock(std::string(_cachedir) + ".lock");
+		LockFile lock(_cachedir + ".lock");
 		
 	    try {
-		        remove_file(std::string(_cachedir)+"*.inf");
-		        remove_file(std::string(_cachedir)+"*.ptx");
+		        remove_file(_cachedir + "*.inf");
+		        remove_file(_cachedir + "*.ptx");
 	        } catch( std::exception ) {}
 	}
 	
 	DiskCacheMgr()
-		: _loaded(false) {
-		    make_dir(_cachedir);
+		: _cachedir(get_home_dir()+"/.bifrost/map_cache/"), _loaded(false) {
+				std::cout << "CACHE: " << _cachedir << std::endl;
+				make_dir(_cachedir);
 	}
 public:
 	DiskCacheMgr(DiskCacheMgr& ) = delete;
@@ -596,6 +596,7 @@ public:
 	
 	static DiskCacheMgr& get() {
 		static DiskCacheMgr cache;
+		std::cout << "HOME: " << get_home_dir() << std::endl;
 		return cache;
 	}
 	
