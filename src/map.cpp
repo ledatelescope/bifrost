@@ -638,8 +638,8 @@ BFstatus bfMap(int                  ndim,
                int  const           block_axes[2]) {
 	// Map containing compiled kernels and basic_indexing_only flag
 	thread_local static ObjectCache<std::string,std::pair<CUDAKernel,bool> >
-		kernel_cache(BF_MAP_KERNEL_CACHE_SIZE);
-    BF_ASSERT(ndim >= 0,           BF_STATUS_INVALID_ARGUMENT);
+	kernel_cache(BF_MAP_KERNEL_CACHE_SIZE);
+	BF_ASSERT(ndim >= 0,           BF_STATUS_INVALID_ARGUMENT);
 	//BF_ASSERT(!ndim || shape,      BF_STATUS_INVALID_POINTER);
 	//BF_ASSERT(!ndim || axis_names, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(narg >= 0,           BF_STATUS_INVALID_ARGUMENT);
@@ -725,7 +725,7 @@ BFstatus bfMap(int                  ndim,
 			                          basic_indexing_only,
 			                          &ptx, &kernel_name));
 		}
-        CUDAKernel kernel;
+		CUDAKernel kernel;
 		BF_TRY(kernel.set(kernel_name.c_str(), ptx.c_str()));
 		kernel_cache.insert(cache_key,
 		                    std::make_pair(kernel, basic_indexing_only));
