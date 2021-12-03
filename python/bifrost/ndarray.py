@@ -51,6 +51,9 @@ from bifrost.DataType import DataType
 from bifrost.Space import Space
 import sys
 
+from bifrost import telemetry
+telemetry.track_module()
+
 # TODO: The stuff here makes array.py redundant (and outdated)
 
 # TODO: ndarray.flags['WRITEABLE'] does not get preserved

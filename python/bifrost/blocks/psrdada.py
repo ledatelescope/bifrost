@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,14 +27,14 @@
 
 from __future__ import absolute_import
 
-from bifrost.pipeline import SourceBlock, SinkBlock
+from bifrost.pipeline import SourceBlock
 from bifrost.Space import Space
 from bifrost.psrdada import Hdu
 from bifrost.libbifrost import _bf, _check
 import bifrost.ndarray
 
-from copy import deepcopy
-import os
+from bifrost import telemetry
+telemetry.track_module()
 
 # TODO: Move to memory.py?
 def _get_space(arr):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2021, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -50,6 +50,9 @@ except ImportError:
 os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import load_by_pid
 
+from bifrost import telemetry
+telemetry.track_script()
+
 
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
 
@@ -78,7 +81,7 @@ def get_load_average():
         data['lastPID'] = fields[4]
     return data
 
-global _CPU_STATE
+_CPU_STATE
 _CPU_STATE = {}
 def get_processor_usage():
     """
@@ -92,7 +95,9 @@ def get_processor_usage():
     NOTE::  Many of these details could be avoided by using something like the
           Python 'psutil' module.
     """
-
+    
+    global _CPU_STATE
+    
     data = {'avg': {'user':0.0, 'nice':0.0, 'sys':0.0, 'idle':0.0, 'wait':0.0, 'irq':0.0, 'sirq':0.0, 'steal':0.0, 'total':0.0}}
 
     with open('/proc/stat', 'r') as fh:
@@ -419,7 +424,6 @@ def main(args):
         for j in range(x):
             d = scr.inch(i,j)
             c = d&0xFF
-            a = (d>>8)&0xFF
             contents += chr(c)
 
     # Tear down curses

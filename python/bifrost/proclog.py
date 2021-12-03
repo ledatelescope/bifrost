@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,18 +31,13 @@ import sys
 if sys.version_info < (3,):
     range = xrange
     
-from bifrost.libbifrost import _bf, _check, _get, BifrostObject
+from bifrost.libbifrost import _bf, _check, BifrostObject
 
 import os
 import time
-import ctypes
-import numpy as np
 
-try:
-    import simplejson as json
-except ImportError:
-    print("WARNING: Install simplejson for better performance")
-    import json
+from bifrost import telemetry
+telemetry.track_module()
 
 class ProcLog(BifrostObject):
     def __init__(self, name):

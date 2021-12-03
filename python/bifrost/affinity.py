@@ -31,6 +31,9 @@ from __future__ import absolute_import
 
 from bifrost.libbifrost import _bf, _check, _get, _array
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def get_core():
     return _get(_bf.bfAffinityGetCore)
 def set_core(core):

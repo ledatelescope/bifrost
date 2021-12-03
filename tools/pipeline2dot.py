@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2021, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -33,11 +33,13 @@ from __future__ import print_function
 import os
 import sys
 import glob
-import time
 import argparse
 import subprocess
 
 from bifrost.proclog import load_by_pid
+
+from bifrost import telemetry
+telemetry.track_script()
 
 
 BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
@@ -158,36 +160,36 @@ def get_data_flows(blocks):
                 refBlock = block
                 refROuts = routs
 
-                for block in blocks.keys():
-                    rins, routs = [], []
+                for other_block in blocks.keys():
+                    other_rins, other_routs = [], []
                     dtype = None
-                    for log in blocks[block].keys():
+                    for log in blocks[other_block].keys():
                         if log.startswith('sequence'):
                             try:
-                                bits = blocks[block][log]['nbit']
-                                if blocks[block][log]['complex']:
+                                bits = blocks[other_block][log]['nbit']
+                                if blocks[other_block][log]['complex']:
                                     bits *= 2
-                                name = 'cplx' if  blocks[block][log]['complex'] else 'real'
+                                name = 'cplx' if  blocks[other_block][log]['complex'] else 'real'
                                 dtype = '%s%i' % (name, bits)
                             except KeyError:
                                 pass
                         elif log not in ('in', 'out'):
                             continue
 
-                        for key in blocks[block][log]:
+                        for key in blocks[other_block][log]:
                             if key[:4] == 'ring':
-                                value = blocks[block][log][key]
+                                value = blocks[other_block][log][key]
                                 if log == 'in':
-                                    if value not in rins:
-                                        rins.append( value )
+                                    if value not in other_rins:
+                                        other_rins.append( value )
                                 else:
-                                    if value not in routs:
-                                        routs.append( value )
+                                    if value not in other_routs:
+                                        other_routs.append( value )
 
-                    for ring in rins:
+                    for ring in other_rins:
                         if ring in refROuts:
                             #print(refRing, rins, block)
-                            chains.append( {'link':(refBlock,block), 'dtype':dtype} )
+                            chains.append( {'link':(refBlock,other_block), 'dtype':dtype} )
 
     # Find out the associations (based on core binding)
     associations = []
@@ -203,25 +205,25 @@ def get_data_flows(blocks):
         if len(refCores) == 0:
             continue
 
-        for block in blocks:
-            if block == refBlock:
+        for other_block in blocks:
+            if other_block == refBlock:
                 continue
 
-            cores = []
+            other_cores = []
             for i in range(32):
                 try:
-                    cores.append( blocks[block]['bind']['core%i' % i] )
+                    other_cores.append( blocks[other_block]['bind']['core%i' % i] )
                 except KeyError:
                     break
 
-            if len(cores) == 0:
+            if len(other_cores) == 0:
                 continue
 
-            for core in cores:
+            for core in other_cores:
                 if core in refCores:
-                    if (refBlock,block) not in associations:
-                        if (block,refBlock) not in associations:
-                            associations.append( (refBlock, block) )
+                    if (refBlock,other_block) not in associations:
+                        if (other_block,refBlock) not in associations:
+                            associations.append( (refBlock, other_block) )
 
     return sources, sinks, chains, associations
 

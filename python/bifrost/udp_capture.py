@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,7 +27,10 @@
 
 # **TODO: Write tests for this class
 
-from bifrost.libbifrost import _bf, _check, _get, BifrostObject
+from bifrost.libbifrost import _bf, _check, BifrostObject
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class UDPCapture(BifrostObject):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,

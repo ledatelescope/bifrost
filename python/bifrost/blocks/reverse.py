@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -33,9 +33,11 @@ if sys.version_info < (3,):
     
 import bifrost as bf
 from bifrost.pipeline import TransformBlock
-from bifrost.DataType import DataType
 
 from copy import deepcopy
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class ReverseBlock(TransformBlock):
     def __init__(self, iring, axes, *args, **kwargs):

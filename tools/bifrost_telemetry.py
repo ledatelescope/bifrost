@@ -1,5 +1,7 @@
+#!/usr/bin/env python
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2021, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,31 +28,43 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # Python2 compatibility
-from __future__ import absolute_import
-
-from bifrost.libbifrost import _bf, _check
-from bifrost.ndarray import asarray
+from __future__ import print_function, division, absolute_import
+    
+import os
+import sys
+import argparse
 
 from bifrost import telemetry
-telemetry.track_module()
+telemetry.track_script()
 
-REDUCE_MAP = {
-    'sum':       _bf.BF_REDUCE_SUM,
-    'mean':      _bf.BF_REDUCE_MEAN,
-    'min':       _bf.BF_REDUCE_MIN,
-    'max':       _bf.BF_REDUCE_MAX,
-    'stderr':    _bf.BF_REDUCE_STDERR,
-    'pwrsum':    _bf.BF_REDUCE_POWER_SUM,
-    'pwrmean':   _bf.BF_REDUCE_POWER_MEAN,
-    'pwrmin':    _bf.BF_REDUCE_POWER_MIN,
-    'pwrmax':    _bf.BF_REDUCE_POWER_MAX,
-    'pwrstderr': _bf.BF_REDUCE_POWER_STDERR,
-}
 
-def reduce(idata, odata, op='sum'):
-    if op not in REDUCE_MAP:
-        raise ValueError("Invalid reduce op: " + str(op))
-    op = REDUCE_MAP[op]
-    _check(_bf.bfReduce(asarray(idata).as_BFarray(),
-                        asarray(odata).as_BFarray(),
-                        op))
+def main(args):
+    # Toggle
+    if args.enable:
+        telemetry.enable()
+    elif args.disable:
+        telemetry.disable()
+        
+    # Report
+    ## Status
+    print("Bifrost Telemetry is %s" % ('active' if telemetry.is_active() else 'in-active'))
+    
+    ## Key
+    if args.key:
+        print("  Identification key: %s" % telemetry._INSTALL_KEY)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+            description='update the Bifrost telemetry setting', 
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter
+            )
+    tgroup = parser.add_mutually_exclusive_group(required=False)
+    tgroup.add_argument('-e', '--enable', action='store_true', 
+                        help='enable telemetry for Bifrost')
+    tgroup.add_argument('-d', '--disable', action='store_true', 
+                        help='disable telemetry for Bifrost')
+    parser.add_argument('-k', '--key', action='store_true',
+                        help='show install identification key')
+    args = parser.parse_args()
+    main(args)

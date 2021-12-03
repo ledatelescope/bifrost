@@ -1,0 +1,20 @@
+0.9.1
+ * Fixed a problem with like_bmon.py crashing when there are a large number of pipelines
+ * Added a CHANGELOG file
+ * Added a lightweight telemetry client for the Python API
+
+0.9.0
+ * Added support for Python3
+ * Migrate from getopt to argparse for the scripts in tools
+ * Improve the test suite coverage
+ * Fixed a problem with proclog cleanup on multi-user systems
+ * Added a new bifrost.romein module for gridding data
+
+0.8.0
+ * Switched from PyCLibrary to ctypesgen for Python bindings
+ * Added tutorials for bifrost.map and bifrost.views to the documentation
+ * Switched to pretty print for bifrost.blocks.print_header
+ * Added new benchmarking tests
+ 
+0.7.0
+ * Initial release
