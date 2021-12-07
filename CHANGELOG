@@ -8,6 +8,7 @@
  * Made the Python API compatible with PEP479
  * Added support for the cuda_managed space on Pascal and later GPUs
  * Added support for ci32 in bf.map
+ * Added support for converting a bifrost.ndarray to/from a cupy.ndarray
 
 0.9.0
  * Added support for Python3

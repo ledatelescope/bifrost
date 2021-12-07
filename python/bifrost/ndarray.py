@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -165,6 +165,16 @@ class ndarray(np.ndarray):
                 native is not None):
                 raise ValueError('Invalid combination of arguments when base '
                                  'is specified')
+            if 'cupy' in sys.modules:
+                from cupy import ndarray as cupy_ndarray
+                if isinstance(base, cupy_ndarray):
+                     return ndarray.__new__(cls,
+                                            space='cuda',
+                                            buffer=int(base.data),
+                                            shape=base.shape,
+                                            dtype=base.dtype,
+                                            strides=base.strides,
+                                            native=np.dtype(base.dtype).isnative)
             if 'pycuda' in sys.modules:
                 from pycuda.gpuarray import GPUArray as pycuda_GPUArray
                 if isinstance(base, pycuda_GPUArray):
@@ -402,6 +412,15 @@ class ndarray(np.ndarray):
             else:
                 key = slice(key, key + 1)
         copy_array(self[key], val)
+    def as_cupy(self, *args, **kwargs):
+        import cupy as cp
+        if space_accessible(self.bf.space, ['cuda']):
+            umem = cp.cuda.UnownedMemory(self.ctypes.data, self.data.nbytes, self)
+            mptr = cp.cuda.MemoryPointer(umem, 0)
+            ca = cp.ndarray(self.shape, dtype=self.dtype, memptr=mptr, strides=self.strides)
+        else:
+            ca = cp.asarray(np.array(self))
+        return ca
     def as_GPUArray(self, *args, **kwargs):
         from pycuda.gpuarray import GPUArray as pycuda_GPUArray
         g  = pycuda_GPUArray(shape=self.shape, dtype=self.dtype, *args, **kwargs)
