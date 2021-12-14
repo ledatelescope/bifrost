@@ -43,11 +43,6 @@ ifndef NOUDPSOCKET
   udp_transmit.o 
 endif
 
-ifdef BUILDDP4A
-  LIBBIFROST_OBJS += \
-
-endif
-
 ifeq ($(HAVE_CUDA),1)
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
