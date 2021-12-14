@@ -87,6 +87,9 @@ print "All done"
 
 ## Installation
 
+**For a quick demo which you can run in-browser without installation,
+go to the following [link](https://colab.research.google.com/github/ledatelescope/bifrost/blob/master/BifrostDemo.ipynb).**
+
 ### C Dependencies
 
     $ sudo apt-get install exuberant-ctags
