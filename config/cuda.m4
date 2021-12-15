@@ -130,6 +130,9 @@ AC_DEFUN([AX_CHECK_CUDA],
             }
             fh.close();]])],
             [AC_SUBST([GPU_ARCHS], [`cat confarchs.out`])
+             ar_supported=$( ${NVCC} -h | ${GREP} -Po "'compute_[[0-9]]{2,3}" | cut -d_ -f2 | sort | uniq )
+             ar_valid=$( echo $GPU_ARCHS $ar_supported | xargs -n1 | sort | uniq -d | xargs )
+             AC_SUBST([GPU_ARCHS], [$ar_valid])
              AC_MSG_RESULT([$GPU_ARCHS])],
             [AC_MSG_ERROR(failed to find any)])
 
