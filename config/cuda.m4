@@ -145,7 +145,7 @@ AC_DEFUN([AX_CHECK_CUDA],
     ar_supported=$( ${NVCC} -h | ${GREP} -Po "compute_[[0-9]]{2,3}" | cut -d_ -f2 | sort | uniq )
     ar_valid=$( echo $GPU_ARCHS $ar_supported | xargs -n1 | sort | uniq -d | xargs )
     ar_found=$( echo $ar_valid | wc -w )
-    if test "$ar_requested" = $ar_found; then
+    if test "$ar_requested" = "$ar_found"; then
       AC_MSG_RESULT([yes])
     else
       AC_MSG_ERROR(only architectures $ar_valid are supported)
