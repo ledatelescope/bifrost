@@ -269,6 +269,16 @@ AC_SUBST([PACKAGE_VERSION_MINOR], [`echo $PACKAGE_VERSION | $AWK -F. -e '{print 
 AC_SUBST([PACKAGE_VERSION_MICRO], [`echo $PACKAGE_VERSION | $AWK -F. -e '{print $3}'`])
 
 #
+# C++14/C++11 toggling
+#
+
+AS_IF([test x$HAVE_CXX14 = x1],
+      [CXXFLAGS="-std=c++14 $CXXFLAGS"
+       NVCCFLAGS="-std=c++14 $NVCCFLAGS"],
+      [CXXFLAGS="-std=c++11 $CXXFLAGS"
+       NVCCFLAGS="-std=c++11 -Xcompiler \"-DTHRUST_IGNORE_DEPRECATED_CPP_DIALECT\" $NVCCFLAGS"])
+
+#
 # Linking flags
 #
 
