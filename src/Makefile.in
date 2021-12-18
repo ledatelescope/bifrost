@@ -14,6 +14,8 @@ DOXYGEN        ?= @DX_DOXYGEN@
 PYBUILDFLAGS   ?= @PYBUILDFLAGS@
 PYINSTALLFLAGS ?= @PYINSTALLFLAGS@
 
+HAVE_CXX14    ?= @HAVE_CXX14@
+
 HAVE_RECVMSG  ?= @HAVE_RECVMSG@
 
 HAVE_CUDA     ?= @HAVE_CUDA@
@@ -87,8 +89,13 @@ NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS_VALID), \
   -gencode arch=compute_$(GPU_ARCH_LATEST),\"code=compute_$(GPU_ARCH_LATEST)\"
 endif
 
-CXXFLAGS  += -std=c++11
-NVCCFLAGS += -std=c++11 $(NVCC_GENCODE)
+ifeq ($(HAVE_CXX14),1)
+  CXXFLAGS  += -std=c++14
+  NVCCFLAGS += -std=c++14 $(NVCC_GENCODE)
+else
+  CXXFLAGS  += -std=c++11
+  NVCCFLAGS += -std=c++11 -Xcompiler "-DTHRUST_IGNORE_DEPRECATED_CPP_DIALECT" $(NVCC_GENCODE)
+endif
 
 #NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
 #NVCCFLAGS += --expt-relaxed-constexpr
