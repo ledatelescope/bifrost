@@ -60,8 +60,8 @@ else
 endif
 	@echo "*************************************************************************"
 	@echo "By default Bifrost installs with basic Python telemetry enabled in order"
-	@echo "order to help inform how the software is used and to help inform future"
-	@echo "development.  You can opt out of telemetry collection using:"
+	@echo "to help inform how the software is used for future development.  You can"
+	@echo "opt out of telemetry collection using:"
 	@echo ">>> from bifrost import telemetry"
 	@echo ">>> telemetry.disable()"
 	@echo "*************************************************************************"
