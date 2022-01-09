@@ -33,6 +33,11 @@
 #include <immintrin.h> // SSE
 #include <emmintrin.h>
 
+// TODO: parameterize somewhere. This isn't
+// related to the packet formatting
+#define PIPELINE_NPOL 704
+#define PIPELINE_NCHAN 32
+
 // All entries are network (i.e. big) endian
 struct __attribute__((packed)) snap2_hdr_type {
         uint64_t  seq;       // Spectra counter == packet counter
@@ -58,13 +63,13 @@ struct __attribute__((packed)) snap2_hdr_type {
 class SNAP2Decoder : virtual public PacketDecoder {
 protected:
     inline bool valid_packet(const PacketDesc* pkt) const {
-#if BF_SNAP2_DEBUG
-        cout << "seq: "<< pkt->seq << endl;
-        cout << "src: "<< pkt->src << endl;
-        cout << "nsrc: "<< pkt->nsrc << endl;
-        cout << "nchan: "<< pkt->nchan << endl;
-        cout << "chan0: "<< pkt->chan0 << endl;
-#endif
+//#if BF_SNAP2_DEBUG
+//        cout << "seq: "<< pkt->seq << endl;
+//        cout << "src: "<< pkt->src << endl;
+//        cout << "nsrc: "<< pkt->nsrc << endl;
+//        cout << "nchan: "<< pkt->nchan << endl;
+//        cout << "chan0: "<< pkt->chan0 << endl;
+//#endif
         return ( 
                  pkt->seq >= 0
                  && pkt->src >= 0
@@ -120,10 +125,8 @@ public:
 };
 
 class SNAP2Processor : virtual public PacketProcessor {
-private:
-    bool _initialized = false;
-    int _npol_tot = 0;
-    int _npol_pkt = 0;
+protected:
+    int _pipeline_nchan = PIPELINE_NCHAN;
 public:
     inline void operator()(const PacketDesc* pkt,
                            uint64_t          seq0,
@@ -154,12 +157,6 @@ public:
             int words_per_chan_out = pkt->npol_tot >> 5;
             int pol_offset_out = pkt->pol0 >> 5;
             int pkt_chan = pkt->chan0;           // The first channel in this packet
-
-            if ( !_initialized ) {
-                _npol_tot = pkt->npol_tot;
-                _npol_pkt = pkt->npol;
-                _initialized = true;
-            }
         
             // Copy packet payload one channel at a time.
             // Packets have payload format nchans x npols x complexity.
@@ -189,25 +186,16 @@ public:
                                      int      nsrc,
                                      int      nchan,
                                      int      nseq) {
-            //fprintf(stderr, "Zeroing out source %d of %d (%d chans) (%d nseq)\n", src, nsrc, nchan, nseq);
-            int npol_blocks = _npol_tot / _npol_pkt;
-            int nchan_blocks = nsrc / npol_blocks;
-            int chan_block = src / npol_blocks;
-            int pol_block =  src % npol_blocks;
-            //fprintf(stderr, "Channel block: %d. Zeroing %d bytes\n", chan_block, _npol_pkt);
-            // Output buffer is Time x Chan x Pol
-            // -> Time x chan_block x chan x pol_block x pol_words
-            // -> Time x 
-            int chan_block_offset_bytes = chan_block * nchan * _npol_tot;
-            int time_offset_bytes = nchan_blocks * nchan * _npol_tot;
-            int pol_offset_bytes = pol_block*_npol_pkt;
-            //fprintf(stderr, "Offset bytes: T*%d + [chan block] %d + c*%d + [pol offset] %d\n", time_offset_bytes, chan_block_offset_bytes, _npol_tot, pol_offset_bytes);
-            for( int t=0; t<nseq; t++ ) {
-                    for( int c=0; c<nchan; c++ ) {
-                            ::memset(&data[t*time_offset_bytes + chan_block_offset_bytes
-                                           + c*_npol_tot + pol_offset_bytes], 0, _npol_pkt);
-                    }
-            }
+            //fprintf(stderr, "TRYING TO BLANK OUT A SOURCE WITH MISSING PACKETS. BUT BLANKING NOT IMPLEMENTED\n");
+            //typedef aligned256_type otype;
+            //fprintf(stderr, "You really better not be here\n");
+            //otype* __restrict__ aligned_data = (otype*)data;
+            //for( int t=0; t<nseq; ++t ) {
+            //        for( int c=0; c<nchan; ++c ) {
+            //                ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
+            //                         0, sizeof(otype));
+            //        }
+            //}
     }
 };
 
