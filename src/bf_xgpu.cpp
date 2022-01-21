@@ -131,13 +131,16 @@ BFstatus bfXgpuKernel(BFarray *in, BFarray *out, int doDump) {
 
 /*
  * Given an xGPU accumulation buffer, grab a subset of visibilities from
- * and gather them in a new buffer, in order chan x visibility x complexity [int32]
+ * and gather them in a new buffer, in order
+ * chan x visibility x complexity [int32] (if transpose=0)
+ * or
+ * visibility x chan * complexity [int32] (if transpose!=0)
  * BFarray *in : Pointer to a BFarray with storage in device memory, where xGPU results reside
  * BFarray *in : Pointer to a BFarray with storage in device memory where collated visibilities should be written.
  * BFarray *vismap : array of visibilities in [[polA, polB], [polC, polD], ... ] form.
  * int nchan_sum: The number of frequency channels to sum over
  */
-BFstatus bfXgpuSubSelect(BFarray *in, BFarray *out, BFarray *vismap, BFarray *conj, int nchan_sum) {
+BFstatus bfXgpuSubSelect(BFarray *in, BFarray *out, BFarray *vismap, BFarray *conj, int nchan_sum, int transpose) {
   long long unsigned nvis = num_contiguous_elements(vismap);
   int xgpu_error;
   if (in->space != BF_SPACE_CUDA) {
@@ -155,7 +158,7 @@ BFstatus bfXgpuSubSelect(BFarray *in, BFarray *out, BFarray *vismap, BFarray *co
   if (num_contiguous_elements(conj) != nvis) {
     return BF_STATUS_INVALID_SHAPE;
   }
-  xgpu_error = xgpuCudaSubSelect(&context, (Complex *)in->data, (Complex *)out->data, (int *)vismap->data, (int *)conj->data, nvis, nchan_sum);
+  xgpu_error = xgpuCudaSubSelect(&context, (Complex *)in->data, (Complex *)out->data, (int *)vismap->data, (int *)conj->data, nvis, nchan_sum, transpose);
   if (xgpu_error != XGPU_OK) {
     fprintf(stderr, "ERROR: xgpuKernel: kernel call returned %d\n", xgpu_error);
     return BF_STATUS_INTERNAL_ERROR;
