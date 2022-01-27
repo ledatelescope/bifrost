@@ -37,16 +37,10 @@ LIBBIFROST_OBJS = \
 
 ifndef NOUDPSOCKET
   LIBBIFROST_OBJS += \
-	address.o \
-	udp_socket.o \
+  address.o \
+  udp_socket.o \
   udp_capture.o \
   udp_transmit.o 
-endif
-
-ifdef BUILDDP4A
-  LIBBIFROST_OBJS += \
-  xcorr_lite.o\
-  beanfarmer.o
 endif
 
 ifeq ($(HAVE_CUDA),1)
@@ -63,7 +57,9 @@ ifeq ($(HAVE_CUDA),1)
   reduce.o \
   fir.o \
   guantize.o \
-  gunpack.o
+  gunpack.o \
+  xcorr_lite.o \
+  beanfarmer.o
 endif
 
 ifdef BUILDROMEIN
