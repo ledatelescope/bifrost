@@ -333,6 +333,19 @@ private:
 public:
 	BFfdmt_impl() : _nchan(0), _max_delay(0), _f0(0), _df(0), _exponent(0),
 	                _stream(g_cuda_stream) {}
+	~BFfdmt_impl() {
+		// DCP-27-Jan-2021: Added to try and fix MEM_OP_FAILED errors
+		cudaDeviceSynchronize();
+		// empty the thrust vectors
+		_dv_plan_storage.clear();
+		_dv_exec_storage.clear();
+
+		// deallocate any capacity which may currently be associated with vec
+		_dv_plan_storage.shrink_to_fit();
+		_dv_exec_storage.shrink_to_fit();
+
+	}
+
 	inline IType nchan()     const { return _nchan; }
 	inline IType max_delay() const { return _max_delay; }
 	void init(IType nchan,
