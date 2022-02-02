@@ -22378,11 +22378,11 @@ DX_RULES="${DX_SNIPPET_doc}"
 # Version splitting
 #
 
-PACKAGE_VERSION_MAJOR=`echo $PACKAGE_VERSION | $AWK -F. -e '{print $1}'`
+PACKAGE_VERSION_MAJOR=`echo $PACKAGE_VERSION | $AWK -F. '{print $1}'`
 
-PACKAGE_VERSION_MINOR=`echo $PACKAGE_VERSION | $AWK -F. -e '{print $2}'`
+PACKAGE_VERSION_MINOR=`echo $PACKAGE_VERSION | $AWK -F. '{print $2}'`
 
-PACKAGE_VERSION_MICRO=`echo $PACKAGE_VERSION | $AWK -F. -e '{print $3}'`
+PACKAGE_VERSION_MICRO=`echo $PACKAGE_VERSION | $AWK -F. '{print $3}'`
 
 
 #
