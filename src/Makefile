@@ -20,6 +20,10 @@ LIBBIFROST_OBJS = \
   unpack.o \
   quantize.o \
   proclog.o
+ifdef RDMA
+  LIBBIFROST_OBJS += \
+  rdma.o
+endif
 ifndef NOCUDA
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
@@ -100,9 +104,15 @@ ifdef VMA
 endif
 
 ifdef VERBS
-  # Requires Mellanox libvma to be installed
-  LIB        += -lvma -libverbs
+  # Requires Mellanox libibverbs to be installed
+  LIB        += -libverbs
   CPPFLAGS   += -DBF_VERBS_ENABLED=1
+endif
+
+ifdef RDMA
+  # Requires Mellanox libibverbs and librdmacm to be installed
+  LIB        += -libverbs -librdmacm
+  CPPFLAGS   += -DBF_RDMA_ENABLED=1
 endif
 
 ifdef ALIGNMENT

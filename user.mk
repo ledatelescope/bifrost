@@ -31,3 +31,4 @@ ALIGNMENT ?= 4096 # Memory allocation alignment
 #HWLOC      = 1 # Enable use of hwloc library for memory binding in udp_capture
 #VMA        = 1 # Enable use of Mellanox libvma in udp_capture
 #VERBS      = 1 # Enable use of IB verbs with udp_verbs_capture and udp_verbs_transmit
+#RDMA       = 1 # Enable use of RDMA for ring sharing
