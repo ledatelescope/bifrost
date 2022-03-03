@@ -30,4 +30,4 @@ ALIGNMENT ?= 4096 # Memory allocation alignment
 #NUMA       = 1 # Enable use of numa library for setting affinity of ring memory
 #HWLOC      = 1 # Enable use of hwloc library for memory binding in udp_capture
 #VMA        = 1 # Enable use of Mellanox libvma in udp_capture
-#VERBS      = 1 # Enable use of IB verbs with udp_verbs_capture
+#VERBS      = 1 # Enable use of IB verbs with udp_verbs_capture and udp_verbs_transmit
