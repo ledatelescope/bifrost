@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -145,10 +145,28 @@ BFstatus bfUdpTransmitCreate(BFpacketwriter* obj,
     return BFpacketwriter_create(obj, format, fd, core, BF_IO_UDP);
 }
 
+BFstatus bfUdpVerbsTransmitCreate(BFpacketwriter* obj,
+                                  const char*     format,
+                                  int             fd,
+                                  int             core) {
+    return BFpacketwriter_create(obj, format, fd, core, BF_IO_VERBS);
+}
+
 BFstatus bfPacketWriterDestroy(BFpacketwriter obj) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     delete obj;
     return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketWriterSetRateLimit(BFpacketwriter obj,
+                                    uint32_t       rate_limit) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    BF_TRY_RETURN(obj->set_rate_limit(rate_limit));
+}
+
+BFstatus bfPacketWriterResetRateLimit(BFpacketwriter obj) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    BF_TRY_RETURN(obj->reset_rate_limit());
 }
 
 BFstatus bfPacketWriterResetCounter(BFpacketwriter obj) {
