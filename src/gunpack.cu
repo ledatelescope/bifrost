@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2017, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2017-2022, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2017, The University of New Mexico. All rights reserved.
+ * Copyright (c) 2017-2022, The University of New Mexico. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include "assert.hpp"
 #include "cuda.hpp"
 #include "utils.hu"
+#include "cuda/tuning.hpp"
 
 // HACK TESTING
 #include <iostream>
@@ -216,7 +217,7 @@ inline void launch_foreach_simple_gpu(T const*     in,
                                       Size         nelement,
                                       Func         func,
                                       cudaStream_t stream) {
-	dim3 block(512, 1); // TODO: Tune this
+	dim3 block(BF_TUNING_GUNPACK_BLOCK_SIZE, 1);
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
 	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
 	if( block.x*first > nelement ) {
@@ -266,7 +267,7 @@ inline void launch_foreach_promote_gpu(T const*     in,
                                        Size         nelement,
                                        Func         func,
                                        cudaStream_t stream) {
-	dim3 block(512, 1); // TODO: Tune this
+	dim3 block(BF_TUNING_GUNPACK_BLOCK_SIZE, 1);
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
 	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
 	if( block.x*first > nelement ) {
@@ -376,4 +377,3 @@ template void launch_foreach_promote_gpu<uint8_t,int64_t,double,GunpackFunctor<u
                                                                                                         size_t         nelement,
                                                                                                         GunpackFunctor<uint8_t,int64_t> func,
                                                                                                         cudaStream_t   stream);
-

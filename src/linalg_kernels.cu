@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -66,6 +66,7 @@ public:
 #include "assert.hpp"
 #include "linalg_kernels.h"
 #include "cuda/stream.hpp"
+#include "cuda/tuning.hpp"
 
 #define BF_USE_DIAGONAL_KERNEL 1
 //#define BF_USE_DIAGONAL_KERNEL 0
@@ -563,14 +564,16 @@ void bf_cherk_N(int N, int K, int nbatch,
 		BF_STATUS_INTERNAL_ERROR);
 	
 	enum {
-		M_THREAD = 8,
-		N_THREAD = 8, // TODO: Don't think it's possible to support this != M_THREAD
+		M_THREAD = BF_TUNING_LINALG_CHERK_THREAD,
+		N_THREAD = BF_TUNING_LINALG_CHERK_THREAD, // TODO: Don't think it's possible to support this != M_THREAD
 		//M_REG    = 4,
 		//N_REG    = 4//2
 		//M_REG    = 3, // Best at large N
 		//N_REG    = 3
-		M_REG    = 2,
-		N_REG    = 2 // Best at small N
+		//M_REG    = 2,
+		//N_REG    = 2 // Best at small N
+		M_REG    = BF_TUNING_LINALG_CHERK_M_REG,
+		N_REG    = BF_TUNING_LINALG_CHERK_N_REG
 	};
 	dim3 block(N_THREAD, M_THREAD);
 	size_t nblock_m = (N - 1) / (M_THREAD * M_REG) + 1;
@@ -814,9 +817,9 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
                                    int C_batchstride,
                                    cudaStream_t stream) {
 	enum {
-		BLOCK_X = 32, // Must be warpSize (32)
-		BLOCK_Y = 16, // Can be tuned
-		BLOCK_M = 8,  // Must be <= BLOCK_X (can be tuned within this bound)
+		BLOCK_X = 32,                       // Must be warpSize (32)
+		BLOCK_Y = BF_TUNING_LINALG_SMALLM_BLOCK_Y, 
+		BLOCK_M = BF_TUNING_LINALG_SMALLM_BLOCK_M, // Must be <= BLOCK_X (can be tuned within this bound)
 	};
 	BF_ASSERT_EXCEPTION(BLOCK_X == 32,      BF_STATUS_INTERNAL_ERROR);
 	BF_ASSERT_EXCEPTION(BLOCK_M <= BLOCK_X, BF_STATUS_INTERNAL_ERROR);

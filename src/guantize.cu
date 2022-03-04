@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2017, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2017-2022, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2017, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2017, The University of New Mexico. All rights reserved.
+ * Copyright (c) 2017-2022, The University of New Mexico. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include "assert.hpp"
 #include "cuda.hpp"
 #include "utils.hu"
+#include "cuda/tuning.hpp"
 
 #include <limits>
 #include <cmath>
@@ -109,7 +110,7 @@ inline void launch_foreach_simple_gpu(T const*     in,
                                       Size         nelement,
                                       Func         func,
                                       cudaStream_t stream=0) {
-	dim3 block(512, 1); // TODO: Tune this
+	dim3 block(BF_TUNING_GUANTIZE_BLOCK_SIZE, 1);
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
 	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
 	if( block.x*first > nelement ) {
@@ -170,7 +171,7 @@ inline void launch_foreach_simple_gpu_4bit(T const*     in,
                                            Func         func,
                                            cudaStream_t stream=0) {
 	nelement /= 2;
-	dim3 block(512, 1); // TODO: Tune this
+	dim3 block(BF_TUNING_GUANTIZE_BLOCK_SIZE, 1);
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
 	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
 	if( block.x*first > nelement ) {
@@ -239,7 +240,7 @@ inline void launch_foreach_simple_gpu_2bit(T const*     in,
                                            Func         func,
                                            cudaStream_t stream=0) {
 	nelement /= 4;
-	dim3 block(512, 1); // TODO: Tune this
+	dim3 block(BF_TUNING_GUANTIZE_BLOCK_SIZE, 1);
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
 	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
 	if( block.x*first > nelement ) {
@@ -324,7 +325,7 @@ inline void launch_foreach_simple_gpu_1bit(T const*     in,
                                            Func         func,
                                            cudaStream_t stream=0) {
 	nelement /= 8;
-	dim3 block(512, 1); // TODO: Tune this
+	dim3 block(BF_TUNING_GUANTIZE_BLOCK_SIZE, 1);
 	Size first = std::min((nelement-1)/block.x+1, 65535ul);
 	Size secnd = std::min((nelement - first*block.x) / first + 1, 65535ul);
 	if( block.x*first > nelement ) {
@@ -466,4 +467,3 @@ template void launch_foreach_simple_gpu<float,int32_t,GuantizeFunctor<float,doub
                                                                                                     size_t       nelement,
                                                                                                     GuantizeFunctor<float,double,int32_t> func,
                                                                                                     cudaStream_t stream);
-

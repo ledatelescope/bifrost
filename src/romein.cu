@@ -35,6 +35,7 @@ Implements the Romein convolutional algorithm onto a GPU using CUDA.
 #include <bifrost/config.h>
 #include <bifrost/romein.h>
 #include "romein_kernels.cuh"
+#include "cuda/tuning.hpp"
 
 #include "assert.hpp"
 #include "trace.hpp"
@@ -264,7 +265,7 @@ inline void launch_romein_kernel(int      nbaseline,
                                  OutType* d_out,
                                  cudaStream_t stream=0) {
     //cout << "LAUNCH for " << nelement << endl;
-    dim3 block(8,1);
+    dim3 block(BF_TUNING_ROMEIN_BLOCK_SIZE,1);
     dim3 grid(nbatch*npol,1);
     if( polmajor ) {
         npol = 1;

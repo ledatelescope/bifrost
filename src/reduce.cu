@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@
 #include "utils.hpp"
 #include "cuda/stream.hpp"
 #include "Complex.hpp"
+#include "cuda/tuning.hpp"
 
 template<typename T, int N>
 struct __attribute__((aligned(sizeof(T)*N))) aligned_vector_type {
@@ -128,7 +129,7 @@ void launch_reduce_vector_kernel(IType const* in,
                                  int4 ostrides,
                                  BFreduce_op op,
                                  cudaStream_t stream) {
-	dim3 block(128); // TODO: Tune this
+	dim3 block(BF_TUNING_REDUCE_VECTOR_BLOCK_SIZE);
 	dim3 grid(std::min((shape.x - 1) / block.x + 1, 65535u),
 	          std::min(shape.y, 65535),
 	          std::min(shape.z, 65535));
@@ -219,7 +220,7 @@ void launch_reduce_loop_kernel(IType const* in,
                                int4 ostrides,
                                BFreduce_op op,
                                cudaStream_t stream) {
-	dim3 block(128);
+	dim3 block(BF_TUNING_REDUCE_LOOP_BLOCK_SIZE);
 	if( istrides.w == 1 && shape.w > 16 ) {
 		// This gives better perf when reducing along the fastest-changing axis
 		//   (non-coalesced reads).
@@ -407,7 +408,7 @@ void launch_reduce_complex_standard_vector_kernel(IType const* in,
                                                   int4         ostrides,
                                                   BFreduce_op  op,
                                                   cudaStream_t stream) {
-	dim3 block(128); // TODO: Tune this
+	dim3 block(BF_TUNING_REDUCE_VECTOR_BLOCK_SIZE);
 	dim3 grid(std::min((shape.x - 1) / block.x + 1, 65535u),
 	          std::min(shape.y, 65535),
 	          std::min(shape.z, 65535));
@@ -482,7 +483,7 @@ void launch_reduce_complex_standard_loop_kernel(IType const* in,
                                                 int4         ostrides,
                                                 BFreduce_op  op,
                                                 cudaStream_t stream) {
-	dim3 block(128);
+	dim3 block(BF_TUNING_REDUCE_LOOP_BLOCK_SIZE);
 	if( istrides.w == 1 && shape.w > 16 ) {
 		// This gives better perf when reducing along the fastest-changing axis
 		//   (non-coalesced reads).
@@ -649,7 +650,7 @@ void launch_reduce_complex_power_vector_kernel(IType const* in,
                                          int4         ostrides,
                                          BFreduce_op  op,
                                          cudaStream_t stream) {
-    dim3 block(128); // TODO: Tune this
+    dim3 block(BF_TUNING_REDUCE_VECTOR_BLOCK_SIZE);
     dim3 grid(std::min((shape.x - 1) / block.x + 1, 65535u),
               std::min(shape.y, 65535),
               std::min(shape.z, 65535));
@@ -725,7 +726,7 @@ void launch_reduce_complex_power_loop_kernel(IType const* in,
                                        int4         ostrides,
                                        BFreduce_op  op,
                                        cudaStream_t stream) {
-    dim3 block(128);
+    dim3 block(BF_TUNING_REDUCE_LOOP_BLOCK_SIZE);
     if( istrides.w == 1 && shape.w > 16 ) {
         // This gives better perf when reducing along the fastest-changing axis
         //   (non-coalesced reads).

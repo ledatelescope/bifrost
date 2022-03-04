@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +33,7 @@
 #include "assert.hpp"
 #include "utils.hpp"
 #include "trace.hpp"
+#include "cuda/tuning.hpp"
 
 #if BF_CUDA_ENABLED
   #include "transpose_gpu_kernel.cuh"
@@ -75,7 +76,7 @@ BFstatus transpose(int           ndim,
 	enum { ELEMENT_SIZE = sizeof(T) };
 	// TODO: This is currently all tuned for a GTX Titan (sm_35)
 	enum {
-		TILE_DIM   = 32,
+		TILE_DIM   = BF_TUNING_TRANSPOSE_TILE_DIM,
 		//BLOCK_ROWS = 8
 		//BLOCK_ROWS = (ALIGNMENT_IN >= 8 && ALIGNMENT_IN % 2 == 0) ? 16 : 8
 		BLOCK_ROWS = (ELEMENT_SIZE >= 8 && ELEMENT_SIZE % 2 == 0) ? 16 : 8,
@@ -516,9 +517,9 @@ BFstatus bfTranspose(BFarray const* in,
 	int ofastdim = axes_actual[ndim-1];
 	if( ifastdim == ofastdim ) {
 		return transpose_simple(in, out, axes_actual);
-	} else if( in->shape[ofastdim] <= 16 ) { // TODO: Tune this heuristic
+	} else if( in->shape[ofastdim] <= BF_TUNING_TRANSPOSE_WRITE_MAX_DIM ) {
 		return transpose_vector_write(in, out, axes_actual);
-	} else if( in->shape[ifastdim] <= 16 ) { // TODO: Tune this heuristic
+	} else if( in->shape[ifastdim] <= BF_TUNING_TRANSPOSE_READ_MAX_DIM ) {
 		return transpose_vector_read(in, out, axes_actual);
 	}
 	

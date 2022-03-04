@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 #include "workspace.hpp"
 #include "cuda.hpp"
 #include "trace.hpp"
+#include "cuda/tuning.hpp"
 
 //#include <limits>
 
@@ -170,7 +171,7 @@ void launch_fdmt_init_kernel(int            ntime,
                              int            ostride,
                              int            obatchstride,
                              cudaStream_t   stream=0) {
-	dim3 block(256, 1); // TODO: Tune this
+	dim3 block(BF_TUNING_FDMT_BLOCK_SIZE, 1);
 	dim3 grid(std::min((ntime-1)/block.x+1, 65535u),
 	          std::min((nchan-1)/block.y+1, 65535u));
 	void* args[] = {&ntime,
@@ -209,7 +210,7 @@ void launch_fdmt_exec_kernel(int          ntime,
                              int          obatchstride,
                              cudaStream_t stream=0) {
 	//cout << "LAUNCH " << d_in << ", " << d_out << endl;
-	dim3 block(256, 1); // TODO: Tune this
+	dim3 block(BF_TUNING_FDMT_BLOCK_SIZE, 1);
 	dim3 grid(std::min((ntime-1)/block.x+1, 65535u),
 	          std::min((nrow -1)/block.y+1, 65535u));
 	void* args[] = {&ntime,
