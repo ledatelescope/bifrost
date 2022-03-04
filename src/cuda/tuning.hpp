@@ -37,6 +37,14 @@
  #define BF_TUNING_FDMT_BLOCK_SIZE 256
  #endif
 
+ /*
+  * fir.cu
+  */
+  
+#ifndef BF_TUNING_FIR_BLOCK_SIZE
+#define BF_TUNING_FIR_BLOCK_SIZE 256
+#endif
+  
 /*
  * guantize.cu
  */
