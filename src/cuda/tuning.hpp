@@ -42,7 +42,7 @@
   */
   
 #ifndef BF_TUNING_FIR_BLOCK_SIZE
-#define BF_TUNING_FIR_BLOCK_SIZE 256
+#define BF_TUNING_FIR_BLOCK_SIZE 256u
 #endif
   
 /*
