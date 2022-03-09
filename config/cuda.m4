@@ -79,7 +79,7 @@ AC_DEFUN([AX_CHECK_CUDA],
   
   AC_ARG_WITH([gpu_archs],
               [AS_HELP_STRING([--with-gpu-archs=...],
-                              [default GPU architectures (default=dectect)])],
+                              [default GPU architectures (default=detect)])],
               [],
               [with_gpu_archs='auto'])
   if test "$HAVE_CUDA" = "1"; then

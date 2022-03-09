@@ -1540,7 +1540,7 @@ Optional Packages:
   --with-cuda-home        CUDA install path (default=/usr/local/cuda)
   --with-nvcc-flags       flags to pass to NVCC (default='-O3 -Xcompiler
                           "-Wall"')
-  --with-gpu-archs=...    default GPU architectures (default=dectect)
+  --with-gpu-archs=...    default GPU architectures (default=detect)
   --with-shared-mem=N     default GPU shared memory in bytes (default=16384)
   --with-alignment=N      default memory alignment in bytes (default=4096)
   --with-logging-dir=DIR  directory for Bifrost proclog logging
