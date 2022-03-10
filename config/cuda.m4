@@ -83,6 +83,11 @@ AC_DEFUN([AX_CHECK_CUDA],
               [],
               [with_gpu_archs='auto'])
   if test "$HAVE_CUDA" = "1"; then
+    AC_MSG_CHECKING([for valid CUDA architectures])
+    ar_supported=$( ${NVCC} -h | ${GREP} -Po "'compute_[[0-9]]{2,3}" | cut -d_ -f2 | sort | uniq )
+    ar_supported_flat=$( echo $ar_supported | xargs )
+    AC_MSG_RESULT(found: $ar_supported_flat)
+    
     if test "$with_gpu_archs" = "auto"; then
       AC_MSG_CHECKING([which CUDA architectures to target])
 
@@ -143,17 +148,14 @@ AC_DEFUN([AX_CHECK_CUDA],
       AC_SUBST([GPU_ARCHS], [$with_gpu_archs])
     fi
     
-    AC_MSG_CHECKING([for valid CUDA architectures])
+    AC_MSG_CHECKING([for valid requested CUDA architectures])
     ar_requested=$( echo "$GPU_ARCHS" | wc -w )
-    ar_supported=$( ${NVCC} -h | ${GREP} -Po "'compute_[[0-9]]{2,3}" | cut -d_ -f2 | sort | uniq )
     ar_valid=$( echo $GPU_ARCHS $ar_supported | xargs -n1 | sort | uniq -d | xargs )
     ar_found=$( echo $ar_valid | wc -w )
-    ar_supported=$( echo $ar_supported | xargs )
     if test "$ar_requested" = "$ar_found"; then
       AC_MSG_RESULT([yes])
     else
-      AC_MSG_NOTICE(supported architectures: $ar_supported)
-      AC_MSG_ERROR(only '$ar_valid' of the requested architectures are supported)
+      AC_MSG_ERROR(only '$ar_valid' are supported)
     fi
 
     AC_MSG_CHECKING([for Pascal-style CUDA managed memory])

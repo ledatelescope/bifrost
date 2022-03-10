@@ -19556,6 +19556,13 @@ else $as_nop
 fi
 
   if test "$HAVE_CUDA" = "1"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for valid CUDA architectures" >&5
+printf %s "checking for valid CUDA architectures... " >&6; }
+    ar_supported=$( ${NVCC} -h | ${GREP} -Po "'compute_[0-9]{2,3}" | cut -d_ -f2 | sort | uniq )
+    ar_supported_flat=$( echo $ar_supported | xargs )
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: found: $ar_supported_flat" >&5
+printf "%s\n" "found: $ar_supported_flat" >&6; }
+
     if test "$with_gpu_archs" = "auto"; then
       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking which CUDA architectures to target" >&5
 printf %s "checking which CUDA architectures to target... " >&6; }
@@ -19645,20 +19652,16 @@ fi
 
     fi
 
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for valid CUDA architectures" >&5
-printf %s "checking for valid CUDA architectures... " >&6; }
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for valid requested CUDA architectures" >&5
+printf %s "checking for valid requested CUDA architectures... " >&6; }
     ar_requested=$( echo "$GPU_ARCHS" | wc -w )
-    ar_supported=$( ${NVCC} -h | ${GREP} -Po "'compute_[0-9]{2,3}" | cut -d_ -f2 | sort | uniq )
     ar_valid=$( echo $GPU_ARCHS $ar_supported | xargs -n1 | sort | uniq -d | xargs )
     ar_found=$( echo $ar_valid | wc -w )
-    ar_supported=$( echo $ar_supported | xargs )
     if test "$ar_requested" = "$ar_found"; then
       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
     else
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: supported architectures: $ar_supported" >&5
-printf "%s\n" "$as_me: supported architectures: $ar_supported" >&6;}
-      as_fn_error $? "only '$ar_valid' of the requested architectures are supported" "$LINENO" 5
+      as_fn_error $? "only '$ar_valid' are supported" "$LINENO" 5
     fi
 
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for Pascal-style CUDA managed memory" >&5
