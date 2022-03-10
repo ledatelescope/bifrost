@@ -35,7 +35,7 @@ import sys
 import glob
 
 # Parse version file to extract __version__ value
-bifrost_version_file = 'bifrost/version.py'
+bifrost_version_file = 'bifrost/version/__init__.py'
 try:
     with open(bifrost_version_file, 'r') as version_file:
         for line in version_file:
@@ -50,8 +50,8 @@ except IOError:
     if 'clean' in sys.argv[1:]:
         sys.exit(0)
     print("*************************************************************************")
-    print("Please run `configure` and `make` from the root of the source tree to    ")
-    print("generate version.py                                                      ")
+    print("Please run `configure` and `make` from the root of the source tree to")
+    print(f"generate {bifrost_version_file}")
     print("*************************************************************************")
     raise
 
