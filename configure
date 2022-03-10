@@ -17592,7 +17592,7 @@ if ! ${CTAGS} --version | grep -q Exuberant
 then :
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
-       as_fn_error $? "exhuberant ctags is required, but ${CTAGS} is a different version" "$LINENO" 5
+       as_fn_error $? "exuberant ctags is required, but ${CTAGS} is a different version" "$LINENO" 5
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }

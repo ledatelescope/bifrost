@@ -27,7 +27,7 @@ AS_IF([test x${CTAGS} = x],
 AC_MSG_CHECKING([whether ${CTAGS} is exuberant])
 AS_IF([! ${CTAGS} --version | grep -q Exuberant],
       [AC_MSG_RESULT([no])
-       AC_MSG_ERROR([exhuberant ctags is required, but ${CTAGS} is a different version])],
+       AC_MSG_ERROR([exuberant ctags is required, but ${CTAGS} is a different version])],
       [AC_MSG_RESULT([yes])])
 
 AC_SUBST(SO_EXT, $shrext_cmds)
