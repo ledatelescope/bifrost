@@ -779,6 +779,7 @@ build_vendor
 build_cpu
 build
 LIBTOOL
+AM_DEFAULT_VERBOSITY
 target_alias
 host_alias
 build_alias
@@ -3291,6 +3292,9 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 
 
+
+
+AM_DEFAULT_VERBOSITY=1
 
 
 : ${CXXFLAGS="-O3 -Wall -pedantic"}
