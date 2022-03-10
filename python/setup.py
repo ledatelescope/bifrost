@@ -51,7 +51,7 @@ except IOError:
         sys.exit(0)
     print("*************************************************************************")
     print("Please run `configure` and `make` from the root of the source tree to")
-    print(f"generate {bifrost_version_file}")
+    print("generate", bifrost_version_file)
     print("*************************************************************************")
     raise
 
