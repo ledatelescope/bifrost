@@ -99,7 +99,7 @@ print "All done"
  * ctypesgen
 
 ```
-$ sudo pip install numpy contextlib2 pint git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f
+$ sudo pip install numpy contextlib2 pint ctypesgen==1.0.2
 ```
 
 ### Bifrost Installation

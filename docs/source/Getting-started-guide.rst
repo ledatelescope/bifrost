@@ -43,7 +43,7 @@ numpy, matplotlib, contextlib2, simplejson, pint, graphviz, ctypesgen
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you have already installed pip, this step should be as simple as
-``pip install --user numpy matplotlib contextlib2 simplejson pint graphviz git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f``.
+``pip install --user numpy matplotlib contextlib2 simplejson pint graphviz ctypesgen==1.0.2``.
 
 C++ dependencies
 ~~~~~~~~~~~~~~~~
