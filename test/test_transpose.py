@@ -32,7 +32,7 @@ import bifrost.transpose
 from functools import reduce
 from itertools import permutations
 
-from bifrost.libbifrost_generated import BF_CUDA_ENABLED
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED, BF_FLOAT128_ENABLED
 
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TransposeTest(unittest.TestCase):
@@ -60,5 +60,6 @@ class TransposeTest(unittest.TestCase):
         self.run_simple_test_shmoo(np.uint32)
     def test_8byte(self):
         self.run_simple_test_shmoo(np.uint64)
+    @unittest.skipUnless(BF_FLOAT128_ENABLED, "requires float128 support")
     def test_16byte(self):
         self.run_simple_test_shmoo(np.float128)
