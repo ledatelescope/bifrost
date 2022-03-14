@@ -193,15 +193,8 @@ they are aggregated.
 
 Users can opt out of telemetry collection using:
 
-```python
-from bifrost import telemetry
-telemetry.disable()
 ```
-
-or by using the included `bifrost_telemetry.py` script:
-
-```
-python bifrost_telemetry.py --disable
+python -m bifrost.telemetry --disable
 ```
 
 This command will set a disk-based flag that disables the reporting process.
