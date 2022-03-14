@@ -73,7 +73,7 @@ class TransposeBlock(TransformBlock):
     def on_data(self, ispan, ospan):
         # TODO: bf.memory.transpose should support system space too
         if bf.memory.space_accessible(self.space, ['cuda']):
-            bf.transpose.transpose(ospan.data, ispan.data, self.axes)
+            bf.transpose(ospan.data, ispan.data, self.axes)
         else:
             ospan.data[...] = np.transpose(ispan.data, self.axes)
 
