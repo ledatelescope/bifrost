@@ -15,6 +15,7 @@ AC_DEFUN([AX_CHECK_CUDA],
                 [enable_cuda=yes])
   
   AC_SUBST([HAVE_CUDA], [0])
+  AC_SUBST([GPU_MAX_ARCH], [0])
   if test "$enable_cuda" != "no"; then
     AC_SUBST([HAVE_CUDA], [1])
     
@@ -137,8 +138,12 @@ AC_DEFUN([AX_CHECK_CUDA],
             [AC_SUBST([GPU_ARCHS], [`cat confarchs.out`])
              ar_supported=$( ${NVCC} -h | ${GREP} -Po "'compute_[[0-9]]{2,3}" | cut -d_ -f2 | sort | uniq )
              ar_valid=$( echo $GPU_ARCHS $ar_supported | xargs -n1 | sort | uniq -d | xargs )
-             AC_SUBST([GPU_ARCHS], [$ar_valid])
-             AC_MSG_RESULT([$GPU_ARCHS])],
+             if test "$ar_valid" = ""; then
+               AC_MSG_ERROR(failed to find any)
+             else
+               AC_SUBST([GPU_ARCHS], [$ar_valid])
+               AC_MSG_RESULT([$GPU_ARCHS])
+             fi],
             [AC_MSG_ERROR(failed to find any)])
 
       CXXFLAGS="$CXXFLAGS_save"
@@ -157,6 +162,9 @@ AC_DEFUN([AX_CHECK_CUDA],
     else
       AC_MSG_ERROR(only '$ar_valid' are supported)
     fi
+    
+    ar_max_valid=$(echo $ar_valid | ${SED} -e 's/.* //g;' )
+    AC_SUBST([GPU_MAX_ARCH], [$ar_max_valid])
 
     AC_MSG_CHECKING([for Pascal-style CUDA managed memory])
     cm_invalid=$( echo $GPU_ARCHS | ${SED} -e 's/\b[[1-5]][[0-9]]\b/PRE/g;' )
