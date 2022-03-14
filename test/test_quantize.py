@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 import unittest
 import numpy as np
 import bifrost as bf
-import bifrost.quantize
 
 class QuantizeTest(unittest.TestCase):
     def run_quantize_from_cf32_test(self, out_dtype):
@@ -41,7 +40,7 @@ class QuantizeTest(unittest.TestCase):
                                 [(2,2), (3,4)],
                                 [(4,4), (5,6)]],
                                dtype=out_dtype)
-        bf.quantize.quantize(iarray, oarray)
+        bf.quantize(iarray, oarray)
         np.testing.assert_equal(oarray, oarray_known)
     def test_cf32_to_ci8(self):
         self.run_quantize_from_cf32_test('ci8')
