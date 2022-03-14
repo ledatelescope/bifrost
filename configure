@@ -19640,7 +19640,7 @@ then :
              ar_supported=$( ${NVCC} -h | ${GREP} -Po "'compute_[0-9]{2,3}" | cut -d_ -f2 | sort | uniq )
              ar_valid=$( echo $GPU_ARCHS $ar_supported | xargs -n1 | sort | uniq -d | xargs )
              if test "$ar_valid" = ""; then
-               as_fn_error $? "failed to find any" "$LINENO" 5
+               as_fn_error $? "failed to find any supported" "$LINENO" 5
              else
                GPU_ARCHS=$ar_valid
 

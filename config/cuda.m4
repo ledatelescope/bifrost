@@ -139,7 +139,7 @@ AC_DEFUN([AX_CHECK_CUDA],
              ar_supported=$( ${NVCC} -h | ${GREP} -Po "'compute_[[0-9]]{2,3}" | cut -d_ -f2 | sort | uniq )
              ar_valid=$( echo $GPU_ARCHS $ar_supported | xargs -n1 | sort | uniq -d | xargs )
              if test "$ar_valid" = ""; then
-               AC_MSG_ERROR(failed to find any)
+               AC_MSG_ERROR(failed to find any supported)
              else
                AC_SUBST([GPU_ARCHS], [$ar_valid])
                AC_MSG_RESULT([$GPU_ARCHS])
