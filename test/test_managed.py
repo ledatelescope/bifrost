@@ -1,5 +1,5 @@
 
-# Copyright (c) 2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2021-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -282,7 +282,7 @@ class TestManagedUnpack(unittest.TestCase):
                                    [(4, 5), (6, 7)],
                                    [(-8, -7), (-6, -5)]],
                                   dtype='ci8')
-        bf.unpack.unpack(iarray.copy(space='cuda_managed'), oarray)
+        bf.unpack(iarray.copy(space='cuda_managed'), oarray)
         stream_synchronize()
         np.testing.assert_equal(oarray, oarray_known)
     def test_ci4_to_ci8(self):

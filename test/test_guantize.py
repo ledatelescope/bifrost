@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -44,7 +44,7 @@ class QuantizeTest(unittest.TestCase):
                                    [(2,2), (3,4)],
                                    [(4,4), (5,6)]],
                                   dtype=out_dtype)
-        bf.quantize.quantize(iarray.copy(space='cuda'), oarray)
+        bf.quantize(iarray.copy(space='cuda'), oarray)
         oarray = oarray.copy(space='system')
         np.testing.assert_equal(oarray, oarray_known)
     def test_cf32_to_ci8(self):
