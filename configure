@@ -719,6 +719,7 @@ NVCCFLAGS
 CUOBJDUMP
 NVPRUNE
 NVCC
+GPU_MAX_ARCH
 HAVE_CUDA
 CUDA_HOME
 HAVE_VMA
@@ -728,6 +729,7 @@ HAVE_FLOAT128
 HAVE_OPENMP
 LIBOBJS
 HAVE_RECVMSG
+CXX_VERSION
 HAVE_CXX11
 HAVE_CXX14
 SO_EXT
@@ -18503,6 +18505,11 @@ printf "%s\n" "#define HAVE_CXX11 1" >>confdefs.h
   fi
 
 
+       CXX_VERSION=11
+
+else $as_nop
+  CXX_VERSION=14
+
 fi
 ac_fn_cxx_check_func "$LINENO" "memset" "ac_cv_func_memset"
 if test "x$ac_cv_func_memset" = xyes
@@ -19308,6 +19315,8 @@ fi
 
   HAVE_CUDA=0
 
+  GPU_MAX_ARCH=0
+
   if test "$enable_cuda" != "no"; then
     HAVE_CUDA=1
 
@@ -19667,6 +19676,10 @@ printf "%s\n" "yes" >&6; }
     else
       as_fn_error $? "only '$ar_valid' are supported" "$LINENO" 5
     fi
+
+    ar_max_valid=$(echo $ar_valid | ${SED} -e 's/.* //g;' )
+    GPU_MAX_ARCH=$ar_max_valid
+
 
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for Pascal-style CUDA managed memory" >&5
 printf %s "checking for Pascal-style CUDA managed memory... " >&6; }
