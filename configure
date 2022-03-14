@@ -729,7 +729,6 @@ HAVE_FLOAT128
 HAVE_OPENMP
 LIBOBJS
 HAVE_RECVMSG
-CXX_VERSION
 HAVE_CXX11
 HAVE_CXX14
 SO_EXT
@@ -18504,11 +18503,6 @@ printf "%s\n" "#define HAVE_CXX11 1" >>confdefs.h
 
   fi
 
-
-       CXX_VERSION=11
-
-else $as_nop
-  CXX_VERSION=14
 
 fi
 ac_fn_cxx_check_func "$LINENO" "memset" "ac_cv_func_memset"
