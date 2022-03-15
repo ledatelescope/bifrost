@@ -6,10 +6,7 @@ from bifrost import __version__, __copyright__, __license__
 from bifrost.libbifrost_generated import *
 
 def _yes_no(value):
-    if value:
-        return "yes"
-    else:
-        return "no"
+    return "yes" if value else "no"
 
 parser = argparse.ArgumentParser(description='Bifrost version/configuration information')
 parser.add_argument('--config', action='store_true',
