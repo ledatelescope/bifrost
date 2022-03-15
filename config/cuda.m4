@@ -50,7 +50,8 @@ AC_DEFUN([AX_CHECK_CUDA],
             #include <cuda.h>
             #include <cuda_runtime.h>]],
             [[cudaMalloc(0, 0);]])],
-          [AC_MSG_RESULT(yes)],
+          [cuda_version=$( ${NVCC} --version | ${GREP} -Po -e "release.*," | cut -d,  -f1 | cut -d\  -f2 )
+           AC_MSG_RESULT(yes - v$cuda_version)],
           [AC_MSG_RESULT(no)
            AC_SUBST([HAVE_CUDA], [0])])
     else
