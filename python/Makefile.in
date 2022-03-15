@@ -3,7 +3,7 @@ include ../config.mk
 
 INC_DIR = ../src
 
-BIFROST_PYTHON_VERSION_FILE  = bifrost/version.py
+BIFROST_PYTHON_VERSION_FILE  = bifrost/version/__init__.py
 BIFROST_PYTHON_BINDINGS_FILE = bifrost/libbifrost_generated.py
 
 PSRHOME ?= /usr/local

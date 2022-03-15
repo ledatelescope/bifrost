@@ -53,7 +53,8 @@ try:
     from bifrost.version import __version__
 except ImportError:
     print("*************************************************************************")
-    print("Please run `make` from the root of the source tree to generate version.py")
+    print("Please run `configure` and `make` from the root of the source tree to")
+    print("generate the bifrost.version module.")
     print("*************************************************************************")
     raise
 __author__     = "The Bifrost Authors"
