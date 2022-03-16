@@ -141,7 +141,7 @@ class TestFFT(unittest.TestCase):
         self.run_test_c2c_impl(shape, axes, inverse=True, fftshift=True)
     def run_test_c2r(self, shape, axes):
         self.run_test_c2r_impl(shape, axes)
-        if BF_CUDA_VERSION < 10.1 and BF_CUDA_VERSION > 11:
+        if BF_CUDA_VERSION < 10.1 or BF_CUDA_VERSION > 11:
             # TODO: How do we announce that this is happening?
             self.run_test_c2r_impl(shape, axes, fftshift=True)
 
