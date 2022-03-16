@@ -296,13 +296,15 @@ AC_OUTPUT
 #
 
 AS_IF([test x$HAVE_CUDA = x1],
-      [echo ""
-       AS_IF([test x$CUDA_VERSION = x10.1],
-             [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
+      [AS_IF([test x$CUDA_VERSION = x10.1],
+             [echo ""
+              AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
        AS_IF([test x$CUDA_VERSION = x10.2],
-             [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
+             [echo ""
+              AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
        AS_IF([test x$CUDA_VERSION = x11.0],
-             [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])])
+             [echo ""
+              AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])])
 
 #
 # User notes
