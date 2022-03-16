@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -49,6 +49,11 @@ def compare(result, gold):
     #         magnitudes much smaller than the mean.
     absmean = np.abs(gold).mean()
     np.testing.assert_allclose(result, gold, rtol=RTOL, atol=MTOL * absmean)
+
+def cudaExpectedFailure(testcase):
+    if BF_CUDA_VERSION < 10.1 or BF_CUDA_VERSION > 11:
+        return testcase
+    return unittest.expectedFailure(testcase)
 
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestFFT(unittest.TestCase):
@@ -141,9 +146,7 @@ class TestFFT(unittest.TestCase):
         self.run_test_c2c_impl(shape, axes, inverse=True, fftshift=True)
     def run_test_c2r(self, shape, axes):
         self.run_test_c2r_impl(shape, axes)
-        if BF_CUDA_VERSION < 10.1 or BF_CUDA_VERSION > 11:
-            # TODO: How do we announce that this is happening?
-            self.run_test_c2r_impl(shape, axes, fftshift=True)
+        self.run_test_c2r_impl(shape, axes, fftshift=True)
 
     def test_1D(self):
         self.run_test_c2c(self.shape1D, [0])
@@ -198,10 +201,13 @@ class TestFFT(unittest.TestCase):
     def test_r2c_3D(self):
         self.run_test_r2c(self.shape3D, [0, 1, 2])
 
+    @cudaExpectedFailure
     def test_c2r_1D(self):
         self.run_test_c2r(self.shape1D, [0])
+    @cudaExpectedFailure
     def test_c2r_2D(self):
         self.run_test_c2r(self.shape2D, [0, 1])
+    @cudaExpectedFailure
     def test_c2r_3D(self):
         self.run_test_c2r(self.shape3D, [0, 1, 2])
 
