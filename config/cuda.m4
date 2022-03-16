@@ -15,6 +15,7 @@ AC_DEFUN([AX_CHECK_CUDA],
                 [enable_cuda=yes])
   
   AC_SUBST([HAVE_CUDA], [0])
+  AC_SUBST([CUDA_VERSION], [0])
   AC_SUBST([GPU_MAX_ARCH], [0])
   if test "$enable_cuda" != "no"; then
     AC_SUBST([HAVE_CUDA], [1])
@@ -50,8 +51,8 @@ AC_DEFUN([AX_CHECK_CUDA],
             #include <cuda.h>
             #include <cuda_runtime.h>]],
             [[cudaMalloc(0, 0);]])],
-          [cuda_version=$( ${NVCC} --version | ${GREP} -Po -e "release.*," | cut -d,  -f1 | cut -d\  -f2 )
-           AC_MSG_RESULT(yes - v$cuda_version)],
+          [CUDA_VERSION=$( ${NVCC} --version | ${GREP} -Po -e "release.*," | cut -d,  -f1 | cut -d\  -f2 )
+           AC_MSG_RESULT(yes - v$CUDA_VERSION)],
           [AC_MSG_RESULT(no)
            AC_SUBST([HAVE_CUDA], [0])])
     else

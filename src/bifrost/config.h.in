@@ -43,6 +43,7 @@ extern "C" {
 
 // CUDA support
 #define BF_CUDA_ENABLED @HAVE_CUDA@
+#define BF_CUDA_VERSION @CUDA_VERSION@
 #define BF_GPU_ARCHS "@GPU_ARCHS@"
 #define BF_GPU_MAX_ARCH @GPU_MAX_ARCH@
 #define BF_GPU_SHAREDMEM @GPU_SHAREDMEM@

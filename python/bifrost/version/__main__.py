@@ -25,6 +25,7 @@ if args.config:
     print(" Debugging: %s" % _yes_no(BF_DEBUG_ENABLED))
     print(" CUDA support: %s" % _yes_no(BF_CUDA_ENABLED))
     if BF_CUDA_ENABLED:
+        print("  CUDA version: %.1f" % BF_CUDA_VERSION)
         print("  CUDA architectures: %s" % BF_GPU_ARCHS)
         print("  CUDA shared memory: %i B" % BF_GPU_SHAREDMEM)
         print("  CUDA managed memory support: %s" % _yes_no(BF_GPU_MANAGEDMEM))

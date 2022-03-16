@@ -720,6 +720,7 @@ CUOBJDUMP
 NVPRUNE
 NVCC
 GPU_MAX_ARCH
+CUDA_VERSION
 HAVE_CUDA
 CUDA_HOME
 HAVE_VMA
@@ -19309,6 +19310,8 @@ fi
 
   HAVE_CUDA=0
 
+  CUDA_VERSION=0
+
   GPU_MAX_ARCH=0
 
   if test "$enable_cuda" != "no"; then
@@ -19511,9 +19514,9 @@ cudaMalloc(0, 0);
 _ACEOF
 if ac_fn_cxx_try_link "$LINENO"
 then :
-  cuda_version=$( ${NVCC} --version | ${GREP} -Po -e "release.*," | cut -d,  -f1 | cut -d\  -f2 )
-           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes - v$cuda_version" >&5
-printf "%s\n" "yes - v$cuda_version" >&6; }
+  CUDA_VERSION=$( ${NVCC} --version | ${GREP} -Po -e "release.*," | cut -d,  -f1 | cut -d\  -f2 )
+           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes - v$CUDA_VERSION" >&5
+printf "%s\n" "yes - v$CUDA_VERSION" >&6; }
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
@@ -24710,19 +24713,19 @@ echo ""
 
 if test x$HAVE_CUDA = x1
 then :
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: cuda: yes - v$cuda_version - $GPU_ARCHS" >&5
-printf "%s\n" "$as_me: cuda: yes - v$cuda_version - $GPU_ARCHS" >&6;}
-       if test x$cuda_version = x10.1
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: cuda: yes - v$CUDA_VERSION - $GPU_ARCHS" >&5
+printf "%s\n" "$as_me: cuda: yes - v$CUDA_VERSION - $GPU_ARCHS" >&6;}
+       if test x$CUDA_VERSION = x10.1
 then :
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: This version of cuFFT may have unexpected behavior for complex-to-real transforms" >&5
 printf "%s\n" "$as_me: WARNING: This version of cuFFT may have unexpected behavior for complex-to-real transforms" >&2;}
 fi
-       if test x$cuda_version = x10.2
+       if test x$CUDA_VERSION = x10.2
 then :
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: This version of cuFFT may have unexpected behavior for complex-to-real transforms" >&5
 printf "%s\n" "$as_me: WARNING: This version of cuFFT may have unexpected behavior for complex-to-real transforms" >&2;}
 fi
-       if test x$cuda_version = x11.0
+       if test x$CUDA_VERSION = x11.0
 then :
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: This version of cuFFT may have unexpected behavior for complex-to-real transforms" >&5
 printf "%s\n" "$as_me: WARNING: This version of cuFFT may have unexpected behavior for complex-to-real transforms" >&2;}

@@ -298,12 +298,12 @@ AC_OUTPUT
 echo ""
 
 AS_IF([test x$HAVE_CUDA = x1],
-      [AC_MSG_NOTICE(cuda: yes - v$cuda_version - $GPU_ARCHS)
-       AS_IF([test x$cuda_version = x10.1],
+      [AC_MSG_NOTICE(cuda: yes - v$CUDA_VERSION - $GPU_ARCHS)
+       AS_IF([test x$CUDA_VERSION = x10.1],
              [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
-       AS_IF([test x$cuda_version = x10.2],
+       AS_IF([test x$CUDA_VERSION = x10.2],
              [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
-       AS_IF([test x$cuda_version = x11.0],
+       AS_IF([test x$CUDA_VERSION = x11.0],
              [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])],
       [AC_MSG_NOTICE(cuda: no)])
 
