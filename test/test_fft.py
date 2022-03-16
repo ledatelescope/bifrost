@@ -37,7 +37,7 @@ from numpy.fft import rfftn as gold_rfftn, irfftn as gold_irfftn
 from bifrost.fft import Fft
 import bifrost as bf
 
-from bifrost.libbifrost_generated import BF_CUDA_ENABLED
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED, BF_CUDA_VERSION
 
 MTOL = 1e-6 # Relative tolerance at the mean magnitude
 RTOL = 1e-1
@@ -141,7 +141,9 @@ class TestFFT(unittest.TestCase):
         self.run_test_c2c_impl(shape, axes, inverse=True, fftshift=True)
     def run_test_c2r(self, shape, axes):
         self.run_test_c2r_impl(shape, axes)
-        self.run_test_c2r_impl(shape, axes, fftshift=True)
+        if BF_CUDA_VERSION < 10.1 and BF_CUDA_VERSION > 11:
+            # TODO: How do we announce that this is happening?
+            self.run_test_c2r_impl(shape, axes, fftshift=True)
 
     def test_1D(self):
         self.run_test_c2c(self.shape1D, [0])
