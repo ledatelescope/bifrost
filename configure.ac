@@ -292,19 +292,26 @@ AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.p
 AC_OUTPUT
 
 #
+# User warnings
+#
+
+AS_IF([test x$HAVE_CUDA = x1],
+      [echo ""
+       AS_IF([test x$CUDA_VERSION = x10.1],
+             [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
+       AS_IF([test x$CUDA_VERSION = x10.2],
+             [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
+       AS_IF([test x$CUDA_VERSION = x11.0],
+             [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])])
+
+#
 # User notes
 #
 
 echo ""
 
 AS_IF([test x$HAVE_CUDA = x1],
-      [AC_MSG_NOTICE(cuda: yes - v$CUDA_VERSION - $GPU_ARCHS)
-       AS_IF([test x$CUDA_VERSION = x10.1],
-             [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
-       AS_IF([test x$CUDA_VERSION = x10.2],
-             [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
-       AS_IF([test x$CUDA_VERSION = x11.0],
-             [AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])],
+      [AC_MSG_NOTICE(cuda: yes - v$CUDA_VERSION - $GPU_ARCHS)],
       [AC_MSG_NOTICE(cuda: no)])
 
 AS_IF([test x$HAVE_NUMA = x1],
