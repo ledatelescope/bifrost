@@ -296,15 +296,11 @@ AC_OUTPUT
 #
 
 AS_IF([test x$HAVE_CUDA = x1],
-      [AS_IF([test x$CUDA_VERSION = x10.1],
-             [echo ""
-              AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
-       AS_IF([test x$CUDA_VERSION = x10.2],
-             [echo ""
-              AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])
-       AS_IF([test x$CUDA_VERSION = x11.0],
-             [echo ""
-              AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)])])
+      [cufft_c2r_modifies=$( echo $CUDA_VERSION | ${GREP} -e "10.[1-2]" -e "11.[0-6]" )
+       if test "$cufft_c2r_modifies" != x""; then
+         echo ""
+         AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)
+       fi])
 
 #
 # User notes
