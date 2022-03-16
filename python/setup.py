@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -76,6 +76,7 @@ setup(name='bifrost',
           "contextlib2>=0.4.0",
           "pint>=0.7.0",
           "graphviz>=0.5.0",
+          "ctypesgen==1.0.2",
           "matplotlib"
       ],
       ext_package='bifrost',
