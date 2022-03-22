@@ -1,4 +1,4 @@
-AC_INIT([bifrost], [0.9.0], [], [], [https://github.com/ledatelescope/bifrost/])
+AC_INIT([bifrost], [0.10.0], [], [], [https://github.com/ledatelescope/bifrost/])
 AC_LANG(C++)
 AC_CONFIG_SRCDIR([src/cuda.cpp])
 
