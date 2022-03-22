@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2021, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2021, The University of New Mexico. All rights reserved.
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,47 +26,37 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*! \file config.h
- *  \brief Configuration parameters used for building the library
- */
+#pragma once
 
-#ifndef BF_CONFIG_H_INCLUDE_GUARD_
-#define BF_CONFIG_H_INCLUDE_GUARD_
+#include <bifrost/affinity.h>
 
-#ifdef __cplusplus
-extern "C" {
+#if BF_HWLOC_ENABLED
+#include <hwloc.h>
+class HardwareLocality {
+    hwloc_topology_t _topo;
+    HardwareLocality(HardwareLocality const&);
+    HardwareLocality& operator=(HardwareLocality const&);
+public:
+    HardwareLocality() {
+        hwloc_topology_init(&_topo);
+        hwloc_topology_load(_topo);
+    }
+    ~HardwareLocality() {
+        hwloc_topology_destroy(_topo);
+    }
+    int bind_memory_to_core(int core);
+};
+#endif // BF_HWLOC_ENABLED
+
+class BoundThread {
+#if BF_HWLOC_ENABLED
+    HardwareLocality _hwloc;
 #endif
-
-// Memory alignment
-#define BF_ALIGNMENT @ALIGNMENT@
-
-// CUDA support
-#define BF_CUDA_ENABLED @HAVE_CUDA@
-#define BF_CUDA_VERSION @CUDA_VERSION@
-#define BF_GPU_ARCHS "@GPU_ARCHS@"
-#define BF_GPU_MAX_ARCH @GPU_MAX_ARCH@
-#define BF_GPU_SHAREDMEM @GPU_SHAREDMEM@
-#define BF_GPU_MANAGEDMEM @GPU_PASCAL_MANAGEDMEM@
-
-// Features
-#define BF_FLOAT128_ENABLED @HAVE_FLOAT128@
-#define BF_OPENMP_ENABLED @HAVE_OPENMP@
-#define BF_NUMA_ENABLED @HAVE_NUMA@
-#define BF_HWLOC_ENABLED @HAVE_HWLOC@
-#define BF_VMA_ENABLED @HAVE_VMA@
-#define BF_VERBS_ENABLED @HAVE_VERBS@
-#define BF_RDMA_ENABLED @HAVE_RDMA@
-
-// Debugging features
-#define BF_DEBUG_ENABLED @HAVE_DEBUG@
-#define BF_TRACE_ENABLED @HAVE_TRACE@
-#define BF_CUDA_DEBUG_ENABLED @HAVE_CUDA_DEBUG@
-
-// Logging directory
-#define BF_PROCLOG_DIR "@HAVE_TMPFS@"
-
-#ifdef __cplusplus
-} // extern "C"
+public:
+    BoundThread(int core) {
+        bfAffinitySetCore(core);
+#if BF_HWLOC_ENABLED
+        assert(_hwloc.bind_memory_to_core(core) == 0);
 #endif
-
-#endif // BF_CONFIG_H_INCLUDE_GUARD_
+    }
+};

@@ -25,6 +25,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import unittest
+import os
 import bifrost as bf
 import numpy as np
 from bifrost import blocks
@@ -97,3 +98,10 @@ class BinaryIOTest(unittest.TestCase):
             callback = CallbackBlock(b_read, seq_callback, data_callback)
 
             pipeline.run()
+    def tearDown(self):
+        for filename in self.filenames:
+            os.unlink(filename)
+            try:
+                os.unlink(filename+".out")
+            except OSError:
+                pass

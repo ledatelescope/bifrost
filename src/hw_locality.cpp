@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2021, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2021, The University of New Mexico. All rights reserved.
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,47 +26,22 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*! \file config.h
- *  \brief Configuration parameters used for building the library
- */
+#include "hw_locality.hpp"
 
-#ifndef BF_CONFIG_H_INCLUDE_GUARD_
-#define BF_CONFIG_H_INCLUDE_GUARD_
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// Memory alignment
-#define BF_ALIGNMENT @ALIGNMENT@
-
-// CUDA support
-#define BF_CUDA_ENABLED @HAVE_CUDA@
-#define BF_CUDA_VERSION @CUDA_VERSION@
-#define BF_GPU_ARCHS "@GPU_ARCHS@"
-#define BF_GPU_MAX_ARCH @GPU_MAX_ARCH@
-#define BF_GPU_SHAREDMEM @GPU_SHAREDMEM@
-#define BF_GPU_MANAGEDMEM @GPU_PASCAL_MANAGEDMEM@
-
-// Features
-#define BF_FLOAT128_ENABLED @HAVE_FLOAT128@
-#define BF_OPENMP_ENABLED @HAVE_OPENMP@
-#define BF_NUMA_ENABLED @HAVE_NUMA@
-#define BF_HWLOC_ENABLED @HAVE_HWLOC@
-#define BF_VMA_ENABLED @HAVE_VMA@
-#define BF_VERBS_ENABLED @HAVE_VERBS@
-#define BF_RDMA_ENABLED @HAVE_RDMA@
-
-// Debugging features
-#define BF_DEBUG_ENABLED @HAVE_DEBUG@
-#define BF_TRACE_ENABLED @HAVE_TRACE@
-#define BF_CUDA_DEBUG_ENABLED @HAVE_CUDA_DEBUG@
-
-// Logging directory
-#define BF_PROCLOG_DIR "@HAVE_TMPFS@"
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
-#endif // BF_CONFIG_H_INCLUDE_GUARD_
+#if BF_HWLOC_ENABLED
+int HardwareLocality::bind_memory_to_core(int core) {
+    int core_depth = hwloc_get_type_or_below_depth(_topo, HWLOC_OBJ_CORE);
+    int ncore      = hwloc_get_nbobjs_by_depth(_topo, core_depth);
+    int ret = 0;
+    if( 0 <= core && core < ncore ) {
+        hwloc_obj_t    obj    = hwloc_get_obj_by_depth(_topo, core_depth, core);
+        hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->allowed_cpuset);
+        hwloc_bitmap_singlify(cpuset); // Avoid hyper-threads
+        hwloc_membind_policy_t policy = HWLOC_MEMBIND_BIND;
+        hwloc_membind_flags_t  flags  = HWLOC_MEMBIND_THREAD;
+        ret = hwloc_set_membind(_topo, cpuset, policy, flags);
+        hwloc_bitmap_free(cpuset);
+    }
+    return ret;
+}
+#endif // BF_HWLOC_ENABLED

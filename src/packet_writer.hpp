@@ -1,0 +1,564 @@
+/*
+ * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * * Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ * * Neither the name of The Bifrost Authors nor the names of its
+ *   contributors may be used to endorse or promote products derived
+ *   from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "assert.hpp"
+#include <bifrost/io.h>
+#include <bifrost/packet_writer.h>
+#include "proclog.hpp"
+#include "formats/formats.hpp"
+#include "utils.hpp"
+#include "hw_locality.hpp"
+
+#include <arpa/inet.h>  // For ntohs
+#include <sys/socket.h> // For recvfrom
+
+#include <queue>
+#include <memory>
+#include <stdexcept>
+#include <cstdlib>      // For posix_memalign
+#include <cstring>      // For memcpy, memset
+#include <cstdint>
+
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <fstream>
+#include <chrono>
+#include <time.h>
+
+class RateLimiter {
+  uint32_t _rate;
+  uint64_t _counter;
+  bool     _first;
+  std::chrono::high_resolution_clock::time_point _start;
+  std::chrono::high_resolution_clock::time_point _stop;
+public:
+  RateLimiter(uint32_t rate_limit)
+   : _rate(rate_limit), _counter(0), _first(true) {}
+  inline void set_rate(uint32_t rate_limit) { _rate = rate_limit; }
+  inline uint32_t get_rate() { return _rate; }
+  inline void reset() { _first = true; _counter = 0; }
+  inline void begin() {
+    if( _first ) {
+      _start = std::chrono::high_resolution_clock::now();
+      _first = false;
+    }
+  }
+  inline void end_and_wait(size_t npackets) {
+    if( _rate > 0 ) {
+      _stop = std::chrono::high_resolution_clock::now();
+      _counter += npackets;
+      double elapsed_needed = (double) _counter / _rate;
+      std::chrono::duration<double> elapsed_actual = std::chrono::duration_cast<std::chrono::duration<double>>(_stop-_start);
+      
+      double sleep_needed = elapsed_needed - elapsed_actual.count();
+      if( sleep_needed > 0.001 ) {
+        timespec sleep;
+        sleep.tv_sec = (int) sleep_needed;
+        sleep.tv_nsec = (int) ((sleep_needed - sleep.tv_sec)*1e9);
+        nanosleep(&sleep, NULL);
+      }
+    }
+  }
+};
+
+class PacketWriterMethod {
+protected:
+    int       _fd;
+public:
+    PacketWriterMethod(int fd)
+     : _fd(fd) {}
+    virtual ssize_t send_packets(char* hdrs, 
+                                 int   hdr_size,
+                                 char* data, 
+                                 int   data_size, 
+                                 int   npackets,
+                                 int   flags=0) {
+        return 0;
+    }
+    virtual const char* get_name()     { return "generic_writer"; }
+};
+
+class DiskPacketWriter : public PacketWriterMethod {
+public:
+    DiskPacketWriter(int fd)
+     : PacketWriterMethod(fd) {}
+    ssize_t send_packets(char* hdrs, 
+                         int   hdr_size,
+                         char* data, 
+                         int   data_size, 
+                         int   npackets,
+                         int   flags=0) {
+        ssize_t status, nsent = 0;
+        for(int i=0; i<npackets; i++) {
+            status = ::write(_fd, hdrs+hdr_size*i, hdr_size);
+            if( status != hdr_size ) continue;
+            status = ::write(_fd, data+data_size*i, data_size);
+            if( status != data_size) continue;
+            nsent += 1;
+        }
+        return nsent;
+    }
+    inline const char* get_name() { return "disk_writer"; }
+};
+
+class UDPPacketSender : public PacketWriterMethod {
+  int      _last_count;
+  mmsghdr* _mmsg;
+  iovec*   _iovs;
+public:
+    UDPPacketSender(int fd)
+     : PacketWriterMethod(fd), _last_count(0), _mmsg(NULL), _iovs(NULL) {}
+    ~UDPPacketSender() {
+      if( _mmsg ) {
+        free(_mmsg);
+      }
+      if( _iovs ) {
+        free(_iovs);
+      }
+    }
+    ssize_t send_packets(char* hdrs, 
+                         int   hdr_size,
+                         char* data, 
+                         int   data_size, 
+                         int   npackets,
+                         int   flags=0) {
+        if( npackets != _last_count ) {
+          if( _mmsg ) {
+            free(_mmsg);
+          }
+          if( _iovs ) {
+            free(_iovs);
+          }
+          
+          _last_count = npackets;
+          _mmsg = (struct mmsghdr *) malloc(sizeof(struct mmsghdr)*npackets);
+          _iovs = (struct iovec *) malloc(sizeof(struct iovec)*5*npackets);
+          ::mlock(_mmsg, sizeof(struct mmsghdr)*npackets);
+          ::mlock(_iovs, sizeof(struct iovec)*5*npackets);
+        }
+        memset(_mmsg, 0, sizeof(struct mmsghdr)*npackets);
+        
+        for(int i=0; i<npackets; i++) {
+            _mmsg[i].msg_hdr.msg_iov = &_iovs[2*i];
+            _mmsg[i].msg_hdr.msg_iovlen = 2;
+            _iovs[2*i+0].iov_base = (hdrs + i*hdr_size);
+            _iovs[2*i+0].iov_len = hdr_size;
+            _iovs[2*i+1].iov_base = (data + i*data_size);
+            _iovs[2*i+1].iov_len = data_size;
+        }
+        
+        ssize_t nsent = ::sendmmsg(_fd, _mmsg, npackets, flags);
+        /*
+        if( nsent == -1 ) {
+            std::cout << "sendmmsg failed: " << std::strerror(errno) << " with " << hdr_size << " and " << data_size << std::endl;
+        }
+        */
+        
+        return nsent;
+    }
+    inline const char* get_name() { return "udp_transmit"; }
+};
+
+#if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
+#include "ib_verbs.hpp"
+
+class UDPVerbsSender : public PacketWriterMethod {
+    Verbs           _ibv;
+    bf_ethernet_hdr _ethernet;
+    bf_ipv4_hdr     _ipv4;
+    bf_udp_hdr      _udp;
+    int             _last_size;
+    int             _last_count;
+    mmsghdr*        _mmsg;
+    iovec*          _iovs;
+public:
+    UDPVerbsSender(int fd)
+        : PacketWriterMethod(fd), _ibv(fd, JUMBO_FRAME_SIZE), _last_size(0),
+          _last_count(0), _mmsg(NULL), _iovs(NULL) {}
+    ~UDPVerbsSender() {
+      if( _mmsg ) {
+        free(_mmsg);
+      }
+      if( _iovs ) {
+        free(_iovs);
+      }
+    }
+    ssize_t send_packets(char* hdrs, 
+                         int   hdr_size,
+                         char* data, 
+                         int   data_size, 
+                         int   npackets,
+                         int   flags=0) {
+        if( npackets != _last_count ) {
+          if( _mmsg ) {
+            free(_mmsg);
+          }
+          if( _iovs ) {
+            free(_iovs);
+          }
+          
+          _last_count = npackets;
+          _mmsg = (struct mmsghdr *) malloc(sizeof(struct mmsghdr)*npackets);
+          _iovs = (struct iovec *) malloc(sizeof(struct iovec)*5*npackets);
+          ::mlock(_mmsg, sizeof(struct mmsghdr)*npackets);
+          ::mlock(_iovs, sizeof(struct iovec)*5*npackets);
+        }
+        memset(_mmsg, 0, sizeof(struct mmsghdr)*npackets);
+        
+        if( (hdr_size + data_size) != _last_size ) {
+            _last_size = hdr_size + data_size;
+            _ibv.get_ethernet_header(&_ethernet);
+            _ibv.get_ipv4_header(&_ipv4, _last_size);
+            _ibv.get_udp_header(&_udp, _last_size);
+        }
+        
+        for(int i=0; i<npackets; i++) {
+            _mmsg[i].msg_hdr.msg_iov = &_iovs[5*i];
+            _mmsg[i].msg_hdr.msg_iovlen = 5;
+            _iovs[5*i+0].iov_base = &_ethernet;
+            _iovs[5*i+0].iov_len = sizeof(bf_ethernet_hdr);
+            _iovs[5*i+1].iov_base = &_ipv4;
+            _iovs[5*i+1].iov_len = sizeof(bf_ipv4_hdr);
+            _iovs[5*i+2].iov_base = &_udp;
+            _iovs[5*i+2].iov_len = sizeof(bf_udp_hdr);
+            _iovs[5*i+3].iov_base = (hdrs + i*hdr_size);
+            _iovs[5*i+3].iov_len = hdr_size;
+            _iovs[5*i+4].iov_base = (data + i*data_size);
+            _iovs[5*i+4].iov_len = data_size;
+        }
+        
+        ssize_t nsent = _ibv.sendmmsg(_mmsg, npackets, flags);
+        /*
+        if( nsent == -1 ) {
+            std::cout << "sendmmsg failed: " << std::strerror(errno) << " with " << hdr_size << " and " << data_size << std::endl;
+        }
+        */
+        
+        return nsent;
+    }
+    inline const char* get_name() { return "udp_verbs_transmit"; }
+};
+#endif // BF_VERBS_ENABLED
+
+struct PacketStats {
+    size_t ninvalid;
+    size_t ninvalid_bytes;
+    size_t nlate;
+    size_t nlate_bytes;
+    size_t nvalid;
+    size_t nvalid_bytes;
+};
+
+class PacketWriterThread : public BoundThread {
+private:
+    PacketWriterMethod*  _method;
+    PacketStats          _stats;
+    RateLimiter          _limiter;
+    int                  _core;
+    
+public:
+    PacketWriterThread(PacketWriterMethod* method, uint32_t rate_limit=0, int core=0)
+     : BoundThread(core), _method(method), _limiter(rate_limit), _core(core) {
+        this->reset_stats();
+    }
+    inline void set_rate_limit(uint32_t rate_limit) { _limiter.set_rate(rate_limit); }
+    inline uint32_t get_rate_limit() { return _limiter.get_rate(); }
+    inline void reset_rate_limit() { _limiter.reset(); }
+    inline ssize_t send(char* hdrs,
+                        int   hdr_size,
+                        char* datas,
+                        int   data_size,
+                        int   npackets) {
+        _limiter.begin();
+        ssize_t nsent = _method->send_packets(hdrs, hdr_size, datas, data_size, npackets);
+        if( nsent == -1 ) {
+            _stats.ninvalid += npackets;
+            _stats.ninvalid_bytes += npackets * (hdr_size + data_size);
+        } else {
+            _stats.nvalid += npackets;
+            _stats.nvalid_bytes += npackets * (hdr_size + data_size);
+            _limiter.end_and_wait(npackets);
+        }
+        return nsent;
+    }
+    inline const char* get_name() { return _method->get_name(); }
+    inline const int get_core() { return _core; }
+    inline const PacketStats* get_stats() const { return &_stats; }
+    inline void reset_stats() {
+        ::memset(&_stats, 0, sizeof(_stats));
+    }
+};
+
+class BFheaderinfo_impl {
+    PacketDesc         _desc;
+public:
+    inline BFheaderinfo_impl() {
+        ::memset(&_desc, 0, sizeof(PacketDesc));
+    }
+    inline PacketDesc* get_description()            { return &_desc;                 }
+    inline void set_nsrc(int nsrc)                  { _desc.nsrc = nsrc;             }
+    inline void set_nchan(int nchan)                { _desc.nchan = nchan;           }
+    inline void set_chan0(int chan0)                { _desc.chan0 = chan0;           }
+    inline void set_tuning(int tuning)              { _desc.tuning = tuning;         }
+    inline void set_gain(uint16_t gain)             { _desc.gain = gain;             }
+    inline void set_decimation(uint32_t decimation) { _desc.decimation = decimation; }
+};  
+
+class BFpacketwriter_impl {
+protected:
+    std::string         _name;
+    PacketWriterThread* _writer;
+    PacketHeaderFiller* _filler;
+    int                 _nsamples;
+    BFdtype             _dtype;
+    
+    ProcLog             _bind_log;
+    ProcLog             _stat_log;
+    pid_t               _pid;
+    
+    BFoffset            _framecount;
+private:
+    void update_stats_log() {
+        const PacketStats* stats = _writer->get_stats();
+        _stat_log.update() << "ngood_bytes    : " << stats->nvalid_bytes << "\n"
+                           << "nmissing_bytes : " << stats->ninvalid_bytes << "\n"
+                           << "ninvalid       : " << stats->ninvalid << "\n"
+                           << "ninvalid_bytes : " << stats->ninvalid_bytes << "\n"
+                           << "nlate          : " << stats->nlate << "\n"
+                           << "nlate_bytes    : " << stats->nlate_bytes << "\n"
+                           << "nvalid         : " << stats->nvalid << "\n"
+                           << "nvalid_bytes   : " << stats->nvalid_bytes << "\n";
+    }
+public:
+    inline BFpacketwriter_impl(PacketWriterThread* writer, 
+                               PacketHeaderFiller* filler,
+                               int                 nsamples,
+                               BFdtype             dtype)
+        : _name(writer->get_name()), _writer(writer), _filler(filler),
+          _nsamples(nsamples), _dtype(dtype),
+          _bind_log(_name+"/bind"),
+          _stat_log(_name+"/stats"),
+          _framecount(0) {
+        _bind_log.update() << "ncore : " << 1 << "\n"
+                           << "core0 : " << _writer->get_core() << "\n";
+    }
+    virtual ~BFpacketwriter_impl() {}
+    inline void set_rate_limit(uint32_t rate_limit) { _writer->set_rate_limit(rate_limit); }
+    inline void reset_rate_limit() { _writer->reset_rate_limit(); }
+    inline void reset_counter() { _framecount = 0; }
+    BFstatus send(BFheaderinfo   info,
+                  BFoffset       seq,
+                  BFoffset       seq_increment,
+                  BFoffset       src,
+                  BFoffset       src_increment,
+                  BFarray const* in);
+};
+
+class BFpacketwriter_generic_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_generic_impl(PacketWriterThread* writer,
+                                       int                 nsamples)
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_U8),
+          _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new PacketHeaderFiller();
+        _type_log.update("type : %s\n", "generic");
+    }
+};
+
+class BFpacketwriter_chips_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_chips_impl(PacketWriterThread* writer,
+                                     int                 nsamples)
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI4),
+          _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new CHIPSHeaderFiller();
+        _type_log.update("type : %s\n", "chips");
+    }
+};
+
+template<uint8_t B>
+class BFpacketwriter_ibeam_impl : public BFpacketwriter_impl {
+    uint8_t            _nbeam = B;
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_ibeam_impl(PacketWriterThread* writer,
+                                     int                 nsamples)
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CF32),
+          _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new IBeamHeaderFiller<B>();
+        _type_log.update("type : %s%i\n", "ibeam", _nbeam);
+    }
+};
+
+template<uint8_t B>
+class BFpacketwriter_pbeam_impl : public BFpacketwriter_impl {
+    uint8_t            _nbeam = B;
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_pbeam_impl(PacketWriterThread* writer,
+                                     int                 nsamples)
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_F32),
+          _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new PBeamHeaderFiller<B>();
+        _type_log.update("type : %s%i\n", "pbeam", _nbeam);
+    }
+};
+
+class BFpacketwriter_cor_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_cor_impl(PacketWriterThread* writer,
+                                   int                 nsamples)
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CF32),
+          _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new CORHeaderFiller();
+        _type_log.update("type : %s\n", "cor");
+    }
+};
+
+class BFpacketwriter_tbn_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_tbn_impl(PacketWriterThread* writer,
+                                   int                 nsamples)
+     : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI8),
+       _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new TBNHeaderFiller();
+        _type_log.update("type : %s\n", "tbn");
+    }
+};
+
+class BFpacketwriter_drx_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_drx_impl(PacketWriterThread* writer,
+                                   int                 nsamples)
+     : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI4),
+       _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new DRXHeaderFiller();
+        _type_log.update("type : %s\n", "drx");
+    }
+};
+
+class BFpacketwriter_tbf_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_tbf_impl(PacketWriterThread* writer,
+                                   int                 nsamples)
+     : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI4),
+       _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new TBFHeaderFiller();
+        _type_log.update("type : %s\n", "tbf");
+    }
+};
+
+BFstatus BFpacketwriter_create(BFpacketwriter* obj,
+                               const char*     format,
+                               int             fd,
+                               int             core,
+                               BFiomethod      backend) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
+    
+    int nsamples = 0;
+    if(std::string(format).substr(0, 8) == std::string("generic_") ) {
+        nsamples = std::atoi((std::string(format).substr(8, std::string(format).length())).c_str());
+    } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
+        int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
+        nsamples = 32*nchan;
+    } else if( std::string(format).substr(0, 5) == std::string("ibeam") ) {
+        int nbeam = std::stoi(std::string(format).substr(5, 1));
+        int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
+        nsamples = 2*nbeam*nchan;
+    } else if( std::string(format).substr(0, 5) == std::string("pbeam") ) {
+        int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
+        nsamples = 4*nchan;
+    } else if(std::string(format).substr(0, 4) == std::string("cor_") ) {
+        int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
+        nsamples = 4*nchan;
+    } else if( format == std::string("tbn") ) {
+        nsamples = 512;
+    } else if( format == std::string("drx") ) {
+        nsamples = 4096;
+    } else if( format == std::string("tbf") ) {
+        nsamples = 6144;
+    }
+    
+    PacketWriterMethod* method;
+    if( backend == BF_IO_DISK ) {
+        method = new DiskPacketWriter(fd);
+    } else if( backend == BF_IO_UDP ) {
+        method = new UDPPacketSender(fd);
+#if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
+    } else if( backend == BF_IO_VERBS ) {
+        method = new UDPVerbsSender(fd);
+#endif
+    } else {
+        return BF_STATUS_UNSUPPORTED;
+    }
+    PacketWriterThread* writer = new PacketWriterThread(method, 0, core);
+    
+    if( std::string(format).substr(0, 8) == std::string("generic_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_generic_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_chips_impl(writer, nsamples),
+                           *obj = 0);
+#define MATCH_IBEAM_MODE(NBEAM) \
+    } else if( std::string(format).substr(0, 7) == std::string("ibeam"#NBEAM"_") ) { \
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_ibeam_impl<NBEAM>(writer, nsamples), \
+                           *obj = 0);
+    MATCH_IBEAM_MODE(1)
+    MATCH_IBEAM_MODE(2)
+    MATCH_IBEAM_MODE(3)
+    MATCH_IBEAM_MODE(4)
+#undef MATCH_IBEAM_MODE
+#define MATCH_PBEAM_MODE(NBEAM) \
+    } else if( std::string(format).substr(0, 7) == std::string("pbeam"#NBEAM"_") ) { \
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_pbeam_impl<NBEAM>(writer, nsamples), \
+                           *obj = 0);
+    MATCH_PBEAM_MODE(1)
+#undef MATCH_PBEAM_MODE
+    } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_cor_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( format == std::string("tbn") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_tbn_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( format == std::string("drx") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_drx_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( format == std::string("tbf") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_tbf_impl(writer, nsamples),
+                           *obj = 0);
+    } else {
+        return BF_STATUS_UNSUPPORTED;
+    }
+}
