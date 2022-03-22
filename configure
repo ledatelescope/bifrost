@@ -706,6 +706,7 @@ PYINSTALLFLAGS
 PYBUILDFLAGS
 PYTHON
 HAVE_PYTHON
+MAPPED_RING_DIR
 HAVE_CUDA_DEBUG
 enable_native_arch
 HAVE_TRACE
@@ -19952,7 +19953,8 @@ else $as_nop
   mapped_ring_dir=/tmp/bifrost
 fi
 
-CPPFLAGS="$CPPFLAGS -DBF_MAPPED_RING_DIR=\"$mapped_ring_dir\""
+MAPPED_RING_DIR=$mapped_ring_dir
+
 
 #
 # Python
