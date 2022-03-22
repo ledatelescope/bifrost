@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import os
 import argparse
 
 from bifrost import __version__, __copyright__, __license__
@@ -21,6 +22,9 @@ if args.config:
     print(" NUMA support %s" % _yes_no(BF_NUMA_ENABLED))
     print(" Hardware locality support: %s" % _yes_no(BF_HWLOC_ENABLED))
     print(" Mellanox messaging accelerator (VMA) support: %s" % _yes_no(BF_VMA_ENABLED))
+    print(" Mapped ring directory: %s" % BF_MAPPED_RING_DIR)
+    if os.getenv('BIFROST_MAPPED_DIR') is not None:
+        print("Mapped ring directory: override - %s" % os.getenv('BIFROST_MAPPED_DIR'))
     print(" Logging directory: %s" % BF_PROCLOG_DIR)
     print(" Debugging: %s" % _yes_no(BF_DEBUG_ENABLED))
     print(" CUDA support: %s" % _yes_no(BF_CUDA_ENABLED))
