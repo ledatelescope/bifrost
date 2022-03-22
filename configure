@@ -706,6 +706,7 @@ PYINSTALLFLAGS
 PYBUILDFLAGS
 PYTHON
 HAVE_PYTHON
+HAVE_MAP_CACHE
 HAVE_CUDA_DEBUG
 enable_native_arch
 HAVE_TRACE
@@ -19948,9 +19949,12 @@ else $as_nop
   enable_map_cache=yes
 fi
 
+HAVE_MAP_CACHE=0
+
 if test x$enable_map_cache != xno
 then :
-  CPPFLAGS="$CPPFLAGS -DBF_MAPCACHE_ENABLED=1"
+  HAVE_MAP_CACHE=1
+
 fi
 
 #
