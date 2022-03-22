@@ -337,6 +337,8 @@ AS_IF([test x$HAVE_PYTHON = x1],
       [AC_MSG_NOTICE(python bindings: no)])
 
 AC_MSG_NOTICE(memory alignment: $ALIGNMENT)
+
+AC_MSG_NOTICE(mapped ring directory: $mapped_ring_dir)
       
 AC_MSG_NOTICE(logging directory: $HAVE_TMPFS)
 
