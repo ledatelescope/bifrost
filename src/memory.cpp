@@ -52,10 +52,6 @@ static_assert(BF_IS_POW2(BF_ALIGNMENT), "BF_ALIGNMENT must be a power of 2");
 #undef BF_IS_POW2
 //static_assert(BF_ALIGNMENT >= 8,        "BF_ALIGNMENT must be >= 8");
 
-#ifndef BF_MAPPED_RING_DIR
-  #define BF_MAPPED_RING_DIR "/tmp/bifrost"
-#endif
-
 class MappedMgr {
     const char*  base_mapped_dir = ((std::getenv("BIFROST_MAPPED_DIR") != NULL) \
                                     ? std::getenv("BIFROST_MAPPED_DIR") \
@@ -353,6 +349,7 @@ BFstatus bfMemcpy(void*       dst,
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
 			// Is this the right thing to do?
 			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+#endif
 			default: BF_FAIL("Valid bfMemcpy dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
@@ -373,7 +370,6 @@ BFstatus bfMemcpy(void*       dst,
 		case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
 		default: BF_FAIL("Valid bfMemcpy src space", BF_STATUS_INVALID_ARGUMENT);
 		}
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		BF_TRACE_STREAM(g_cuda_stream);
 		BF_CHECK_CUDA(cudaMemcpyAsync(dst, src, count, kind, g_cuda_stream),
 		              BF_STATUS_MEM_OP_FAILED);
@@ -452,7 +448,6 @@ BFstatus bfMemcpy2D(void*       dst,
 		case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
 		default: BF_FAIL("Valid bfMemcpy2D src space", BF_STATUS_INVALID_ARGUMENT);
 		}
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 		BF_TRACE_STREAM(g_cuda_stream);
 		BF_CHECK_CUDA(cudaMemcpy2DAsync(dst, dst_stride,
 		                                src, src_stride,
