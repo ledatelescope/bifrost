@@ -212,7 +212,7 @@ AC_ARG_WITH([mapped_ring_dir],
                             [directory to store mapped ring files in (default=/tmp/bifrost)])],
             [],
             [mapped_ring_dir=/tmp/bifrost])
-CPPFLAGS="$CPPFLAGS -DBF_MAPPED_RING_DIR=\"$mapped_ring_dir\""
+AC_SUBST([MAPPED_RING_DIR], [$mapped_ring_dir])
 
 #
 # Python
