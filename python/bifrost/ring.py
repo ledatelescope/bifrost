@@ -29,7 +29,7 @@
 # Python2 compatibility
 from __future__ import print_function, absolute_import
 
-from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string, EndOfDataStop
 #from GPUArray import GPUArray
 from bifrost.DataType import DataType
 from bifrost.ndarray import ndarray, _address_as_buffer
@@ -115,8 +115,11 @@ class Ring(BifrostObject):
     def read(self, whence='earliest', guarantee=True):
         with ReadSequence(self, which=whence, guarantee=guarantee) as cur_seq:
             while True:
-                yield cur_seq
-                cur_seq.increment()
+                try:
+                    yield cur_seq
+                    cur_seq.increment()
+                except EndOfDataStop:
+                    return
     #def _data(self):
     #    data_ptr = _get(self.lib.bfRingLockedGetData, self.obj)
     #    #data_ptr = c_void_p()
@@ -276,9 +279,12 @@ class ReadSequence(SequenceBase):
             stride = span_size
         offset = begin
         while True:
-            with self.acquire(offset, span_size) as ispan:
-                yield ispan
-            offset += stride
+            try:
+                with self.acquire(offset, span_size) as ispan:
+                    yield ispan
+                offset += stride
+            except EndOfDataStop:
+                return
 
 class SpanBase(object):
     def __init__(self, ring, writeable):

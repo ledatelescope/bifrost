@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,10 +28,12 @@
 import unittest
 import numpy as np
 import bifrost as bf
-import bifrost.transpose
 from functools import reduce
 from itertools import permutations
 
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED, BF_FLOAT128_ENABLED
+
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TransposeTest(unittest.TestCase):
     def run_simple_test(self, axes, dtype, shape):
         n = reduce(lambda a,b:a*b, shape)
@@ -39,7 +41,7 @@ class TransposeTest(unittest.TestCase):
         odata_gold = idata.transpose(axes)
         iarray = bf.ndarray(idata, space='cuda')
         oarray = bf.empty_like(iarray.transpose(axes))
-        bf.transpose.transpose(oarray, iarray, axes)
+        bf.transpose(oarray, iarray, axes)
         oarray = oarray.copy('system')
         np.testing.assert_array_equal(oarray, odata_gold)
 
@@ -57,5 +59,6 @@ class TransposeTest(unittest.TestCase):
         self.run_simple_test_shmoo(np.uint32)
     def test_8byte(self):
         self.run_simple_test_shmoo(np.uint64)
+    @unittest.skipUnless(BF_FLOAT128_ENABLED, "requires float128 support")
     def test_16byte(self):
         self.run_simple_test_shmoo(np.float128)

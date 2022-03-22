@@ -33,10 +33,11 @@ if sys.version_info < (3,):
     
 from bifrost.pipeline import SinkBlock, SourceBlock
 import os
+import warnings
 try:
     import simplejson as json
 except ImportError:
-    print("WARNING: Install simplejson for better performance")
+    warnings.warn("Install simplejson for better performance", RuntimeWarning)
     import json
 import glob
 from functools import reduce
@@ -105,7 +106,7 @@ class BifrostReader(object):
         if nbyte_read % frame_nbyte != 0:
             raise IOError("Unexpected end of file")
         nframe_read += nbyte_read // frame_nbyte
-        while nbyte_read < buf.nbytes:
+        while nbyte_read < buf[0].nbytes:
             self.cur_file += 1
             if self.cur_file == self.nfile:
                 break

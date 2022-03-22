@@ -46,6 +46,15 @@ telemetry.track_module()
 
 # Internal helpers below
 
+class EndOfDataStop(RuntimeError):
+    """This class is used as a Py3 StopIterator
+    
+    In Python >3.7, reaching a StopIterator in a generator will
+    raise a RuntimeError  (so you can't do 'except StopIteration' to catch it!)
+    See PEP479 https://www.python.org/dev/peps/pep-0479/
+    """
+    pass
+
 class BifrostObject(object):
     """Base class for simple objects with create/destroy functions"""
     def __init__(self, constructor, destructor, *args):
@@ -105,7 +114,7 @@ def _check(status):
             if status is None:
                 raise RuntimeError("WTF, status is None")
             if status == _bf.BF_STATUS_END_OF_DATA:
-                raise StopIteration()
+                raise EndOfDataStop('BF_STATUS_END_OF_DATA')
             elif status == _bf.BF_STATUS_WOULD_BLOCK:
                 raise IOError('BF_STATUS_WOULD_BLOCK')
             else:
@@ -113,7 +122,7 @@ def _check(status):
                 raise RuntimeError(status_str)
     else:
         if status == _bf.BF_STATUS_END_OF_DATA:
-            raise StopIteration()
+            raise EndOfDataStop('BF_STATUS_END_OF_DATA')
         elif status == _bf.BF_STATUS_WOULD_BLOCK:
             raise IOError('BF_STATUS_WOULD_BLOCK')
     return status

@@ -28,6 +28,7 @@
 
 #pragma once
 
+#include <bifrost/config.h>
 #include "cuda.hpp"
 
 #if BF_CUDA_ENABLED

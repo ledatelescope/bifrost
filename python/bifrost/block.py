@@ -48,6 +48,7 @@ import numpy as np
 from bifrost import affinity, memory
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
+from bifrost.libbifrost import EndOfDataStop
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -135,7 +136,7 @@ def insert_zeros_evenly(input_data, number_zeros):
     insert_index = np.floor(
         np.arange(
             number_zeros,
-            step=1.0) * float(input_data.size) / number_zeros)
+            step=1.0) * float(input_data.size) / number_zeros).astype(int)
     output_data = np.insert(
         input_data, insert_index,
         np.zeros(number_zeros))
@@ -227,7 +228,7 @@ class SinkBlock(object):
         self.core = -1
     def load_settings(self, input_header):
         """Load in settings from input ring header"""
-        self.header = json.loads(input_header.tostring())
+        self.header = json.loads(input_header.tobytes())
     def iterate_ring_read(self, input_ring):
         """Iterate through one input ring
         @param[in] input_ring Ring to read through"""
@@ -283,8 +284,11 @@ class MultiTransformBlock(object):
         into a single list generator"""
         iterators = [iter(iterable) for iterable in iterables]
         while True:
-            next_set = [next(iterator) for iterator in iterators]
-            yield self.flatten(*next_set)
+            try:
+                next_set = [next(iterator) for iterator in iterators]
+                yield self.flatten(*next_set)
+            except (EndOfDataStop, StopIteration):
+                return
     def load_settings(self):
         """Set by user to interpret input rings"""
         pass
@@ -295,7 +299,7 @@ class MultiTransformBlock(object):
                                      for ring_name in args]):
             # sequences is a tuple of all sequences
             for ring_name, sequence in self.izip(args, sequences):
-                self.header[ring_name] = json.loads(sequence.header.tostring())
+                self.header[ring_name] = json.loads(sequence.header.tobytes())
             self.load_settings()
             # resize all rings
             for ring_name in args:
@@ -450,8 +454,8 @@ class WriteHeaderBlock(SinkBlock):
     def load_settings(self, input_header):
         """Load the header from json
         @param[in] input_header The header from the ring"""
-        write_file = open(self.filename, 'w')
-        write_file.write(str(json.loads(input_header.tostring())))
+        with open(self.filename, 'w') as write_file:
+            write_file.write(str(json.loads(input_header.tobytes())))
     def main(self, input_ring):
         """Put the header into the file
         @param[in] input_ring Contains the header in question"""
@@ -466,7 +470,7 @@ class FFTBlock(TransformBlock):
         self.dtype = np.uint8
         self.shape = (1, 1)
     def load_settings(self, input_header):
-        header = json.loads(input_header.tostring())
+        header = json.loads(input_header.tobytes())
         self.nbit = header['nbit']
         self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
         if 'frame_shape' in header:
@@ -506,7 +510,7 @@ class IFFTBlock(TransformBlock):
         self.nbit = 8
         self.dtype = np.uint8
     def load_settings(self, input_header):
-        header = json.loads(input_header.tostring())
+        header = json.loads(input_header.tobytes())
         self.nbit = header['nbit']
         try:
             self.dtype = np.dtype(header['dtype']).type
@@ -551,7 +555,7 @@ class WriteAsciiBlock(SinkBlock):
         self.dtype = np.uint8
         open(self.filename, "w").close() # erase file
     def load_settings(self, input_header):
-        header_dict = json.loads(input_header.tostring())
+        header_dict = json.loads(input_header.tobytes())
         self.nbit = header_dict['nbit']
         try:
             self.dtype = np.dtype(header_dict['dtype']).type
@@ -579,9 +583,8 @@ class WriteAsciiBlock(SinkBlock):
                 data_accumulate = np.concatenate((data_accumulate, unpacked_data[0]))
             else:
                 data_accumulate = unpacked_data[0]
-        text_file = open(self.filename, 'a')
-        np.savetxt(text_file, data_accumulate.reshape((1, -1)))
-        text_file.close()
+        with open(self.filename, 'a') as text_file:
+            np.savetxt(text_file, data_accumulate.reshape((1, -1)))
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
@@ -656,7 +659,7 @@ class KurtosisBlock(TransformBlock):
         self.dtype = np.uint8
     def load_settings(self, input_header):
         self.output_header = input_header
-        self.settings = json.loads(input_header.tostring())
+        self.settings = json.loads(input_header.tobytes())
         self.nchan = self.settings["frame_shape"][0]
         dtype_str = self.settings["dtype"].split()[1].split(".")[1].split("'")[0]
         self.dtype = np.dtype(dtype_str)
@@ -1080,7 +1083,7 @@ class NumpySourceBlock(MultiTransformBlock):
                         arrays = [output_data]
                     else:
                         arrays = output_data
-            except StopIteration:
+            except (EndOfDataStop, StopIteration):
                 break
 
             if self.changing:

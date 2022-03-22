@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -49,7 +49,11 @@ from bifrost.libbifrost import _bf, _check
 from bifrost import device
 from bifrost.DataType import DataType
 from bifrost.Space import Space
-import sys
+
+try:
+    from bifrost._pypy3_compat import PyMemoryView_FromMemory
+except ImportError:
+    pass
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -75,9 +79,16 @@ def _address_as_buffer(address, nbyte, readonly=False):
         int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
         return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
     except AttributeError:
-        # Python2 catch
-        return np.core.multiarray.int_asbuffer(
-                   address, nbyte, readonly=readonly, check=False)
+        try:
+            # Python2 catch
+            return np.core.multiarray.int_asbuffer(address,
+                                                   nbyte,
+                                                   readonly=readonly,
+                                                   check=False)
+        except AttributeError:
+            # PyPy3 catch
+            int_asbuffer = PyMemoryView_FromMemory
+            return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
 
 def asarray(arr, space=None):
     if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
@@ -106,8 +117,12 @@ def zeros(shape, dtype='f32', space=None, **kwargs):
 def copy_array(dst, src):
     dst_bf = asarray(dst)
     src_bf = asarray(src)
-    if (space_accessible(dst_bf.bf.space, ['system',]) and      # TODO:  Should mapped be here as well?
-        space_accessible(src_bf.bf.space, ['system',])):
+    if (space_accessible(dst_bf.bf.space, ['system']) and
+        space_accessible(src_bf.bf.space, ['system'])):
+        if (src_bf.bf.space == 'cuda_managed' or
+            dst_bf.bf.space == 'cuda_managed'):
+            # TODO: Decide where/when these need to be called
+            device.stream_synchronize()
         np.copyto(dst_bf, src_bf)
     else:
         _check(_bf.bfArrayCopy(dst_bf.as_BFarray(),
@@ -150,6 +165,16 @@ class ndarray(np.ndarray):
                 native is not None):
                 raise ValueError('Invalid combination of arguments when base '
                                  'is specified')
+            if 'cupy' in sys.modules:
+                from cupy import ndarray as cupy_ndarray
+                if isinstance(base, cupy_ndarray):
+                     return ndarray.__new__(cls,
+                                            space='cuda',
+                                            buffer=int(base.data),
+                                            shape=base.shape,
+                                            dtype=base.dtype,
+                                            strides=base.strides,
+                                            native=np.dtype(base.dtype).isnative)
             if 'pycuda' in sys.modules:
                 from pycuda.gpuarray import GPUArray as pycuda_GPUArray
                 if isinstance(base, pycuda_GPUArray):
@@ -387,6 +412,15 @@ class ndarray(np.ndarray):
             else:
                 key = slice(key, key + 1)
         copy_array(self[key], val)
+    def as_cupy(self, *args, **kwargs):
+        import cupy as cp
+        if space_accessible(self.bf.space, ['cuda']):
+            umem = cp.cuda.UnownedMemory(self.ctypes.data, self.data.nbytes, self)
+            mptr = cp.cuda.MemoryPointer(umem, 0)
+            ca = cp.ndarray(self.shape, dtype=self.dtype, memptr=mptr, strides=self.strides)
+        else:
+            ca = cp.asarray(np.array(self))
+        return ca
     def as_GPUArray(self, *args, **kwargs):
         from pycuda.gpuarray import GPUArray as pycuda_GPUArray
         g  = pycuda_GPUArray(shape=self.shape, dtype=self.dtype, *args, **kwargs)

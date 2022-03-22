@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
  */
 
 #include "assert.hpp"
+#include <bifrost/config.h>
 #include <bifrost/udp_capture.h>
 #include <bifrost/affinity.h>
 #include <bifrost/Ring.hpp>
@@ -54,21 +55,20 @@ using bifrost::ring::WriteSequence;
 //#include <immintrin.h> // SSE
 
 // TODO: The VMA API is returning unaligned buffers, which prevents use of SSE
-#ifndef BF_VMA_ENABLED
-#define BF_VMA_ENABLED 0
-//#define BF_VMA_ENABLED 1
-#endif
-
-#ifndef BF_HWLOC_ENABLED
-#define BF_HWLOC_ENABLED 0
-//#define BF_HWLOC_ENABLED 1
-#endif
 
 #define BF_UNPACK_FACTOR 1
 
 enum {
 	JUMBO_FRAME_SIZE = 9000
 };
+
+#if defined __APPLE__ && __APPLE__
+
+#include <libkern/OSByteOrder.h>
+
+#define be64toh(x) OSSwapBigToHostInt64(x)
+
+#endif
 
 template<typename T>
 inline T atomic_add_and_fetch(T* dst, T val) {
@@ -572,7 +572,7 @@ class BFudpcapture_impl {
 		if( payload_size == -1 ) {
 			payload_size = _payload_size;
 		}
-		return _nseq_per_buf * _nsrc * payload_size * BF_UNPACK_FACTOR;
+		return (size_t) _nseq_per_buf * _nsrc * payload_size * BF_UNPACK_FACTOR;
 	}
 	inline void reserve_buf() {
 		_buf_ngood_bytes.push(0);
