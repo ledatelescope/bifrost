@@ -46,6 +46,10 @@ ifeq ($(HAVE_RECVMSG),1)
   udp_capture.o \
   udp_transmit.o
 endif
+ifeq ($(HAVE_RDMA),1)
+  LIBBIFROST_OBJS += \
+  rdma.o
+endif
 ifeq ($(HAVE_CUDA),1)
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \

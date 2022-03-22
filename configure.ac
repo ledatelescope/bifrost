@@ -131,6 +131,36 @@ AS_IF([test x$enable_vma != xno],
                      LIBS="$LIBS -lvma"])])
 
 #
+# Infiniband Verbs
+#
+
+AC_ARG_ENABLE([verbs],
+              AS_HELP_STRING([--enable-verbs],
+                             [enable Infiniband verbs support (default=no)]),
+              [enable_verbs=yes],
+              [enable_verbs=no])
+AC_SUBST([HAVE_VERBS], [0])
+AS_IF([test x$enable_verbs != xno],
+      [AC_CHECK_LIB([verbs], [ibv_query_device],
+                    [AC_SUBST([HAVE_VERBS], [1])
+                     LIBS="$LIBS -lverbs"])])
+
+#
+# RDMA connection manager
+#
+
+AC_ARG_ENABLE([rdma],
+              AS_HELP_STRING([--enable-rdma,
+                             [enable RDMA support (default=no)]),
+              [enable_rdma=yes],
+              [enable_rdma=no])
+AC_SUBST([HAVE_RDMA], [0])
+AS_IF([test x$enable_rdma != xno],
+      [AC_CHECK_LIB([rdma], [rdma_get_devices],
+                    [AC_SUBST([HAVE_RDMA], [1])
+                     LIBS="$LIBS -lrdmacm"])])
+
+#
 # CUDA
 #
 

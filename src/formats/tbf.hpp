@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2017, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2017, The University of New Mexico. All rights reserved.
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,30 +26,35 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_UDP_TRANSMIT_H_INCLUDE_GUARD_
-#define BF_UDP_TRANSMIT_H_INCLUDE_GUARD_
+#pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "base.hpp"
 
-typedef struct BFudptransmit_impl* BFudptransmit;
+#define TBF_FRAME_SIZE 6168
 
-typedef enum BFudptransmit_status_ {
-	BF_TRANSMIT_CONTINUED,
-	BF_TRANSMIT_INTERRUPTED,
-	BF_TRANSMIT_ERROR
-} BFudptransmit_status;
+struct __attribute__((packed)) tbf_hdr_type {
+    uint32_t sync_word;
+    uint32_t frame_count_word;
+    uint32_t seconds_count;
+    uint16_t first_chan;
+    uint16_t unassinged;
+    uint64_t time_tag;
+};
 
-BFstatus bfUdpTransmitCreate(BFudptransmit* obj,
-                            int           fd,
-                            int           core);
-BFstatus bfUdpTransmitDestroy(BFudptransmit obj);
-BFstatus bfUdpTransmitSend(BFudptransmit obj, char* packet, unsigned int len);
-BFstatus bfUdpTransmitSendMany(BFudptransmit obj, char* packets, unsigned int len, unsigned int npackets);
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
-#endif // BF_UDP_TRANSMIT_H_INCLUDE_GUARD_
+class TBFHeaderFiller : virtual public PacketHeaderFiller {
+public:
+    inline int get_size() { return sizeof(tbf_hdr_type); }
+    inline void operator()(const PacketDesc* hdr_base,
+                           BFoffset          framecount,
+                           char*             hdr) {
+        tbf_hdr_type* header = reinterpret_cast<tbf_hdr_type*>(hdr);
+        memset(header, 0, sizeof(tbf_hdr_type));
+        
+        header->sync_word        = 0x5CDEC0DE;
+        // Bits 9-32 are the frame count; bits 1-8 are the TBF packet flag
+        header->frame_count_word = htobe32((framecount & 0xFFFFFF) \
+                                           | ((uint32_t) 0x01 << 24));
+        header->first_chan       = htons(hdr_base->src);
+        header->time_tag         = htobe64(hdr_base->seq);
+    }
+};
