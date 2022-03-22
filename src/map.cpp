@@ -452,7 +452,6 @@ class DiskCacheMgr {
 		}
 		
 		if( !status ) {
-		    //cout << "INVALIDATING DISK CACHE" << endl;
 		    try {
 		        remove_file(_cachedir + "*.inf");
 		        remove_file(_cachedir + "*.ptx");
@@ -462,11 +461,11 @@ class DiskCacheMgr {
 	}
 	
 	void write_to_disk(std::string  cache_key, 
-                       std::string  kernel_name,
-                       std::string  ptx,  
-                       bool         basic_indexing_only) {              
+                     std::string  kernel_name,
+                     std::string  ptx,  
+                     bool         basic_indexing_only) {              
         // Do this with a file lock to avoid interference from other processes
-		LockFile lock(_cachedir + ".lock");
+				LockFile lock(_cachedir + ".lock");
 		
         this->tag_cache();
         
@@ -498,77 +497,73 @@ class DiskCacheMgr {
 	        // Done
 	        index.close();
 	        cache.close();
-	        //cout << "SAVED TO DISK " << cache_key << " as " << basename.str() << endl;
 	    } catch( std::exception ) {}
 	}
 	
 	void load_from_disk(ObjectCache<std::string,std::pair<CUDAKernel,bool> > *kernel_cache) {
 	    // Do this with a file lock to avoid interference from other processes
-		LockFile lock(_cachedir + ".lock");
-		
-        // Validate the cache
-		this->validate_cache();
-		
-	    std::ifstream index, cache;
-        size_t kernel_size;
-        std::string kernel_name;
-        bool basic_indexing_only;
-        std::string cache_key;
-        std::string ptx;
-        CUDAKernel kernel;
-        
-        std::string field;
-        
-        // Find the files
-        DIR* dir = opendir(_cachedir.c_str());
-        struct dirent *entry;
-        while( (entry = readdir(dir)) != NULL ) {
-            _indexfile = _cachedir + std::string(entry->d_name);
-            if( _indexfile.size() < 4 ) {
-                continue;
-            }
-            if( _indexfile.compare(_indexfile.size()-4, 4, ".inf") == 0 ) {
-                // We have an info file, get the corresponding ptx file
-                _cachefile = _indexfile.substr(0, _indexfile.size()-4) + ".ptx";
-                
-                try {
-                    // Open
-                    index.open(_indexfile, std::ios::in);
-                    cache.open(_cachefile, std::ios::in|std::ios::binary);
-                        
-                    // Read in info and then build the kernels
-                    //  * PTX size
-                    std::getline(index, field);
-                    kernel_size = std::atoi(field.c_str());
-                    //  * Kernel name
-                    std::getline(index, kernel_name);
-                    //  * Whether or not the kernel supports basic indexing only
-                    std::getline(index, field);
-                    basic_indexing_only = false;
-                    if( std::atoi(field.c_str()) > 0 ) {
-                        basic_indexing_only = true;
-                    }
-                    //  * In-memory cache name
-                    std::getline(index, cache_key);
-                    while( std::getline(index, field) ) {
-                        cache_key = cache_key + "\n" + field;
-                    }
-                    
-                    // Check the cache to see if it is aleady there...
-                    if( !kernel_cache->contains(cache_key) ) {
-                        ptx.resize(kernel_size);
-                        cache.read(&ptx[0], kernel_size);
-                        kernel.set(kernel_name.c_str(), ptx.c_str());
-                        
-                        kernel_cache->insert(cache_key,
-		                                     std::make_pair(kernel, basic_indexing_only));         
-		                //cout << "LOADED FROM DISK " << cache_key << endl;
-		            } else {
-		                //cout << "ALREADY THERE" << cache_key << endl;
-		            }
-		        
-		            // Done
-        	        index.close();
+			LockFile lock(_cachedir + ".lock");
+
+      // Validate the cache
+			this->validate_cache();
+
+    	std::ifstream index, cache;
+      size_t kernel_size;
+      std::string kernel_name;
+      bool basic_indexing_only;
+      std::string cache_key;
+      std::string ptx;
+      CUDAKernel kernel;
+      
+      std::string field;
+      
+      // Find the files
+      DIR* dir = opendir(_cachedir.c_str());
+      struct dirent *entry;
+      while( (entry = readdir(dir)) != NULL ) {
+      		_indexfile = _cachedir + std::string(entry->d_name);
+          if( _indexfile.size() < 4 ) {
+              continue;
+          }
+          if( _indexfile.compare(_indexfile.size()-4, 4, ".inf") == 0 ) {
+              // We have an info file, get the corresponding ptx file
+              _cachefile = _indexfile.substr(0, _indexfile.size()-4) + ".ptx";
+              
+              try {
+                  // Open
+                  index.open(_indexfile, std::ios::in);
+                  cache.open(_cachefile, std::ios::in|std::ios::binary);
+                      
+                  // Read in info and then build the kernels
+                  //  * PTX size
+                  std::getline(index, field);
+                  kernel_size = std::atoi(field.c_str());
+                  //  * Kernel name
+                  std::getline(index, kernel_name);
+                  //  * Whether or not the kernel supports basic indexing only
+                  std::getline(index, field);
+                  basic_indexing_only = false;
+                  if( std::atoi(field.c_str()) > 0 ) {
+                      basic_indexing_only = true;
+                  }
+                  //  * In-memory cache name
+                  std::getline(index, cache_key);
+                  while( std::getline(index, field) ) {
+                      cache_key = cache_key + "\n" + field;
+                  }
+                  
+                  // Check the cache to see if it is aleady there...
+                  if( !kernel_cache->contains(cache_key) ) {
+                      ptx.resize(kernel_size);
+                      cache.read(&ptx[0], kernel_size);
+                      kernel.set(kernel_name.c_str(), ptx.c_str());
+                      
+                      kernel_cache->insert(cache_key,
+	                                     std::make_pair(kernel, basic_indexing_only));         
+			            }
+									
+		            	// Done
+	      	        index.close();
 	                cache.close();
 	            } catch( std::exception) {}
 	        }
@@ -734,8 +729,6 @@ BFstatus bfMap(int                  ndim,
 		DiskCacheMgr::get().save(cache_key, kernel_name, ptx, basic_indexing_only);
 #endif
 		//std::cout << "INSERTING INTO CACHE" << std::endl;
-	} else {
-		//std::cout << "FOUND IN CACHE" << std::endl;
 	}
 	auto& cache_entry = kernel_cache.get(cache_key);
 	CUDAKernel& kernel = cache_entry.first;
