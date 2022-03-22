@@ -399,7 +399,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	return BF_STATUS_SUCCESS;
 }
 
-#if defined(BF_GPU_MAP_CACHE) && BF_GPU_MAP_CACHE
+#if defined BF_GPU_MAP_CACHE && BF_GPU_MAP_CACHE
 class DiskCacheMgr {
 	std::string            _cachedir;
 	std::string            _indexfile;
