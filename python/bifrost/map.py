@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -35,6 +35,9 @@ from bifrost.libbifrost import _bf, _check, _array
 from bifrost.ndarray import asarray
 import numpy as np
 import ctypes
+import glob
+import os
+from bifrost.libbifrost_generated import BF_GPU_MAP_CACHE
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -143,5 +146,30 @@ def map(func_string, data, axis_names=None, shape=None,
                      func_name, func_string, extra_code,
                      _array(block_shape), _array(block_axes)))
 
-def map_clear_cache():
+def list_cache():
+    output = ''
+    if BF_GPU_MAP_CACHE:
+        cache_path = os.path.join(os.path.expanduser('~'), 'map_cache')
+        try:
+            with open(os.path.join(cache_path, 'cache.version'), 'r') as fh:
+                version = fh.read()
+            runtime, driver = version.split(None, 1)
+            runtime = int(runtime, 10)
+            runtime = "%i.%i" % (runtime//1000, (runtime//10) % 1000)
+            driver = int(driver, 10)
+            driver = "%i.%i" % (driver//1000, (driver//10) % 1000)
+            
+            entries = glob.glob(os.path.join(cache_path, '*.inf'))
+            
+            output += "Cache version: %s (runtime), %s (driver)\n" % (runtime, driver)
+            output += "Cache entries: %i" % len(entries)
+        except OSError:
+            pass
+            
+    if len(output) == 0:
+        output = 'none'
+    print(output)
+
+
+def clear_cache():
     _check(_bf.bfMapClearCache())

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -792,7 +792,7 @@ BFstatus bfMap(int                  ndim,
 }
 
 BFstatus bfMapClearCache() {
-#if BF_MAPCACHE_ENABLED
+#if defined BF_GPU_MAP_CACHE && BF_GPU_MAP_CACHE
     DiskCacheMgr::get().clear();
     return BF_STATUS_SUCCESS;
 #else
