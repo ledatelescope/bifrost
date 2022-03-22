@@ -61,7 +61,7 @@ class UnpackBlock(TransformBlock):
     def on_data(self, ispan, ospan):
         idata = ispan.data
         odata = ospan.data
-        bf.unpack.unpack(idata, odata, self.align_msb)
+        bf.unpack(idata, odata, self.align_msb)
 
 def unpack(iring, dtype, *args, **kwargs):
     """Unpack data to a larger data type.

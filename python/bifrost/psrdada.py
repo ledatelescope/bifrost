@@ -44,6 +44,7 @@ from __future__ import absolute_import, print_function
 import bifrost.libpsrdada_generated as _dada
 import numpy as np
 from bifrost.ndarray import _address_as_buffer
+from bifrost.libbifrost import EndOfDataStop
 
 import ctypes
 
@@ -118,7 +119,7 @@ class IpcBaseBuf(object):
         else:
             del block
             self.reset()
-            raise StopIteration()
+            raise EndOfDataStop('IpcBufBlock empty')
     def next(self):
         return self.__next__()
     def open(self):

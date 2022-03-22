@@ -42,6 +42,7 @@ bfMap(3, c.shape, {"dm", "t"},
 #define BF_MAP_KERNEL_CACHE_SIZE 128
 #endif
 
+#include <bifrost/config.h>
 #include <bifrost/map.h>
 #include "fileutils.hpp"
 
@@ -352,7 +353,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	nvrtcResult ret = nvrtcCompileProgram(program,
 	                                      options_c.size(),
 	                                      &options_c[0]);
-#if BF_DEBUG
+#if BF_DEBUG_ENABLED
 	size_t logsize;
 	// Note: Includes the trailing NULL
 	BF_CHECK_NVRTC( nvrtcGetProgramLogSize(program, &logsize) );
@@ -382,7 +383,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	char* ptx = &vptx[0];
 	BF_CHECK_NVRTC( nvrtcGetPTX(program, &ptx[0]) );
 	BF_CHECK_NVRTC( nvrtcDestroyProgram(&program) );
-#if BF_DEBUG
+#if BF_DEBUG_ENABLED
 	if( EnvVars::get("BF_PRINT_MAP_KERNELS_PTX", "0") != "0" ) {
 		std::cout << ptx << std::endl;
 	}

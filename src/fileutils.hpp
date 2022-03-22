@@ -35,6 +35,10 @@
 #include <pwd.h>       // For getpwuid
 #include <system_error>
 
+#if defined __APPLE__ && __APPLE__
+#include <sys/sysctl.h>
+#endif
+
 inline std::string get_home_dir(void) {
 	const char *homedir;
   if ((homedir = getenv("HOME")) == NULL) {
@@ -67,10 +71,41 @@ inline bool file_exists(std::string path) {
     return !(stat(path.c_str(), &s) == -1
 	         && errno == ENOENT);
 }
-inline bool process_exists(pid_t pid) {
+bool process_exists(pid_t pid) {
+#if defined __APPLE__ && __APPLE__
+
+  // Based on information from:
+	//   https://developer.apple.com/library/archive/qa/qa2001/qa1123.html
+	
+  static const int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
+	kinfo_proc *proclist = NULL;
+	int err, found = 0;
+	size_t len, count;
+	len = 0;
+	err = sysctl((int *) name, (sizeof(name) / sizeof(*name)) - 1,
+               NULL, &len, NULL, 0);
+	if( err == 0 ) {
+		proclist = (kinfo_proc*) ::malloc(len);
+		err = sysctl((int *) name, (sizeof(name) / sizeof(*name)) - 1,
+                 proclist, &len, NULL, 0);
+		if( err == 0 ) {
+			count = len / sizeof(kinfo_proc);
+			for(int i=0; i<count; i++) {
+				pid_t c_pid = proclist[i].kp_proc.p_pid;
+				if( c_pid == pid ) {
+					found = 1;
+					break;
+				}
+			}
+		}
+		::free(proclist);
+	}
+	return (bool) found;
+#else
 	struct stat s;
 	return !(stat(("/proc/"+std::to_string(pid)).c_str(), &s) == -1
 	         && errno == ENOENT);
+#endif
 }
 
 inline std::string get_dirname(std::string filename) {

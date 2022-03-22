@@ -26,7 +26,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import unittest
-import io
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 import bifrost.pipeline as bfp
 import bifrost.blocks as blocks
@@ -44,7 +47,7 @@ class TestPrintHeader(unittest.TestCase):
         """Capture print output, assert it is a long string"""
         gulp_nframe = 101
 
-        stdout = io.BytesIO()
+        stdout = StringIO()
         with ExitStack() as stack:
             pipeline = stack.enter_context(bfp.Pipeline())
             stack.enter_context(redirect_stdout(stdout))

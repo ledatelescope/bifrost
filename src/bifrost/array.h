@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -74,7 +74,9 @@ typedef enum BFdtype_ {
 	BF_DTYPE_F16   =  16 | BF_DTYPE_FLOAT_TYPE,
 	BF_DTYPE_F32   =  32 | BF_DTYPE_FLOAT_TYPE,
 	BF_DTYPE_F64   =  64 | BF_DTYPE_FLOAT_TYPE,
+#if defined BF_FLOAT128_ENABLED && BF_FLOAT128_ENABLED
 	BF_DTYPE_F128  = 128 | BF_DTYPE_FLOAT_TYPE,
+#endif
 	
 	BF_DTYPE_CI1   =   1 | BF_DTYPE_INT_TYPE | BF_DTYPE_COMPLEX_BIT,
 	BF_DTYPE_CI2   =   2 | BF_DTYPE_INT_TYPE | BF_DTYPE_COMPLEX_BIT,
@@ -87,7 +89,9 @@ typedef enum BFdtype_ {
 	BF_DTYPE_CF16  =  16 | BF_DTYPE_FLOAT_TYPE | BF_DTYPE_COMPLEX_BIT,
 	BF_DTYPE_CF32  =  32 | BF_DTYPE_FLOAT_TYPE | BF_DTYPE_COMPLEX_BIT,
 	BF_DTYPE_CF64  =  64 | BF_DTYPE_FLOAT_TYPE | BF_DTYPE_COMPLEX_BIT,
+#if defined BF_FLOAT128_ENABLED && BF_FLOAT128_ENABLED
 	BF_DTYPE_CF128 = 128 | BF_DTYPE_FLOAT_TYPE | BF_DTYPE_COMPLEX_BIT
+#endif
 } BFdtype;
 /*
 typedef struct BFdtype_info_ {

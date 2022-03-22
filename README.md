@@ -2,7 +2,7 @@
 
 | **`CPU Build`** | **`GPU Build`** | **`Coverage`** | 
 |-----------------|-----------------|----------------|
-|[![Travis](https://travis-ci.com/ledatelescope/bifrost.svg?branch=master)](https://travis-ci.com/ledatelescope/bifrost) | [![Build Status](https://fornax.phys.unm.edu/jenkins/buildStatus/icon?job=Bifrost)](https://fornax.phys.unm.edu/jenkins/job/Bifrost/) | [![Coverage Status](https://coveralls.io/repos/github/ledatelescope/bifrost/badge.svg)](https://coveralls.io/github/ledatelescope/bifrost) |
+|[![GHA](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml/badge.svg)](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml) | [![Build Status](https://fornax.phys.unm.edu/jenkins/buildStatus/icon?job=Bifrost)](https://fornax.phys.unm.edu/jenkins/job/Bifrost/) | [![Coverage Status](https://codecov.io/gh/ledatelescope/bifrost/branch/master/graph/badge.svg?token=f3ge1zWe5P)](https://codecov.io/gh/ledatelescope/bifrost) |
 
 A stream processing framework for high-throughput applications.
 
@@ -87,6 +87,9 @@ print "All done"
 
 ## Installation
 
+**For a quick demo which you can run in-browser without installation,
+go to the following [link](https://colab.research.google.com/github/ledatelescope/bifrost/blob/master/BifrostDemo.ipynb).**
+
 ### C Dependencies
 
     $ sudo apt-get install exuberant-ctags
@@ -99,22 +102,27 @@ print "All done"
  * ctypesgen
 
 ```
-$ sudo pip install numpy contextlib2 pint git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f
+$ sudo pip install numpy contextlib2 pint ctypesgen==1.0.2
 ```
 
 ### Bifrost Installation
 
-Edit **user.mk** to suit your system, then run:
+To configure Bifrost for you your system and build the library, then run:
 
+    $ ./configure
     $ make -j
     $ sudo make install
 
-which will install the library and headers into /usr/local/lib and
-/usr/local/include respectively.
+By default this will install the library and headers into /usr/local/lib and
+/usr/local/include respectively.  You can use the --prefix option to configure
+to change this.
 
 You can call the following for a local Python installation:
 
-    $ sudo make install PYINSTALLFLAGS="--prefix=$HOME/usr/local"
+    $ ./configure --with-pyinstall-flags=--user
+    $ make -j
+    $ sudo make install HAVE_PYTHON=0
+    $ make -C python install
 
 ### Docker Container
 
@@ -188,15 +196,8 @@ they are aggregated.
 
 Users can opt out of telemetry collection using:
 
-```python
-from bifrost import telemetry
-telemetry.disable()
 ```
-
-or by using the included `bifrost_telemetry.py` script:
-
-```
-python bifrost_telemetry.py --disable
+python -m bifrost.telemetry --disable
 ```
 
 This command will set a disk-based flag that disables the reporting process.

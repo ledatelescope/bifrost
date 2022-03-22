@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -29,14 +29,13 @@
 # Python2 compatibility
 from __future__ import print_function
 
-from distutils.command.install import install
-from setuptools import setup, find_packages
+from setuptools import setup, Extension, find_packages
 import os
 import sys
 import glob
 
 # Parse version file to extract __version__ value
-bifrost_version_file = 'bifrost/version.py'
+bifrost_version_file = 'bifrost/version/__init__.py'
 try:
     with open(bifrost_version_file, 'r') as version_file:
         for line in version_file:
@@ -51,27 +50,20 @@ except IOError:
     if 'clean' in sys.argv[1:]:
         sys.exit(0)
     print("*************************************************************************")
-    print("Please run `make` from the root of the source tree to generate version.py")
+    print("Please run `configure` and `make` from the root of the source tree to")
+    print("generate", bifrost_version_file)
     print("*************************************************************************")
     raise
 
-# Override "install" to show the telemetry warning
-class bifrost_install(install):
-    def run(self):
-        install.run(self)
-        print("*************************************************************************")
-        print("By default Bifrost installs with basic Python telemetry enabled in order ")
-        print("order to help inform how the software is used and to help inform future  ")
-        print("development.  You can opt out of telemetry collection using:             ")
-        print(">>> from bifrost import telemetry                                        ")
-        print(">>> telemetry.disable()                                                  ")
-        print("*************************************************************************")
+# Build the PyPy3 compatibility module, if needed
+modules = []
+if sys.version.find('PyPy') != -1:
+    modules.append(Extension('_pypy3_compat', ['bifrost/pypy3_compat.c']))
 
 # Build up a list of scripts to install
 scripts = glob.glob(os.path.join('..', 'tools', '*.py'))
 
-setup(cmdclass={'install': bifrost_install,},
-      name='bifrost',
+setup(name='bifrost',
       version=__version__,
       description='Pipeline processing framework',
       author='Ben Barsdell',
@@ -84,5 +76,8 @@ setup(cmdclass={'install': bifrost_install,},
           "contextlib2>=0.4.0",
           "pint>=0.7.0",
           "graphviz>=0.5.0",
+          "ctypesgen==1.0.2",
           "matplotlib"
-      ])
+      ],
+      ext_package='bifrost',
+      ext_modules = modules)
