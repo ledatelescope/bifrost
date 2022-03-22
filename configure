@@ -723,6 +723,8 @@ GPU_MAX_ARCH
 CUDA_VERSION
 HAVE_CUDA
 CUDA_HOME
+HAVE_RDMA
+HAVE_VERBS
 HAVE_VMA
 HAVE_HWLOC
 HAVE_NUMA
@@ -836,6 +838,8 @@ with_ctags
 enable_numa
 enable_hwloc
 enable_vma
+enable_verbs
+enable_rdma
 with_cuda_home
 enable_cuda
 with_nvcc_flags
@@ -1510,6 +1514,8 @@ Optional Features:
   --disable-numa          disable numa support (default=no)
   --disable-hwloc         disable hwloc support (default=no)
   --enable-vma            enable vma support (default=no)
+  --enable-verbs          enable Infiniband verbs support (default=no)
+  --enable-rdma           enable RDMA support (default=no)
   --disable-cuda          disable cuda support (default=no)
   --enable-debug          enable debugging mode (default=no)
   --enable-trace          enable tracing mode for nvprof/nvvp (default=no)
@@ -19274,6 +19280,124 @@ fi
 fi
 
 #
+# Infiniband Verbs
+#
+
+# Check whether --enable-verbs was given.
+if test ${enable_verbs+y}
+then :
+  enableval=$enable_verbs; enable_verbs=yes
+else $as_nop
+  enable_verbs=no
+fi
+
+HAVE_VERBS=0
+
+if test x$enable_verbs != xno
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ibv_query_device in -lverbs" >&5
+printf %s "checking for ibv_query_device in -lverbs... " >&6; }
+if test ${ac_cv_lib_verbs_ibv_query_device+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lverbs  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+namespace conftest {
+  extern "C" int ibv_query_device ();
+}
+int
+main (void)
+{
+return conftest::ibv_query_device ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"
+then :
+  ac_cv_lib_verbs_ibv_query_device=yes
+else $as_nop
+  ac_cv_lib_verbs_ibv_query_device=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_verbs_ibv_query_device" >&5
+printf "%s\n" "$ac_cv_lib_verbs_ibv_query_device" >&6; }
+if test "x$ac_cv_lib_verbs_ibv_query_device" = xyes
+then :
+  HAVE_VERBS=1
+
+                     LIBS="$LIBS -lverbs"
+fi
+
+fi
+
+#
+# RDMA
+#
+
+# Check whether --enable-rdma was given.
+if test ${enable_rdma+y}
+then :
+  enableval=$enable_rdma; enable_rdma=yes
+else $as_nop
+  enable_rdma=no
+fi
+
+HAVE_RDMA=0
+
+if test x$enable_rdma != xno
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for rdma_get_devices in -lrdma" >&5
+printf %s "checking for rdma_get_devices in -lrdma... " >&6; }
+if test ${ac_cv_lib_rdma_rdma_get_devices+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lrdma  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+namespace conftest {
+  extern "C" int rdma_get_devices ();
+}
+int
+main (void)
+{
+return conftest::rdma_get_devices ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"
+then :
+  ac_cv_lib_rdma_rdma_get_devices=yes
+else $as_nop
+  ac_cv_lib_rdma_rdma_get_devices=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_rdma_rdma_get_devices" >&5
+printf "%s\n" "$ac_cv_lib_rdma_rdma_get_devices" >&6; }
+if test "x$ac_cv_lib_rdma_rdma_get_devices" = xyes
+then :
+  HAVE_RDMA=1
+
+                     LIBS="$LIBS -lrdmacm"
+fi
+
+fi
+
+#
 # CUDA
 #
 
@@ -24759,6 +24883,24 @@ printf "%s\n" "$as_me: libvma: yes" >&6;}
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: libvma: no" >&5
 printf "%s\n" "$as_me: libvma: no" >&6;}
+fi
+
+if test x$HAVE_VERBS = x1
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: libverbs: yes" >&5
+printf "%s\n" "$as_me: libverbs: yes" >&6;}
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: libverbs: no" >&5
+printf "%s\n" "$as_me: libverbs: no" >&6;}
+fi
+
+if test x$HAVE_RDMA = x1
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: librdmacm: yes" >&5
+printf "%s\n" "$as_me: librdmacm: yes" >&6;}
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: librdmacm: no" >&5
+printf "%s\n" "$as_me: librdmacm: no" >&6;}
 fi
 
 if test x$HAVE_PYTHON = x1

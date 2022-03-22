@@ -17,6 +17,7 @@ PYINSTALLFLAGS ?= @PYINSTALLFLAGS@
 HAVE_CXX14    ?= @HAVE_CXX14@
 
 HAVE_RECVMSG  ?= @HAVE_RECVMSG@
+HAVE_RDMA     ?= @HAVE_RDMA@
 
 HAVE_CUDA     ?= @HAVE_CUDA@
 
@@ -43,8 +44,8 @@ ifeq ($(HAVE_RECVMSG),1)
   LIBBIFROST_OBJS += \
 	address.o \
 	udp_socket.o \
-  udp_capture.o \
-  udp_transmit.o
+  packet_capture.o \
+  packet_writer.o
 endif
 ifeq ($(HAVE_RDMA),1)
   LIBBIFROST_OBJS += \

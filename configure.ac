@@ -146,11 +146,11 @@ AS_IF([test x$enable_verbs != xno],
                      LIBS="$LIBS -lverbs"])])
 
 #
-# RDMA connection manager
+# RDMA
 #
 
 AC_ARG_ENABLE([rdma],
-              AS_HELP_STRING([--enable-rdma,
+              AS_HELP_STRING([--enable-rdma],
                              [enable RDMA support (default=no)]),
               [enable_rdma=yes],
               [enable_rdma=no])
@@ -354,6 +354,14 @@ AS_IF([test x$HAVE_VMA = x1],
       [AC_MSG_NOTICE(libvma: yes)],
       [AC_MSG_NOTICE(libvma: no)])
 
+AS_IF([test x$HAVE_VERBS = x1],
+      [AC_MSG_NOTICE(libverbs: yes)],
+      [AC_MSG_NOTICE(libverbs: no)])
+
+AS_IF([test x$HAVE_RDMA = x1],
+      [AC_MSG_NOTICE(librdmacm: yes)],
+      [AC_MSG_NOTICE(librdmacm: no)])
+      
 AS_IF([test x$HAVE_PYTHON = x1],
       [AC_MSG_NOTICE(python bindings: yes)],
       [AC_MSG_NOTICE(python bindings: no)])
