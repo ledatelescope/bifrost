@@ -29,7 +29,7 @@ RUN pip --no-cache-dir install \
         contextlib2 \
         simplejson \
         pint \
-        git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f \
+        ctypesgen==1.0.2 \
         graphviz
 
 ENV TERM xterm

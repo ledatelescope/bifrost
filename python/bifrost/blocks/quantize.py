@@ -61,7 +61,7 @@ class QuantizeBlock(TransformBlock):
     def on_data(self, ispan, ospan):
         idata = ispan.data
         odata = ospan.data
-        bf.quantize.quantize(idata, odata, self.scale)
+        bf.quantize(idata, odata, self.scale)
 
 def quantize(iring, dtype, scale=1., *args, **kwargs):
     """Apply a requantization of bit depth for the data.

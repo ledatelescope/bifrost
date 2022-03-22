@@ -45,15 +45,16 @@ from bifrost import blocks
 from bifrost.block_chainer import BlockChainer
 from bifrost.reduce import reduce
 # import copy_block, transpose_block, scrunch_block, sigproc_block, fdmt_block
-# from bifrost.transpose import transpose
-# from bifrost.unpack import unpack
-# from bifrost.quantize import quantize
+from bifrost.transpose import transpose
+from bifrost.unpack import unpack
+from bifrost.quantize import quantize
 
 try:
     from bifrost.version import __version__
 except ImportError:
     print("*************************************************************************")
-    print("Please run `make` from the root of the source tree to generate version.py")
+    print("Please run `configure` and `make` from the root of the source tree to")
+    print("generate the bifrost.version module.")
     print("*************************************************************************")
     raise
 __author__     = "The Bifrost Authors"

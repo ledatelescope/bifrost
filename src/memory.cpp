@@ -27,6 +27,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <bifrost/config.h>
 #include <bifrost/memory.h>
 #include "utils.hpp"
 #include "cuda.hpp"
@@ -181,7 +182,8 @@ BFstatus bfMemcpy(void*       dst,
 			case BF_SPACE_CUDA_HOST: // fall-through
 			case BF_SPACE_SYSTEM: ::memcpy(dst, src, count); return BF_STATUS_SUCCESS;
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
-			// TODO: BF_SPACE_CUDA_MANAGED
+			// Is this the right thing to do?
+			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
 			default: BF_FAIL("Valid bfMemcpy dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
@@ -190,12 +192,14 @@ BFstatus bfMemcpy(void*       dst,
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
 			case BF_SPACE_SYSTEM: kind = cudaMemcpyDeviceToHost; break;
-			case BF_SPACE_CUDA:   kind = cudaMemcpyDeviceToDevice; break;
-			// TODO: BF_SPACE_CUDA_MANAGED
+			case BF_SPACE_CUDA: kind = cudaMemcpyDeviceToDevice; break;
+			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
 			default: BF_FAIL("Valid bfMemcpy dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
 		}
+		// Is this the right thing to do?
+		case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
 		default: BF_FAIL("Valid bfMemcpy src space", BF_STATUS_INVALID_ARGUMENT);
 		}
 		BF_TRACE_STREAM(g_cuda_stream);
@@ -263,6 +267,8 @@ BFstatus bfMemcpy2D(void*       dst,
 			}
 			break;
 		}
+		// Is this the right thing to do?
+		case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
 		default: BF_FAIL("Valid bfMemcpy2D src space", BF_STATUS_INVALID_ARGUMENT);
 		}
 		BF_TRACE_STREAM(g_cuda_stream);

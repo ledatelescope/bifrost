@@ -45,6 +45,7 @@ cf32: 32+32-bit complex floating point
 from __future__ import absolute_import
 
 from bifrost.libbifrost import _bf
+from bifrost.libbifrost_generated import BF_FLOAT128_ENABLED
 import numpy as np
 
 from bifrost import telemetry
@@ -81,14 +82,16 @@ def numpy2bifrost(dtype):
     elif dtype == np.float16:    return _bf.BF_DTYPE_F16
     elif dtype == np.float32:    return _bf.BF_DTYPE_F32
     elif dtype == np.float64:    return _bf.BF_DTYPE_F64
-    elif dtype == np.float128:   return _bf.BF_DTYPE_F128
+    elif dtype == np.float128 \
+         and BF_FLOAT128_ENABLED: return _bf.BF_DTYPE_F128
     elif dtype == ci8:           return _bf.BF_DTYPE_CI8
     elif dtype == ci16:          return _bf.BF_DTYPE_CI16
     elif dtype == ci32:          return _bf.BF_DTYPE_CI32
     elif dtype == cf16:          return _bf.BF_DTYPE_CF16
     elif dtype == np.complex64:  return _bf.BF_DTYPE_CF32
     elif dtype == np.complex128: return _bf.BF_DTYPE_CF64
-    elif dtype == np.complex256: return _bf.BF_DTYPE_CF128
+    elif dtype == np.complex256 \
+         and BF_FLOAT128_ENABLED: return _bf.BF_DTYPE_CF128
     else: raise ValueError("Unsupported dtype: " + str(dtype))
 
 def name_nbit2numpy(name, nbit):
