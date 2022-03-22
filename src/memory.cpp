@@ -59,8 +59,8 @@ static_assert(BF_IS_POW2(BF_ALIGNMENT), "BF_ALIGNMENT must be a power of 2");
 
 int posix_fallocate(int fd, off_t offset, off_t len) {
   fstore_t flags;
-  flags.fst_flags = F_ALLOCATECONTIG || F_ALLOCATEALL;
-  flags.fst_posmod = F_PEOFPOSMODE;
+  flags.fst_flags = F_ALLOCATECONTIG | F_ALLOCATEALL;
+  flags.fst_posmode = F_PEOFPOSMODE;
   flags.fst_offset = offset;
   flags.fst_length = len;
   
