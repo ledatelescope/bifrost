@@ -351,6 +351,8 @@ AS_IF([test x$enable_native_arch != xno],
       [AC_SUBST([OPTIONS], ["$OPTIONS native"])])
 AS_IF([test x$HAVE_FLOAT128 != x0],
       [AC_SUBST([OPTIONS], ["$OPTIONS float128"])])
+AS_IF([test x$enable_map_cache != xno],
+      [AC_SUBST([OPTIONS], ["$OPTIONS map_cache"])])
 AC_MSG_NOTICE(options:$OPTIONS)
       
 echo ""
