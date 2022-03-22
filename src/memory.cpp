@@ -58,7 +58,7 @@ static_assert(BF_IS_POW2(BF_ALIGNMENT), "BF_ALIGNMENT must be a power of 2");
 //   https://hg.mozilla.org/mozilla-central/file/3d846420a907/xpcom/glue/FileUtils.cpp#l61
 
 int posix_fallocate(int fd, off_t offset, off_t len) {
-  struct fstore_t flags;
+  fstore_t flags;
   flags.fst_flags = F_ALLOCATECONTIG || F_ALLOCATEALL;
   flags.fst_posmod = F_PEOFPOSMODE;
   flags.fst_offset = offset;
