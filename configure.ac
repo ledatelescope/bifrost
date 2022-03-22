@@ -211,8 +211,9 @@ AC_ARG_ENABLE([map_cache],
                               [disable caching bifrost.map kernels (default=no)])],
               [enable_map_cache=no],
               [enable_map_cache=yes])
+AC_SUBST([HAVE_MAP_CACHE], [0])
 AS_IF([test x$enable_map_cache != xno],
-      [CPPFLAGS="$CPPFLAGS -DBF_MAPCACHE_ENABLED=1"])
+      [AC_SUBST([HAVE_MAP_CACHE], [1])])
 
 #
 # Python
