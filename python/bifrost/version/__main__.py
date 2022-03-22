@@ -29,5 +29,6 @@ if args.config:
         print("  CUDA architectures: %s" % BF_GPU_ARCHS)
         print("  CUDA shared memory: %i B" % BF_GPU_SHAREDMEM)
         print("  CUDA managed memory support: %s" % _yes_no(BF_GPU_MANAGEDMEM))
+        print("  CUDA map cache: %s" % _yes_no(BF_GPU_MAP_CACHE))
         print("  CUDA debugging: %s" % _yes_no(BF_CUDA_DEBUG_ENABLED))
         print("  CUDA tracing enabled: %s" % _yes_no(BF_TRACE_ENABLED))
