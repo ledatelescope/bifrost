@@ -1,0 +1,308 @@
+{
+  description =
+    "A stream processing framework for high-throughput applications.";
+
+  inputs.ctypesgen = {
+    url = "github:ctypesgen/ctypesgen";
+    flake = false;
+  };
+
+  inputs.pre-commit-hooks = {
+    url =
+      "github:cachix/pre-commit-hooks.nix/ff9c0b459ddc4b79c06e19d44251daa8e9cd1746";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = inputs@{ self, nixpkgs, pre-commit-hooks, ... }:
+    let
+      inherit (nixpkgs) lib;
+
+      # Parse the version info in the AC_INIT declaration.
+      acVersion = lib.head
+        (builtins.match "AC_INIT\\(\\[bifrost], *\\[([.0-9]+)].*" (lib.head
+          (lib.filter (lib.strings.hasPrefix "AC_INIT")
+            (lib.splitString "\n" (lib.readFile ./configure.ac)))));
+
+      # Add a git hash if available; but if repo isn't clean then flake won’t
+      # provide shortRev and version ends in ".dev".
+      version = "${acVersion}.dev"
+        + lib.optionalString (self ? shortRev) "+g${self.shortRev}";
+
+      getCudaArchs = cudatoolkit:
+        let
+          path = if builtins.readDir "${cudatoolkit}/include" ? "nvvm.h" then
+            "${cudatoolkit}/include/nvvm.h"
+          else
+            "${cudatoolkit}/nvvm/include/nvvm.h";
+        in lib.concatStringsSep " " (map lib.head (lib.filter (x: x != null)
+          (map (builtins.match ".*compute_([0-9]+)")
+            (lib.splitString "\n" (builtins.readFile path)))));
+
+      bifrost = { stdenv, ctags, ncurses, file, enableDebug ? false
+        , enablePython ? true, python3, enableCuda ? false, cudatoolkit
+        , util-linuxMinimal, gpuArchs ? getCudaArchs cudatoolkit }:
+        let
+          pname = lib.optionalString (!enablePython) "lib" + "bifrost"
+            + lib.optionalString enablePython
+            "-py${lib.versions.majorMinor python3.version}"
+            + lib.optionalString enableCuda
+            "-cuda${lib.versions.majorMinor cudatoolkit.version}"
+            + lib.optionalString enableDebug "-debug";
+        in stdenv.mkDerivation {
+          name = "${pname}-${version}";
+          inherit version;
+          src = ./.;
+          buildInputs = [ ctags ncurses ] ++ lib.optionals enablePython [
+            python3
+            python3.pkgs.ctypesgen
+            python3.pkgs.setuptools
+            python3.pkgs.pip
+            python3.pkgs.wheel
+          ] ++ lib.optionals enableCuda [ cudatoolkit util-linuxMinimal ];
+          propagatedBuildInputs = lib.optionals enablePython [
+            python3.pkgs.contextlib2
+            python3.pkgs.graphviz
+            python3.pkgs.matplotlib
+            python3.pkgs.numpy
+            python3.pkgs.pint
+            python3.pkgs.scipy
+            python3.pkgs.simplejson
+          ];
+          patchPhase =
+            # Remove usage of \r and tput; not conducive to build logs.
+            ''
+              sed -i -e 's:\\r::g' -e 's:echo -n:echo:' \
+                  -e 's:\(CLEAR_LINE = \).*:\1:' src/autodep.mk src/Makefile.in
+            '' +
+            # libtool wants file command, and refers to it in /usr/bin
+            ''
+              sed -i 's:/usr/bin/file:${file}/bin/file:' configure
+            '' +
+            # Use pinned ctypesgen, not one from pypi.
+            ''
+              sed -i 's/ctypesgen==1.0.2/ctypesgen/' python/setup.py
+            '' +
+            # Mimic the process of buildPythonPackage, which explicitly
+            # creates wheel, then installs with pip.
+            ''
+              sed -i -e "s:build @PYBUILDFLAGS@:bdist_wheel:" \
+                  -e "s:@PYINSTALLFLAGS@ .:${
+                    lib.concatStringsSep " " [
+                      "--prefix=${placeholder "out"}"
+                      "--no-index"
+                      "--no-warn-script-location"
+                      "--no-cache"
+                    ]
+                  } dist/*.whl:" \
+                  python/Makefile.in
+            '';
+          # Had difficulty specifying this with configureFlags, because it
+          # wants to quote the args and that fails with spaces in gpuArchs.
+          configurePhase = ''
+            ./configure --disable-static --prefix="$out" \
+              ${lib.optionalString enableDebug "--enable-debug"} \
+              ${
+                lib.optionalString enableCuda ("--with-cuda-home=${cudatoolkit}"
+                  + " --with-gpu-archs='${gpuArchs}'"
+                  + " --with-nvcc-flags='-Wno-deprecated-gpu-targets'"
+                  + " LDFLAGS=-L${cudatoolkit}/lib/stubs")
+              }
+          '';
+          preBuild = lib.optionalString enablePython ''
+            make -C python bifrost/libbifrost_generated.py
+            sed -i \
+                -e "s:^add_library_search_dirs(\[:&'$out/lib':" \
+                python/bifrost/libbifrost_generated.py
+          '';
+          makeFlags =
+            lib.optionals enableCuda [ "CUDA_LIBDIR64=$(CUDA_HOME)/lib" ];
+          preInstall = ''
+            mkdir -p "$out/lib"
+          '';
+        };
+
+      ctypesgen =
+        { buildPythonPackage, setuptools-scm, toml, glibc, stdenv, gcc }:
+        buildPythonPackage rec {
+          pname = "ctypesgen";
+          # Setup tools won’t be able to run git describe to generate the
+          # version, but we can include the shortRev.
+          version = "1.0.2.dev+g${inputs.ctypesgen.shortRev}";
+          SETUPTOOLS_SCM_PRETEND_VERSION = version;
+          src = inputs.ctypesgen;
+          buildInputs = [ setuptools-scm toml ];
+          patchPhase =
+            # Version detection in the absence of ‘git describe’ is broken,
+            # even with an explicit VERSION file.
+            ''
+              sed -i \
+                  -e 's/\(VERSION = \).*$/\1"${pname}-${version}"/' \
+                  -e 's/\(VERSION_NUMBER = \).*$/\1"${version}"/' \
+                  ctypesgen/version.py
+            '' +
+            # At runtime, ctypesgen invokes ‘gcc -E’. It won’t be available in
+            # the darwin stdenv so let's explicitly patch full path to gcc in
+            # nix store, making gcc a true prerequisite, which it is. There
+            # are also runs of gcc specified in test suite.
+            ''
+              sed -i 's:gcc -E:${gcc}/bin/gcc -E:' ctypesgen/options.py
+              sed -i 's:"gcc":"${gcc}/bin/gcc":' tests/ctypesgentest.py
+            '' +
+            # Some tests explicitly load ‘libm’ and ‘libc’. They won’t be
+            # found on NixOS unless we patch in the ‘glibc’ path.
+            lib.optionalString stdenv.isLinux ''
+              sed -i 's:libm.so.6:${glibc}/lib/libm.so.6:' tests/testsuite.py
+              sed -i 's:libc.so.6:${glibc}/lib/libc.so.6:' tests/testsuite.py
+            '';
+          checkPhase = "python -m unittest -v tests/testsuite.py";
+        };
+
+      pyOverlay = self: _: {
+        ctypesgen = self.callPackage ctypesgen { };
+        bifrost = self.toPythonModule (self.callPackage bifrost {
+          enablePython = true;
+          python3 = self.python;
+        });
+      };
+
+      bifrost-doc =
+        { stdenv, python3, ctags, doxygen, docDir ? "/share/doc/bifrost" }:
+        let pname = "bifrost-doc";
+        in stdenv.mkDerivation {
+          name = "${pname}-${version}";
+          inherit version;
+          src = ./.;
+          buildInputs = [
+            ctags
+            doxygen
+            python3
+            python3.pkgs.bifrost
+            python3.pkgs.sphinx
+            python3.pkgs.breathe
+          ];
+          buildPhase = ''
+            make doc
+            make -C docs html
+            cd docs/build/html
+            mv _static static
+            mv _sources sources
+            find . -type f -exec sed -i \
+              -e '/\(href\|src\)=\"\(\.\.\/\)\?_static/ s/_static/static/' \
+              -e '/\(href\|src\)=\"\(\.\.\/\)\?_modules/ s/_modules/modules/' \
+              -e '/\(href\|src\)=\"\(\.\.\/\)\?_sources/ s/_sources/sources/' \
+              -e '/\$\.ajax\(.*\)_sources/ s/_sources/sources/' \
+              {} \;
+            cd ../../..
+          '';
+          installPhase = ''
+            mkdir -p "$out${docDir}"
+            cp -r docs/build/html "$out${docDir}"
+          '';
+        };
+
+      # Enable pre-configured packages for these systems.
+      eachSystem = do:
+        lib.genAttrs [ "x86_64-linux" "x86_64-darwin" ] (system:
+          do (import nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+            overlays = [ self.overlay ];
+          }));
+
+      # Which python3 packages should be modified by the overlay?
+      isPython = name: builtins.match "python3[0-9]*" name != null;
+      pythonAttrs = lib.filterAttrs (name: _: isPython name);
+
+    in {
+      overlay = final: prev:
+        {
+          bifrost = final.callPackage bifrost { };
+          bifrost-doc = final.callPackage bifrost-doc { };
+        }
+        # Apply the python overlay to every python package set we find.
+        // lib.mapAttrs (_: py: py.override { packageOverrides = pyOverlay; })
+        (pythonAttrs prev);
+
+      packages = eachSystem (pkgs:
+        let
+          shortenPy = lib.replaceStrings [ "thon" ] [ "" ];
+
+          # Which cuda versions should be target by the packages? Let's just do
+          # the default 10 and 11. It's easy to generate other point releases
+          # from the overlay. (Versions prior to 10 are not supported anymore by
+          # nixpkgs.)
+          isCuda = name: builtins.match "cudatoolkit(_1[01])" name != null;
+          shortenCuda = lib.replaceStrings [ "toolkit" "_" ] [ "" "" ];
+          cudaAttrs = lib.filterAttrs
+            (name: pkg: isCuda name && lib.elem pkgs.system pkg.meta.platforms)
+            pkgs;
+
+          eachBool = f: lib.concatMap f [ true false ];
+          eachCuda = f: lib.concatMap f ([ null ] ++ lib.attrNames cudaAttrs);
+          eachConfig = f:
+            eachBool (enableDebug:
+              eachCuda (cuda:
+                f (lib.optionalString (cuda != null) "-${shortenCuda cuda}"
+                  + lib.optionalString enableDebug "-debug") {
+                    inherit enableDebug;
+                    enableCuda = cuda != null;
+                    cudatoolkit = pkgs.${cuda};
+                  }));
+
+          # Runnable ctypesgen per python. Though it's just the executable we
+          # need, it's possible something about ctypes library could change
+          # between releases.
+          cgens = lib.mapAttrs' (name: py: {
+            name = "ctypesgen-${shortenPy name}";
+            value = py.pkgs.ctypesgen;
+          }) (pythonAttrs pkgs);
+
+          # The whole set of bifrost packages, with or without python (and each
+          # python version), and for each configuration.
+          bfs = lib.listToAttrs (eachConfig (suffix: config:
+            [{
+              name = "libbifrost${suffix}";
+              value =
+                pkgs.bifrost.override (config // { enablePython = false; });
+            }] ++ lib.mapAttrsToList (name: py: {
+              name = "bifrost-${shortenPy name}${suffix}";
+              value = py.pkgs.bifrost.override config;
+            }) (pythonAttrs pkgs)));
+
+          # Now generate pythons with bifrost packaged.
+          pys = lib.listToAttrs (eachConfig (suffix: config:
+            lib.mapAttrsToList (name: py: {
+              name = "${name}-bifrost${suffix}";
+              value = py.withPackages (p: [ (p.bifrost.override config) ]);
+            }) (pythonAttrs pkgs)));
+
+        in { inherit (pkgs) bifrost-doc; } // cgens // bfs // pys);
+
+      devShell = eachSystem (pkgs:
+        let
+          pre-commit = pre-commit-hooks.lib.${pkgs.system}.run {
+            src = ./.;
+            hooks.nixfmt.enable = true;
+            hooks.nix-linter.enable = true;
+            hooks.yamllint.enable = true;
+          };
+
+        in pkgs.mkShell {
+          inherit (pre-commit) shellHook;
+
+          # Tempting to include bifrost-doc.buildInputs here, but that requires
+          # bifrost to already be built.
+          buildInputs = pkgs.bifrost.buildInputs
+            ++ pkgs.bifrost.propagatedBuildInputs ++ [
+              pkgs.black
+              pkgs.ctags
+              pkgs.doxygen
+              pkgs.nixfmt
+              pkgs.nix-linter
+              pkgs.python3.pkgs.breathe
+              pkgs.python3.pkgs.sphinx
+              pkgs.yamllint
+            ];
+        });
+    };
+}
