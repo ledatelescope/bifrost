@@ -30,6 +30,7 @@
 #include <bifrost/io.h>
 #include <bifrost/packet_writer.h>
 #include "proclog.hpp"
+#include "Socket.hpp"
 #include "formats/formats.hpp"
 #include "utils.hpp"
 #include "hw_locality.hpp"

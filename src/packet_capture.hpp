@@ -37,6 +37,7 @@ using bifrost::ring::RingWriter;
 using bifrost::ring::WriteSpan;
 using bifrost::ring::WriteSequence;
 #include "proclog.hpp"
+#include "Socket.hpp"
 #include "formats/formats.hpp"
 #include "hw_locality.hpp"
 
