@@ -222,6 +222,7 @@ class ndarray(np.ndarray):
                                       space=space,
                                       shape=base.shape,
                                       dtype=base.bf.dtype,
+                                      strides=base.strides,
                                       native=base.bf.native,
                                       conjugated=conjugated)
                 copy_array(obj, base)
