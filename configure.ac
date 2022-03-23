@@ -209,9 +209,9 @@ AS_IF([test x$enable_cuda_debug != xno],
 
 AC_ARG_WITH([mapped_ring_dir],
             [AS_HELP_STRING([--with-mapped-ring-dir=...],
-                            [directory to store mapped ring files in (default=/tmp/bifrost)])],
+                            [directory to store mapped ring files in (default=/tmp/bifrost_mapped)])],
             [],
-            [mapped_ring_dir=/tmp/bifrost])
+            [mapped_ring_dir=/tmp/bifrost_mapped])
 AC_SUBST([MAPPED_RING_DIR], [$mapped_ring_dir])
 
 #
