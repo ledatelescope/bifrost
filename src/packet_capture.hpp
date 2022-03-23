@@ -55,6 +55,12 @@ using bifrost::ring::WriteSequence;
 #include <fstream>
 #include <chrono>
 
+#if defined __APPLE__ && __APPLE__
+
+#define lseek64 lseek
+
+#endif
+
 #ifndef BF_HWLOC_ENABLED
 #define BF_HWLOC_ENABLED 0
 //#define BF_HWLOC_ENABLED 1

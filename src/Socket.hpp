@@ -124,9 +124,15 @@ client.send/recv_block/packet(...);
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <ifaddrs.h>
+
+#if defined __linux__ && __linux__
+
 //#include <linux/net.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
+
+#endif
+
 
 #if defined __APPLE__ && __APPLE__
 
@@ -642,6 +648,7 @@ void Socket::sniff(sockaddr_storage local_address,
 	if( _mode != Socket::MODE_CLOSED ) {
 		throw Socket::Error("Socket is already open");
 	}
+#if defined __linux__ && __linux__
 	this->open(AF_PACKET, htons(ETH_P_IP));
 		
 	// Allow binding multiple sockets to one port
@@ -684,6 +691,10 @@ void Socket::sniff(sockaddr_storage local_address,
     
     // Make the socket promiscuous
     this->set_promiscuous(true);
+#else
+  #warning packet sniffing is not supported on this OS
+  check_error(-1, "unsupported on this OS");
+#endif
 }
 // TODO: Add timeout support? Bit of a pain to implement.
 void Socket::connect(sockaddr_storage remote_address) {
@@ -1088,6 +1099,7 @@ int Socket::interface_from_addr(sockaddr*   address,
 	return found;
 }
 void Socket::set_promiscuous(int state) {
+#if defined __linux__ && __linux__
     sockaddr_storage addr = this->get_local_address();
     
     struct ifreq ethreq;
@@ -1114,9 +1126,13 @@ void Socket::set_promiscuous(int state) {
         check_error(ioctl(_fd, SIOCSIFFLAGS, &ethreq),
                     "change interface setup");
     }
-        
+#else
+  #warning promiscuous network interfaces are not supported on this OS
+  check_error(-1, "unsupported on this OS");
+#endif
 }
 int Socket::get_promiscuous() {
+#if defined __linux__ && __linux__
     sockaddr_storage addr = this->get_local_address();
     
     struct ifreq ethreq;
@@ -1137,6 +1153,11 @@ int Socket::get_promiscuous() {
     } else {
         return false;
     }
+#else
+  #warning promiscuous network interfaces are not supported on this OS
+  check_error(-1, "unsupported on this OS");
+  return false;
+#endif
 }
    
 #if __cplusplus >= 201103L
