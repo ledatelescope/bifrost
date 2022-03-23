@@ -723,6 +723,7 @@ GPU_MAX_ARCH
 CUDA_VERSION
 HAVE_CUDA
 CUDA_HOME
+RDMA_MAXMEM
 HAVE_RDMA
 HAVE_VERBS
 HAVE_VMA
@@ -840,6 +841,7 @@ enable_hwloc
 enable_vma
 enable_verbs
 enable_rdma
+with_rdma_max_mem
 with_cuda_home
 enable_cuda
 with_nvcc_flags
@@ -1546,6 +1548,8 @@ Optional Packages:
   --with-sysroot[=DIR]    Search for dependent libraries within DIR (or the
                           compiler's sysroot if not specified).
   --with-ctags=[PATH]   absolute path to ctags executable
+  --with-rdma-max-mem=N   maximum RDMA buffer size in bytes
+                          (default=134217728)
   --with-cuda-home        CUDA install path (default=/usr/local/cuda)
   --with-nvcc-flags       flags to pass to NVCC (default='-O3 -Xcompiler
                           "-Wall"')
@@ -19394,6 +19398,23 @@ then :
 
                      LIBS="$LIBS -lrdmacm"
 fi
+
+fi
+
+
+# Check whether --with-rdma_max_mem was given.
+if test ${with_rdma_max_mem+y}
+then :
+  withval=$with_rdma_max_mem;
+else $as_nop
+  with_rdma_max_mem=134217728
+fi
+
+RDMA_MAXMEM=$with_rdma_max_mem
+
+if test x$HAVE_RDMA = x0
+then :
+  RDMA_MAXMEM=0
 
 fi
 
