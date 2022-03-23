@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -55,7 +55,11 @@ class TBNReader(object):
                'complex':  True,
                'nbit':     8}
         #print "******** CFREQ:", hdr['cfreq']
-        hdr_str = json.dumps(hdr)
+        try:
+            hdr_str = json.dumps(hdr).encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         # TODO: Can't pad with NULL because returned as C-string
         #hdr_str = json.dumps(hdr).ljust(4096, '\0')
         #hdr_str = json.dumps(hdr).ljust(4096, ' ')
@@ -95,7 +99,11 @@ class DRXReader(object):
                'complex':  True,
                'nbit':     4}
         #print "******** CFREQ:", hdr['cfreq']
-        hdr_str = json.dumps(hdr)
+        try:
+            hdr_str = json.dumps(hdr).encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         # TODO: Can't pad with NULL because returned as C-string
         #hdr_str = json.dumps(hdr).ljust(4096, '\0')
         #hdr_str = json.dumps(hdr).ljust(4096, ' ')
@@ -135,7 +143,11 @@ class PBeamReader(object):
                'complex':  False,
                'nbit':     32}
         #print("******** HDR:", hdr)
-        hdr_str = json.dumps(hdr)
+        try:
+            hdr_str = json.dumps(hdr).encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         # TODO: Can't pad with NULL because returned as C-string
         #hdr_str = json.dumps(hdr).ljust(4096, '\0')
         #hdr_str = json.dumps(hdr).ljust(4096, ' ')
