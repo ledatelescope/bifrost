@@ -28,6 +28,7 @@
  */
 
 #include "assert.hpp"
+#include <bifrost/config.h>
 #include <bifrost/rdma.h>
 
 #include <arpa/inet.h>  // For ntohs
@@ -42,10 +43,6 @@
 
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
-
-#ifndef BF_RDMA_MAX_MEMORY
-#define BF_RDMA_MAX_MEMORY 134217728
-#endif
 
 struct __attribute__((aligned(8))) bf_message {
   enum {

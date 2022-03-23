@@ -57,6 +57,7 @@ extern "C" {
 #define BF_VMA_ENABLED @HAVE_VMA@
 #define BF_VERBS_ENABLED @HAVE_VERBS@
 #define BF_RDMA_ENABLED @HAVE_RDMA@
+#define BF_RDMA_MAXMEM @RDMA_MAXMEM@
 
 // Debugging features
 #define BF_DEBUG_ENABLED @HAVE_DEBUG@

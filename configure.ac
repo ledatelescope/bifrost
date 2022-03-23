@@ -160,6 +160,15 @@ AS_IF([test x$enable_rdma != xno],
                     [AC_SUBST([HAVE_RDMA], [1])
                      LIBS="$LIBS -lrdmacm"])])
 
+AC_ARG_WITH([rdma_max_mem],
+            AS_HELP_STRING([--with-rdma-max-mem=N],
+                           [maximum RDMA buffer size in bytes (default=134217728)]),
+            [],
+            [with_rdma_max_mem=134217728])
+AC_SUBST([RDMA_MAXMEM], [$with_rdma_max_mem])
+AS_IF([test x$HAVE_RDMA = x0],
+      [AC_SUBST([RDMA_MAXMEM], [0])])
+
 #
 # CUDA
 #

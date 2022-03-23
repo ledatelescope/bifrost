@@ -90,7 +90,7 @@ BFstatus bfRdmaCreate(BFrdma* obj,
                       int     fd,
                       size_t  message_size,
                       int     is_server) {
-    BF_ASSERT(message_size <= BF_RDMA_MAX_MEMORY, BF_STATUS_INSUFFICIENT_STORAGE);
+    BF_ASSERT(message_size <= BF_RDMA_MAXMEM, BF_STATUS_INSUFFICIENT_STORAGE);
     BF_TRY_RETURN_ELSE(*obj = new BFrdma_impl(fd, message_size, is_server),
                        *obj = 0);
 }
