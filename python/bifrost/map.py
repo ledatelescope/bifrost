@@ -161,8 +161,8 @@ def list_map_cache():
             
             entries = glob.glob(os.path.join(cache_path, '*.inf'))
             
-            output += "Cache version: %s (runtime), %s (driver)\n" % (runtime, driver)
-            output += "Cache entries: %i" % len(entries)
+            output += "\nCache version: %s (runtime), %s (driver)" % (runtime, driver)
+            output += "\nCache entries: %i" % len(entries)
         except OSError:
             pass
             
