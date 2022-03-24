@@ -28,19 +28,9 @@
       version = "${acVersion}.dev"
         + lib.optionalString (self ? shortRev) "+g${self.shortRev}";
 
-      getCudaArchs = cudatoolkit:
-        let
-          path = if builtins.readDir "${cudatoolkit}/include" ? "nvvm.h" then
-            "${cudatoolkit}/include/nvvm.h"
-          else
-            "${cudatoolkit}/nvvm/include/nvvm.h";
-        in lib.concatStringsSep " " (map lib.head (lib.filter (x: x != null)
-          (map (builtins.match ".*compute_([0-9]+)")
-            (lib.splitString "\n" (builtins.readFile path)))));
-
       bifrost = { stdenv, ctags, ncurses, file, enableDebug ? false
         , enablePython ? true, python3, enableCuda ? false, cudatoolkit
-        , util-linuxMinimal, gpuArchs ? getCudaArchs cudatoolkit }:
+        , util-linuxMinimal, gpuArchs ? null }:
         let
           pname = lib.optionalString (!enablePython) "lib" + "bifrost"
             + lib.optionalString enablePython
@@ -98,16 +88,22 @@
             '';
           # Had difficulty specifying this with configureFlags, because it
           # wants to quote the args and that fails with spaces in gpuArchs.
-          configurePhase = ''
-            ./configure --disable-static --prefix="$out" \
-              ${lib.optionalString enableDebug "--enable-debug"} \
-              ${
-                lib.optionalString enableCuda ("--with-cuda-home=${cudatoolkit}"
-                  + " --with-gpu-archs='${gpuArchs}'"
-                  + " --with-nvcc-flags='-Wno-deprecated-gpu-targets'"
-                  + " LDFLAGS=-L${cudatoolkit}/lib/stubs")
-              }
-          '';
+          configurePhase =
+            lib.optionalString (enableCuda && gpuArchs == null) ''
+              GPU_ARCHS="$(${cudatoolkit}/bin/nvcc -h | \
+                grep -Po "'compute_[0-9]{2,3}" | cut -d_ -f2 | \
+                sort | uniq | tr '\n' ' ')"
+            '' + lib.optionalString (enableCuda && gpuArchs != null) ''
+              GPU_ARCHS="${gpuArchs}"
+            '' + lib.concatStringsSep " "
+            ([ "./configure" "--disable-static" ''--prefix="$out"'' ]
+              ++ lib.optionals enableDebug [ "--enable-debug" ]
+              ++ lib.optionals enableCuda [
+                "--with-cuda-home=${cudatoolkit}"
+                ''--with-gpu-archs="$GPU_ARCHS"''
+                "--with-nvcc-flags='-Wno-deprecated-gpu-targets'"
+                "LDFLAGS=-L${cudatoolkit}/lib/stubs"
+              ]);
           preBuild = lib.optionalString enablePython ''
             make -C python bifrost/libbifrost_generated.py
             sed -i \
