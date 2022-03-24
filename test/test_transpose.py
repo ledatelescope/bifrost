@@ -37,6 +37,7 @@ from bifrost.libbifrost_generated import BF_CUDA_ENABLED, BF_FLOAT128_ENABLED
 class TransposeTest(unittest.TestCase):
     first_test = True
     
+    # TODO: @classmethod; def setUpClass(kls)
     def setUp(self):
         if self.first_test:
             bf.clear_map_cache()

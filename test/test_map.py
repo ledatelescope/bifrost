@@ -36,6 +36,7 @@ from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 class TestMap(unittest.TestCase):
     first_test = True
     
+    # TODO: @classmethod; def setUpClass(kls)
     def setUp(self):
         np.random.seed(1234)
         if self.first_test:
