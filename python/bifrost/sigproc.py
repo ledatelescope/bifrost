@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -52,10 +52,16 @@ period:        <delete>
 data:          [time][pol][nbit] (General case: [time][if/pol][chan][nbit])
 """
 
+from __future__ import print_function
+
 import struct
+import warnings
 import numpy as np
 from collections import defaultdict
 import os
+
+from bifrost import telemetry
+telemetry.track_module()
 
 #header parameter names which precede strings
 _STRING_VALUES = ['source_name',
@@ -128,6 +134,11 @@ def _header_write_string(file_object, key):
     """Writes a single key name to the header,
     which will be followed by the value"""
     file_object.write(struct.pack('=i', len(key)))
+    try:
+        key = key.encode()
+    except AttributeError:
+        # Catch for Python2
+        pass
     file_object.write(key)
 
 def _header_write_value(file_object, key, value):
@@ -148,7 +159,13 @@ def _header_read_one_parameter(file_object):
     length = struct.unpack('=i', file_object.read(4))[0]
     if length <= 0 or length >= 80:
         return None
-    return file_object.read(length)
+    s = file_object.read(length)
+    try:
+        s = s.decode()
+    except AttributeError:
+        # Python2 catch
+        pass
+    return s
 
 def _write_header(hdr, file_object):
     """write the entire header to the current position of a file"""
@@ -165,7 +182,7 @@ def _write_header(hdr, file_object):
             pass
         else:
             #raise KeyError("Unknown sigproc header key: %s"%key)
-            print "WARNING: Unknown sigproc header key: %s" % key
+            warnings.warn("Unknown sigproc header key: '%s'" % key, RuntimeWarning)
     _header_write_string(file_object, "HEADER_END")
 
 def _read_header(file_object):
@@ -194,7 +211,7 @@ def _read_header(file_object):
             header[expecting] = key
             expecting = None
         else:
-            print "WARNING: Unknown header key", key
+            warnings.warn("Unknown header key: '%s'" % key, RuntimeWarning)
     if 'nchans' not in header:
         header['nchans'] = 1
     header['header_size'] = file_object.tell()
@@ -226,7 +243,7 @@ def seek_to_data(file_object):
             header[expecting] = key
             expecting = None
         else:
-            print "WARNING: Unknown header key", key
+            warnings.warn("Unknown header key: '%s'" % key, RuntimeWarning)
     return
 
 def pack(data, nbit):
@@ -236,9 +253,9 @@ def pack(data, nbit):
         raise ValueError("unpack: nbit must divide into 8")
     if data.dtype not in (np.uint8, np.int8):
         raise TypeError("unpack: dtype must be 8-bit")
-    outdata = np.zeros(data.size / (8 / nbit)).astype('uint8')
-    for index in range(1, 8 / nbit):
-        outdata += data[index::8 / nbit] / (2**nbit)**index
+    outdata = np.zeros(data.size // (8 // nbit)).astype('uint8')
+    for index in range(1, 8 // nbit):
+        outdata += data[index::8 // nbit] // (2**nbit)**index
     return outdata
 
 def _write_data(data, nbit, file_object):
@@ -379,9 +396,9 @@ class SigprocFile(SigprocSettings):
         return self.data
     def write_to(self, filename):
         """writes data and header to a different file"""
-        file_object = open(filename, 'wb')
-        _write_header(self.header, file_object)
-        _write_data(self.data, self.nbits, file_object)
+        with open(filename, 'wb') as file_object:
+            _write_header(self.header, file_object)
+            _write_data(self.data, self.nbits, file_object)
     def append_data(self, input_data):
         """append data to local data and file"""
         input_frames = input_data.size // self.nifs // self.nchans

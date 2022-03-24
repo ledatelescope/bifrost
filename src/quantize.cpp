@@ -34,7 +34,7 @@
 
 #include <iostream>
 
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 #include "cuda.hpp"
 #include "trace.hpp"
 #include <guantize.hu>
@@ -251,7 +251,7 @@ BFstatus bfQuantize(BFarray const* in,
 	BF_ASSERT(is_contiguous(in),  BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT(is_contiguous(out), BF_STATUS_UNSUPPORTED_STRIDE);
 	
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 	BF_ASSERT(space_accessible_from(in->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
 	          BF_STATUS_UNSUPPORTED_SPACE);
 	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_SYSTEM) || (space_accessible_from(in->space, BF_SPACE_CUDA) && space_accessible_from(out->space, BF_SPACE_CUDA)),
@@ -267,7 +267,7 @@ BFstatus bfQuantize(BFarray const* in,
 	bool byteswap_in  = ( in->big_endian != is_big_endian());
 	bool byteswap_out = (out->big_endian != is_big_endian());
 	
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 	if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 		BF_ASSERT(nelement<=(size_t)512*65535*65535, BF_STATUS_UNSUPPORTED_SHAPE);
 	}
@@ -280,7 +280,7 @@ BFstatus bfQuantize(BFarray const* in,
 	                   QuantizeFunctor<itype,stype,otype> \
 	                   (scale,byteswap_in,byteswap_out))
 	
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 #define CALL_FOREACH_SIMPLE_GPU_QUANTIZE(itype,stype,otype) \
 	{ \
 	BF_TRACE(); \
@@ -301,7 +301,7 @@ BFstatus bfQuantize(BFarray const* in,
 		case BF_DTYPE_CI1: nelement *= 2;
 		case BF_DTYPE_I1: {
 			BF_ASSERT(nelement % 8 == 0, BF_STATUS_INVALID_SHAPE);
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				BF_TRACE();
 				BF_TRACE_STREAM(g_cuda_stream);
@@ -330,7 +330,7 @@ BFstatus bfQuantize(BFarray const* in,
 		case BF_DTYPE_CI2: nelement *= 2;
 		case BF_DTYPE_I2: {
 			BF_ASSERT(nelement % 4 == 0, BF_STATUS_INVALID_SHAPE);
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				BF_TRACE();
 				BF_TRACE_STREAM(g_cuda_stream);
@@ -359,7 +359,7 @@ BFstatus bfQuantize(BFarray const* in,
 		case BF_DTYPE_CI4: nelement *= 2;
 		case BF_DTYPE_I4: {
 			BF_ASSERT(nelement % 2 == 0, BF_STATUS_INVALID_SHAPE);
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				BF_TRACE();
 				BF_TRACE_STREAM(g_cuda_stream);
@@ -387,7 +387,7 @@ BFstatus bfQuantize(BFarray const* in,
 		}
 		case BF_DTYPE_CI8: nelement *= 2;
 		case BF_DTYPE_I8: {
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,float,int8_t);
 			} else {
@@ -400,7 +400,7 @@ BFstatus bfQuantize(BFarray const* in,
 		}
 		case BF_DTYPE_CI16: nelement *= 2;
 		case BF_DTYPE_I16: {
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,float,int16_t);
 			} else {
@@ -413,7 +413,7 @@ BFstatus bfQuantize(BFarray const* in,
 		}
 		case BF_DTYPE_CI32: nelement *= 2;
 		case BF_DTYPE_I32: {
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,double,int32_t);
 			} else {
@@ -425,7 +425,7 @@ BFstatus bfQuantize(BFarray const* in,
 			break;
 		}
 		case BF_DTYPE_U8: {
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				
 			} else {
@@ -437,7 +437,7 @@ BFstatus bfQuantize(BFarray const* in,
 			break;
 		}
 		case BF_DTYPE_U16: {
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,float,uint16_t);
 			} else {
@@ -449,7 +449,7 @@ BFstatus bfQuantize(BFarray const* in,
 			break;
 		}
 		case BF_DTYPE_U32: {
-#ifdef BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED
 			if( space_accessible_from(in->space, BF_SPACE_CUDA) ) {
 				CALL_FOREACH_SIMPLE_GPU_QUANTIZE(float,double,uint32_t);
 			} else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,12 +32,12 @@
 #include <bifrost/address.h>
 
 struct BFudpsocket_impl : public Socket {
-	BFudpsocket_impl() : Socket(SOCK_DGRAM) {}
+	BFudpsocket_impl() : Socket(BF_SOCK_DGRAM) {}
 };
 
 BFstatus bfUdpSocketCreate(BFudpsocket* obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
-	BF_TRY_RETURN_ELSE(*obj = (BFudpsocket)new BFudpsocket_impl(),//BFudpsocket_impl::SOCK_DGRAM),
+	BF_TRY_RETURN_ELSE(*obj = (BFudpsocket)new BFudpsocket_impl(),//BFudpsocket_impl::BF_SOCK_DGRAM),
 	                   *obj = 0);
 }
 BFstatus bfUdpSocketDestroy(BFudpsocket obj) {
@@ -73,7 +73,7 @@ BFstatus bfUdpSocketGetTimeout(BFudpsocket obj, double* secs) {
 	try {
 		*secs = obj->get_timeout();
 	}
-	catch( Socket::Error ) {
+	catch( Socket::Error& ) {
 		*secs = 0;
 		return BF_STATUS_INVALID_STATE;
 	}
@@ -92,7 +92,7 @@ BFstatus bfUdpSocketGetMTU(BFudpsocket obj, int* mtu) {
 	try {
 		*mtu = obj->get_mtu();
 	}
-	catch( Socket::Error ) {
+	catch( Socket::Error& ) {
 		*mtu = 0;
 		return BF_STATUS_INVALID_STATE;
 	}

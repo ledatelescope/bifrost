@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,12 +29,15 @@
 on the bifrost FFT wrapper."""
 import ctypes
 import unittest
+from functools import reduce
 import numpy as np
 # Note: Numpy FFTs are always double precision, which is good for this purpose
 from numpy.fft import fftn as gold_fftn, ifftn as gold_ifftn
 from numpy.fft import rfftn as gold_rfftn, irfftn as gold_irfftn
 from bifrost.fft import Fft
 import bifrost as bf
+
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED, BF_CUDA_VERSION
 
 MTOL = 1e-6 # Relative tolerance at the mean magnitude
 RTOL = 1e-1
@@ -47,6 +50,12 @@ def compare(result, gold):
     absmean = np.abs(gold).mean()
     np.testing.assert_allclose(result, gold, rtol=RTOL, atol=MTOL * absmean)
 
+def cudaExpectedFailure(testcase):
+    if BF_CUDA_VERSION < 10.1 or BF_CUDA_VERSION > 11.6:
+        return testcase
+    return unittest.expectedFailure(testcase)
+
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestFFT(unittest.TestCase):
     def setUp(self):
         np.random.seed(1234)
@@ -108,9 +117,9 @@ class TestFFT(unittest.TestCase):
         # Note: Misalignment is not currently supported for fp32
         #self.run_test_r2c_dtype(shape, axes, np.float32, misalign=1)
         #self.run_test_r2c_dtype(shape, axes, np.float16) # TODO: fp16 support
-        for misalign in xrange(4):
+        for misalign in range(4):
             self.run_test_r2c_dtype(shape, axes, np.int16, (1 << 15) - 1, misalign=misalign)
-        for misalign in xrange(8):
+        for misalign in range(8):
             self.run_test_r2c_dtype(shape, axes, np.int8,  (1 << 7 ) - 1, misalign=misalign)
     def run_test_c2r_impl(self, shape, axes, fftshift=False):
         ishape = list(shape)
@@ -192,10 +201,13 @@ class TestFFT(unittest.TestCase):
     def test_r2c_3D(self):
         self.run_test_r2c(self.shape3D, [0, 1, 2])
 
+    @cudaExpectedFailure
     def test_c2r_1D(self):
         self.run_test_c2r(self.shape1D, [0])
+    @cudaExpectedFailure
     def test_c2r_2D(self):
         self.run_test_c2r(self.shape2D, [0, 1])
+    @cudaExpectedFailure
     def test_c2r_3D(self):
         self.run_test_c2r(self.shape3D, [0, 1, 2])
 

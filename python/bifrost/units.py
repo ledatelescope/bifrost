@@ -27,6 +27,9 @@
 
 import pint
 
+from bifrost import telemetry
+telemetry.track_module()
+
 ureg = pint.UnitRegistry()
 
 def convert_units(value, old_units, new_units):

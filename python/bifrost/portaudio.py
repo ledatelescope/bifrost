@@ -31,10 +31,15 @@
 # Ubuntu 16.04:
 #     sudo apt-get install portaudio19-dev
 
+from __future__ import print_function
+
 import ctypes
 import atexit
 from threading import Lock
 import os
+
+from bifrost import telemetry
+telemetry.track_module()
 
 # Note: portaudio is MIT licensed
 _lib = ctypes.cdll.LoadLibrary('libportaudio.so')
@@ -236,11 +241,11 @@ def get_device_count():
 if __name__ == "__main__":
     import portaudio as audio
     import numpy as np
-    print "Found %i audio devices" % audio.get_device_count()
+    print("Found %i audio devices" % audio.get_device_count())
     with audio.open(nbits=16) as audio_stream:
         nframe = 20
-        print repr(audio_stream.read(nframe).raw)
+        print(repr(audio_stream.read(nframe).raw))
         buf = -1 * np.ones(shape=[nframe, audio_stream.channels],
                            dtype=np.int16)
         audio_stream.readinto(buf.data)
-        print buf
+        print(buf)

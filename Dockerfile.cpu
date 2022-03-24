@@ -6,6 +6,18 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ENV TERM xterm
 
+# Get dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python-pip \
+        pylint \
+        && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Update ctypesgen
+RUN pip --no-cache-dir install \
+        ctypesgen==1.0.2
+
 # Build the library
 WORKDIR /bifrost
 COPY . .

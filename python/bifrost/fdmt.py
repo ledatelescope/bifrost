@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,11 +25,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, BifrostObject, _string2space
-from ndarray import asarray
+# Python2 compatibility
+from __future__ import absolute_import
 
-import ctypes
-import numpy as np
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space
+from bifrost.ndarray import asarray
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class Fdmt(BifrostObject):
     def __init__(self):

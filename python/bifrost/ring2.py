@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,20 +28,27 @@
 # TODO: Some of this code has gotten a bit hacky
 #         Also consider merging some of the logic into the backend
 
-from libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string
-from DataType import DataType
-from ndarray import ndarray, _address_as_buffer
+from __future__ import print_function, absolute_import
+
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space, EndOfDataStop
+from bifrost.DataType import DataType
+from bifrost.ndarray import ndarray, _address_as_buffer
 from copy import copy, deepcopy
+from functools import reduce
 
 import ctypes
 import string
+import warnings
 import numpy as np
 
 try:
     import simplejson as json
 except ImportError:
-    print "WARNING: Install simplejson for better performance"
+    warnings.warn("Install simplejson for better performance", RuntimeWarning)
     import json
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def _slugify(name):
     valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
@@ -79,11 +85,17 @@ class Ring(BifrostObject):
     def __init__(self, space='system', name=None, owner=None, core=None):
         # If this is non-None, then the object is wrapping a base Ring instance
         self.base = None
+        self.is_view = False   # This gets set to True by use of .view()
         self.space = space
         if name is None:
             name = 'ring_%i' % Ring.instance_count
             Ring.instance_count += 1
         name = _slugify(name)
+        try:
+            name = name.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         BifrostObject.__init__(self, _bf.bfRingCreate, _bf.bfRingDestroy,
                                name, _string2space(self.space))
         if core is not None:
@@ -95,11 +107,12 @@ class Ring(BifrostObject):
         self.owner = owner
         self.header_transform = None
     def __del__(self):
-        if self.base is not None:
+        if self.base is not None and not self.is_view:
             BifrostObject.__del__(self)
     def view(self):
         new_ring = copy(self)
         new_ring.base = self
+        new_ring.is_view = True
         return new_ring
     def resize(self, contiguous_bytes, total_bytes=None, nringlet=1):
         _check( _bf.bfRingResize(self.obj,
@@ -108,7 +121,13 @@ class Ring(BifrostObject):
                                  nringlet) )
     @property
     def name(self):
-        return _get(_bf.bfRingGetName, self.obj)
+        n = _get(_bf.bfRingGetName, self.obj)
+        try:
+            n = n.decode()
+        except AttributeError:
+            # Python2 catch
+            pass
+        return n
     @property
     def core(self):
         return _get(_bf.bfRingGetAffinity, self.obj)
@@ -131,8 +150,11 @@ class Ring(BifrostObject):
         with ReadSequence(self, which=whence, guarantee=guarantee,
                           header_transform=self.header_transform) as cur_seq:
             while True:
-                yield cur_seq
-                cur_seq.increment()
+                try:
+                    yield cur_seq
+                    cur_seq.increment()
+                except EndOfDataStop:
+                    return
 
 class RingWriter(object):
     def __init__(self, ring):
@@ -162,7 +184,12 @@ class SequenceBase(object):
         return self._ring
     @property
     def name(self):
-        return _get(_bf.bfRingSequenceGetName, self._base_obj)
+        n = _get(_bf.bfRingSequenceGetName, self._base_obj)
+        try:
+            n = n.decode()
+        except AttributeError:
+            pass
+        return n
     @property
     def time_tag(self):
         return _get(_bf.bfRingSequenceGetTimeTag, self._base_obj)
@@ -185,6 +212,11 @@ class SequenceBase(object):
         nringlet       = reduce(lambda x, y: x * y, ringlet_shape, 1)
         frame_nelement = reduce(lambda x, y: x * y, frame_shape,   1)
         dtype = header['_tensor']['dtype']
+        try:
+            dtype = dtype.decode()
+        except AttributeError:
+            # Python2 catch
+            pass
         nbit = DataType(dtype).itemsize_bits
         assert(nbit % 8 == 0)
         frame_nbyte = frame_nelement * nbit // 8
@@ -205,11 +237,11 @@ class SequenceBase(object):
             # WAR for hdr_buffer_ptr.contents crashing when size == 0
             hdr_array = np.empty(0, dtype=np.uint8)
             hdr_array.flags['WRITEABLE'] = False
-            return json.loads(hdr_array.tostring())
+            return json.loads(hdr_array.tobytes())
         hdr_buffer = _address_as_buffer(self._header_ptr, size, readonly=True)
         hdr_array = np.frombuffer(hdr_buffer, dtype=np.uint8)
         hdr_array.flags['WRITEABLE'] = False
-        self._header = json.loads(hdr_array.tostring())
+        self._header = json.loads(hdr_array.tobytes())
         return self._header
 
 class WriteSequence(SequenceBase):
@@ -228,13 +260,20 @@ class WriteSequence(SequenceBase):
         offset_from_head = 0
         # TODO: How to allow time_tag to be optional? Probably need to plumb support through to backend.
         self.obj = _bf.BFwsequence()
+        try:
+            hname = header['name'].encode()
+            hstr = header_str.encode()
+        except AttributeError:
+            # Python2 catch
+            hname = header['name']
+            hstr = header_str
         _check(_bf.bfRingSequenceBegin(
             self.obj,
             ring.obj,
-            header['name'],
+            hname,
             header['time_tag'],
             header_size,
-            header_str,
+            hstr,
             tensor['nringlet'],
             offset_from_head))
     def __enter__(self):
@@ -287,9 +326,12 @@ class ReadSequence(SequenceBase):
             stride = nframe
         offset = begin
         while True:
-            with self.acquire(offset, nframe) as ispan:
-                yield ispan
-            offset += stride
+            try:
+                with self.acquire(offset, nframe) as ispan:
+                    yield ispan
+                    offset += stride
+            except EndOfDataStop:
+                return
     def resize(self, gulp_nframe, buf_nframe=None, buffer_factor=None):
         if buf_nframe is None:
             if buffer_factor is None:
@@ -425,7 +467,7 @@ class SpanBase(object):
                              buffer=data_ptr,
                              dtype=self.dtype)
         data_array.flags['WRITEABLE'] = self.writeable
-
+        
         return data_array
 
 class WriteSpan(SpanBase):

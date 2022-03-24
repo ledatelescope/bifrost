@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,10 +25,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _array
-import bifrost as bf
+# Python2 compatibility
+from __future__ import absolute_import
+import sys
+if sys.version_info > (3,):
+    long = int
+
+from bifrost.libbifrost import _bf, _check, _array
+from bifrost.ndarray import asarray
 import numpy as np
 import ctypes
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def _is_literal(x):
     return isinstance(x, (int, long, float, complex))
@@ -45,7 +54,7 @@ def _convert_to_array(arg):
             arr = arr.astype(np.complex64)
         arr.flags['WRITEABLE'] = False
         arg = arr
-    return bf.asarray(arg)
+    return asarray(arg)
 
 def map(func_string, data, axis_names=None, shape=None,
         func_name=None, extra_code=None,
@@ -98,6 +107,15 @@ def map(func_string, data, axis_names=None, shape=None,
       # Slice an array with a scalar index
       bf.map("c(i) = a(i,k)", {'c': c, 'a': a, 'k': 7}, ['i'], shape=c.shape)
     """
+    try:
+        func_string = func_string.encode()
+        if func_name is not None:
+            func_name = func_name.encode()
+        if extra_code is not None:
+            extra_code = extra_code.encode()
+    except AttributeError:
+        # Python2 catch
+        pass
     narg = len(data)
     ndim = len(shape) if shape is not None else 0
     arg_arrays = []
@@ -105,7 +123,7 @@ def map(func_string, data, axis_names=None, shape=None,
     arg_names = []
     if block_axes is not None:
         # Allow referencing axes by name
-        block_axes = [axis_names.index(bax) if isinstance(bax, basestring)
+        block_axes = [axis_names.index(bax) if isinstance(bax, str)
                       else bax
                       for bax in block_axes]
     if block_axes is not None and len(block_axes) != 2:

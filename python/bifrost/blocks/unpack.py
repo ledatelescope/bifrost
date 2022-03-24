@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,11 +28,13 @@
 from __future__ import absolute_import
 
 import bifrost as bf
-import bifrost.unpack
 from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
 
 from copy import deepcopy
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class UnpackBlock(TransformBlock):
     def __init__(self, iring, dtype, align_msb=False,
@@ -59,7 +61,7 @@ class UnpackBlock(TransformBlock):
     def on_data(self, ispan, ospan):
         idata = ispan.data
         odata = ospan.data
-        bf.unpack.unpack(idata, odata, self.align_msb)
+        bf.unpack(idata, odata, self.align_msb)
 
 def unpack(iring, dtype, *args, **kwargs):
     """Unpack data to a larger data type.

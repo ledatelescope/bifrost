@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -32,6 +32,8 @@ from bifrost.DataType import DataType
 
 from bifrost.blocks import *
 from bifrost.pipeline import SourceBlock, TransformBlock, SinkBlock
+
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 from copy import deepcopy
 
@@ -107,6 +109,7 @@ class CallbackBlock(SinkBlock):
             #         downstream callback blocks from ever executing.
             self.data_ref['idata'] = ispan.data.copy()
 
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class PipelineTest(unittest.TestCase):
     def setUp(self):
         # Note: This file needs to be large enough to fill the minimum-size
@@ -121,7 +124,7 @@ class PipelineTest(unittest.TestCase):
         gulp_nframe = 101
         with bf.Pipeline() as pipeline:
             data = read_sigproc([self.fil_file], gulp_nframe)
-            for _ in xrange(10):
+            for _ in range(10):
                 data = copy(data, space='cuda')
                 data = copy(data, space='cuda_host')
             ref = {}

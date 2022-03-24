@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,12 +28,14 @@
 from __future__ import absolute_import
 
 from bifrost.pipeline import TransformBlock
-from bifrost.linalg import LinAlg
 from bifrost.DataType import DataType
 import bifrost as bf
 
 from copy import deepcopy
 from math import sqrt
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class ConvertVisibilitiesBlock(TransformBlock):
     def __init__(self, iring, fmt,

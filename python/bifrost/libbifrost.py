@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,11 +34,26 @@
 #    instance instead of LP_s
 #  E.g., _bf.bfRingSequenceGetName(<BFspan>) [should be <BFsequence>]
 
+# Python2 compatibility
+from __future__ import absolute_import
+
 import ctypes
-import libbifrost_generated as _bf
+import bifrost.libbifrost_generated as _bf
 bf = _bf # Public access to library
 
+from bifrost import telemetry
+telemetry.track_module()
+
 # Internal helpers below
+
+class EndOfDataStop(RuntimeError):
+    """This class is used as a Py3 StopIterator
+    
+    In Python >3.7, reaching a StopIterator in a generator will
+    raise a RuntimeError  (so you can't do 'except StopIteration' to catch it!)
+    See PEP479 https://www.python.org/dev/peps/pep-0479/
+    """
+    pass
 
 class BifrostObject(object):
     """Base class for simple objects with create/destroy functions"""
@@ -77,7 +92,6 @@ class BifrostObject(object):
         return stream
 
 def _array(size_or_vals, dtype=None):
-    import ctypes
     if size_or_vals is None:
         return None
     try:
@@ -97,7 +111,12 @@ def _array(size_or_vals, dtype=None):
                 dtype = ctypes.c_int
             elif isinstance(vals[0], float):
                 dtype = ctypes.c_double
-            elif isinstance(vals[0], basestring):
+            elif isinstance(vals[0], str):
+                try:
+                    vals = [val.encode() for val in vals]
+                except AttributeError:
+                    # Python2 catch
+                    pass
                 dtype = ctypes.c_char_p
             elif isinstance(vals[0], _bf.BFarray):
                 dtype = ctypes.POINTER(_bf.BFarray)
@@ -114,7 +133,7 @@ def _check(status):
             if status is None:
                 raise RuntimeError("WTF, status is None")
             if status == _bf.BF_STATUS_END_OF_DATA:
-                raise StopIteration()
+                raise EndOfDataStop('BF_STATUS_END_OF_DATA')
             elif status == _bf.BF_STATUS_WOULD_BLOCK:
                 raise IOError('BF_STATUS_WOULD_BLOCK')
             else:
@@ -122,7 +141,7 @@ def _check(status):
                 raise RuntimeError(status_str)
     else:
         if status == _bf.BF_STATUS_END_OF_DATA:
-            raise StopIteration()
+            raise EndOfDataStop('BF_STATUS_END_OF_DATA')
         elif status == _bf.BF_STATUS_WOULD_BLOCK:
             raise IOError('BF_STATUS_WOULD_BLOCK')
     return status
@@ -170,7 +189,7 @@ STRING2SPACE = {'auto':         _bf.BF_SPACE_AUTO,
 def _string2space(s):
     if s not in STRING2SPACE:
         raise KeyError("Invalid space '" + str(s) +
-                       "'.\nValid spaces: " + str(LUT.keys()))
+                       "'.\nValid spaces: " + str(list(LUT.keys())))
     return STRING2SPACE[s]
 
 SPACE2STRING = {_bf.BF_SPACE_AUTO:         'auto',

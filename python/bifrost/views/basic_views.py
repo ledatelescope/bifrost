@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,14 +25,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from bifrost.pipeline import block_view
 from bifrost.DataType import DataType
 from bifrost.units import convert_units
 from numpy import isclose
-from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
 
 def custom(block, hdr_transform):
     """An alias to `bifrost.pipeline.block_view`
@@ -50,7 +51,7 @@ def reinterpret_axis(block, axis, label, scale=None, units=None):
     """ Manually reinterpret the scale and/or units on an axis """
     def header_transform(hdr, axis=axis, label=label, scale=scale, units=units):
         tensor = hdr['_tensor']
-        if isinstance(axis, basestring):
+        if isinstance(axis, str):
             axis = tensor['labels'].index(axis)
         if label is not None:
             tensor['labels'][axis] = label
@@ -65,7 +66,7 @@ def reverse_scale(block, axis):
     """ Manually reverse the scale factor on a given axis"""
     def header_transform(hdr, axis=axis):
         tensor = hdr['_tensor']
-        if isinstance(axis, basestring):
+        if isinstance(axis, str):
             axis = tensor['labels'].index(axis)
             tensor['scales'][axis][1] *= -1
         return hdr
@@ -83,7 +84,7 @@ def add_axis(block, axis, label=None, scale=None, units=None):
     """
     def header_transform(hdr, axis=axis, label=label, scale=scale, units=units):
         tensor = hdr['_tensor']
-        if isinstance(axis, basestring):
+        if isinstance(axis, str):
             axis = tensor['labels'].index(axis) + 1
         if axis < 0:
             axis += len(tensor['shape']) + 1
@@ -109,7 +110,7 @@ def delete_axis(block, axis):
     def header_transform(hdr, axis=axis):
         tensor = hdr['_tensor']
         specified_axis = axis
-        if isinstance(axis, basestring):
+        if isinstance(axis, str):
             specified_axis = "'%s'" % specified_axis
             axis = tensor['labels'].index(axis)
         if axis < 0:
@@ -145,14 +146,14 @@ def split_axis(block, axis, n, label=None):
     # Set function attributes to enable capture in nested function (closure)
     def header_transform(hdr, axis=axis, n=n, label=label):
         tensor = hdr['_tensor']
-        if isinstance(axis, basestring):
+        if isinstance(axis, str):
             axis = tensor['labels'].index(axis)
         shape = tensor['shape']
         if shape[axis] == -1:
             # Axis is frame axis
             # TODO: Should assert even division here instead?
             # ***TODO: Why does pipeline deadlock when this doesn't divide?
-            hdr['gulp_nframe'] = (hdr['gulp_nframe'] - 1) / n + 1
+            hdr['gulp_nframe'] = (hdr['gulp_nframe'] - 1) // n + 1
         else:
             # Axis is not frame axis
             if shape[axis] % n:
@@ -175,9 +176,9 @@ def split_axis(block, axis, n, label=None):
 def merge_axes(block, axis1, axis2, label=None):
     def header_transform(hdr, axis1=axis1, axis2=axis2, label=label):
         tensor = hdr['_tensor']
-        if isinstance(axis1, basestring):
+        if isinstance(axis1, str):
             axis1 = tensor['labels'].index(axis1)
-        if isinstance(axis2, basestring):
+        if isinstance(axis2, str):
             axis2 = tensor['labels'].index(axis2)
         axis1, axis2 = sorted([axis1, axis2])
         if axis2 != axis1 + 1:

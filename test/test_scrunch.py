@@ -32,6 +32,8 @@ import bifrost as bf
 import bifrost.pipeline as bfp
 import bifrost.blocks as blocks
 
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
+
 class CallbackBlock(blocks.CopyBlock):
     """Testing-only block which calls user-defined
         functions on sequence and on data"""
@@ -46,6 +48,7 @@ class CallbackBlock(blocks.CopyBlock):
         self.data_callback(ispan, ospan)
         return super(CallbackBlock, self).on_data(ispan, ospan)
 
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestScrunchBlock(unittest.TestCase):
     def setUp(self):
         """Create settings shared between tests"""

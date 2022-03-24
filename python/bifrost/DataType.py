@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -38,8 +38,20 @@ ci4:  4+4-bit complex signed integer
 cf32: 32+32-bit complex floating point
 """
 
-from libbifrost import _bf
+# Python2 compatibility
+from __future__ import division, absolute_import
+import sys
+string_types = (str,)
+if sys.version_info < (3,):
+    range = xrange
+    string_types = (basestring,)
+    
+from bifrost.libbifrost import _bf
+from bifrost.libbifrost_generated import BF_FLOAT128_ENABLED
 import numpy as np
+
+from bifrost import telemetry
+telemetry.track_module()
 
 # Custom dtypes to represent additional complex types
 # Note: These can be constructed using tuples
@@ -63,14 +75,17 @@ TYPEMAP = {
            16: _bf.BF_DTYPE_U16, 32: _bf.BF_DTYPE_U32,
            64: _bf.BF_DTYPE_U64},
     'f':  {16: _bf.BF_DTYPE_F16,  32: _bf.BF_DTYPE_F32,
-           64: _bf.BF_DTYPE_F64, 128: _bf.BF_DTYPE_F128},
+           64: _bf.BF_DTYPE_F64},
     'ci': { 1: _bf.BF_DTYPE_CI1,   2: _bf.BF_DTYPE_CI2,
             4: _bf.BF_DTYPE_CI4,   8: _bf.BF_DTYPE_CI8,
            16: _bf.BF_DTYPE_CI16, 32: _bf.BF_DTYPE_CI32,
            64: _bf.BF_DTYPE_CI64},
     'cf': {16: _bf.BF_DTYPE_CF16,  32: _bf.BF_DTYPE_CF32,
-           64: _bf.BF_DTYPE_CF64, 128: _bf.BF_DTYPE_CF128}
+           64: _bf.BF_DTYPE_CF64}
 }
+if BF_FLOAT128_ENABLED:
+    TYPENAME['f'][128] = _bf.BF_DTYPE_F128
+    TYPENAME['cf'][128] = _bf.BF_DTYPE_CF128
 KINDMAP = {
     _bf.BF_DTYPE_INT_TYPE:   'i',
     _bf.BF_DTYPE_UINT_TYPE:  'u',
@@ -82,7 +97,7 @@ NUMPY_TYPEMAP = {
     'u':  {  8: np.uint8,  16: np.uint16,
              32: np.uint32, 64: np.uint64},
     'f':  {16: np.float16,  32: np.float32,
-           64: np.float64, 128: np.float128},
+           64: np.float64},
     # HACK: These are just types that match the storage size;
     #         they should not be used for computation.
     # HACK TESTING to support 'packed' arrays
@@ -93,22 +108,25 @@ NUMPY_TYPEMAP = {
             64: ci64},
     # HACK: cf16 used as WAR for missing np.complex32
     'cf': {16: cf16,           32: np.complex64,
-           64: np.complex128, 128: np.complex256}
+           64: np.complex128}
 }
+if BF_FLOAT128_ENABLED:
+    NUMPY_TYPEMAP['f'][128] = np.float128
+    NUMPY_TYPEMAP['cf'][128] = np.complex256
 
 def is_vector_structure(dtype):
     if dtype.names is None:
         return False
     ndim = len(dtype.names)
-    vector_field_names = tuple('f%i' % i for i in xrange(ndim))
+    vector_field_names = tuple('f%i' % i for i in range(ndim))
     return (dtype.kind == 'V' and
             dtype.names == vector_field_names and
-            all([dtype[i] == dtype[0] for i in xrange(1, ndim)]))
+            all([dtype[i] == dtype[0] for i in range(1, ndim)]))
 
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
     def __init__(self, t=None):
-        if isinstance(t, basestring):
+        if isinstance(t, string_types):
             for i, char in enumerate(t):
                 if char.isdigit():
                     break
@@ -148,10 +166,10 @@ class DataType(object):
                 t = t[0]
             self._kind = t.kind
             if t.kind == 'c':
-                self._nbit /= 2   # Bifrost convention is nbit per real component
+                self._nbit //= 2   # Bifrost convention is nbit per real component
                 self._kind = 'cf' # Numpy only supports floating-point complex types
             elif t.kind == 'V': # WAR to support custom integer complex types
-                self._nbit /= 2
+                self._nbit //= 2
                 if t in [ci4, ci8, ci16, ci32, ci64]:
                     self._kind = 'ci'
                 elif t in [cf16]:

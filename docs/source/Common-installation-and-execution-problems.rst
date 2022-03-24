@@ -12,14 +12,6 @@ timeout, and some blocks are not ending themselves. Quit the program (by
 ctrl-\\), and make sure every block in your pipeline is reading/writing
 to its rings as it should.
 
-OSError: ..../lib/libbifrost.so: undefined symbol: cudaFreeHost
----------------------------------------------------------------
-
-At the make step, nvcc did not link cudaFreeHost into libbifrost.so. You
-should make sure that config.mk and user.mk are set up for your system,
-and that your nvcc compiler can compile other CUDA programs. If you are
-still having trouble, raise an issue.
-
 OSError: Can't find library with name libbifrost.so
 ---------------------------------------------------
 
@@ -30,15 +22,14 @@ do not have the libbifrost.so file there. To fix this, type
 ``echo $LD_LIBRARY_PATH``
 
 at your command line. If none of these folders contain the Bifrost
-installation (which you specified in config.mk), you have found the
-problem. Perform
+installation (which you may have specified with configure), you have found
+the problem. Perform
 
 ``export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/my/bifrost/installation``,
 
 where ``/my/bifrost/installation`` is the folder where you installed the
-Bifrost "lib" (in config.mk, this folder is given as
-``INSTALL_LIB_DIR``). This should add Bifrost to the wrapper's search
-path.
+Bifrost "lib" (this location will also be reported as part of `make install`).
+This should add Bifrost to the wrapper's search path.
 
 OSError: libcudart.so.x.0: cannot open shared object file: No such file or directory
 ------------------------------------------------------------------------------------

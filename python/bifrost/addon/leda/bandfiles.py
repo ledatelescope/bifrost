@@ -24,10 +24,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
+
 import os, sys
 
 sys.path.append('..')
 import make_header
+
+from bifrost import telemetry
+telemetry.track_module()
 
 disk_names = [ "ledastorage", "longterm", "offsite", "data" ]
 ledaovro_names = [ "ledaovro1", "ledaovro2", "ledaovro3", "ledaovro4", "ledaovro5", "ledaovro6", "ledaovro7", "ledaovro8", "ledaovro9", "ledaovro10", "ledaovro11","ledaovro12" ]
@@ -83,12 +88,12 @@ class FileInfo(object):
     obs1 = extract_obs_offset_from_name(fname)
     obs2 = extract_obs_offset_in_file(fname)
     if obs1 != obs2 and obs1 != "UNKNOWN" and obs2 !="UNKNOWN":
-      print "Consistency Error", fname, ": OBS_OFFSET in file doesn't match the offset in the name"
+      print("Consistency Error", fname, ": OBS_OFFSET in file doesn't match the offset in the name")
     """
 
     if hedr["SOURCE"] == "LEDA_TEST":
-      if not is_integer(n_scans): print "CONSISTENCY ERROR, ", fname, "scan:",n_scans, "is not integer"
-      if not is_integer((self.end_time-self.start_time)/9.0): print "CONSISTENCY ERROR", fname, ": not 9 sec dump in file"
+      if not is_integer(n_scans): print("CONSISTENCY ERROR, ", fname, "scan:",n_scans, "is not integer")
+      if not is_integer((self.end_time-self.start_time)/9.0): print("CONSISTENCY ERROR", fname, ": not 9 sec dump in file")
 
 # Gather the file info for all files that have different frequency but the same observation time.
 class BandFiles(object):
@@ -106,7 +111,7 @@ class BandFiles(object):
     if basename[-5:] == ".dada":                # Just a single file
       if os.access(basename,os.R_OK): self.files.append(FileInfo(basename))
       else: "Error:", basename, "does not exist or is not readable"
-      print basename, FileInfo(basename), self.files
+      print(basename, FileInfo(basename), self.files)
     else:
 
       # Look for files in all the standard locations
@@ -138,7 +143,7 @@ class BandFiles(object):
       if f.start_time not in self.start_time_present: self.start_time_present.append(f.start_time)
 
     if len(self.start_time_present) > 1:
-      print "Error: Files with same timestamp in their name have different internal time. Basename:",basename
+      print("Error: Files with same timestamp in their name have different internal time. Basename:",basename)
       #sys.exit(1)
 
     self.start_time = self.start_time_present[0]
@@ -195,4 +200,3 @@ class BandFiles(object):
     for f in self.files:
       if f.freq in frequencies: has.append(f.freq)
     return has
-

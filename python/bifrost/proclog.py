@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,21 +25,29 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, BifrostObject
+# Python2 compatibility
+from __future__ import print_function, absolute_import
+import sys
+if sys.version_info < (3,):
+    range = xrange
+    
+from bifrost.libbifrost import _bf, _check, BifrostObject
 
 import os
 import time
-import ctypes
-import numpy as np
 
-try:
-    import simplejson as json
-except ImportError:
-    print "WARNING: Install simplejson for better performance"
-    import json
+from bifrost import telemetry
+telemetry.track_module()
+
+PROCLOG_DIR = _bf.BF_PROCLOG_DIR
 
 class ProcLog(BifrostObject):
     def __init__(self, name):
+        try:
+            name = name.encode('utf-8')
+        except AttributeError:
+            # Python2 catch
+            pass
         BifrostObject.__init__(
             self, _bf.bfProcLogCreate, _bf.bfProcLogDestroy, name)
     def update(self, contents):
@@ -52,6 +59,11 @@ class ProcLog(BifrostObject):
         if isinstance(contents, dict):
             contents = '\n'.join(['%s : %s' % item
                                   for item in contents.items()])
+        try:
+            contents = contents.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         _check(_bf.bfProcLogUpdate(self.obj, contents))
 
 def _multi_convert(value):
@@ -77,7 +89,7 @@ def load_by_filename(filename):
     contents = {}
     with open(filename, 'r') as fh:
         ## Read the file all at once to avoid problems but only after it has a size
-        for attempt in xrange(5):
+        for attempt in range(5):
             if os.path.getsize(filename) != 0:
                 break
             time.sleep(0.001)
@@ -113,7 +125,7 @@ def load_by_pid(pid, include_rings=False):
 
 
     # Make sure we have a directory to load from
-    baseDir = os.path.join('/dev/shm/bifrost/', str(pid))
+    baseDir = os.path.join(PROCLOG_DIR, str(pid))
     if not os.path.isdir(baseDir):
         raise RuntimeError("Cannot find log directory associated with PID %s" % pid)
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -43,6 +43,9 @@ Optional parameters (which some blocks require):
 
 """
 
+from bifrost import telemetry
+telemetry.track_module()
+
 # Define a header which we can check passed
 # dictionaries with
 # Format:
@@ -64,7 +67,7 @@ def enforce_header_standard(header_dict):
     for parameter, standard in STANDARD_HEADER.items():
         if parameter not in header_dict:
             return False
-        if type(header_dict[parameter]) != standard[0]:
+        if not isinstance(header_dict[parameter], standard[0]):
             return False
         if standard[1] is not None and \
            header_dict[parameter] < standard[1]:

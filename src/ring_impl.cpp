@@ -48,6 +48,7 @@
 #include "ring_impl.hpp"
 #include "utils.hpp"
 #include "assert.hpp"
+#include <bifrost/config.h>
 #include <bifrost/memory.h>
 
 #include <bifrost/cuda.h>

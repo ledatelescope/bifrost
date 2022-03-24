@@ -29,6 +29,9 @@ import unittest
 import numpy as np
 import bifrost as bf
 
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
+
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class NDArrayTest(unittest.TestCase):
     def setUp(self):
         self.known_vals  = [[0,1],[2,3],[4,5]]

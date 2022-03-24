@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,30 +25,49 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
+from __future__ import print_function
 import sys
+if sys.version_info < (3,):
+    range = xrange
+    
 import threading
-import Queue
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 import time
 import signal
+import warnings
 from copy import copy
 from collections import defaultdict
-from contextlib2 import ExitStack
+try:
+    from contextlib import ExitStack
+except ImportError:
+    from contextlib2 import ExitStack
 import traceback
 
-import bifrost as bf
+from bifrost import device, memory, core, affinity
 from bifrost.ring2 import Ring, ring_view
-from temp_storage import TempStorage
+from bifrost.temp_storage import TempStorage
 from bifrost.proclog import ProcLog
 from bifrost.ndarray import memset_array # TODO: This feels a bit hacky
+from bifrost.libbifrost import EndOfDataStop
+
+from bifrost import telemetry
+telemetry.track_module()
 
 # Note: This must be called before any devices are initialized. It's also
 #          almost always desirable when running pipelines, so we do it here at
 #          module import time to make things easy.
-bf.device.set_devices_no_spin_cpu()
+device.set_devices_no_spin_cpu()
 
 def izip(*iterables):
     while True:
-        yield [it.next() for it in iterables]
+        try:
+            yield [next(it) for it in iterables]
+        except (EndOfDataStop, StopIteration):
+            return
 
 thread_local = threading.local()
 thread_local.pipeline_stack = []
@@ -102,11 +120,12 @@ class BlockScope(object):
     def __enter__(self):
         thread_local.blockscope_stack.append(self)
     def __exit__(self, type, value, tb):
-        if __debug__: assert(thread_local.blockscope_stack.pop() is self)
-        else: thread_local.blockscope_stack.pop()
+        popped = thread_local.blockscope_stack.pop()
+        if __debug__:
+            assert(popped is self)
     def __getattr__(self, name):
         # Use child's value if set, othersize defer to parent
-        if not hasattr(self, '_' + name):
+        if '_'+name not in self.__dict__:
             raise AttributeError("'%s' object has no attribute '%s'" % (self.__class__, name))
         self_value = getattr(self, '_' + name)
         if self_value is not None:
@@ -214,7 +233,7 @@ class Pipeline(BlockScope):
         self.blocks = []
         self.shutdown_timeout = 5.
         self.all_blocks_finished_initializing_event = threading.Event()
-        self.block_init_queue = Queue.Queue()
+        self.block_init_queue = queue.Queue()
     def as_default(self):
         return PipelineContext(self)
     def synchronize_block_initializations(self):
@@ -251,7 +270,7 @@ class Pipeline(BlockScope):
         join_all(self.threads, timeout=self.shutdown_timeout)
         for thread in self.threads:
             if thread.is_alive():
-                print "WARNING: Thread %s did not shut down on time and will be killed" % thread.name
+                warnings.warn("Thread %s did not shut down on time and will be killed" % thread.name, RuntimeWarning)
     def shutdown_on_signals(self, signals=None):
         if signals is None:
             signals = [signal.SIGHUP,
@@ -266,14 +285,15 @@ class Pipeline(BlockScope):
                             reversed(sorted(signal.__dict__.items()))
                             if v.startswith('SIG') and
                             not v.startswith('SIG_'))
-        print "WARNING: Received signal %i %s, shutting down pipeline" % (signum, SIGNAL_NAMES[signum])
+        warnings.warn("Received signal %i %s, shutting down pipeline" % (signum, SIGNAL_NAMES[signum]), RuntimeWarning)
         self.shutdown()
     def __enter__(self):
         thread_local.pipeline_stack.append(self)
         return self
     def __exit__(self, type, value, tb):
-        if __debug__: assert(thread_local.pipeline_stack.pop() is self)
-        else: thread_local.pipeline_stack.pop()
+        popped = thread_local.pipeline_stack.pop()
+        if __debug__:
+            assert(popped is self)
 
 # Create the default pipeline object
 thread_local.pipeline_stack.append(Pipeline())
@@ -322,7 +342,7 @@ class Block(BlockScope):
         self.irings = irings
         valid_inp_spaces = self._define_valid_input_spaces()
         for i, (iring, valid_spaces) in enumerate(zip(irings, valid_inp_spaces)):
-            if not bf.memory.space_accessible(iring.space, valid_spaces):
+            if not memory.space_accessible(iring.space, valid_spaces):
                 raise ValueError("Block %s input %i's space must be accessible from one of: %s" %
                                  (self.name, i, str(valid_spaces)))
         self.orings = [] # Update this in subclass constructors
@@ -340,14 +360,14 @@ class Block(BlockScope):
     def create_ring(self, *args, **kwargs):
         return Ring(*args, owner=self, **kwargs)
     def run(self):
-        #bf.affinity.set_openmp_cores(cpus) # TODO
+        #affinity.set_openmp_cores(cpus) # TODO
         core = self.core
         if core is not None:
-            bf.affinity.set_core(core if isinstance(core, int) else core[0])
+            affinity.set_core(core if isinstance(core, int) else core[0])
         self.bind_proclog.update({'ncore': 1,
-                                  'core0': bf.affinity.get_core()})
+                                  'core0': affinity.get_core()})
         if self.gpu is not None:
-            bf.device.set_device(self.gpu)
+            device.set_device(self.gpu)
         self.cache_scope_hierarchy()
         with ExitStack() as oring_stack:
             active_orings = self.begin_writing(oring_stack, self.orings)
@@ -421,7 +441,7 @@ class SourceBlock(Block):
     def __init__(self, sourcenames, gulp_nframe, space=None, *args, **kwargs):
         super(SourceBlock, self).__init__([], *args, gulp_nframe=gulp_nframe, **kwargs)
         self.sourcenames = sourcenames
-        default_space = 'cuda_host' if bf.core.cuda_enabled() else 'system'
+        default_space = 'cuda_host' if core.cuda_enabled() else 'system'
         if space is None:
             space = default_space
         self.orings = [self.create_ring(space=space)]
@@ -459,7 +479,7 @@ class SourceBlock(Block):
                             reserve_time = cur_time - prev_time
                             prev_time = cur_time
                             ostrides_actual = self.on_data(ireader, ospans)
-                            bf.device.stream_synchronize()
+                            device.stream_synchronize()
                             self.commit_spans(ospans, ostrides_actual, ogulp_overlaps)
                             # TODO: Is this an OK way to detect end-of-data?
                             if any([ostride == 0 for ostride in ostrides_actual]):
@@ -509,7 +529,7 @@ class MultiTransformBlock(Block):
         self._seq_count = 0
         self.perf_proclog = ProcLog(self.name + "/perf")
         self.sequence_proclogs = [ProcLog(self.name + "/sequence%i" % i)
-                                  for i in xrange(len(self.irings))]
+                                  for i in range(len(self.irings))]
         self.out_proclog = ProcLog(self.name + "/out")
 
         rnames = {'nring': len(self.orings)}
@@ -586,7 +606,7 @@ class MultiTransformBlock(Block):
                             #            arbitrarily large!
                             ospans = self.reserve_spans(ospan_stack, oseqs, iskip_nframes)
                             ostrides_actual = self._on_skip(iskip_slices, ospans)
-                            bf.device.stream_synchronize()
+                            device.stream_synchronize()
                             self.commit_spans(ospans, ostrides_actual, ogulp_overlaps)
 
                     if all([ispan.nframe == 0 for ispan in ispans]):
@@ -609,7 +629,7 @@ class MultiTransformBlock(Block):
                             #          calling stream_synchronize().
                             #        Consider passing .data instead of rings here
                             ostrides_actual = self._on_data(ispans, ospans)
-                            bf.device.stream_synchronize()
+                            device.stream_synchronize()
 
                         any_frames_overwritten = any([ispan.nframe_overwritten
                                                       for ispan in ispans])
@@ -624,7 +644,7 @@ class MultiTransformBlock(Block):
                                             for ispan, istride_nframe
                                             in zip(ispans, istride_nframes)]
                             ostrides_actual = self._on_skip(iskip_slices, ospans)
-                            bf.device.stream_synchronize()
+                            device.stream_synchronize()
 
                         self.commit_spans(ospans, ostrides_actual, ogulp_overlaps)
                     cur_time = time.time()
@@ -718,7 +738,7 @@ class TransformBlock(MultiTransformBlock):
         # Note: This zeros the whole gulp, even though only part of the gulp
         #         may have been overwritten.
         memset_array(ospan.data, 0)
-        #for i in xrange(0, ispan.nframe_skipped, igulp_nframe):
+        #for i in range(0, ispan.nframe_skipped, igulp_nframe):
         #    inframe = min(igulp_nframe, inskipped - i)
         #    onframe = self._define_output_nframes(inframe)
         #    with oseq.reserve(onframe) as ospan:
