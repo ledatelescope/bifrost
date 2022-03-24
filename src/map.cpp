@@ -796,6 +796,6 @@ BFstatus bfMapClearCache() {
     DiskCacheMgr::get().clear();
     return BF_STATUS_SUCCESS;
 #else
-    return BF_STATUS_UNSUPPORTED;
+    return BF_STATUS_SUCCESS;
 #endif
 }
