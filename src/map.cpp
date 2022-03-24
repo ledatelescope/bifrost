@@ -728,7 +728,6 @@ BFstatus bfMap(int                  ndim,
 #if BF_MAPCACHE_ENABLED
 		DiskCacheMgr::get().save(cache_key, kernel_name, ptx, basic_indexing_only);
 #endif
-		//std::cout << "INSERTING INTO CACHE" << std::endl;
 	}
 	auto& cache_entry = kernel_cache.get(cache_key);
 	CUDAKernel& kernel = cache_entry.first;
