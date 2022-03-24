@@ -147,9 +147,9 @@ def map(func_string, data, axis_names=None, shape=None,
                      _array(block_shape), _array(block_axes)))
 
 def list_map_cache():
-    output = ''
+    output = "Cache enabled: %s" % ('yes' if BF_GPU_MAP_CACHE else 'no')
     if BF_GPU_MAP_CACHE:
-        cache_path = os.path.join(os.path.expanduser('~'), 'map_cache')
+        cache_path = os.path.join(os.path.expanduser('~'), '.bifrost', 'map_cache')
         try:
             with open(os.path.join(cache_path, 'cache.version'), 'r') as fh:
                 version = fh.read()
@@ -166,8 +166,6 @@ def list_map_cache():
         except OSError:
             pass
             
-    if len(output) == 0:
-        output = 'none'
     print(output)
 
 
