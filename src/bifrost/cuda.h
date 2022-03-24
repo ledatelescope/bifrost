@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,8 +35,6 @@
 extern "C" {
 #endif
 
-BFstatus bfStreamCreate(void*    stream,
-                        BFbool   nonblocking);
 BFstatus bfStreamGet(void*       stream);
 BFstatus bfStreamSet(void const* stream);
 BFstatus bfStreamSynchronize();

@@ -28,7 +28,7 @@
 # Python2 compatibility
 from __future__ import absolute_import
 
-from ctypes import c_ulong, byref
+from ctypes import c_ulong, pointer as c_pointer
 from bifrost.libbifrost import _bf, _check, _get
 
 from bifrost import telemetry
@@ -43,27 +43,17 @@ def set_device(device):
 def get_device():
     return _get(_bf.bfDeviceGet)
 
-def create_stream(nonblocking=False):
-    """Create a new CUDA stream and return it as a ctypes.c_ulong instance.  
-    If the `nonblocking` is True then the stream may run independently with
-    respect to stream 0."""
-    stream = c_ulong(0)
-    _check(_bf.bfStreamCreate(byref(stream), nonblocking))
-    return stream
-
-
+def set_stream(stream):
+    """Set the CUDA stream to the provided ctypes.c_ulong instance."""
+    stream = c_ulong(stream)
+    _check(_bf.bfStreamSet(c_pointer(stream)))
+    return True
+    
 def get_stream():
     """Get the current CUDA stream and return it as a ctypes.c_ulong instance."""
     stream = c_ulong(0)
-    _check(_bf.bfStreamGet(byref(stream)))
-    return stream
-
-def set_stream(stream):
-    """Set the CUDA stream to the provided ctypes.c_ulong instance."""
-    if not isinstance(stream, c_ulong):
-        raise TypeError("Expected a ctypes.u_int instance")
-    _check(_bf.bfStreamSet(byref(stream)))
-    return True
+    _check(_bf.bfStreamGet(c_pointer(stream)))
+    return stream.value
 
 def stream_synchronize():
     _check(_bf.bfStreamSynchronize())
