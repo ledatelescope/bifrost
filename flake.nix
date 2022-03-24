@@ -212,7 +212,7 @@
           do (import nixpkgs {
             inherit system;
             config.allowUnfree = true;
-            overlays = [ self.overlay ];
+            overlays = lib.attrValues self.overlays;
           }));
 
       # Which python3 packages should be modified by the overlay?
@@ -220,7 +220,7 @@
       pythonAttrs = lib.filterAttrs (name: _: isPython name);
 
     in {
-      overlay = final: prev:
+      overlays.default = final: prev:
         {
           bifrost = final.callPackage bifrost { };
           bifrost-doc = final.callPackage bifrost-doc { };
@@ -284,8 +284,8 @@
 
         in { inherit (pkgs) bifrost-doc; } // cgens // bfs // pys);
 
-      devShell = eachSystem (pkgs:
-        let
+      devShells = eachSystem (pkgs: {
+        default = let
           pre-commit = pre-commit-hooks.lib.${pkgs.system}.run {
             src = ./.;
             hooks.nixfmt.enable = true;
@@ -309,6 +309,7 @@
               pkgs.python3.pkgs.sphinx
               pkgs.yamllint
             ];
-        });
+        };
+      });
     };
 }
