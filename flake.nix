@@ -48,15 +48,13 @@
       bifrost = { stdenv, ctags, ncurses, file, enableDebug ? false
         , enablePython ? true, python3, enableCuda ? false, cudatoolkit
         , util-linuxMinimal, gpuArchs ? defaultGpuArchs cudatoolkit }:
-        let
-          pname = lib.optionalString (!enablePython) "lib" + "bifrost"
+        stdenv.mkDerivation {
+          name = lib.optionalString (!enablePython) "lib" + "bifrost"
             + lib.optionalString enablePython
             "-py${lib.versions.majorMinor python3.version}"
             + lib.optionalString enableCuda
             "-cuda${lib.versions.majorMinor cudatoolkit.version}"
-            + lib.optionalString enableDebug "-debug";
-        in stdenv.mkDerivation {
-          name = "${pname}-${version}";
+            + lib.optionalString enableDebug "-debug" + "-${version}";
           inherit version;
           src = ./.;
           buildInputs = [ ctags ncurses ] ++ lib.optionals enablePython [
@@ -173,9 +171,8 @@
 
       bifrost-doc =
         { stdenv, python3, ctags, doxygen, docDir ? "/share/doc/bifrost" }:
-        let pname = "bifrost-doc";
-        in stdenv.mkDerivation {
-          name = "${pname}-${version}";
+        stdenv.mkDerivation {
+          name = "bifrost-doc-${version}";
           inherit version;
           src = ./.;
           buildInputs = [
