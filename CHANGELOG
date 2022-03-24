@@ -1,3 +1,6 @@
+0.10.1
+ * Added a disk cache for bifrost.map calls
+
 0.10.0
  * Switched over to an autotools-based build system
  * Added a .m4 file to help other autotools-based software find Bifrost
