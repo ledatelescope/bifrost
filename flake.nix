@@ -28,9 +28,26 @@
       version = "${acVersion}.dev"
         + lib.optionalString (self ? shortRev) "+g${self.shortRev}";
 
+      # Can inspect the cuda version to guess at what architectures would be
+      # most useful. Take care not to instatiate the cuda package though, which
+      # would happen if you start inspecting header files or trying to run nvcc.
+
+      defaultGpuArchs = _cudatoolkit: [ "70" "75" ];
+
+      # At time of writing (2022-03-24):
+      # PACKAGE          VERSION ARCHS
+      # cudatoolkit      │       │
+      #  ≡ ~_10          │       │
+      #  ≡ ~_10_2        10.2.89 30 32 35 37 50 52 53 60 61 62 70 72 75
+      # cudatoolkit_11   │       │  (deprecated)
+      #  ≡ ~_11_4        11.4.2  │    (35 37 50)52 53 60 61 62 70 72 75 80 86 87
+      # cudatoolkit_11_5 11.5.0  │    (35 37 50)52 53 60 61 62 70 72 75 80 86 87
+      #                  │       │*Experimented w/using all supported archs, but
+      #                  │       │ had to eliminate 87 because not in cufft lib.
+
       bifrost = { stdenv, ctags, ncurses, file, enableDebug ? false
         , enablePython ? true, python3, enableCuda ? false, cudatoolkit
-        , util-linuxMinimal, gpuArchs ? null }:
+        , util-linuxMinimal, gpuArchs ? defaultGpuArchs cudatoolkit }:
         let
           pname = lib.optionalString (!enablePython) "lib" + "bifrost"
             + lib.optionalString enablePython
@@ -88,19 +105,12 @@
             '';
           # Had difficulty specifying this with configureFlags, because it
           # wants to quote the args and that fails with spaces in gpuArchs.
-          configurePhase =
-            lib.optionalString (enableCuda && gpuArchs == null) ''
-              GPU_ARCHS="$(${cudatoolkit}/bin/nvcc -h | \
-                grep -Po "'compute_[0-9]{2,3}" | cut -d_ -f2 | \
-                sort | uniq | tr '\n' ' ')"
-            '' + lib.optionalString (enableCuda && gpuArchs != null) ''
-              GPU_ARCHS="${gpuArchs}"
-            '' + lib.concatStringsSep " "
+          configurePhase = lib.concatStringsSep " "
             ([ "./configure" "--disable-static" ''--prefix="$out"'' ]
               ++ lib.optionals enableDebug [ "--enable-debug" ]
               ++ lib.optionals enableCuda [
                 "--with-cuda-home=${cudatoolkit}"
-                ''--with-gpu-archs="$GPU_ARCHS"''
+                ''--with-gpu-archs="${lib.concatStringsSep " " gpuArchs}"''
                 "--with-nvcc-flags='-Wno-deprecated-gpu-targets'"
                 "LDFLAGS=-L${cudatoolkit}/lib/stubs"
               ]);
