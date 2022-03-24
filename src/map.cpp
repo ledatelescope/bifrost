@@ -583,7 +583,6 @@ class DiskCacheMgr {
 	
 	DiskCacheMgr()
 		: _cachedir(get_home_dir()+"/.bifrost/map_cache/"), _loaded(false) {
-				std::cout << "CACHE: " << _cachedir << std::endl;
 				make_dir(_cachedir);
 	}
 public:
@@ -592,7 +591,6 @@ public:
 	
 	static DiskCacheMgr& get() {
 		static DiskCacheMgr cache;
-		std::cout << "HOME: " << get_home_dir() << std::endl;
 		return cache;
 	}
 	
