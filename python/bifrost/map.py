@@ -146,7 +146,7 @@ def map(func_string, data, axis_names=None, shape=None,
                      func_name, func_string, extra_code,
                      _array(block_shape), _array(block_axes)))
 
-def list_cache():
+def list_map_cache():
     output = ''
     if BF_GPU_MAP_CACHE:
         cache_path = os.path.join(os.path.expanduser('~'), 'map_cache')
@@ -171,5 +171,5 @@ def list_cache():
     print(output)
 
 
-def clear_cache():
+def clear_map_cache():
     _check(_bf.bfMapClearCache())
