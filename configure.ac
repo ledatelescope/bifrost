@@ -213,7 +213,7 @@ AC_ARG_ENABLE([map_cache],
               [enable_map_cache=yes])
 AC_SUBST([HAVE_MAP_CACHE], [0])
 AS_IF([test x$enable_map_cache != xno],
-      [AC_SUBST([HAVE_MAP_CACHE], [1])])
+      [AC_SUBST([HAVE_MAP_CACHE], [$HAVE_CUDA])])
 
 #
 # Python

@@ -19953,7 +19953,7 @@ HAVE_MAP_CACHE=0
 
 if test x$enable_map_cache != xno
 then :
-  HAVE_MAP_CACHE=1
+  HAVE_MAP_CACHE=$HAVE_CUDA
 
 fi
 
