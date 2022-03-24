@@ -1,19 +1,18 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
     <title>6. Monitoring Tools &#8212; bifrost 0.6 documentation</title>
-    <link rel="stylesheet" href="static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="static/documentation_options.js"></script>
-    <script type="text/javascript" src="static/jquery.js"></script>
-    <script type="text/javascript" src="static/underscore.js"></script>
-    <script type="text/javascript" src="static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="stylesheet" type="text/css" href="static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="static/documentation_options.js"></script>
+    <script src="static/jquery.js"></script>
+    <script src="static/underscore.js"></script>
+    <script src="static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="7. Fast GPU math using bfMap" href="bfmap.html" />
@@ -34,8 +33,8 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="monitoring-tools">
-<h1>6. Monitoring Tools<a class="headerlink" href="#monitoring-tools" title="Permalink to this headline">¶</a></h1>
+  <section id="monitoring-tools">
+<h1><span class="section-number">6. </span>Monitoring Tools<a class="headerlink" href="#monitoring-tools" title="Permalink to this headline">¶</a></h1>
 <p>Bifrost provides some command-line tools for monitoring the performance of running pipelines.
 In the <code class="docutils literal notranslate"><span class="pre">tools/</span></code> directory there are</p>
 <p><em>(aka seeing C in Python pipelines)</em></p>
@@ -44,26 +43,26 @@ Python sucks.</p>
 <p>Bifrost bridges the two languages using some clever python libraries, a
 customized numpy array class, and enforcing some pipeline friendly
 design choices.</p>
-<div class="section" id="nvidia-profiler">
-<h2>6.1. NVIDIA Profiler<a class="headerlink" href="#nvidia-profiler" title="Permalink to this headline">¶</a></h2>
+<section id="nvidia-profiler">
+<h2><span class="section-number">6.1. </span>NVIDIA Profiler<a class="headerlink" href="#nvidia-profiler" title="Permalink to this headline">¶</a></h2>
 <p>The NVIDIA Profiler and Visual Profiler tools (part of the CUDA Toolkit)
 can be used to profile and visualize Bifrost pipelines. Applications can
 be launched directly from the Visual Profiler (nvvp), or a profile can
 first be generated using the nvprof command line tool:</p>
-<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span>$ nvprof -o my_pipeline.nvprof python my_pipeline.py
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ nvprof -o my_pipeline.nvprof python my_pipeline.py
 </pre></div>
 </div>
 <p>The generated .nvprof file can then be imported into the Visual Profiler
 for visualisation and analysis.</p>
-<p>To obtain a more detailed profile of pipeline execution, rebuild the bifrost library
-with the setting TRACE=1 (either by changing <code class="docutils literal notranslate"><span class="pre">user.mk</span></code> or by passing it as an
-argument to the <code class="docutils literal notranslate"><span class="pre">make</span></code> command).</p>
-</div>
-<div class="section" id="pipeline-in-dev-shm">
-<h2>6.2. Pipeline in /dev/shm<a class="headerlink" href="#pipeline-in-dev-shm" title="Permalink to this headline">¶</a></h2>
-<p>Details about the currently running bifrost pipeline are available in the <code class="docutils literal notranslate"><span class="pre">/dev/shm</span></code> directory.
-They are mapped into a directory structure (use the linux <code class="docutils literal notranslate"><span class="pre">tree</span></code> utility to view it):</p>
-<div class="code highlight-default notranslate"><div class="highlight"><pre><span></span>dancpr@bldcpr:/bldata/bifrost/tools$ tree /dev/shm/bifrost
+<p>To obtain a more detailed profile of pipeline execution, reconfigure and rebuild
+the bifrost library with “trace” enabled using <cite>./configure –enable-trace</cite>.</p>
+</section>
+<section id="pipeline-in-dev-shm">
+<h2><span class="section-number">6.2. </span>Pipeline in /dev/shm<a class="headerlink" href="#pipeline-in-dev-shm" title="Permalink to this headline">¶</a></h2>
+<p>Details about the currently running bifrost pipeline are available in the <code class="docutils literal notranslate"><span class="pre">/dev/shm</span></code>
+directory on Linux.  They are mapped into a directory structure (use the linux <code class="docutils literal notranslate"><span class="pre">tree</span></code>
+utility to view it):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>dancpr@bldcpr:/bldata/bifrost/tools$ tree /dev/shm/bifrost
 /dev/shm/bifrost
 └── 17263
     └── Pipeline_0
@@ -90,9 +89,9 @@ They are mapped into a directory structure (use the linux <code class="docutils 
         ├...
 </pre></div>
 </div>
-</div>
-<div class="section" id="like-top-py">
-<h2>6.3. like_top.py<a class="headerlink" href="#like-top-py" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="like-top-py">
+<h2><span class="section-number">6.3. </span>like_top.py<a class="headerlink" href="#like-top-py" title="Permalink to this headline">¶</a></h2>
 <p>The main performance monitoring tools is <code class="docutils literal notranslate"><span class="pre">like_top.py</span></code>. This is, as the name suggests, like the linux utility <code class="docutils literal notranslate"><span class="pre">top</span></code>.</p>
 <p>..code:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">like_top</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span> <span class="n">bldcpr</span> <span class="o">-</span> <span class="n">load</span> <span class="n">average</span><span class="p">:</span> <span class="mf">0.59</span><span class="p">,</span> <span class="mf">0.14</span><span class="p">,</span> <span class="mf">0.05</span>
@@ -115,13 +114,13 @@ They are mapped into a directory structure (use the linux <code class="docutils 
 </pre></div>
 </div>
 <ul class="simple">
-<li>Acquire is the time spent waiting for input (i.e., waiting on upstream blocks),</li>
-<li>Process is the time spent processing data, and</li>
-<li>Reserve is the time spent waiting for output space to become available in the ring (i.e., waiting for downstream blocks).</li>
+<li><p>Acquire is the time spent waiting for input (i.e., waiting on upstream blocks),</p></li>
+<li><p>Process is the time spent processing data, and</p></li>
+<li><p>Reserve is the time spent waiting for output space to become available in the ring (i.e., waiting for downstream blocks).</p></li>
 </ul>
 <p>Note: The CPU fraction will probably be 100% on any GPU block because it’s currently set to spin (busy loop) while waiting for the GPU.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -140,7 +139,7 @@ They are mapped into a directory structure (use the linux <code class="docutils 
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Table of Contents</span></p>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="intro.html">1. Introduction to Bifrost</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Getting-started-guide.html">2. Getting started guide</a></li>
@@ -166,23 +165,21 @@ They are mapped into a directory structure (use the linux <code class="docutils 
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="views.html" title="previous chapter">5. Views</a></li>
-      <li>Next: <a href="bfmap.html" title="next chapter">7. Fast GPU math using bfMap</a></li>
+      <li>Previous: <a href="views.html" title="previous chapter"><span class="section-number">5. </span>Views</a></li>
+      <li>Next: <a href="bfmap.html" title="next chapter"><span class="section-number">7. </span>Fast GPU math using bfMap</a></li>
   </ul></li>
 </ul>
 </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -196,10 +193,10 @@ They are mapped into a directory structure (use the linux <code class="docutils 
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2017, ledatelescope.
+      &copy;1980, ledatelescope.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.9</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

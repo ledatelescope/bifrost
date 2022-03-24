@@ -1,0 +1,373 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bifrost.DataType &#8212; bifrost 0.6 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for bifrost.DataType</h1><div class="highlight"><pre>
+<span></span>
+<span class="c1"># Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Redistribution and use in source and binary forms, with or without</span>
+<span class="c1"># modification, are permitted provided that the following conditions</span>
+<span class="c1"># are met:</span>
+<span class="c1"># * Redistributions of source code must retain the above copyright</span>
+<span class="c1">#   notice, this list of conditions and the following disclaimer.</span>
+<span class="c1"># * Redistributions in binary form must reproduce the above copyright</span>
+<span class="c1">#   notice, this list of conditions and the following disclaimer in the</span>
+<span class="c1">#   documentation and/or other materials provided with the distribution.</span>
+<span class="c1"># * Neither the name of The Bifrost Authors nor the names of its</span>
+<span class="c1">#   contributors may be used to endorse or promote products derived</span>
+<span class="c1">#   from this software without specific prior written permission.</span>
+<span class="c1">#</span>
+<span class="c1"># THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS&#39;&#39; AND ANY</span>
+<span class="c1"># EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE</span>
+<span class="c1"># IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR</span>
+<span class="c1"># PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR</span>
+<span class="c1"># CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,</span>
+<span class="c1"># EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,</span>
+<span class="c1"># PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR</span>
+<span class="c1"># PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY</span>
+<span class="c1"># OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT</span>
+<span class="c1"># (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE</span>
+<span class="c1"># OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">i:    signed integer</span>
+<span class="sd">u:  unsigned integer</span>
+<span class="sd">f:  floating point</span>
+<span class="sd">ci: complex   signed integer</span>
+<span class="sd">cf: complex floating pointer</span>
+
+<span class="sd">i4:   4-bit signed integer</span>
+<span class="sd">f16:  16-bit floating point</span>
+<span class="sd">ci4:  4+4-bit complex signed integer</span>
+<span class="sd">cf32: 32+32-bit complex floating point</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="c1"># Python2 compatibility</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">absolute_import</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">string_types</span> <span class="o">=</span> <span class="p">(</span><span class="nb">str</span><span class="p">,)</span>
+<span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">3</span><span class="p">,):</span>
+    <span class="nb">range</span> <span class="o">=</span> <span class="n">xrange</span>
+    <span class="n">string_types</span> <span class="o">=</span> <span class="p">(</span><span class="n">basestring</span><span class="p">,)</span>
+    
+<span class="kn">from</span> <span class="nn">bifrost.libbifrost</span> <span class="kn">import</span> <span class="n">_bf</span>
+<span class="kn">from</span> <span class="nn">bifrost.libbifrost_generated</span> <span class="kn">import</span> <span class="n">BF_FLOAT128_ENABLED</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">bifrost</span> <span class="kn">import</span> <span class="n">telemetry</span>
+<span class="n">telemetry</span><span class="o">.</span><span class="n">track_module</span><span class="p">()</span>
+
+<span class="c1"># Custom dtypes to represent additional complex types</span>
+<span class="c1"># Note: These can be constructed using tuples</span>
+<span class="c1">#   E.g., np.ndarray([(0x10,), (0x32,)], dtype=ci4) # Special case</span>
+<span class="c1">#         np.ndarray([  (0,1),   (2,3)], dtype=ci8)</span>
+<span class="c1">#         np.ndarray([  (0,1),   (2,3)], dtype=ci16)</span>
+<span class="n">ci4</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">([(</span><span class="s1">&#39;re_im&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">)])</span>
+<span class="n">ci8</span>  <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">([(</span><span class="s1">&#39;re&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">),</span>    <span class="p">(</span><span class="s1">&#39;im&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">)])</span>
+<span class="n">ci16</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">([(</span><span class="s1">&#39;re&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int16</span><span class="p">),</span>   <span class="p">(</span><span class="s1">&#39;im&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int16</span><span class="p">)])</span>
+<span class="n">ci32</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">([(</span><span class="s1">&#39;re&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span>   <span class="p">(</span><span class="s1">&#39;im&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)])</span>
+<span class="n">ci64</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">([(</span><span class="s1">&#39;re&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">),</span>   <span class="p">(</span><span class="s1">&#39;im&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)])</span>
+<span class="n">cf16</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">([(</span><span class="s1">&#39;re&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">),</span> <span class="p">(</span><span class="s1">&#39;im&#39;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">)])</span>
+
+<span class="n">TYPEMAP</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;i&#39;</span><span class="p">:</span>  <span class="p">{</span> <span class="mi">1</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_I1</span><span class="p">,</span>   <span class="mi">2</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_I2</span><span class="p">,</span>
+            <span class="mi">4</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_I4</span><span class="p">,</span>   <span class="mi">8</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_I8</span><span class="p">,</span>
+           <span class="mi">16</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_I16</span><span class="p">,</span> <span class="mi">32</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_I32</span><span class="p">,</span>
+           <span class="mi">64</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_I64</span><span class="p">},</span>
+    <span class="s1">&#39;u&#39;</span><span class="p">:</span>  <span class="p">{</span> <span class="mi">1</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_U1</span><span class="p">,</span>   <span class="mi">2</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_U2</span><span class="p">,</span>
+            <span class="mi">4</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_U4</span><span class="p">,</span>   <span class="mi">8</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_U8</span><span class="p">,</span>
+           <span class="mi">16</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_U16</span><span class="p">,</span> <span class="mi">32</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_U32</span><span class="p">,</span>
+           <span class="mi">64</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_U64</span><span class="p">},</span>
+    <span class="s1">&#39;f&#39;</span><span class="p">:</span>  <span class="p">{</span><span class="mi">16</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_F16</span><span class="p">,</span>  <span class="mi">32</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_F32</span><span class="p">,</span>
+           <span class="mi">64</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_F64</span><span class="p">},</span>
+    <span class="s1">&#39;ci&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="mi">1</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_CI1</span><span class="p">,</span>   <span class="mi">2</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_CI2</span><span class="p">,</span>
+            <span class="mi">4</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_CI4</span><span class="p">,</span>   <span class="mi">8</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_CI8</span><span class="p">,</span>
+           <span class="mi">16</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_CI16</span><span class="p">,</span> <span class="mi">32</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_CI32</span><span class="p">,</span>
+           <span class="mi">64</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_CI64</span><span class="p">},</span>
+    <span class="s1">&#39;cf&#39;</span><span class="p">:</span> <span class="p">{</span><span class="mi">16</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_CF16</span><span class="p">,</span>  <span class="mi">32</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_CF32</span><span class="p">,</span>
+           <span class="mi">64</span><span class="p">:</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_CF64</span><span class="p">}</span>
+<span class="p">}</span>
+<span class="k">if</span> <span class="n">BF_FLOAT128_ENABLED</span><span class="p">:</span>
+    <span class="n">TYPENAME</span><span class="p">[</span><span class="s1">&#39;f&#39;</span><span class="p">][</span><span class="mi">128</span><span class="p">]</span> <span class="o">=</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_F128</span>
+    <span class="n">TYPENAME</span><span class="p">[</span><span class="s1">&#39;cf&#39;</span><span class="p">][</span><span class="mi">128</span><span class="p">]</span> <span class="o">=</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_CF128</span>
+<span class="n">KINDMAP</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_INT_TYPE</span><span class="p">:</span>   <span class="s1">&#39;i&#39;</span><span class="p">,</span>
+    <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_UINT_TYPE</span><span class="p">:</span>  <span class="s1">&#39;u&#39;</span><span class="p">,</span>
+    <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_FLOAT_TYPE</span><span class="p">:</span> <span class="s1">&#39;f&#39;</span>
+<span class="p">}</span>
+<span class="n">NUMPY_TYPEMAP</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;i&#39;</span><span class="p">:</span>  <span class="p">{</span>  <span class="mi">8</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">,</span>  <span class="mi">16</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int16</span><span class="p">,</span>
+             <span class="mi">32</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="mi">64</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">},</span>
+    <span class="s1">&#39;u&#39;</span><span class="p">:</span>  <span class="p">{</span>  <span class="mi">8</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span>  <span class="mi">16</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">,</span>
+             <span class="mi">32</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">,</span> <span class="mi">64</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">},</span>
+    <span class="s1">&#39;f&#39;</span><span class="p">:</span>  <span class="p">{</span><span class="mi">16</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">,</span>  <span class="mi">32</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+           <span class="mi">64</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">},</span>
+    <span class="c1"># HACK: These are just types that match the storage size;</span>
+    <span class="c1">#         they should not be used for computation.</span>
+    <span class="c1"># HACK TESTING to support &#39;packed&#39; arrays</span>
+    <span class="c1">#   (TODO: Do same for &#39;i&#39; and &#39;u&#39; if happy with this)</span>
+    <span class="s1">&#39;ci&#39;</span><span class="p">:</span> <span class="p">{</span> <span class="mi">1</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">,</span>  <span class="mi">2</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">,</span>
+            <span class="mi">4</span><span class="p">:</span> <span class="n">ci4</span><span class="p">,</span>      <span class="mi">8</span><span class="p">:</span> <span class="n">ci8</span><span class="p">,</span>
+            <span class="mi">16</span><span class="p">:</span> <span class="n">ci16</span><span class="p">,</span>    <span class="mi">32</span><span class="p">:</span> <span class="n">ci32</span><span class="p">,</span>
+            <span class="mi">64</span><span class="p">:</span> <span class="n">ci64</span><span class="p">},</span>
+    <span class="c1"># HACK: cf16 used as WAR for missing np.complex32</span>
+    <span class="s1">&#39;cf&#39;</span><span class="p">:</span> <span class="p">{</span><span class="mi">16</span><span class="p">:</span> <span class="n">cf16</span><span class="p">,</span>           <span class="mi">32</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">complex64</span><span class="p">,</span>
+           <span class="mi">64</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">complex128</span><span class="p">}</span>
+<span class="p">}</span>
+<span class="k">if</span> <span class="n">BF_FLOAT128_ENABLED</span><span class="p">:</span>
+    <span class="n">NUMPY_TYPEMAP</span><span class="p">[</span><span class="s1">&#39;f&#39;</span><span class="p">][</span><span class="mi">128</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float128</span>
+    <span class="n">NUMPY_TYPEMAP</span><span class="p">[</span><span class="s1">&#39;cf&#39;</span><span class="p">][</span><span class="mi">128</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">complex256</span>
+
+<div class="viewcode-block" id="is_vector_structure"><a class="viewcode-back" href="../../bifrost.html#bifrost.DataType.is_vector_structure">[docs]</a><span class="k">def</span> <span class="nf">is_vector_structure</span><span class="p">(</span><span class="n">dtype</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">dtype</span><span class="o">.</span><span class="n">names</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="n">ndim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">dtype</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+    <span class="n">vector_field_names</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="s1">&#39;f</span><span class="si">%i</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">ndim</span><span class="p">))</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">dtype</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;V&#39;</span> <span class="ow">and</span>
+            <span class="n">dtype</span><span class="o">.</span><span class="n">names</span> <span class="o">==</span> <span class="n">vector_field_names</span> <span class="ow">and</span>
+            <span class="nb">all</span><span class="p">([</span><span class="n">dtype</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">dtype</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ndim</span><span class="p">)]))</span></div>
+
+<div class="viewcode-block" id="DataType"><a class="viewcode-back" href="../../bifrost.html#bifrost.DataType.DataType">[docs]</a><span class="k">class</span> <span class="nc">DataType</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="c1"># Note: Default of None results in default Numpy type (np.float)</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">string_types</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">char</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">t</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">char</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+                    <span class="k">break</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">=</span>     <span class="n">t</span><span class="p">[:</span><span class="n">i</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span><span class="p">:])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span> <span class="o">=</span> <span class="mi">1</span> <span class="c1"># TODO: Consider supporting this as part of string</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BFdtype</span><span class="p">):</span> <span class="c1"># Note: This is actually just a c_int</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span> <span class="o">=</span> <span class="n">t</span> <span class="o">&amp;</span> <span class="n">BF_DTYPE_NBIT_BITS</span>
+            <span class="n">is_complex</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">t</span> <span class="o">&amp;</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_COMPLEX_BIT</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">=</span> <span class="n">KINDMAP</span><span class="p">[</span><span class="n">t</span> <span class="o">&amp;</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_TYPE_BITS</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">is_complex</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">=</span> <span class="s1">&#39;c&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="p">((</span><span class="n">t</span> <span class="o">&amp;</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_VECTOR_BITS</span><span class="p">)</span>
+                                <span class="o">&gt;&gt;</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_VECTOR_BIT0</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">DataType</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">_nbit</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">_kind</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">_veclen</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span> <span class="o">=</span> <span class="n">t</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="c1"># Raises TypeError if t is invalid</span>
+            <span class="n">ndim</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="s1">&#39;ndim&#39;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">ndim</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="k">elif</span> <span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">t</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">base</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;Unsupported Numpy dtype: &quot;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">itemsize</span> <span class="o">*</span> <span class="mi">8</span>
+            <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">kind</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">([</span><span class="s1">&#39;i&#39;</span><span class="p">,</span> <span class="s1">&#39;u&#39;</span><span class="p">,</span> <span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="s1">&#39;c&#39;</span><span class="p">,</span> <span class="s1">&#39;V&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">]):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Unsupported data type: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">is_vector_structure</span><span class="p">(</span><span class="n">t</span><span class="p">):</span> <span class="c1"># Field structure representing vector</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+                <span class="n">t</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">=</span> <span class="n">t</span><span class="o">.</span><span class="n">kind</span>
+            <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;c&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span> <span class="o">//=</span> <span class="mi">2</span>   <span class="c1"># Bifrost convention is nbit per real component</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">=</span> <span class="s1">&#39;cf&#39;</span> <span class="c1"># Numpy only supports floating-point complex types</span>
+            <span class="k">elif</span> <span class="n">t</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;V&#39;</span><span class="p">:</span> <span class="c1"># WAR to support custom integer complex types</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span> <span class="o">//=</span> <span class="mi">2</span>
+                <span class="k">if</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ci4</span><span class="p">,</span> <span class="n">ci8</span><span class="p">,</span> <span class="n">ci16</span><span class="p">,</span> <span class="n">ci32</span><span class="p">,</span> <span class="n">ci64</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">=</span> <span class="s1">&#39;ci&#39;</span>
+                <span class="k">elif</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">[</span><span class="n">cf16</span><span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">=</span> <span class="s1">&#39;cf&#39;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s1">&#39;Unsupported data type: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
+            <span class="k">elif</span> <span class="n">t</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span>
+                <span class="c1"># Note: Represents booleans as uint8 inside Bifrost</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">=</span> <span class="s1">&#39;u&#39;</span>
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_kind</span> <span class="ow">and</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_nbit</span> <span class="ow">and</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">_veclen</span><span class="p">)</span>
+    <span class="k">def</span> <span class="fm">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span> <span class="o">==</span> <span class="n">other</span><span class="p">)</span>
+<div class="viewcode-block" id="DataType.as_BFdtype"><a class="viewcode-back" href="../../bifrost.html#bifrost.DataType.DataType.as_BFdtype">[docs]</a>    <span class="k">def</span> <span class="nf">as_BFdtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">TYPEMAP</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">base</span> <span class="o">|</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_DTYPE_VECTOR_BIT0</span><span class="p">)</span></div>
+<div class="viewcode-block" id="DataType.as_numpy_dtype"><a class="viewcode-back" href="../../bifrost.html#bifrost.DataType.DataType.as_numpy_dtype">[docs]</a>    <span class="k">def</span> <span class="nf">as_numpy_dtype</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="n">NUMPY_TYPEMAP</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span><span class="p">])</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">base</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1">#return np.dtype((base, self._veclen))</span>
+            <span class="c1"># WAR for vector types not working as expected when passed to</span>
+            <span class="c1">#   np.view (the shape gets merged into the ndarray&#39;s shape instead</span>
+            <span class="c1">#   of remaining part of the dtype). We return a structure type</span>
+            <span class="c1">#   with fields representing a vector instead.</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dtype</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">((</span><span class="nb">str</span><span class="p">(</span><span class="n">base</span><span class="p">),)</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span><span class="p">))</span></div>
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s%i</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;</span><span class="si">%s%i</span><span class="s1">[</span><span class="si">%i</span><span class="s1">]&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span><span class="p">)</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_complex</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;c&#39;</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_real</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_complex</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_signed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;i&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="ow">or</span> <span class="s1">&#39;f&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_floating_point</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;f&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">is_integer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;i&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span> <span class="ow">or</span> <span class="s1">&#39;u&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span>
+<div class="viewcode-block" id="DataType.as_floating_point"><a class="viewcode-back" href="../../bifrost.html#bifrost.DataType.DataType.as_floating_point">[docs]</a>    <span class="k">def</span> <span class="nf">as_floating_point</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Returns the smallest floating-point type that can represent all</span>
+<span class="sd">        values that self can.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_floating_point</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="n">kind</span> <span class="o">=</span> <span class="s1">&#39;cf&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_complex</span> <span class="k">else</span> <span class="s1">&#39;f&#39;</span>
+        <span class="n">nbit</span> <span class="o">=</span> <span class="mi">32</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span> <span class="o">&lt;=</span> <span class="mi">24</span> <span class="k">else</span> <span class="mi">64</span>
+        <span class="k">return</span> <span class="n">DataType</span><span class="p">((</span><span class="n">kind</span><span class="p">,</span> <span class="n">nbit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span><span class="p">))</span></div>
+<div class="viewcode-block" id="DataType.as_integer"><a class="viewcode-back" href="../../bifrost.html#bifrost.DataType.DataType.as_integer">[docs]</a>    <span class="k">def</span> <span class="nf">as_integer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbit</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">nbit</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">nbit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span>
+        <span class="n">kind</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_floating_point</span><span class="p">:</span>
+            <span class="n">kind</span> <span class="o">=</span> <span class="n">kind</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;f&#39;</span><span class="p">,</span> <span class="s1">&#39;i&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">DataType</span><span class="p">((</span><span class="n">kind</span><span class="p">,</span> <span class="n">nbit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span><span class="p">))</span></div>
+<div class="viewcode-block" id="DataType.as_real"><a class="viewcode-back" href="../../bifrost.html#bifrost.DataType.DataType.as_real">[docs]</a>    <span class="k">def</span> <span class="nf">as_real</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_complex</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">DataType</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span></div>
+<div class="viewcode-block" id="DataType.as_complex"><a class="viewcode-back" href="../../bifrost.html#bifrost.DataType.DataType.as_complex">[docs]</a>    <span class="k">def</span> <span class="nf">as_complex</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_complex</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">DataType</span><span class="p">((</span><span class="s1">&#39;c&#39;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span><span class="p">))</span></div>
+<div class="viewcode-block" id="DataType.as_nbit"><a class="viewcode-back" href="../../bifrost.html#bifrost.DataType.DataType.as_nbit">[docs]</a>    <span class="k">def</span> <span class="nf">as_nbit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nbit</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">DataType</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="p">,</span> <span class="n">nbit</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span><span class="p">))</span></div>
+<div class="viewcode-block" id="DataType.as_vector"><a class="viewcode-back" href="../../bifrost.html#bifrost.DataType.DataType.as_vector">[docs]</a>    <span class="k">def</span> <span class="nf">as_vector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">veclen</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">DataType</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">_kind</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span><span class="p">,</span> <span class="n">veclen</span><span class="p">))</span></div>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">itemsize_bits</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nbit</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_complex</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_veclen</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">itemsize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">item_nbit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">itemsize_bits</span>
+        <span class="k">if</span> <span class="n">item_nbit</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;itemsize is undefined when nbit &lt; 8&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">item_nbit</span> <span class="o">//</span> <span class="mi">8</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">bifrost</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../intro.html">1. Introduction to Bifrost</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Getting-started-guide.html">2. Getting started guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Create-a-pipeline.html">3. Create a Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../your-first-blocks.html">4. Your first blocks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../views.html">5. Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tools-intro.html">6. Monitoring Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bfmap.html">7. Fast GPU math using bfMap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../How-Python-and-C---fits-together.html">8. How bifrost fits together</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Common-installation-and-execution-problems.html">9. Common Installation and Execution Problems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bifrost.blocks.html">10. Block Library Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bifrost.html">11. Python Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../Cpp-Development.html">12. C++ Developement</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cpp_reference.html">13. C++ Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;1980, ledatelescope.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

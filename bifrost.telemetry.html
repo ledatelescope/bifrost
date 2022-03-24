@@ -1,0 +1,228 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>11.1.1. bifrost.telemetry package &#8212; bifrost 0.6 documentation</title>
+    <link rel="stylesheet" type="text/css" href="static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="static/documentation_options.js"></script>
+    <script src="static/jquery.js"></script>
+    <script src="static/underscore.js"></script>
+    <script src="static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="11.1.2. bifrost.views package" href="bifrost.views.html" />
+    <link rel="prev" title="11. Python Reference" href="bifrost.html" />
+   
+  <link rel="stylesheet" href="static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="bifrost-telemetry-package">
+<h1><span class="section-number">11.1.1. </span>bifrost.telemetry package<a class="headerlink" href="#bifrost-telemetry-package" title="Permalink to this headline">¶</a></h1>
+<section id="module-bifrost.telemetry">
+<span id="module-contents"></span><h2><span class="section-number">11.1.1.1. </span>Module contents<a class="headerlink" href="#module-bifrost.telemetry" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="bifrost.telemetry.disable">
+<span class="sig-prename descclassname"><span class="pre">bifrost.telemetry.</span></span><span class="sig-name descname"><span class="pre">disable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="modules/bifrost/telemetry.html#disable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bifrost.telemetry.disable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disable logging of usage data via the Bifrost telemetry client.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This function disables in a global way that persists across
+invocations.</p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bifrost.telemetry.enable">
+<span class="sig-prename descclassname"><span class="pre">bifrost.telemetry.</span></span><span class="sig-name descname"><span class="pre">enable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="modules/bifrost/telemetry.html#enable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bifrost.telemetry.enable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enable logging of usage data via the Bifrost telemetry client.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bifrost.telemetry.is_active">
+<span class="sig-prename descclassname"><span class="pre">bifrost.telemetry.</span></span><span class="sig-name descname"><span class="pre">is_active</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="modules/bifrost/telemetry.html#is_active"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bifrost.telemetry.is_active" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a boolean of whether or not the Bifrost telemetry client is active.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bifrost.telemetry.track_function">
+<span class="sig-prename descclassname"><span class="pre">bifrost.telemetry.</span></span><span class="sig-name descname"><span class="pre">track_function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_function</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="modules/bifrost/telemetry.html#track_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bifrost.telemetry.track_function" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the use of a function in Bifrost without execution time information.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bifrost.telemetry.track_function_timed">
+<span class="sig-prename descclassname"><span class="pre">bifrost.telemetry.</span></span><span class="sig-name descname"><span class="pre">track_function_timed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_function</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="modules/bifrost/telemetry.html#track_function_timed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bifrost.telemetry.track_function_timed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the use of a function in Bifrost with execution time information.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bifrost.telemetry.track_method">
+<span class="sig-prename descclassname"><span class="pre">bifrost.telemetry.</span></span><span class="sig-name descname"><span class="pre">track_method</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_method</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="modules/bifrost/telemetry.html#track_method"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bifrost.telemetry.track_method" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the use of a method in Bifrost with execution time information.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bifrost.telemetry.track_method_timed">
+<span class="sig-prename descclassname"><span class="pre">bifrost.telemetry.</span></span><span class="sig-name descname"><span class="pre">track_method_timed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user_method</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="modules/bifrost/telemetry.html#track_method_timed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bifrost.telemetry.track_method_timed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the use of a method in Bifrost with execution time information.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bifrost.telemetry.track_module">
+<span class="sig-prename descclassname"><span class="pre">bifrost.telemetry.</span></span><span class="sig-name descname"><span class="pre">track_module</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="modules/bifrost/telemetry.html#track_module"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bifrost.telemetry.track_module" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the import of an Bifrost module.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="bifrost.telemetry.track_script">
+<span class="sig-prename descclassname"><span class="pre">bifrost.telemetry.</span></span><span class="sig-name descname"><span class="pre">track_script</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="modules/bifrost/telemetry.html#track_script"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#bifrost.telemetry.track_script" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the use of a Bifrost script.</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">bifrost</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">1. Introduction to Bifrost</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Getting-started-guide.html">2. Getting started guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Create-a-pipeline.html">3. Create a Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="your-first-blocks.html">4. Your first blocks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="views.html">5. Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools-intro.html">6. Monitoring Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bfmap.html">7. Fast GPU math using bfMap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="How-Python-and-C---fits-together.html">8. How bifrost fits together</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Common-installation-and-execution-problems.html">9. Common Installation and Execution Problems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bifrost.blocks.html">10. Block Library Reference</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="bifrost.html">11. Python Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="bifrost.html#subpackages">11.1. Subpackages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#submodules">11.2. Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.DataType">11.3. bifrost.DataType module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#bifrost-gpuarray-module">11.4. bifrost.GPUArray module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.Space">11.5. bifrost.Space module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.address">11.6. bifrost.address module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.affinity">11.7. bifrost.affinity module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.block">11.8. bifrost.block module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.block_chainer">11.9. bifrost.block_chainer module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.core">11.10. bifrost.core module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.device">11.11. bifrost.device module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.dtype">11.12. bifrost.dtype module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.fdmt">11.13. bifrost.fdmt module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.fft">11.14. bifrost.fft module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.fir">11.15. bifrost.fir module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.guppi_raw">11.16. bifrost.guppi_raw module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.header_standard">11.17. bifrost.header_standard module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.libbifrost">11.18. bifrost.libbifrost module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.linalg">11.19. bifrost.linalg module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.map">11.20. bifrost.map module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.memory">11.21. bifrost.memory module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.ndarray">11.22. bifrost.ndarray module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.pipeline">11.23. bifrost.pipeline module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#bifrost-portaudio-module">11.24. bifrost.portaudio module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.proclog">11.25. bifrost.proclog module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#bifrost-psrdada-module">11.26. bifrost.psrdada module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.quantize">11.27. bifrost.quantize module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.reduce">11.28. bifrost.reduce module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.ring">11.29. bifrost.ring module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.ring2">11.30. bifrost.ring2 module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.romein">11.31. bifrost.romein module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.sigproc">11.32. bifrost.sigproc module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.sigproc2">11.33. bifrost.sigproc2 module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.temp_storage">11.34. bifrost.temp_storage module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.transpose">11.35. bifrost.transpose module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.udp_capture">11.36. bifrost.udp_capture module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.udp_socket">11.37. bifrost.udp_socket module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.udp_transmit">11.38. bifrost.udp_transmit module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.units">11.39. bifrost.units module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost.unpack">11.40. bifrost.unpack module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="bifrost.html#module-bifrost">11.41. Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Cpp-Development.html">12. C++ Developement</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cpp_reference.html">13. C++ Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="bifrost.html"><span class="section-number">11. </span>Python Reference</a><ul>
+      <li>Previous: <a href="bifrost.html" title="previous chapter"><span class="section-number">11. </span>Python Reference</a></li>
+      <li>Next: <a href="bifrost.views.html" title="next chapter"><span class="section-number">11.1.2. </span>bifrost.views package</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;1980, ledatelescope.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="sources/bifrost.telemetry.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

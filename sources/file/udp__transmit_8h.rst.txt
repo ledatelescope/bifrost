@@ -1,5 +1,0 @@
-File udp_transmit.h
-===================
-
-.. doxygenfile:: udp_transmit.h
-   :project: bifrost

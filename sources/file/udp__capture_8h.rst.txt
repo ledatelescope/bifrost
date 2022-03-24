@@ -1,5 +1,0 @@
-File udp_capture.h
-==================
-
-.. doxygenfile:: udp_capture.h
-   :project: bifrost

@@ -1,19 +1,18 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
     <title>2. Getting started guide &#8212; bifrost 0.6 documentation</title>
-    <link rel="stylesheet" href="static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="static/documentation_options.js"></script>
-    <script type="text/javascript" src="static/jquery.js"></script>
-    <script type="text/javascript" src="static/underscore.js"></script>
-    <script type="text/javascript" src="static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="stylesheet" type="text/css" href="static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="static/documentation_options.js"></script>
+    <script src="static/jquery.js"></script>
+    <script src="static/underscore.js"></script>
+    <script src="static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="3. Create a Pipeline" href="Create-a-pipeline.html" />
@@ -34,23 +33,22 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="getting-started-guide">
-<h1>2. Getting started guide<a class="headerlink" href="#getting-started-guide" title="Permalink to this headline">¶</a></h1>
+  <section id="getting-started-guide">
+<h1><span class="section-number">2. </span>Getting started guide<a class="headerlink" href="#getting-started-guide" title="Permalink to this headline">¶</a></h1>
 <p>If you have already installed Bifrost, look below to <a class="reference external" href="#tutorial">Creating your
 first pipeline</a></p>
-<div class="section" id="installation">
-<h2>2.1. Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<section id="installation">
+<h2><span class="section-number">2.1. </span>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
 <p>Bifrost requires several dependencies, depending on how you want to use
 it. If you don’t know what you are doing, assume that you want all the
 dependencies - we will walk you through this process.</p>
 <p>You will need a relatively new gcc and CUDA - we have used Bifrost with gcc 4.8 and CUDA 8,
 but higher ones should also work.</p>
-<div class="section" id="python-dependencies">
-<h3>2.1.1. Python dependencies<a class="headerlink" href="#python-dependencies" title="Permalink to this headline">¶</a></h3>
-<p><em>Bifrost is written in Python 2.7. If you would like us to support
-Python 3.x, please let us know your interest.</em></p>
-<div class="section" id="pip">
-<h4>2.1.1.1. <a class="reference external" href="https://pip.pypa.io/en/stable/">pip</a><a class="headerlink" href="#pip" title="Permalink to this headline">¶</a></h4>
+<section id="python-dependencies">
+<h3><span class="section-number">2.1.1. </span>Python dependencies<a class="headerlink" href="#python-dependencies" title="Permalink to this headline">¶</a></h3>
+<p><em>Bifrost is compatible with both in Python 2.7. and Python 3.x.</em></p>
+<section id="pip">
+<h4><span class="section-number">2.1.1.1. </span><a class="reference external" href="https://pip.pypa.io/en/stable/">pip</a><a class="headerlink" href="#pip" title="Permalink to this headline">¶</a></h4>
 <p>pip is a package manager for other Python dependencies. Once you have
 pip, installing additional python dependencies should be
 straightforward. pip comes with setuptools, which is required for
@@ -58,23 +56,23 @@ installing Bifrost. The detailed instructions for pip can be found
 <a class="reference external" href="https://pip.pypa.io/en/stable/installing/">here</a>, but the basics are
 as follows:</p>
 <ol class="arabic simple">
-<li>Download <code class="docutils literal notranslate"><span class="pre">`get-pip.py</span></code> &lt;<a class="reference external" href="https://bootstrap.pypa.io/get-pip.py">https://bootstrap.pypa.io/get-pip.py</a>&gt;`__</li>
-<li>Navigate to the download directory, and run
-<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">get-pip.py</span> <span class="pre">--user</span></code>, which will install a local copy of pip.</li>
-<li>Check pip is working with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">list</span></code>, which will give the versions
-of pip and setuptools.</li>
+<li><p>Download <code class="docutils literal notranslate"><span class="pre">`get-pip.py</span></code> &lt;<a class="reference external" href="https://bootstrap.pypa.io/get-pip.py">https://bootstrap.pypa.io/get-pip.py</a>&gt;`__</p></li>
+<li><p>Navigate to the download directory, and run
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">get-pip.py</span> <span class="pre">--user</span></code>, which will install a local copy of pip.</p></li>
+<li><p>Check pip is working with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">list</span></code>, which will give the versions
+of pip and setuptools.</p></li>
 </ol>
-</div>
-<div class="section" id="numpy-matplotlib-contextlib2-simplejson-pint-graphviz-ctypesgen">
-<h4>2.1.1.2. numpy, matplotlib, contextlib2, simplejson, pint, graphviz, ctypesgen<a class="headerlink" href="#numpy-matplotlib-contextlib2-simplejson-pint-graphviz-ctypesgen" title="Permalink to this headline">¶</a></h4>
+</section>
+<section id="numpy-matplotlib-contextlib2-simplejson-pint-graphviz-ctypesgen">
+<h4><span class="section-number">2.1.1.2. </span>numpy, matplotlib, contextlib2, simplejson, pint, graphviz, ctypesgen<a class="headerlink" href="#numpy-matplotlib-contextlib2-simplejson-pint-graphviz-ctypesgen" title="Permalink to this headline">¶</a></h4>
 <p>If you have already installed pip, this step should be as simple as
-<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">--user</span> <span class="pre">numpy</span> <span class="pre">matplotlib</span> <span class="pre">contextlib2</span> <span class="pre">simplejson</span> <span class="pre">pint</span> <span class="pre">graphviz</span> <span class="pre">git+https://github.com/olsonse/ctypesgen.git&#64;9bd2d249aa4011c6383a10890ec6f203d7b7990f</span></code>.</p>
-</div>
-</div>
-<div class="section" id="c-dependencies">
-<h3>2.1.2. C++ dependencies<a class="headerlink" href="#c-dependencies" title="Permalink to this headline">¶</a></h3>
-<div class="section" id="cuda">
-<h4>2.1.2.1. <a class="reference external" href="https://developer.nvidia.com/cuda-zone">CUDA</a><a class="headerlink" href="#cuda" title="Permalink to this headline">¶</a></h4>
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">--user</span> <span class="pre">numpy</span> <span class="pre">matplotlib</span> <span class="pre">contextlib2</span> <span class="pre">simplejson</span> <span class="pre">pint</span> <span class="pre">graphviz</span> <span class="pre">ctypesgen==1.0.2</span></code>.</p>
+</section>
+</section>
+<section id="c-dependencies">
+<h3><span class="section-number">2.1.2. </span>C++ dependencies<a class="headerlink" href="#c-dependencies" title="Permalink to this headline">¶</a></h3>
+<section id="cuda">
+<h4><span class="section-number">2.1.2.1. </span><a class="reference external" href="https://developer.nvidia.com/cuda-zone">CUDA</a><a class="headerlink" href="#cuda" title="Permalink to this headline">¶</a></h4>
 <p>CUDA allows you to program your GPU from C and C++. You will need an
 NVIDIA GPU to do this. If this is your first time trying out Bifrost,
 and you don’t have CUDA yet, we recommend that you skip this step, and
@@ -83,34 +81,45 @@ experience, you can come back here for a speedup.</p>
 <p>If you are ready to work with a GPU, you will want to get the newest
 <a class="reference external" href="https://developer.nvidia.com/cuda-downloads">CUDA toolkit</a>. Follow
 the operating system-specific instructions to install.</p>
-</div>
-<div class="section" id="other-dependencies">
-<h4>2.1.2.2. Other Dependencies<a class="headerlink" href="#other-dependencies" title="Permalink to this headline">¶</a></h4>
+</section>
+<section id="other-dependencies">
+<h4><span class="section-number">2.1.2.2. </span>Other Dependencies<a class="headerlink" href="#other-dependencies" title="Permalink to this headline">¶</a></h4>
 <ul class="simple">
-<li>exuberant-ctags</li>
-<li>Basic build tools (make, gcc, etc.)</li>
+<li><p>exuberant-ctags</p></li>
+<li><p>Basic build tools (make, gcc, etc.)</p></li>
 </ul>
-<dl class="docutils">
-<dt>On Ubuntu, the following command should grab everything you need:</dt>
-<dd><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">build-essential</span> <span class="pre">software-properties-common</span> <span class="pre">exuberant-ctags</span></code></dd>
+<dl class="simple">
+<dt>On Ubuntu, the following command should grab everything you need:</dt><dd><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt-get</span> <span class="pre">install</span> <span class="pre">build-essential</span> <span class="pre">software-properties-common</span> <span class="pre">exuberant-ctags</span></code></p>
+</dd>
 </dl>
-</div>
-</div>
-<div class="section" id="bifrost-install">
-<h3>2.1.3. Bifrost install<a class="headerlink" href="#bifrost-install" title="Permalink to this headline">¶</a></h3>
+</section>
+</section>
+<section id="bifrost-install">
+<h3><span class="section-number">2.1.3. </span>Bifrost install<a class="headerlink" href="#bifrost-install" title="Permalink to this headline">¶</a></h3>
 <p>Now you are ready to install Bifrost. Clone the GitHub master branch
 with</p>
 <p><code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://github.com/ledatelescope/bifrost</span></code>.</p>
-<p>You will want to edit <code class="docutils literal notranslate"><span class="pre">user.mk</span></code> to suit your system. For example, if
-you are not working with GPUs, uncomment the line:</p>
-<p><code class="docutils literal notranslate"><span class="pre">#NOCUDA</span>&#160;&#160; <span class="pre">=</span> <span class="pre">1</span> <span class="pre">#</span> <span class="pre">Disable</span> <span class="pre">CUDA</span> <span class="pre">support</span></code>.</p>
+<p>You will want to run <cite>configure</cite> to tailor Bifrost to you system.  At the end of
+<cite>configure</cite> you will get a summary of how Bifrost will be built:</p>
+<p>config.status: creating src/bifrost/config.h
+config.status: executing libtool commands</p>
+<p>configure: cuda: yes - 50 52
+configure: numa: yes
+configure: hwloc: yes
+configure: libvma: no
+configure: python bindings: yes
+configure: memory alignment: 4096
+configure: logging directory: /dev/shm/bifrost
+configure: options: native</p>
+<p>Bifrost is now ready to be compiled.  Please run ‘make’
+<a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a></p>
 <p>Now you can call <code class="docutils literal notranslate"><span class="pre">make</span></code>, and <code class="docutils literal notranslate"><span class="pre">make</span> <span class="pre">install</span></code> to install
 Bifrost.</p>
 <p>Trying to call <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">bifrost</span></code> inside of a Python program will tell
 you if your install was successful or not.</p>
-</div>
-</div>
-</div>
+</section>
+</section>
+</section>
 
 
           </div>
@@ -129,7 +138,7 @@ you if your install was successful or not.</p>
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Table of Contents</span></p>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="intro.html">1. Introduction to Bifrost</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">2. Getting started guide</a><ul>
@@ -153,23 +162,21 @@ you if your install was successful or not.</p>
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="intro.html" title="previous chapter">1. Introduction to Bifrost</a></li>
-      <li>Next: <a href="Create-a-pipeline.html" title="next chapter">3. Create a Pipeline</a></li>
+      <li>Previous: <a href="intro.html" title="previous chapter"><span class="section-number">1. </span>Introduction to Bifrost</a></li>
+      <li>Next: <a href="Create-a-pipeline.html" title="next chapter"><span class="section-number">3. </span>Create a Pipeline</a></li>
   </ul></li>
 </ul>
 </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -183,10 +190,10 @@ you if your install was successful or not.</p>
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2017, ledatelescope.
+      &copy;1980, ledatelescope.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.9</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -1,0 +1,10 @@
+bifrost.telemetry package
+=========================
+
+Module contents
+---------------
+
+.. automodule:: bifrost.telemetry
+   :members:
+   :undoc-members:
+   :show-inheritance:

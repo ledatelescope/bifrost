@@ -8,183 +8,182 @@ bifrost.blocks.accumulate module
 --------------------------------
 
 .. automodule:: bifrost.blocks.accumulate
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.audio module
 ---------------------------
 
 .. automodule:: bifrost.blocks.audio
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.binary\_io module
 --------------------------------
 
 .. automodule:: bifrost.blocks.binary_io
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.convert\_visibilities module
 -------------------------------------------
 
 .. automodule:: bifrost.blocks.convert_visibilities
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.copy module
 --------------------------
 
 .. automodule:: bifrost.blocks.copy
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.correlate module
 -------------------------------
 
 .. automodule:: bifrost.blocks.correlate
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.detect module
 ----------------------------
 
 .. automodule:: bifrost.blocks.detect
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.fdmt module
 --------------------------
 
 .. automodule:: bifrost.blocks.fdmt
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.fft module
 -------------------------
 
 .. automodule:: bifrost.blocks.fft
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.fftshift module
 ------------------------------
 
 .. automodule:: bifrost.blocks.fftshift
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.guppi\_raw module
 --------------------------------
 
 .. automodule:: bifrost.blocks.guppi_raw
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.print\_header module
 -----------------------------------
 
 .. automodule:: bifrost.blocks.print_header
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.psrdada module
 -----------------------------
 
 .. automodule:: bifrost.blocks.psrdada
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.quantize module
 ------------------------------
 
 .. automodule:: bifrost.blocks.quantize
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.reduce module
 ----------------------------
 
 .. automodule:: bifrost.blocks.reduce
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.reverse module
 -----------------------------
 
 .. automodule:: bifrost.blocks.reverse
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.scrunch module
 -----------------------------
 
 .. automodule:: bifrost.blocks.scrunch
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.serialize module
 -------------------------------
 
 .. automodule:: bifrost.blocks.serialize
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.sigproc module
 -----------------------------
 
 .. automodule:: bifrost.blocks.sigproc
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.transpose module
 -------------------------------
 
 .. automodule:: bifrost.blocks.transpose
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.unpack module
 ----------------------------
 
 .. automodule:: bifrost.blocks.unpack
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 bifrost.blocks.wav module
 -------------------------
 
 .. automodule:: bifrost.blocks.wav
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------
 
 .. automodule:: bifrost.blocks
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

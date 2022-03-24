@@ -1,19 +1,18 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
     <title>Python API &#8212; bifrost 0.6 documentation</title>
-    <link rel="stylesheet" href="static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="static/documentation_options.js"></script>
-    <script type="text/javascript" src="static/jquery.js"></script>
-    <script type="text/javascript" src="static/underscore.js"></script>
-    <script type="text/javascript" src="static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="stylesheet" type="text/css" href="static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="static/documentation_options.js"></script>
+    <script src="static/jquery.js"></script>
+    <script src="static/underscore.js"></script>
+    <script src="static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
    
@@ -32,15 +31,15 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="python-api">
+  <section id="python-api">
 <h1>Python API<a class="headerlink" href="#python-api" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="basic-syntax">
+<section id="basic-syntax">
 <h2>Basic Syntax<a class="headerlink" href="#basic-syntax" title="Permalink to this headline">¶</a></h2>
 <p>As described on the [[Home]] page, Bifrost is made up of blocks, rings,
 and pipelines. Blocks embody <em>black box processes</em>, and rings connect
 these blocks together. A network of blocks and rings is called a
 pipeline. Bifrost’s Python API mirrors these concepts very closely.</p>
-<div class="section" id="let-s-start-on-an-example-here-we-will-perform-an-fft-on-an-array-and-dump-the-result-to-a-text-file">
+<section id="let-s-start-on-an-example-here-we-will-perform-an-fft-on-an-array-and-dump-the-result-to-a-text-file">
 <h3>Let’s start on an example: here we will perform an FFT on an array, and dump the result to a text file.<a class="headerlink" href="#let-s-start-on-an-example-here-we-will-perform-an-fft-on-an-array-and-dump-the-result-to-a-text-file" title="Permalink to this headline">¶</a></h3>
 <p>The following code generates a list of three blocks: a <code class="docutils literal notranslate"><span class="pre">TestingBlock</span></code>,
 which takes a list of numbers during its initialization (which we give
@@ -56,7 +55,7 @@ ring, and puts its results into an output ring which we name
 same name.</p>
 <p>This list of blocks, inputs, and outputs, is fed into a <code class="docutils literal notranslate"><span class="pre">Pipeline</span></code>
 object. Calling <code class="docutils literal notranslate"><span class="pre">my_pipeline.main()</span></code> then initiates the pipeline.</p>
-<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bifrost.block</span> <span class="kn">import</span> <span class="n">TestingBlock</span><span class="p">,</span> <span class="n">FFTBlock</span><span class="p">,</span> <span class="n">WriteAsciiBlock</span><span class="p">,</span> <span class="n">Pipeline</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">bifrost.block</span> <span class="kn">import</span> <span class="n">TestingBlock</span><span class="p">,</span> <span class="n">FFTBlock</span><span class="p">,</span> <span class="n">WriteAsciiBlock</span><span class="p">,</span> <span class="n">Pipeline</span>
 
 <span class="n">my_blocks</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="n">my_blocks</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">TestingBlock</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="p">[],</span> <span class="p">[</span><span class="s1">&#39;my array ring&#39;</span><span class="p">]])</span>
@@ -73,11 +72,11 @@ previously written blocks is a trivial process. This is the great thing
 about Bifrost: once you have modularized your functions into blocks, you
 can connect them seamlessly into a pipeline, and have your data streamed
 through in real-time.</p>
-</div>
-</div>
-<div class="section" id="blocks">
+</section>
+</section>
+<section id="blocks">
 <h2>Blocks<a class="headerlink" href="#blocks" title="Permalink to this headline">¶</a></h2>
-<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Dictionaries are the form of &quot;key&quot;: &quot;value&quot; pairs. If</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">#Dictionaries are the form of &quot;key&quot;: &quot;value&quot; pairs. If</span>
 <span class="c1"># I create a dictionary such as x={&quot;key&quot;: &quot;value&quot;},</span>
 <span class="c1"># then calling x[&quot;key&quot;] produces &quot;value&quot;.</span>
 <span class="c1">#I will use this key:value terminology in the</span>
@@ -198,10 +197,10 @@ through in real-time.</p>
             <span class="c1"># data, so the output ring would receive nothing.</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="pipelines">
+</section>
+<section id="pipelines">
 <h2>Pipelines<a class="headerlink" href="#pipelines" title="Permalink to this headline">¶</a></h2>
-<div class="code python highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#Dummy function to generate data</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1">#Dummy function to generate data</span>
 <span class="k">def</span> <span class="nf">generate_ten_arrays</span><span class="p">():</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
         <span class="k">yield</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
@@ -297,8 +296,8 @@ through in real-time.</p>
 <span class="n">Pipeline</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -317,7 +316,7 @@ through in real-time.</p>
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Table of Contents</span></p>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="intro.html">1. Introduction to Bifrost</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Getting-started-guide.html">2. Getting started guide</a></li>
@@ -342,17 +341,15 @@ through in real-time.</p>
 </ul>
 </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -366,10 +363,10 @@ through in real-time.</p>
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2017, ledatelescope.
+      &copy;1980, ledatelescope.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.9</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

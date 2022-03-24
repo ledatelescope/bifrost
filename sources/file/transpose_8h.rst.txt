@@ -1,5 +1,0 @@
-File transpose.h
-================
-
-.. doxygenfile:: transpose.h
-   :project: bifrost

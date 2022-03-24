@@ -1,5 +1,0 @@
-File common.h
-=============
-
-.. doxygenfile:: common.h
-   :project: bifrost

@@ -1,5 +1,0 @@
-File cuda.h
-===========
-
-.. doxygenfile:: cuda.h
-   :project: bifrost

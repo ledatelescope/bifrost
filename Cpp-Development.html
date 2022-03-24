@@ -1,23 +1,22 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
     <title>12. C++ Developement &#8212; bifrost 0.6 documentation</title>
-    <link rel="stylesheet" href="static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="static/documentation_options.js"></script>
-    <script type="text/javascript" src="static/jquery.js"></script>
-    <script type="text/javascript" src="static/underscore.js"></script>
-    <script type="text/javascript" src="static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="stylesheet" type="text/css" href="static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="static/documentation_options.js"></script>
+    <script src="static/jquery.js"></script>
+    <script src="static/underscore.js"></script>
+    <script src="static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="13. C++ Reference" href="cpp_reference.html" />
-    <link rel="prev" title="11.1.1. bifrost.views package" href="bifrost.views.html" />
+    <link rel="prev" title="11.1.2. bifrost.views package" href="bifrost.views.html" />
    
   <link rel="stylesheet" href="static/custom.css" type="text/css" />
   
@@ -34,88 +33,88 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="c-developement">
-<h1>12. C++ Developement<a class="headerlink" href="#c-developement" title="Permalink to this headline">¶</a></h1>
+  <section id="c-developement">
+<h1><span class="section-number">12. </span>C++ Developement<a class="headerlink" href="#c-developement" title="Permalink to this headline">¶</a></h1>
 <p>If you are interested in creating additional functionality for Bifrost,
 this document should help you get up and running with the Bifrost C++
 API.</p>
-<div class="section" id="create-a-ring-buffer-and-load-data">
-<h2>12.1. Create a Ring Buffer and Load Data<a class="headerlink" href="#create-a-ring-buffer-and-load-data" title="Permalink to this headline">¶</a></h2>
-<div class="code c highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#include &lt;cuda_runtime_api.h&gt;</span>
-<span class="c1">#include &lt;bifrost/common.h&gt;</span>
-<span class="c1">#include &lt;bifrost/ring.h&gt;</span>
+<section id="create-a-ring-buffer-and-load-data">
+<h2><span class="section-number">12.1. </span>Create a Ring Buffer and Load Data<a class="headerlink" href="#create-a-ring-buffer-and-load-data" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;cuda_runtime_api.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;bifrost/common.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;bifrost/ring.h&gt;</span><span class="cp"></span>
 
-<span class="o">...</span>
+<span class="p">...</span><span class="w"></span>
 
-<span class="o">//////////////////////////////////</span>
-<span class="o">//</span><span class="n">Create</span> <span class="ow">and</span> <span class="n">write</span> <span class="n">to</span> <span class="n">a</span> <span class="n">ring</span>
-<span class="o">/////////////////////////////////</span>
+<span class="c1">//////////////////////////////////</span>
+<span class="c1">//Create and write to a ring</span>
+<span class="c1">/////////////////////////////////</span>
 
-<span class="n">BFring</span> <span class="n">my_ring</span><span class="p">;</span> <span class="o">//</span><span class="n">declare</span> <span class="n">our</span> <span class="n">ring</span> <span class="n">variable</span>
-<span class="n">bfRingCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">my_ring</span><span class="p">,</span> <span class="n">BF_SPACE_SYSTEM</span><span class="p">);</span> <span class="o">//</span><span class="n">initiate</span> <span class="n">this</span> <span class="n">ring</span> <span class="n">on</span> <span class="n">local</span> <span class="n">memory</span> <span class="p">(</span><span class="o">=</span><span class="n">BF_SPACE_SYSTEM</span><span class="p">)</span>
-<span class="n">bfRingBeginWriting</span><span class="p">(</span><span class="n">my_ring</span><span class="p">);</span> <span class="o">//</span><span class="n">begin</span> <span class="n">writing</span> <span class="n">to</span> <span class="n">this</span> <span class="n">ring</span>
-<span class="o">//</span><span class="n">generate</span> <span class="n">some</span> <span class="n">dummy</span> <span class="n">variables</span>
-<span class="n">BFoffset</span> <span class="n">skip_time_tag</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
-<span class="n">BFoffset</span> <span class="n">skip_offset</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="n">BFsize</span> <span class="n">my_header_size</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="n">char</span> <span class="o">*</span><span class="n">my_header</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">;</span>
-<span class="o">//</span><span class="n">Set</span> <span class="n">our</span> <span class="n">ring</span> <span class="n">variables</span>
-<span class="n">BFsize</span> <span class="n">nringlets</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="o">//</span><span class="n">dimensionality</span> <span class="n">of</span> <span class="n">our</span> <span class="n">ring</span><span class="o">.</span>
-<span class="n">BFsize</span> <span class="n">nbytes</span> <span class="o">=</span> <span class="mi">32</span><span class="o">*</span><span class="mi">8</span><span class="p">;</span> <span class="o">//</span><span class="n">number</span> <span class="n">of</span> <span class="nb">bytes</span> <span class="n">we</span> <span class="n">are</span> <span class="n">putting</span> <span class="ow">in</span>
-<span class="n">BFsize</span> <span class="n">buffer_bytes</span> <span class="o">=</span> <span class="mi">4</span><span class="o">*</span><span class="n">nbytes</span><span class="p">;</span>
-<span class="o">//</span><span class="n">resize</span> <span class="n">ring</span> <span class="n">to</span> <span class="n">fit</span> <span class="n">the</span> <span class="n">data</span>
-<span class="n">bfRingResize</span><span class="p">(</span>
-    <span class="n">my_ring</span><span class="p">,</span> <span class="n">nbytes</span><span class="p">,</span> <span class="n">buffer_bytes</span><span class="p">,</span> <span class="n">nringlets</span><span class="p">);</span>
-<span class="o">//</span><span class="nb">open</span> <span class="n">a</span> <span class="n">sequence</span> <span class="n">on</span> <span class="n">the</span> <span class="n">ring</span><span class="o">.</span>
-<span class="n">BFwsequence</span> <span class="n">my_sequence</span><span class="p">;</span>
-<span class="n">const</span> <span class="n">char</span><span class="o">*</span> <span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;mysequence&quot;</span><span class="p">;</span> <span class="o">//</span><span class="n">we</span> <span class="n">can</span> <span class="n">find</span> <span class="n">our</span> <span class="n">sequence</span> <span class="n">by</span> <span class="n">this</span> <span class="n">name</span> <span class="n">later</span> <span class="n">on</span>
-<span class="n">bfRingSequenceBegin</span><span class="p">(</span>
-    <span class="o">&amp;</span><span class="n">my_sequence</span><span class="p">,</span> <span class="n">my_ring</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">skip_time_tag</span><span class="p">,</span>
-    <span class="n">my_header_size</span><span class="p">,</span> <span class="p">(</span><span class="n">const</span> <span class="n">void</span><span class="o">*</span><span class="p">)</span><span class="n">my_header</span><span class="p">,</span> <span class="n">nringlets</span><span class="p">,</span>
-    <span class="n">skip_offset</span><span class="p">);</span>
-<span class="o">//</span><span class="n">reserve</span> <span class="n">a</span> <span class="s2">&quot;span&quot;</span> <span class="n">on</span> <span class="n">this</span> <span class="n">sequence</span> <span class="n">to</span> <span class="n">put</span> <span class="n">our</span> <span class="n">data</span>
-<span class="n">BFwspan</span> <span class="n">my_span</span><span class="p">;</span>
-<span class="n">bfRingSpanReserve</span><span class="p">(</span>
-    <span class="o">&amp;</span><span class="n">my_span</span><span class="p">,</span> <span class="n">my_ring</span><span class="p">,</span> <span class="n">nbytes</span><span class="p">);</span>
-<span class="n">void</span> <span class="o">*</span><span class="n">data_access</span><span class="p">;</span> <span class="o">//</span><span class="n">create</span> <span class="n">a</span> <span class="n">pointer</span> <span class="n">to</span> <span class="k">pass</span> <span class="n">our</span> <span class="n">data</span> <span class="n">to</span>
-<span class="o">//</span><span class="n">create</span> <span class="n">the</span> <span class="n">data</span> <span class="ow">and</span> <span class="n">copy</span> <span class="n">it</span> <span class="n">to</span> <span class="n">the</span> <span class="n">ring</span>
-<span class="nb">float</span> <span class="n">data</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="mi">10</span><span class="p">,</span> <span class="o">-</span><span class="mi">10</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">};</span>
-<span class="n">bfRingSpanGetData</span><span class="p">((</span><span class="n">BFspan</span><span class="p">)</span><span class="n">my_span</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data_access</span><span class="p">);</span> <span class="o">//</span><span class="n">point</span> <span class="n">our</span> <span class="n">pointer</span> <span class="n">to</span> <span class="n">the</span> <span class="n">span</span><span class="s1">&#39;s allocated memory</span>
-<span class="n">memcpy</span><span class="p">(</span><span class="n">data_access</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">,</span> <span class="n">nbytes</span><span class="p">);</span>
-<span class="o">//</span><span class="n">stop</span> <span class="n">writing</span>
-<span class="n">bfRingSpanCommit</span><span class="p">(</span><span class="n">my_span</span><span class="p">,</span> <span class="n">nbytes</span><span class="p">);</span> <span class="o">//</span><span class="n">commit</span> <span class="n">this</span> <span class="n">span</span> <span class="n">to</span> <span class="n">memory</span>
-<span class="n">bfRingSequenceEnd</span><span class="p">(</span><span class="n">my_sequence</span><span class="p">,</span> <span class="n">skip_offset</span><span class="p">);</span> <span class="o">//</span><span class="n">end</span> <span class="n">off</span> <span class="n">the</span> <span class="n">sequence</span>
-<span class="n">bfRingEndWriting</span><span class="p">(</span><span class="n">my_ring</span><span class="p">);</span>
+<span class="n">BFring</span><span class="w"> </span><span class="n">my_ring</span><span class="p">;</span><span class="w"> </span><span class="c1">//declare our ring variable</span>
+<span class="n">bfRingCreate</span><span class="p">(</span><span class="o">&amp;</span><span class="n">my_ring</span><span class="p">,</span><span class="w"> </span><span class="n">BF_SPACE_SYSTEM</span><span class="p">);</span><span class="w"> </span><span class="c1">//initiate this ring on local memory (=BF_SPACE_SYSTEM)</span>
+<span class="n">bfRingBeginWriting</span><span class="p">(</span><span class="n">my_ring</span><span class="p">);</span><span class="w"> </span><span class="c1">//begin writing to this ring</span>
+<span class="c1">//generate some dummy variables</span>
+<span class="n">BFoffset</span><span class="w"> </span><span class="n">skip_time_tag</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span><span class="w"></span>
+<span class="n">BFoffset</span><span class="w"> </span><span class="n">skip_offset</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="n">BFsize</span><span class="w"> </span><span class="n">my_header_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">my_header</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;&quot;</span><span class="p">;</span><span class="w"></span>
+<span class="c1">//Set our ring variables</span>
+<span class="n">BFsize</span><span class="w"> </span><span class="n">nringlets</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="c1">//dimensionality of our ring.</span>
+<span class="n">BFsize</span><span class="w"> </span><span class="n">nbytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">32</span><span class="o">*</span><span class="mi">8</span><span class="p">;</span><span class="w"> </span><span class="c1">//number of bytes we are putting in</span>
+<span class="n">BFsize</span><span class="w"> </span><span class="n">buffer_bytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">4</span><span class="o">*</span><span class="n">nbytes</span><span class="p">;</span><span class="w"></span>
+<span class="c1">//resize ring to fit the data</span>
+<span class="n">bfRingResize</span><span class="p">(</span><span class="w"></span>
+<span class="w">    </span><span class="n">my_ring</span><span class="p">,</span><span class="w"> </span><span class="n">nbytes</span><span class="p">,</span><span class="w"> </span><span class="n">buffer_bytes</span><span class="p">,</span><span class="w"> </span><span class="n">nringlets</span><span class="p">);</span><span class="w"></span>
+<span class="c1">//open a sequence on the ring.</span>
+<span class="n">BFwsequence</span><span class="w"> </span><span class="n">my_sequence</span><span class="p">;</span><span class="w"></span>
+<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;mysequence&quot;</span><span class="p">;</span><span class="w"> </span><span class="c1">//we can find our sequence by this name later on</span>
+<span class="n">bfRingSequenceBegin</span><span class="p">(</span><span class="w"></span>
+<span class="w">    </span><span class="o">&amp;</span><span class="n">my_sequence</span><span class="p">,</span><span class="w"> </span><span class="n">my_ring</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">skip_time_tag</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">my_header_size</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="o">*</span><span class="p">)</span><span class="n">my_header</span><span class="p">,</span><span class="w"> </span><span class="n">nringlets</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="n">skip_offset</span><span class="p">);</span><span class="w"></span>
+<span class="c1">//reserve a &quot;span&quot; on this sequence to put our data</span>
+<span class="n">BFwspan</span><span class="w"> </span><span class="n">my_span</span><span class="p">;</span><span class="w"></span>
+<span class="n">bfRingSpanReserve</span><span class="p">(</span><span class="w"></span>
+<span class="w">    </span><span class="o">&amp;</span><span class="n">my_span</span><span class="p">,</span><span class="w"> </span><span class="n">my_ring</span><span class="p">,</span><span class="w"> </span><span class="n">nbytes</span><span class="p">);</span><span class="w"></span>
+<span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">data_access</span><span class="p">;</span><span class="w"> </span><span class="c1">//create a pointer to pass our data to</span>
+<span class="c1">//create the data and copy it to the ring</span>
+<span class="kt">float</span><span class="w"> </span><span class="n">data</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">-10</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">-3</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">};</span><span class="w"></span>
+<span class="n">bfRingSpanGetData</span><span class="p">((</span><span class="n">BFspan</span><span class="p">)</span><span class="n">my_span</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">data_access</span><span class="p">);</span><span class="w"> </span><span class="c1">//point our pointer to the span&#39;s allocated memory</span>
+<span class="n">memcpy</span><span class="p">(</span><span class="n">data_access</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="n">nbytes</span><span class="p">);</span><span class="w"></span>
+<span class="c1">//stop writing</span>
+<span class="n">bfRingSpanCommit</span><span class="p">(</span><span class="n">my_span</span><span class="p">,</span><span class="w"> </span><span class="n">nbytes</span><span class="p">);</span><span class="w"> </span><span class="c1">//commit this span to memory</span>
+<span class="n">bfRingSequenceEnd</span><span class="p">(</span><span class="n">my_sequence</span><span class="p">,</span><span class="w"> </span><span class="n">skip_offset</span><span class="p">);</span><span class="w"> </span><span class="c1">//end off the sequence</span>
+<span class="n">bfRingEndWriting</span><span class="p">(</span><span class="n">my_ring</span><span class="p">);</span><span class="w"></span>
 
-<span class="o">//////////////////////////////////</span>
-<span class="o">//</span><span class="n">Read</span> <span class="kn">from</span> <span class="nn">the</span> <span class="n">ring</span>
-<span class="o">/////////////////////////////////</span>
+<span class="c1">//////////////////////////////////</span>
+<span class="c1">//Read from the ring</span>
+<span class="c1">/////////////////////////////////</span>
 
-<span class="n">nbytes</span> <span class="o">=</span> <span class="mi">32</span><span class="o">*</span><span class="mi">8</span><span class="p">;</span> <span class="o">//</span><span class="n">the</span> <span class="n">size</span> <span class="n">of</span> <span class="n">the</span> <span class="n">data</span> <span class="n">we</span> <span class="n">want</span> <span class="n">to</span> <span class="n">read</span>
-<span class="o">//</span><span class="nb">open</span> <span class="n">the</span> <span class="n">last</span> <span class="n">accessed</span> <span class="n">sequence</span>
-<span class="n">BFrsequence</span> <span class="n">my_read_sequence</span><span class="p">;</span>
-<span class="n">bfRingSequenceOpenLatest</span><span class="p">(</span>
-    <span class="o">&amp;</span><span class="n">my_read_sequence</span><span class="p">,</span> <span class="n">my_ring</span><span class="p">,</span> <span class="n">true</span><span class="p">);</span>
-<span class="o">//</span><span class="nb">open</span> <span class="n">a</span> <span class="n">span</span> <span class="n">on</span> <span class="n">this</span> <span class="n">sequence</span>
-<span class="n">BFrspan</span> <span class="n">my_read_span</span><span class="p">;</span>
-<span class="n">bfRingSpanAcquire</span><span class="p">(</span>
-    <span class="o">&amp;</span><span class="n">my_read_span</span><span class="p">,</span> <span class="n">my_read_sequence</span><span class="p">,</span> <span class="n">skip_offset</span><span class="p">,</span> <span class="n">nbytes</span><span class="p">);</span>
-<span class="o">//</span><span class="n">Access</span> <span class="n">the</span> <span class="n">data</span> <span class="kn">from</span> <span class="nn">the</span> <span class="n">span</span> <span class="k">with</span> <span class="n">a</span> <span class="n">pointer</span>
-<span class="n">bfRingSpanGetData</span><span class="p">((</span><span class="n">BFspan</span><span class="p">)</span><span class="n">my_read_span</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data_access</span><span class="p">);</span>
-<span class="nb">float</span> <span class="o">*</span><span class="n">my_data</span> <span class="o">=</span> <span class="n">static_cast</span><span class="o">&lt;</span><span class="nb">float</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">data_access</span><span class="p">);</span> <span class="o">//</span><span class="n">Copy</span> <span class="n">the</span> <span class="n">data</span> <span class="n">into</span> <span class="n">a</span> <span class="n">readable</span> <span class="nb">format</span>
-<span class="o">//</span><span class="nb">print</span> <span class="n">out</span> <span class="n">the</span> <span class="n">ring</span> <span class="n">data</span>
-<span class="k">for</span> <span class="p">(</span><span class="nb">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">8</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
-<span class="p">{</span>
-    <span class="n">printf</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%f</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span><span class="n">my_data</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
-<span class="p">}</span>
-<span class="o">//</span><span class="n">close</span> <span class="n">up</span> <span class="n">our</span> <span class="n">ring</span> <span class="n">access</span>
-<span class="n">bfRingSpanRelease</span><span class="p">(</span><span class="n">my_read_span</span><span class="p">);</span>
-<span class="n">bfRingSequenceClose</span><span class="p">(</span><span class="n">my_read_sequence</span><span class="p">);</span>
-<span class="n">bfRingDestroy</span><span class="p">(</span><span class="n">my_ring</span><span class="p">);</span> <span class="o">//</span><span class="n">delete</span> <span class="n">the</span> <span class="n">ring</span> <span class="kn">from</span> <span class="nn">memory</span>
+<span class="n">nbytes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">32</span><span class="o">*</span><span class="mi">8</span><span class="p">;</span><span class="w"> </span><span class="c1">//the size of the data we want to read</span>
+<span class="c1">//open the last accessed sequence</span>
+<span class="n">BFrsequence</span><span class="w"> </span><span class="n">my_read_sequence</span><span class="p">;</span><span class="w"></span>
+<span class="n">bfRingSequenceOpenLatest</span><span class="p">(</span><span class="w"></span>
+<span class="w">    </span><span class="o">&amp;</span><span class="n">my_read_sequence</span><span class="p">,</span><span class="w"> </span><span class="n">my_ring</span><span class="p">,</span><span class="w"> </span><span class="nb">true</span><span class="p">);</span><span class="w"></span>
+<span class="c1">//open a span on this sequence</span>
+<span class="n">BFrspan</span><span class="w"> </span><span class="n">my_read_span</span><span class="p">;</span><span class="w"></span>
+<span class="n">bfRingSpanAcquire</span><span class="p">(</span><span class="w"></span>
+<span class="w">    </span><span class="o">&amp;</span><span class="n">my_read_span</span><span class="p">,</span><span class="w"> </span><span class="n">my_read_sequence</span><span class="p">,</span><span class="w"> </span><span class="n">skip_offset</span><span class="p">,</span><span class="w"> </span><span class="n">nbytes</span><span class="p">);</span><span class="w"></span>
+<span class="c1">//Access the data from the span with a pointer</span>
+<span class="n">bfRingSpanGetData</span><span class="p">((</span><span class="n">BFspan</span><span class="p">)</span><span class="n">my_read_span</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">data_access</span><span class="p">);</span><span class="w"></span>
+<span class="kt">float</span><span class="w"> </span><span class="o">*</span><span class="n">my_data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">*&gt;</span><span class="p">(</span><span class="n">data_access</span><span class="p">);</span><span class="w"> </span><span class="c1">//Copy the data into a readable format</span>
+<span class="c1">//print out the ring data</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">8</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"></span>
+<span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">&quot;%f</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span><span class="n">my_data</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+<span class="c1">//close up our ring access</span>
+<span class="n">bfRingSpanRelease</span><span class="p">(</span><span class="n">my_read_span</span><span class="p">);</span><span class="w"></span>
+<span class="n">bfRingSequenceClose</span><span class="p">(</span><span class="n">my_read_sequence</span><span class="p">);</span><span class="w"></span>
+<span class="n">bfRingDestroy</span><span class="p">(</span><span class="n">my_ring</span><span class="p">);</span><span class="w"> </span><span class="c1">//delete the ring from memory</span>
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -134,7 +133,7 @@ API.</p>
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Table of Contents</span></p>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="intro.html">1. Introduction to Bifrost</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Getting-started-guide.html">2. Getting started guide</a></li>
@@ -158,23 +157,21 @@ API.</p>
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="bifrost.views.html" title="previous chapter">11.1.1. bifrost.views package</a></li>
-      <li>Next: <a href="cpp_reference.html" title="next chapter">13. C++ Reference</a></li>
+      <li>Previous: <a href="bifrost.views.html" title="previous chapter"><span class="section-number">11.1.2. </span>bifrost.views package</a></li>
+      <li>Next: <a href="cpp_reference.html" title="next chapter"><span class="section-number">13. </span>C++ Reference</a></li>
   </ul></li>
 </ul>
 </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -188,10 +185,10 @@ API.</p>
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2017, ledatelescope.
+      &copy;1980, ledatelescope.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.9</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

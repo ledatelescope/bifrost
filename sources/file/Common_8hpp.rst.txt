@@ -1,5 +1,0 @@
-File Common.hpp
-===============
-
-.. doxygenfile:: Common.hpp
-   :project: bifrost

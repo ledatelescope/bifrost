@@ -1,5 +1,0 @@
-File linalg.h
-=============
-
-.. doxygenfile:: linalg.h
-   :project: bifrost

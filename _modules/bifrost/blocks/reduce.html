@@ -1,0 +1,241 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bifrost.blocks.reduce &#8212; bifrost 0.6 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css" />
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for bifrost.blocks.reduce</h1><div class="highlight"><pre>
+<span></span>
+<span class="c1"># Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># Redistribution and use in source and binary forms, with or without</span>
+<span class="c1"># modification, are permitted provided that the following conditions</span>
+<span class="c1"># are met:</span>
+<span class="c1"># * Redistributions of source code must retain the above copyright</span>
+<span class="c1">#   notice, this list of conditions and the following disclaimer.</span>
+<span class="c1"># * Redistributions in binary form must reproduce the above copyright</span>
+<span class="c1">#   notice, this list of conditions and the following disclaimer in the</span>
+<span class="c1">#   documentation and/or other materials provided with the distribution.</span>
+<span class="c1"># * Neither the name of The Bifrost Authors nor the names of its</span>
+<span class="c1">#   contributors may be used to endorse or promote products derived</span>
+<span class="c1">#   from this software without specific prior written permission.</span>
+<span class="c1">#</span>
+<span class="c1"># THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS&#39;&#39; AND ANY</span>
+<span class="c1"># EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE</span>
+<span class="c1"># IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR</span>
+<span class="c1"># PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR</span>
+<span class="c1"># CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,</span>
+<span class="c1"># EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,</span>
+<span class="c1"># PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR</span>
+<span class="c1"># PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY</span>
+<span class="c1"># OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT</span>
+<span class="c1"># (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE</span>
+<span class="c1"># OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</span>
+
+<span class="c1"># TODO: Consider merging with detect_block</span>
+<span class="c1">#         Seems easy, but may end up somewhat complicated</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+
+<span class="kn">from</span> <span class="nn">bifrost.pipeline</span> <span class="kn">import</span> <span class="n">TransformBlock</span>
+<span class="kn">import</span> <span class="nn">bifrost</span> <span class="k">as</span> <span class="nn">bf</span>
+
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+
+<span class="kn">from</span> <span class="nn">bifrost</span> <span class="kn">import</span> <span class="n">telemetry</span>
+<span class="n">telemetry</span><span class="o">.</span><span class="n">track_module</span><span class="p">()</span>
+
+<div class="viewcode-block" id="ReduceBlock"><a class="viewcode-back" href="../../../bifrost.blocks.html#bifrost.blocks.reduce.ReduceBlock">[docs]</a><span class="k">class</span> <span class="nc">ReduceBlock</span><span class="p">(</span><span class="n">TransformBlock</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iring</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;sum&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ReduceBlock</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">iring</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">specified_axis</span>   <span class="o">=</span> <span class="n">axis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">specified_factor</span> <span class="o">=</span> <span class="n">factor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">op</span> <span class="o">=</span> <span class="n">op</span>
+<div class="viewcode-block" id="ReduceBlock.define_valid_input_spaces"><a class="viewcode-back" href="../../../bifrost.blocks.html#bifrost.blocks.reduce.ReduceBlock.define_valid_input_spaces">[docs]</a>    <span class="k">def</span> <span class="nf">define_valid_input_spaces</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="s1">&#39;cuda&#39;</span><span class="p">,)</span></div>
+<div class="viewcode-block" id="ReduceBlock.on_sequence"><a class="viewcode-back" href="../../../bifrost.blocks.html#bifrost.blocks.reduce.ReduceBlock.on_sequence">[docs]</a>    <span class="k">def</span> <span class="nf">on_sequence</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">iseq</span><span class="p">):</span>
+        <span class="n">ihdr</span> <span class="o">=</span> <span class="n">iseq</span><span class="o">.</span><span class="n">header</span>
+        <span class="n">itensor</span> <span class="o">=</span> <span class="n">ihdr</span><span class="p">[</span><span class="s1">&#39;_tensor&#39;</span><span class="p">]</span>
+        <span class="n">ohdr</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">ihdr</span><span class="p">)</span>
+        <span class="n">otensor</span> <span class="o">=</span> <span class="n">ohdr</span><span class="p">[</span><span class="s1">&#39;_tensor&#39;</span><span class="p">]</span>
+        <span class="n">otensor</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;f32&#39;</span>
+        <span class="k">if</span> <span class="n">itensor</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;cf32&#39;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;pwr&#39;</span><span class="p">):</span>
+            <span class="n">otensor</span><span class="p">[</span><span class="s1">&#39;dtype&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;cf32&#39;</span>
+        <span class="k">if</span> <span class="s1">&#39;labels&#39;</span> <span class="ow">in</span> <span class="n">itensor</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">specified_axis</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="c1"># Look up axis by label</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">axis</span> <span class="o">=</span> <span class="n">itensor</span><span class="p">[</span><span class="s1">&#39;labels&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">specified_axis</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">axis</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">specified_axis</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame_axis</span> <span class="o">=</span> <span class="n">itensor</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">specified_factor</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axis</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_axis</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">specified_factor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Reduce factor must be specified for frame axis&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">specified_factor</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># Default to reducing the whole axis</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">factor</span> <span class="o">=</span> <span class="n">otensor</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">axis</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="n">otensor</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">axis</span><span class="p">]</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">factor</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Reduce factor does not divide axis length&quot;</span><span class="p">)</span>
+            <span class="n">otensor</span><span class="p">[</span><span class="s1">&#39;shape&#39;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">axis</span><span class="p">]</span> <span class="o">//=</span> <span class="bp">self</span><span class="o">.</span><span class="n">factor</span>
+        <span class="n">otensor</span><span class="p">[</span><span class="s1">&#39;scales&#39;</span><span class="p">][</span><span class="bp">self</span><span class="o">.</span><span class="n">axis</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">factor</span>
+        <span class="k">return</span> <span class="n">ohdr</span></div>
+<div class="viewcode-block" id="ReduceBlock.define_output_nframes"><a class="viewcode-back" href="../../../bifrost.blocks.html#bifrost.blocks.reduce.ReduceBlock.define_output_nframes">[docs]</a>    <span class="k">def</span> <span class="nf">define_output_nframes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_nframe</span><span class="p">):</span>
+        <span class="n">output_nframe</span> <span class="o">=</span> <span class="n">input_nframe</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">axis</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_axis</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">input_nframe</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">factor</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Reduce factor does not divide input_nframe&quot;</span><span class="p">)</span>
+            <span class="n">output_nframe</span> <span class="o">=</span> <span class="n">input_nframe</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">factor</span>
+        <span class="k">return</span> <span class="n">output_nframe</span></div>
+<div class="viewcode-block" id="ReduceBlock.on_data"><a class="viewcode-back" href="../../../bifrost.blocks.html#bifrost.blocks.reduce.ReduceBlock.on_data">[docs]</a>    <span class="k">def</span> <span class="nf">on_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ispan</span><span class="p">,</span> <span class="n">ospan</span><span class="p">):</span>
+        <span class="n">idata</span><span class="p">,</span> <span class="n">odata</span> <span class="o">=</span> <span class="n">ispan</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">ospan</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">bf</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">idata</span><span class="p">,</span> <span class="n">odata</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">)</span></div></div>
+        
+        <span class="c1"># TODO: Support system space using Numpy</span>
+        <span class="c1">#ishape = list(idata.shape)</span>
+        <span class="c1">#ishape[self.axis] //= self.factor</span>
+        <span class="c1">#ishape.insert(self.axis+1, self.factor)</span>
+
+<div class="viewcode-block" id="reduce"><a class="viewcode-back" href="../../../bifrost.blocks.html#bifrost.blocks.reduce.reduce">[docs]</a><span class="k">def</span> <span class="nf">reduce</span><span class="p">(</span><span class="n">iring</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">factor</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="s1">&#39;sum&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Reduce data along an axis by factor using op.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        iring (Ring or Block): Input data source.</span>
+<span class="sd">        axis (int or str): The axis to reduce. Can be an integer index</span>
+<span class="sd">                           or a string label.</span>
+<span class="sd">        factor (int): The factor by which the axis should be reduced.</span>
+<span class="sd">                      If None, the whole axis is reduced. Must divide</span>
+<span class="sd">                      the size of the axis (or the gulp_size in the case</span>
+<span class="sd">                      where the axis is the frame axis).</span>
+<span class="sd">        op (str): The operation with which the data should be reduced.</span>
+<span class="sd">                  One of: sum, mean, min, max, stderr [stderr=sum/sqrt(n)], </span>
+<span class="sd">                  pwrsum [magnitude squared sum], pwrmean, pwrmin, pwrmax, </span>
+<span class="sd">                  or pwrstderr.  Note:  min and max are not supported for </span>
+<span class="sd">                  complex valued data.</span>
+<span class="sd">        *args: Arguments to ``bifrost.pipeline.TransformBlock``.</span>
+<span class="sd">        **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.</span>
+
+<span class="sd">    **Tensor semantics**::</span>
+
+<span class="sd">        Input:  [..., N, ...], dtype = float, space = CUDA</span>
+<span class="sd">        op = any</span>
+<span class="sd">        Output: [..., N / factor, ...], dtype = f32, space = CUDA</span>
+<span class="sd">        </span>
+<span class="sd">        Input:  [..., N, ...], dtype = complex, space = CUDA</span>
+<span class="sd">        op = &#39;sum&#39;, &#39;mean&#39;, &#39;stderr&#39;</span>
+<span class="sd">        Output: [..., N / factor, ...], dtype = cf32, space = CUDA</span>
+<span class="sd">        </span>
+<span class="sd">        Input:  [..., N, ...], dtype = complex, space = CUDA</span>
+<span class="sd">        op = &#39;pwrsum&#39;, &#39;pwrmean&#39;, &#39;pwrmin&#39;, &#39;pwrmax&#39;, &#39;pwrstderr&#39;</span>
+<span class="sd">        Output: [..., N / factor, ...], dtype = f32, space = CUDA</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ReduceBlock: A new block instance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ReduceBlock</span><span class="p">(</span><span class="n">iring</span><span class="p">,</span> <span class="n">axis</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">bifrost</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../intro.html">1. Introduction to Bifrost</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../Getting-started-guide.html">2. Getting started guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../Create-a-pipeline.html">3. Create a Pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../your-first-blocks.html">4. Your first blocks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../views.html">5. Views</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../tools-intro.html">6. Monitoring Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../bfmap.html">7. Fast GPU math using bfMap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../How-Python-and-C---fits-together.html">8. How bifrost fits together</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../Common-installation-and-execution-problems.html">9. Common Installation and Execution Problems</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../bifrost.blocks.html">10. Block Library Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../bifrost.html">11. Python Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../Cpp-Development.html">12. C++ Developement</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cpp_reference.html">13. C++ Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;1980, ledatelescope.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

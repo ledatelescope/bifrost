@@ -1,5 +1,0 @@
-File array.h
-============
-
-.. doxygenfile:: array.h
-   :project: bifrost

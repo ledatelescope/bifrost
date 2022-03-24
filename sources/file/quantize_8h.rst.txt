@@ -1,5 +1,0 @@
-File quantize.h
-===============
-
-.. doxygenfile:: quantize.h
-   :project: bifrost

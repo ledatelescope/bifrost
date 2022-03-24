@@ -1,19 +1,18 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
     <title>9. Common Installation and Execution Problems &#8212; bifrost 0.6 documentation</title>
-    <link rel="stylesheet" href="static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="static/documentation_options.js"></script>
-    <script type="text/javascript" src="static/jquery.js"></script>
-    <script type="text/javascript" src="static/underscore.js"></script>
-    <script type="text/javascript" src="static/doctools.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="stylesheet" type="text/css" href="static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="static/documentation_options.js"></script>
+    <script src="static/jquery.js"></script>
+    <script src="static/underscore.js"></script>
+    <script src="static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="10. Block Library Reference" href="bifrost.blocks.html" />
@@ -34,47 +33,39 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="common-installation-and-execution-problems">
-<h1>9. Common Installation and Execution Problems<a class="headerlink" href="#common-installation-and-execution-problems" title="Permalink to this headline">¶</a></h1>
+  <section id="common-installation-and-execution-problems">
+<h1><span class="section-number">9. </span>Common Installation and Execution Problems<a class="headerlink" href="#common-installation-and-execution-problems" title="Permalink to this headline">¶</a></h1>
 <p>Do you have a problem that is not documented below? No matter how
 trivial the problem might be, please raise an issue.</p>
-<div class="section" id="the-program-hangs">
-<h2>9.1. (The program hangs)<a class="headerlink" href="#the-program-hangs" title="Permalink to this headline">¶</a></h2>
+<section id="the-program-hangs">
+<h2><span class="section-number">9.1. </span>(The program hangs)<a class="headerlink" href="#the-program-hangs" title="Permalink to this headline">¶</a></h2>
 <p>This is probably because a Bifrost pipeline was started with an infinite
 timeout, and some blocks are not ending themselves. Quit the program (by
 ctrl-\), and make sure every block in your pipeline is reading/writing
 to its rings as it should.</p>
-</div>
-<div class="section" id="oserror-lib-libbifrost-so-undefined-symbol-cudafreehost">
-<h2>9.2. OSError: …./lib/libbifrost.so: undefined symbol: cudaFreeHost<a class="headerlink" href="#oserror-lib-libbifrost-so-undefined-symbol-cudafreehost" title="Permalink to this headline">¶</a></h2>
-<p>At the make step, nvcc did not link cudaFreeHost into libbifrost.so. You
-should make sure that config.mk and user.mk are set up for your system,
-and that your nvcc compiler can compile other CUDA programs. If you are
-still having trouble, raise an issue.</p>
-</div>
-<div class="section" id="oserror-can-t-find-library-with-name-libbifrost-so">
-<h2>9.3. OSError: Can’t find library with name libbifrost.so<a class="headerlink" href="#oserror-can-t-find-library-with-name-libbifrost-so" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="oserror-can-t-find-library-with-name-libbifrost-so">
+<h2><span class="section-number">9.2. </span>OSError: Can’t find library with name libbifrost.so<a class="headerlink" href="#oserror-can-t-find-library-with-name-libbifrost-so" title="Permalink to this headline">¶</a></h2>
 <p>This means that the bifrost Python wrapper can’t find your Bifrost
 installation. Whatever library folders it searches for Bifrost, you
 do not have the libbifrost.so file there. To fix this, type</p>
 <p><code class="docutils literal notranslate"><span class="pre">echo</span> <span class="pre">$LD_LIBRARY_PATH</span></code></p>
 <p>at your command line. If none of these folders contain the Bifrost
-installation (which you specified in config.mk), you have found the
-problem. Perform</p>
+installation (which you may have specified with configure), you have found
+the problem. Perform</p>
 <p><code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/my/bifrost/installation</span></code>,</p>
 <p>where <code class="docutils literal notranslate"><span class="pre">/my/bifrost/installation</span></code> is the folder where you installed the
-Bifrost “lib” (in config.mk, this folder is given as
-<code class="docutils literal notranslate"><span class="pre">INSTALL_LIB_DIR</span></code>). This should add Bifrost to the wrapper’s search
-path.</p>
-</div>
-<div class="section" id="oserror-libcudart-so-x-0-cannot-open-shared-object-file-no-such-file-or-directory">
-<h2>9.4. OSError: libcudart.so.x.0: cannot open shared object file: No such file or directory<a class="headerlink" href="#oserror-libcudart-so-x-0-cannot-open-shared-object-file-no-such-file-or-directory" title="Permalink to this headline">¶</a></h2>
+Bifrost “lib” (this location will also be reported as part of <cite>make install</cite>).
+This should add Bifrost to the wrapper’s search path.</p>
+</section>
+<section id="oserror-libcudart-so-x-0-cannot-open-shared-object-file-no-such-file-or-directory">
+<h2><span class="section-number">9.3. </span>OSError: libcudart.so.x.0: cannot open shared object file: No such file or directory<a class="headerlink" href="#oserror-libcudart-so-x-0-cannot-open-shared-object-file-no-such-file-or-directory" title="Permalink to this headline">¶</a></h2>
 <p>Similar to the above error. You need to add the CUDA libraries to the
 LD_LIBRARY_PATH search path.</p>
 <p>For example,
 <code class="docutils literal notranslate"><span class="pre">export</span> <span class="pre">LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/my/cuda/installation/lib64</span></code></p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -93,7 +84,7 @@ LD_LIBRARY_PATH search path.</p>
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Table of Contents</span></p>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="intro.html">1. Introduction to Bifrost</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Getting-started-guide.html">2. Getting started guide</a></li>
@@ -105,9 +96,8 @@ LD_LIBRARY_PATH search path.</p>
 <li class="toctree-l1"><a class="reference internal" href="How-Python-and-C---fits-together.html">8. How bifrost fits together</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">9. Common Installation and Execution Problems</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#the-program-hangs">9.1. (The program hangs)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#oserror-lib-libbifrost-so-undefined-symbol-cudafreehost">9.2. OSError: …./lib/libbifrost.so: undefined symbol: cudaFreeHost</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#oserror-can-t-find-library-with-name-libbifrost-so">9.3. OSError: Can’t find library with name libbifrost.so</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#oserror-libcudart-so-x-0-cannot-open-shared-object-file-no-such-file-or-directory">9.4. OSError: libcudart.so.x.0: cannot open shared object file: No such file or directory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#oserror-can-t-find-library-with-name-libbifrost-so">9.2. OSError: Can’t find library with name libbifrost.so</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#oserror-libcudart-so-x-0-cannot-open-shared-object-file-no-such-file-or-directory">9.3. OSError: libcudart.so.x.0: cannot open shared object file: No such file or directory</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="bifrost.blocks.html">10. Block Library Reference</a></li>
@@ -120,23 +110,21 @@ LD_LIBRARY_PATH search path.</p>
 <h3>Related Topics</h3>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="How-Python-and-C---fits-together.html" title="previous chapter">8. How bifrost fits together</a></li>
-      <li>Next: <a href="bifrost.blocks.html" title="next chapter">10. Block Library Reference</a></li>
+      <li>Previous: <a href="How-Python-and-C---fits-together.html" title="previous chapter"><span class="section-number">8. </span>How bifrost fits together</a></li>
+      <li>Next: <a href="bifrost.blocks.html" title="next chapter"><span class="section-number">10. </span>Block Library Reference</a></li>
   </ul></li>
 </ul>
 </div>
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
 
 
 
@@ -150,10 +138,10 @@ LD_LIBRARY_PATH search path.</p>
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2017, ledatelescope.
+      &copy;1980, ledatelescope.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.9</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

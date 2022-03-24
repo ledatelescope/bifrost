@@ -1,5 +1,0 @@
-File Ring.hpp
-=============
-
-.. doxygenfile:: Ring.hpp
-   :project: bifrost

@@ -28,16 +28,16 @@ first be generated using the nvprof command line tool:
 The generated .nvprof file can then be imported into the Visual Profiler
 for visualisation and analysis.
 
-To obtain a more detailed profile of pipeline execution, rebuild the bifrost library
-with the setting TRACE=1 (either by changing ``user.mk`` or by passing it as an
-argument to the ``make`` command).
+To obtain a more detailed profile of pipeline execution, reconfigure and rebuild
+the bifrost library with "trace" enabled using `./configure --enable-trace`.
 
 
 Pipeline in /dev/shm
 --------------------
 
-Details about the currently running bifrost pipeline are available in the ``/dev/shm`` directory.
-They are mapped into a directory structure (use the linux ``tree`` utility to view it):
+Details about the currently running bifrost pipeline are available in the ``/dev/shm`` 
+directory on Linux.  They are mapped into a directory structure (use the linux ``tree``
+utility to view it):
 
 .. code::
 
@@ -98,4 +98,3 @@ The main performance monitoring tools is ``like_top.py``. This is, as the name s
 * Reserve is the time spent waiting for output space to become available in the ring (i.e., waiting for downstream blocks).
 
 Note: The CPU fraction will probably be 100% on any GPU block because it's currently set to spin (busy loop) while waiting for the GPU.
-
