@@ -38,6 +38,11 @@ def set_device(device):
     if isinstance(device, int):
         _check(_bf.bfDeviceSet(device))
     else:
+        try:
+            device = device.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         _check(_bf.bfDeviceSetById(device))
 
 def get_device():
