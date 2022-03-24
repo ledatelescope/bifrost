@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -34,9 +34,13 @@ from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestMap(unittest.TestCase):
+    first_test = True
+    
     def setUp(self):
         np.random.seed(1234)
-        bf.map_clear_cache()
+        if self.first_test:
+            bf.clear_map_cache()
+            self.first_test = False
     def run_simple_test(self, x, funcstr, func):
         x_orig = x
         x = bf.asarray(x, 'cuda')

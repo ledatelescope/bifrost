@@ -35,8 +35,12 @@ from bifrost.libbifrost_generated import BF_CUDA_ENABLED, BF_FLOAT128_ENABLED
 
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TransposeTest(unittest.TestCase):
+    first_test = True
+    
     def setUp(self):
-        bf.map_clear_cache()
+        if self.first_test:
+            bf.clear_map_cache()
+            self.first_test = False
     def run_simple_test(self, axes, dtype, shape):
         n = reduce(lambda a,b:a*b, shape)
         idata = (np.arange(n).reshape(shape) % 251).astype(dtype)
