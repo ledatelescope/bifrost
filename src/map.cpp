@@ -555,7 +555,7 @@ class DiskCacheMgr {
                       kernel.set(kernel_name.c_str(), ptx.c_str());
                       
                       kernel_cache->insert(cache_key,
-	                                     std::make_pair(kernel, basic_indexing_only));         
+	                                         std::make_pair(kernel, basic_indexing_only));         
 			            }
 									
 		            	// Done
