@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -71,7 +71,7 @@ inline bool file_exists(std::string path) {
     return !(stat(path.c_str(), &s) == -1
 	         && errno == ENOENT);
 }
-bool process_exists(pid_t pid) {
+inline bool process_exists(pid_t pid) {
 #if defined __APPLE__ && __APPLE__
 
   // Based on information from:
