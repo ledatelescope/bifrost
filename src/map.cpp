@@ -38,10 +38,6 @@ bfMap(3, c.shape, {"dm", "t"},
 // This enables print-out of generated source and PTX
 //#define BF_DEBUG_RTC 1
 
-#ifndef BF_MAP_KERNEL_CACHE_SIZE
-#define BF_MAP_KERNEL_CACHE_SIZE 128
-#endif
-
 #include <bifrost/config.h>
 #include <bifrost/map.h>
 #include "fileutils.hpp"
@@ -632,7 +628,7 @@ BFstatus bfMap(int                  ndim,
                int  const           block_axes[2]) {
 	// Map containing compiled kernels and basic_indexing_only flag
 	thread_local static ObjectCache<std::string,std::pair<CUDAKernel,bool> >
-	kernel_cache(BF_MAP_KERNEL_CACHE_SIZE);
+	kernel_cache(BF_GPU_MAP_CACHE_SIZE);
 	BF_ASSERT(ndim >= 0,           BF_STATUS_INVALID_ARGUMENT);
 	//BF_ASSERT(!ndim || shape,      BF_STATUS_INVALID_POINTER);
 	//BF_ASSERT(!ndim || axis_names, BF_STATUS_INVALID_POINTER);
@@ -692,7 +688,7 @@ BFstatus bfMap(int                  ndim,
 	}
 	std::string cache_key = cache_key_ss.str();
 	
-#if BF_MAPCACHE_ENABLED
+#if defined BF_GPU_MAP_CACHE && BF_GPU_MAP_CACHE
     DiskCacheMgr::get().load(&kernel_cache);
 #endif
 	
@@ -723,7 +719,7 @@ BFstatus bfMap(int                  ndim,
 		BF_TRY(kernel.set(kernel_name.c_str(), ptx.c_str()));
 		kernel_cache.insert(cache_key,
 		                    std::make_pair(kernel, basic_indexing_only));
-#if BF_MAPCACHE_ENABLED
+#if defined BF_GPU_MAP_CACHE && BF_GPU_MAP_CACHE
 		DiskCacheMgr::get().save(cache_key, kernel_name, ptx, basic_indexing_only);
 #endif
 	}
