@@ -791,8 +791,6 @@ BFstatus bfMap(int                  ndim,
 BFstatus bfMapClearCache() {
 #if defined BF_GPU_MAP_CACHE && BF_GPU_MAP_CACHE
     DiskCacheMgr::get().clear();
-    return BF_STATUS_SUCCESS;
-#else
-    return BF_STATUS_SUCCESS;
 #endif
+    return BF_STATUS_SUCCESS;
 }
