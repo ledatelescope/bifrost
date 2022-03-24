@@ -406,17 +406,17 @@ class DiskCacheMgr {
 	std::hash<std::string> _get_name;
 	
 	void tag_cache(void) {
-	    // NOTE:  Must be called from within a LockFile lock
-	    int rt, drv;
+		// NOTE:  Must be called from within a LockFile lock
+		int rt, drv;
 		cudaRuntimeGetVersion(&rt);
 		cudaDriverGetVersion(&drv);
-		
+
 		std::ofstream info;
 		
 		if( !file_exists(_cachedir + "cache.version") ) {
 		    try {
 		        info.open(_cachedir + "cache.version", std::ios::out);
-		        info << rt << " " << drv << endl;
+		        info << BF_GPU_MAP_CACHE_VERSION << " " << rt << " " << drv << endl;
 		        info.close();
 		    } catch( std::exception ) {}
 		}
@@ -425,7 +425,7 @@ class DiskCacheMgr {
 	void validate_cache(void) {
 		// NOTE:  Must be called from within a LockFile lock
 		bool status = true;
-		int rt, drv, cached_rt, cached_drv;
+		int rt, drv, cached_mc, cached_rt, cached_drv;
 		cudaRuntimeGetVersion(&rt);
 		cudaDriverGetVersion(&drv);
 		
@@ -435,15 +435,15 @@ class DiskCacheMgr {
 		    info.open(_cachedir + "cache.version", std::ios::in);
 		    
 		    // Read
-		    info >> cached_rt >> cached_drv;
+		    info >> cached_mc >> cached_rt >> cached_drv;
 		    
 		    // Close
 		    info.close();
 		} catch( std::exception ) {
-		    cached_rt = cached_drv = -1;
+		    cached_mc = cached_rt = cached_drv = -1;
 		}
 		
-		if( rt != cached_rt || drv != cached_drv ) {
+		if( BF_GPU_MAP_CACHE_VERSION != cached_mc || rt != cached_rt || drv != cached_drv ) {
 		    status = false;
 		}
 		

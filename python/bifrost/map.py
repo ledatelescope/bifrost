@@ -153,7 +153,9 @@ def list_map_cache():
         try:
             with open(os.path.join(cache_path, 'cache.version'), 'r') as fh:
                 version = fh.read()
-            runtime, driver = version.split(None, 1)
+            mapcache, runtime, driver = version.split(None, 2)
+            mapcache = int(mapcache, 10)
+            mapcache = "%i.%i" % (mapcache//1000, (mapcache//10) % 1000)
             runtime = int(runtime, 10)
             runtime = "%i.%i" % (runtime//1000, (runtime//10) % 1000)
             driver = int(driver, 10)
@@ -161,7 +163,7 @@ def list_map_cache():
             
             entries = glob.glob(os.path.join(cache_path, '*.inf'))
             
-            output += "\nCache version: %s (runtime), %s (driver)" % (runtime, driver)
+            output += "\nCache version: %s (map cache) %s (runtime), %s (driver)" % (mapcache, runtime, driver)
             output += "\nCache entries: %i" % len(entries)
         except OSError:
             pass
