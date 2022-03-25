@@ -32,16 +32,16 @@ import bifrost as bf
 
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
+_FIRST_TEST = True
+
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestMap(unittest.TestCase):
-    first_test = True
-    
     # TODO: @classmethod; def setUpClass(kls)
     def setUp(self):
         np.random.seed(1234)
-        if self.first_test:
+        if _FIRST_TEST:
             bf.clear_map_cache()
-            self.first_test = False
+            _FIRST_TEST = False
     def run_simple_test(self, x, funcstr, func):
         x_orig = x
         x = bf.asarray(x, 'cuda')
