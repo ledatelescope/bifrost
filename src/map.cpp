@@ -399,7 +399,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	return BF_STATUS_SUCCESS;
 }
 
-#if defined(BF_GPU_MAP_CACHE) && BF_GPU_MAP_CACHE
+#if defined(BF_MAP_KERNEL_DISK_CACHE) && BF_MAP_KERNEL_DISK_CACHE
 class DiskCacheMgr {
 	std::string            _cachedir;
 	std::string            _indexfile;
@@ -420,7 +420,7 @@ class DiskCacheMgr {
 		if( !file_exists(_cachedir + "cache.version") ) {
 		    try {
 		        info.open(_cachedir + "cache.version", std::ios::out);
-		        info << BF_GPU_MAP_CACHE_VERSION << " " << rt << " " << drv << endl;
+		        info << BF_MAP_KERNEL_DISK_CACHE_VERSION << " " << rt << " " << drv << endl;
 		        info.close();
 		    } catch( std::exception ) {}
 		}
@@ -447,7 +447,7 @@ class DiskCacheMgr {
 		    cached_mc = cached_rt = cached_drv = -1;
 		}
 		
-		if( BF_GPU_MAP_CACHE_VERSION != cached_mc || rt != cached_rt || drv != cached_drv ) {
+		if( BF_MAP_KERNEL_DISK_CACHE_VERSION != cached_mc || rt != cached_rt || drv != cached_drv ) {
 		    status = false;
 		}
 		
@@ -692,7 +692,7 @@ BFstatus bfMap(int                  ndim,
 	}
 	std::string cache_key = cache_key_ss.str();
 	
-#if defined(BF_GPU_MAP_CACHE) && BF_GPU_MAP_CACHE
+#if defined(BF_MAP_KERNEL_DISK_CACHE) && BF_MAP_KERNEL_DISK_CACHE
     DiskCacheMgr::get().load(&kernel_cache);
 #endif
 	
@@ -723,7 +723,7 @@ BFstatus bfMap(int                  ndim,
 		BF_TRY(kernel.set(kernel_name.c_str(), ptx.c_str()));
 		kernel_cache.insert(cache_key,
 		                    std::make_pair(kernel, basic_indexing_only));
-#if defined(BF_GPU_MAP_CACHE) && BF_GPU_MAP_CACHE
+#if defined(BF_MAP_KERNEL_DISK_CACHE) && BF_MAP_KERNEL_DISK_CACHE
 		DiskCacheMgr::get().save(cache_key, kernel_name, ptx, basic_indexing_only);
 #endif
 	}
@@ -789,7 +789,7 @@ BFstatus bfMap(int                  ndim,
 }
 
 BFstatus bfMapClearCache() {
-#if defined(BF_GPU_MAP_CACHE) && BF_GPU_MAP_CACHE
+#if defined(BF_MAP_KERNEL_DISK_CACHE) && BF_MAP_KERNEL_DISK_CACHE
     DiskCacheMgr::get().clear();
 #endif
     return BF_STATUS_SUCCESS;
