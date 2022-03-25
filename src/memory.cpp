@@ -120,8 +120,9 @@ class MappedMgr {
 		make_dir(_mapped_dir);
 	}
     ~MappedMgr() {
-        for(auto& x : _filenames) {
-            this->free(x.first);
+        while(! _filenames.empty() ) {
+            auto x = _filenames.begin();
+            this->free(x->first);
         }
         try {
             remove_all(_mapped_dir);
@@ -168,7 +169,7 @@ public:
             return 3;
         }
         
-	// Advise the kernel of how we'll use it
+	      // Advise the kernel of how we'll use it
         ::madvise(*data, size, MADV_SEQUENTIAL);
         
         // Save and return
