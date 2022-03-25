@@ -35,7 +35,7 @@
 #include <pwd.h>       // For getpwuid
 #include <system_error>
 
-#if defined __APPLE__ && __APPLE__
+#if defined(__APPLE__) && __APPLE__
 #include <sys/sysctl.h>
 #endif
 
@@ -72,7 +72,7 @@ inline bool file_exists(std::string path) {
 	         && errno == ENOENT);
 }
 inline bool process_exists(pid_t pid) {
-#if defined __APPLE__ && __APPLE__
+#if defined(__APPLE__) && __APPLE__
 
   // Based on information from:
 	//   https://developer.apple.com/library/archive/qa/qa2001/qa1123.html
