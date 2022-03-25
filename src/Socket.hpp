@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -137,6 +137,7 @@ client.send/recv_block/packet(...);
 #if defined __APPLE__ && __APPLE__
 
 #include <fcntl.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 
 #define SOCK_NONBLOCK O_NONBLOCK
@@ -609,7 +610,7 @@ void Socket::bind(sockaddr_storage local_address,
     // ... and work accordingly
     if( !multicast ) {
         // Normal address
-        check_error(::bind(_fd, (struct sockaddr*)&local_address, sizeof(local_address)),
+        check_error(::bind(_fd, (struct sockaddr*)&local_address, sizeof(struct sockaddr)),
                     "bind socket");
         if( _type == SOCK_STREAM ) {
             check_error(::listen(_fd, max_conn_queue),
