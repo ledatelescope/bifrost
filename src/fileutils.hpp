@@ -35,7 +35,7 @@
 #include <system_error>
 
 inline void make_dir(std::string path, int perms=775) {
-	if( std::system(("mkdir -p "+path+" -m "+std::to_string(perms)).c_str()) ) {
+	if( std::system(("mkdir -p -m "+std::to_string(perms)+" "+path).c_str()) ) {
 		throw std::runtime_error("Failed to create path: "+path);
 	}
 }
@@ -96,4 +96,3 @@ public:
 		flock(_fd, LOCK_UN);
 	}
 };
-
