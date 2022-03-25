@@ -37,7 +37,7 @@ import numpy as np
 import ctypes
 import glob
 import os
-from bifrost.libbifrost_generated import BF_GPU_MAP_CACHE
+from bifrost.libbifrost_generated import BF_MAP_KERNEL_DISK_CACHE
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -147,8 +147,8 @@ def map(func_string, data, axis_names=None, shape=None,
                      _array(block_shape), _array(block_axes)))
 
 def list_map_cache():
-    output = "Cache enabled: %s" % ('yes' if BF_GPU_MAP_CACHE else 'no')
-    if BF_GPU_MAP_CACHE:
+    output = "Cache enabled: %s" % ('yes' if BF_MAP_KERNEL_DISK_CACHE else 'no')
+    if BF_MAP_KERNEL_DISK_CACHE:
         cache_path = os.path.join(os.path.expanduser('~'), '.bifrost', 'map_cache')
         try:
             with open(os.path.join(cache_path, 'cache.version'), 'r') as fh:
