@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +34,10 @@
 #include <unistd.h>    // For getpid
 #include <system_error>
 
+#if defined(__APPLE__) && __APPLE__
+#include <sys/sysctl.h>
+#endif
+
 inline void make_dir(std::string path, int perms=775) {
 	if( std::system(("mkdir -p -m "+std::to_string(perms)+" "+path).c_str()) ) {
 		throw std::runtime_error("Failed to create path: "+path);
@@ -60,9 +64,40 @@ inline bool file_exists(std::string path) {
 	         && errno == ENOENT);
 }
 inline bool process_exists(pid_t pid) {
+#if defined(__APPLE__) && __APPLE__
+
+		// Based on information from:
+		//   https://developer.apple.com/library/archive/qa/qa2001/qa1123.html
+
+		static const int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
+		kinfo_proc *proclist = NULL;
+		int err, found = 0;
+		size_t len, count;
+		len = 0;
+		err = sysctl((int *) name, (sizeof(name) / sizeof(*name)) - 1,
+	               NULL, &len, NULL, 0);
+		if( err == 0 ) {
+			proclist = (kinfo_proc*) ::malloc(len);
+			err = sysctl((int *) name, (sizeof(name) / sizeof(*name)) - 1,
+	                 proclist, &len, NULL, 0);
+			if( err == 0 ) {
+				count = len / sizeof(kinfo_proc);
+				for(int i=0; i<count; i++) {
+					pid_t c_pid = proclist[i].kp_proc.p_pid;
+					if( c_pid == pid ) {
+						found = 1;
+						break;
+					}
+				}
+			}
+			::free(proclist);
+		}
+		return (bool) found;
+#else
 	struct stat s;
 	return !(stat(("/proc/"+std::to_string(pid)).c_str(), &s) == -1
 	         && errno == ENOENT);
+#endif
 }
 
 inline std::string get_dirname(std::string filename) {
