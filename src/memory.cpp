@@ -52,7 +52,7 @@ static_assert(BF_IS_POW2(BF_ALIGNMENT), "BF_ALIGNMENT must be a power of 2");
 #undef BF_IS_POW2
 //static_assert(BF_ALIGNMENT >= 8,        "BF_ALIGNMENT must be >= 8");
 
-#if defined __APPLE__ && __APPLE__
+#if defined(__APPLE__) && __APPLE__
 
 // Based on information from:
 //   https://hg.mozilla.org/mozilla-central/file/3d846420a907/xpcom/glue/FileUtils.cpp#l61
@@ -215,7 +215,7 @@ public:
 
 BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 	BF_ASSERT(ptr, BF_STATUS_INVALID_POINTER);
-#if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
+#if !defined(BF_CUDA_ENABLED) || !BF_CUDA_ENABLED
 	if( MappedMgr::get().is_mapped((void*) ptr) ) {
         *space = BF_SPACE_MAPPED;
     } else {
@@ -302,7 +302,7 @@ BFstatus bfMalloc(void** ptr, BFsize size, BFspace space) {
         BF_ASSERT(!err, BF_STATUS_MEM_ALLOC_FAILED);
         break;
     }
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 	case BF_SPACE_CUDA: {
 		BF_CHECK_CUDA(cudaMalloc((void**)&data, size),
 		              BF_STATUS_MEM_ALLOC_FAILED);
@@ -335,7 +335,7 @@ BFstatus bfFree(void* ptr, BFspace space) {
 	switch( space ) {
 	case BF_SPACE_SYSTEM:       ::free(ptr); break;
 	case BF_SPACE_MAPPED:       MappedMgr::get().free(ptr); break;
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 	case BF_SPACE_CUDA:         cudaFree(ptr); break;
 	case BF_SPACE_CUDA_HOST:    cudaFreeHost(ptr); break;
 	case BF_SPACE_CUDA_MANAGED: cudaFree(ptr); break;
@@ -356,22 +356,22 @@ BFstatus bfMemcpy(void*       dst,
 		//         than using cudaMemcpyDefault.
 		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		cudaMemcpyKind kind = cudaMemcpyDefault;
 #endif
 		switch( src_space ) {
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST: // fall-through
 #endif
 		case BF_SPACE_MAPPED: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA_HOST: // fall-through
 #endif
 			case BF_SPACE_MAPPED: // fall-through
 			case BF_SPACE_SYSTEM: ::memcpy(dst, src, count); return BF_STATUS_SUCCESS;
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
 			// Is this the right thing to do?
 			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
@@ -380,7 +380,7 @@ BFstatus bfMemcpy(void*       dst,
 			}
 			break;
 		}
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
@@ -397,7 +397,7 @@ BFstatus bfMemcpy(void*       dst,
 #endif
 		default: BF_FAIL("Valid bfMemcpy src space", BF_STATUS_INVALID_ARGUMENT);
 		}
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		BF_TRACE_STREAM(g_cuda_stream);
 		BF_CHECK_CUDA(cudaMemcpyAsync(dst, src, count, kind, g_cuda_stream),
 		              BF_STATUS_MEM_OP_FAILED);
@@ -435,22 +435,22 @@ BFstatus bfMemcpy2D(void*       dst,
 		//         than using cudaMemcpyDefault.
 		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		cudaMemcpyKind kind = cudaMemcpyDefault;
 #endif
 		switch( src_space ) {
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST: // fall-through
 #endif
 		case BF_SPACE_MAPPED: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA_HOST: // fall-through
 #endif
 			case BF_SPACE_MAPPED: // fall-through
 			case BF_SPACE_SYSTEM: memcpy2D(dst, dst_stride, src, src_stride, width, height); return BF_STATUS_SUCCESS;
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
 			// TODO: Is this the right thing to do?
 			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
@@ -459,7 +459,7 @@ BFstatus bfMemcpy2D(void*       dst,
 			}
 			break;
 		}
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
@@ -477,7 +477,7 @@ BFstatus bfMemcpy2D(void*       dst,
 #endif
 		default: BF_FAIL("Valid bfMemcpy2D src space", BF_STATUS_INVALID_ARGUMENT);
 		}
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		BF_TRACE_STREAM(g_cuda_stream);
 		BF_CHECK_CUDA(cudaMemcpy2DAsync(dst, dst_stride,
 		                                src, src_stride,
@@ -501,7 +501,7 @@ BFstatus bfMemset(void*   ptr,
 		switch( space ) {
 		case BF_SPACE_MAPPED: // fall-through
 		case BF_SPACE_SYSTEM:       ::memset(ptr, value, count); break;
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST:    ::memset(ptr, value, count); break;
 		case BF_SPACE_CUDA: // Fall-through
 		case BF_SPACE_CUDA_MANAGED: {
@@ -539,7 +539,7 @@ BFstatus bfMemset2D(void*   ptr,
 		switch( space ) {
 		case BF_SPACE_MAPPED: // fall-through
 		case BF_SPACE_SYSTEM:       memset2D(ptr, stride, value, width, height); break;
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST:    memset2D(ptr, stride, value, width, height); break;
 		case BF_SPACE_CUDA: // fall-through
 		case BF_SPACE_CUDA_MANAGED: {

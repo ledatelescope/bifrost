@@ -209,12 +209,12 @@ byteswap(T value, T* result) {
 }
 
 inline BFbool space_accessible_from(BFspace space, BFspace from) {
-#if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
+#if !defined(BF_CUDA_ENABLED) || !BF_CUDA_ENABLED
 	return ( (space == BF_SPACE_SYSTEM) 
 		 || (space == BF_SPACE_MAPPED) );
 #else
 	switch( from ) {
-#if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
+#if !defined(BF_CUDA_ENABLED) || !BF_CUDA_ENABLED
     case BF_CUDA_HOST: // fall-through
 #endif
     case BF_SPACE_MAPPED: // fall-through
