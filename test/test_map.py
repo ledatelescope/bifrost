@@ -39,6 +39,7 @@ class TestMap(unittest.TestCase):
     # TODO: @classmethod; def setUpClass(kls)
     def setUp(self):
         np.random.seed(1234)
+        global _FIRST_TEST
         if _FIRST_TEST:
             bf.clear_map_cache()
             _FIRST_TEST = False
