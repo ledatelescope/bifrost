@@ -143,7 +143,7 @@ class PBeamReader(object):
                'npol':     4,
                'complex':  False,
                'nbit':     32}
-        print("******** HDR:", hdr)
+        #print("******** HDR:", hdr)
         try:
             hdr_str = json.dumps(hdr).encode()
         except AttributeError:
@@ -258,7 +258,6 @@ class UDPIOTest(unittest.TestCase):
         # Compare
         ## Reorder to match what we sent out
         final = np.array(final, dtype=np.uint8)
-        print('tbn_final:', final.shape)
         final = final.reshape(-1,512,32,2)
         final = final.transpose(0,2,1,3).copy()
         final = bf.ndarray(shape=(final.shape[0],32,512), dtype='ci8', buffer=final.ctypes.data)
@@ -477,7 +476,6 @@ class UDPIOTest(unittest.TestCase):
         # Compare
         ## Reorder to match what we sent out
         final = np.array(final, dtype=np.float32)
-        print("final:", final.shape)
         final = final.reshape(-1,128*4,1)
         final = final.transpose(0,2,1).copy()
         ## Reduce to match the capture block size
