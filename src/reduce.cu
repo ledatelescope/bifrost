@@ -288,20 +288,24 @@ BFstatus reduce_itype_otype(BFarray const* in,
 	                          ndim > 2 ? out->strides[ndim-1-2] : 0,
 	                          0);
 	bool use_vec2_kernel = (
+		is_contiguous(in) &&
 		istride_reduce == 1 &&
 		reduce_size == 2 &&
 		istrides.x % 2 == 0 && istrides.y % 2 == 0 && istrides.z % 2 == 0);
 	//std::cout << istride_reduce << ", " << reduce_size << ", " << istrides.x << ", " << istrides.y << ", " << istrides.z << std::endl;
 	bool use_vec4_kernel = (
+		is_contiguous(in) &&
 		istride_reduce == 1 &&
 		reduce_size == 4 &&
 		istrides.x % 4 == 0 && istrides.y % 4 == 0 && istrides.z % 4 == 0);
 	bool use_vec8_kernel = (
+		is_contiguous(in) &&
 		sizeof(IType) <= 2 &&
 		istride_reduce == 1 &&
 		reduce_size == 8 &&
 		istrides.x % 8 == 0 && istrides.y % 8 == 0 && istrides.z % 8 == 0);
 	bool use_vec16_kernel = (
+		is_contiguous(in) &&
 		sizeof(IType) == 1 &&
 		istride_reduce == 1 &&
 		reduce_size == 16 &&
