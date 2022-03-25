@@ -3,7 +3,7 @@
     "A stream processing framework for high-throughput applications.";
 
   inputs.ctypesgen = {
-    url = "github:ctypesgen/ctypesgen";
+    url = "github:ctypesgen/ctypesgen/ctypesgen-1.0.2";
     flake = false;
   };
 
@@ -114,9 +114,8 @@
               ]);
           preBuild = lib.optionalString enablePython ''
             make -C python bifrost/libbifrost_generated.py
-            sed -i \
-                -e "s:^add_library_search_dirs(\[:&'$out/lib':" \
-                python/bifrost/libbifrost_generated.py
+            sed "s:\(load_library\)(\"bifrost\"):\1('$out/lib/libbifrost.so'):"\
+                -i python/bifrost/libbifrost_generated.py
           '';
           makeFlags =
             lib.optionals enableCuda [ "CUDA_LIBDIR64=$(CUDA_HOME)/lib" ];
@@ -135,14 +134,21 @@
           SETUPTOOLS_SCM_PRETEND_VERSION = version;
           src = inputs.ctypesgen;
           buildInputs = [ setuptools-scm toml ];
-          patchPhase =
+          postPatch =
             # Version detection in the absence of ‘git describe’ is broken,
             # even with an explicit VERSION file.
             ''
-              sed -i \
-                  -e 's/\(VERSION = \).*$/\1"${pname}-${version}"/' \
+              sed -e 's/\(VERSION = \).*$/\1"${pname}-${version}"/' \
                   -e 's/\(VERSION_NUMBER = \).*$/\1"${version}"/' \
-                  ctypesgen/version.py
+                  -i ctypesgen/version.py
+            '' +
+            # Test suite invokes ‘run.py’, replace that with actual script.
+            ''
+              sed -e "s:\(script = \).*:\1'${
+                placeholder "out"
+              }/bin/ctypesgen':" \
+                  -e "s:run\.py:ctypesgen:" \
+                  -i ctypesgen/test/testsuite.py
             '' +
             # At runtime, ctypesgen invokes ‘gcc -E’. It won’t be available in
             # the darwin stdenv so let's explicitly patch full path to gcc in
@@ -150,15 +156,15 @@
             # are also runs of gcc specified in test suite.
             ''
               sed -i 's:gcc -E:${gcc}/bin/gcc -E:' ctypesgen/options.py
-              sed -i 's:"gcc":"${gcc}/bin/gcc":' tests/ctypesgentest.py
             '' +
             # Some tests explicitly load ‘libm’ and ‘libc’. They won’t be
             # found on NixOS unless we patch in the ‘glibc’ path.
             lib.optionalString stdenv.isLinux ''
-              sed -i 's:libm.so.6:${glibc}/lib/libm.so.6:' tests/testsuite.py
-              sed -i 's:libc.so.6:${glibc}/lib/libc.so.6:' tests/testsuite.py
+              sed -e 's:libm.so.6:${glibc}/lib/&:' \
+                  -e 's:libc.so.6:${glibc}/lib/&:' \
+                  -i ctypesgen/test/testsuite.py
             '';
-          checkPhase = "python -m unittest -v tests/testsuite.py";
+          checkPhase = "python ctypesgen/test/testsuite.py";
         };
 
       pyOverlay = self: _: {

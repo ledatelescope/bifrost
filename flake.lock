@@ -3,15 +3,16 @@
     "ctypesgen": {
       "flake": false,
       "locked": {
-        "lastModified": 1645104802,
-        "narHash": "sha256-iZUJqyt2b1FAQIw5pAu9FUmyhp2Qtsu0aiQ/9QkUW/s=",
+        "lastModified": 1575761084,
+        "narHash": "sha256-0VuIufvB1TYK8EXSFr8EegNxxRxnoHsxEKQX9y7LOdY=",
         "owner": "ctypesgen",
         "repo": "ctypesgen",
-        "rev": "fd495e5edb2f69e5407774f8937a1d62cd33fe55",
+        "rev": "b7ccd0764ef7d74e9ad5816924950d05b47ecc8c",
         "type": "github"
       },
       "original": {
         "owner": "ctypesgen",
+        "ref": "ctypesgen-1.0.2",
         "repo": "ctypesgen",
         "type": "github"
       }
