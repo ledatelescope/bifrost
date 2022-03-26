@@ -32,6 +32,7 @@ LIBBIFROST_OBJS = \
   memory.o \
   affinity.o \
   cuda.o \
+  fileutils.o \
   ring.o \
   ring_impl.o \
   array.o \
