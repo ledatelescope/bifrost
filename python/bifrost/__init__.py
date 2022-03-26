@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -58,7 +58,7 @@ except ImportError:
     print("*************************************************************************")
     raise
 __author__     = "The Bifrost Authors"
-__copyright__  = "Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
+__copyright__  = "Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.\nCopyright (c) 2016, NVIDIA CORPORATION. All rights reserved."
 __credits__    = ["Ben Barsdell"]
 __license__    = "BSD 3-Clause"
 __maintainer__ = "Ben Barsdell"

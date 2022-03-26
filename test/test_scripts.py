@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2019, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
