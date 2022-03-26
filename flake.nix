@@ -114,9 +114,13 @@
               ]);
           preBuild = lib.optionalString enablePython ''
             make -C python bifrost/libbifrost_generated.py
-            sed "s:\(load_library\)(\"bifrost\"):\1('$out/lib/libbifrost.so'):"\
+            sed -e "s:^add_library_search_dirs(\[:&'$out/lib':" \
+                -e 's:name_formats = \["%s":&,"lib%s","lib%s.so":' \
                 -i python/bifrost/libbifrost_generated.py
           '';
+          # This can be a helpful addition to above sed; prints each path
+          # tried when loading library:
+          # -e "s:return self\.Lookup(path):print(path); &:" \
           makeFlags =
             lib.optionals enableCuda [ "CUDA_LIBDIR64=$(CUDA_HOME)/lib" ];
           preInstall = ''
