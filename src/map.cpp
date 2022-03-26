@@ -422,7 +422,7 @@ class DiskCacheMgr {
 		        info.open(_cachedir + "cache.version", std::ios::out);
 		        info << BF_MAP_KERNEL_DISK_CACHE_VERSION << " " << rt << " " << drv << endl;
 		        info.close();
-		    } catch( std::exception ) {}
+		    } catch( std::exception const& ) {}
 		}
 	}
 	
@@ -443,7 +443,7 @@ class DiskCacheMgr {
 		    
 		    // Close
 		    info.close();
-		} catch( std::exception ) {
+		} catch( std::exception const& ) {
 		    cached_mc = cached_rt = cached_drv = -1;
 		}
 		
@@ -456,7 +456,7 @@ class DiskCacheMgr {
 		        remove_file(_cachedir + "*.inf");
 		        remove_file(_cachedir + "*.ptx");
 		        remove_file(_cachedir + "cache.version");
-	        } catch( std::exception ) {}
+	        } catch( std::exception const& ) {}
 	    }
 	}
 	
@@ -497,7 +497,7 @@ class DiskCacheMgr {
 	        // Done
 	        index.close();
 	        cache.close();
-	    } catch( std::exception ) {}
+	    } catch( std::exception const& ) {}
 	}
 	
 	void load_from_disk(ObjectCache<std::string,std::pair<CUDAKernel,bool> > *kernel_cache) {
@@ -565,7 +565,7 @@ class DiskCacheMgr {
 		            	// Done
 	      	        index.close();
 	                cache.close();
-	            } catch( std::exception) {}
+	            } catch( std::exception const&) {}
 	        }
 	    }
 	    closedir(dir);
@@ -578,7 +578,7 @@ class DiskCacheMgr {
 	    try {
 		        remove_file(_cachedir + "*.inf");
 		        remove_file(_cachedir + "*.ptx");
-	        } catch( std::exception ) {}
+	        } catch( std::exception const& ) {}
 	}
 	
 	DiskCacheMgr()
