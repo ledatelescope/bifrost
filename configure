@@ -721,6 +721,7 @@ CUOBJDUMP
 NVPRUNE
 NVCC
 GPU_MAX_ARCH
+GPU_MIN_ARCH
 CUDA_VERSION
 HAVE_CUDA
 CUDA_HOME
@@ -19315,6 +19316,8 @@ fi
 
   CUDA_VERSION=0
 
+  GPU_MIN_ARCH=0
+
   GPU_MAX_ARCH=0
 
   if test "$enable_cuda" != "no"; then
@@ -19681,6 +19684,9 @@ printf "%s\n" "yes" >&6; }
     else
       as_fn_error $? "only '$ar_valid' are supported" "$LINENO" 5
     fi
+
+    ar_min_valid=$(echo $ar_valid | ${SED} -e 's/ .*//g;' )
+    GPU_MIN_ARCH=$ar_min_valid
 
     ar_max_valid=$(echo $ar_valid | ${SED} -e 's/.* //g;' )
     GPU_MAX_ARCH=$ar_max_valid

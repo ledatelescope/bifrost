@@ -343,7 +343,11 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	options.push_back("--device-as-default-execution-space");
 	options.push_back("--use_fast_math");
 	std::stringstream cc_ss;
+#if defined(BF_MAP_KERNEL_DISK_CACHE) && BF_MAP_KERNEL_DISK_CACHE
+	cc_ss << "compute_" << BF_GPU_MIN_ARCH;
+#else
 	cc_ss << "compute_" << get_cuda_device_cc();
+#endif
 	options.push_back("-arch="+cc_ss.str());
 	options.push_back("--restrict");
 	std::vector<const char*> options_c;
