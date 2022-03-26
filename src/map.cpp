@@ -464,6 +464,7 @@ class DiskCacheMgr {
 	    }
 	}
 	
+	// TODO:  Per arch. caches/files?  Compile to cubin and cache per arch.?
 	void write_to_disk(std::string  cache_key, 
                      std::string  kernel_name,
                      std::string  ptx,  
