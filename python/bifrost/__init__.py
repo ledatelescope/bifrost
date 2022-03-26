@@ -38,7 +38,7 @@ from bifrost import pipeline
 from bifrost import device
 from bifrost.ndarray import ndarray, asarray, empty_like, empty, zeros_like, zeros
 from bifrost import views
-from bifrost.map import map, clear_map_cache
+from bifrost.map import map, clear_map_cache, list_map_cache
 from bifrost.pipeline import Pipeline, get_default_pipeline, block_scope
 from bifrost import blocks
 from bifrost.block_chainer import BlockChainer
