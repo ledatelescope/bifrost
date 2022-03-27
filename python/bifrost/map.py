@@ -149,9 +149,10 @@ def map(func_string, data, axis_names=None, shape=None,
 def list_map_cache():
     output = "Cache enabled: %s" % ('yes' if BF_MAP_KERNEL_DISK_CACHE else 'no')
     if BF_MAP_KERNEL_DISK_CACHE:
-        cache_path = os.path.join(os.path.expanduser('~'), '.bifrost', 'map_cache')
+        cache_path = os.path.join(os.path.expanduser('~'), '.bifrost',
+                                  BF_MAP_KERNEL_DISK_CACHE_SUBDIR)
         try:
-            with open(os.path.join(cache_path, 'cache.version'), 'r') as fh:
+            with open(os.path.join(cache_path, _bf.BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE), 'r') as fh:
                 version = fh.read()
             mapcache, runtime, driver = version.split(None, 2)
             mapcache = int(mapcache, 10)

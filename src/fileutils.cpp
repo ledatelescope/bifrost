@@ -35,12 +35,18 @@ std::string get_home_dir(void) {
   }
 	return std::string(homedir);
 }
+
+/* NOTE: For convenience, these functions build a shell command and pass it to
+   system(). The PATH argument is not shell-quoted or otherwise sanitized, so
+   only use with program constants, not with data from command line or config
+   files. Might eventually implement these with C++/boost filesystem library. */
+
 void make_dir(std::string path, int perms) {
 	if( std::system(("mkdir -p -m "+std::to_string(perms)+" "+path).c_str()) ) {
 		throw std::runtime_error("Failed to create path: "+path);
 	}
 }
-void remove_all(std::string path) {
+void remove_files_recursively(std::string path) {
 	if( std::system(("rm -rf "+path).c_str()) ) {
 		throw std::runtime_error("Failed to remove all: "+path);
 	}
@@ -50,11 +56,13 @@ void remove_dir(std::string path) {
 		throw std::runtime_error("Failed to remove dir: "+path);
 	}
 }
-void remove_file(std::string path) {
+void remove_file_glob(std::string path) {
+  // Often, PATH contains wildcard, so this can't just be unlink system call.
 	if( std::system(("rm -f "+path).c_str()) ) {
 		throw std::runtime_error("Failed to remove file: "+path);
 	}
 }
+
 bool file_exists(std::string path) {
     struct stat s;
     return !(stat(path.c_str(), &s) == -1
@@ -102,6 +110,11 @@ std::string get_dirname(std::string filename) {
 	return filename.substr(0, filename.find_last_of("/"));
 }
 
+/* NOTE: In case of abnormal exit (such as segmentation fault or other signal),
+   the lock file will not be removed, and the next attempt to lock might busy-
+   wait until the file is manually deleted. If this is a common issue, we could
+   potentially write the PID into the lock file to help with tracking whether
+   the process died. */
 LockFile::LockFile(std::string lockfile) : _lockfile(lockfile) {
 	while( true ) {
 		_fd = open(_lockfile.c_str(), O_CREAT, 600);

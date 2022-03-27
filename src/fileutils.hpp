@@ -41,9 +41,9 @@
 
 std::string get_home_dir(void);
 void make_dir(std::string path, int perms=775);
-void remove_all(std::string path);
+void remove_files_recursively(std::string path);
 void remove_dir(std::string path);
-void remove_file(std::string path);
+void remove_file_glob(std::string path);
 bool file_exists(std::string path);
 bool process_exists(pid_t pid);
 

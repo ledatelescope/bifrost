@@ -421,9 +421,9 @@ class DiskCacheMgr {
 
 		std::ofstream info;
 		
-		if( !file_exists(_cachedir + "cache.version") ) {
+		if( !file_exists(_cachedir + BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE) ) {
 		    try {
-		        info.open(_cachedir + "cache.version", std::ios::out);
+		        info.open(_cachedir + BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE, std::ios::out);
 		        info << BF_MAP_KERNEL_DISK_CACHE_VERSION << " " << rt << " " << drv << endl;
 		        info.close();
 		    } catch( std::exception const& ) {}
@@ -440,7 +440,7 @@ class DiskCacheMgr {
 		std::ifstream info;
 		try {
 		    // Open
-		    info.open(_cachedir + "cache.version", std::ios::in);
+		    info.open(_cachedir + BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE, std::ios::in);
 		    
 		    // Read
 		    info >> cached_mc >> cached_rt >> cached_drv;
@@ -457,9 +457,9 @@ class DiskCacheMgr {
 		
 		if( !status ) {
 		    try {
-		        remove_file(_cachedir + "*.inf");
-		        remove_file(_cachedir + "*.ptx");
-		        remove_file(_cachedir + "cache.version");
+		        remove_file_glob(_cachedir + "*.inf");
+		        remove_file_glob(_cachedir + "*.ptx");
+		        remove_file_glob(_cachedir + BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE);
 	        } catch( std::exception const& ) {}
 	    }
 	}
@@ -581,13 +581,14 @@ class DiskCacheMgr {
 		LockFile lock(_cachedir + ".lock");
 		
 	    try {
-		        remove_file(_cachedir + "*.inf");
-		        remove_file(_cachedir + "*.ptx");
+		        remove_file_glob(_cachedir + "*.inf");
+		        remove_file_glob(_cachedir + "*.ptx");
 	        } catch( std::exception const& ) {}
 	}
 	
 	DiskCacheMgr()
-		: _cachedir(get_home_dir()+"/.bifrost/map_cache/"), _loaded(false) {
+		: _cachedir(get_home_dir()+"/.bifrost/"+BF_MAP_KERNEL_DISK_CACHE_SUBDIR+"/"),
+		  _loaded(false) {
 				make_dir(_cachedir);
 	}
 public:
