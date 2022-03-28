@@ -33,8 +33,16 @@ from itertools import permutations
 
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED, BF_FLOAT128_ENABLED
 
+_FIRST_TEST = True
+
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TransposeTest(unittest.TestCase):
+    # TODO: @classmethod; def setUpClass(kls)
+    def setUp(self):
+        global _FIRST_TEST
+        if _FIRST_TEST:
+            bf.clear_map_cache()
+            _FIRST_TEST = False
     def run_simple_test(self, axes, dtype, shape):
         n = reduce(lambda a,b:a*b, shape)
         idata = (np.arange(n).reshape(shape) % 251).astype(dtype)

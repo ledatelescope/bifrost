@@ -706,6 +706,7 @@ PYINSTALLFLAGS
 PYBUILDFLAGS
 PYTHON
 HAVE_PYTHON
+HAVE_MAP_CACHE
 HAVE_CUDA_DEBUG
 enable_native_arch
 HAVE_TRACE
@@ -720,6 +721,7 @@ CUOBJDUMP
 NVPRUNE
 NVCC
 GPU_MAX_ARCH
+GPU_MIN_ARCH
 CUDA_VERSION
 HAVE_CUDA
 CUDA_HOME
@@ -847,6 +849,7 @@ enable_debug
 enable_trace
 enable_native_arch
 enable_cuda_debug
+enable_map_cache
 enable_python
 with_python
 with_pybuild_flags
@@ -1515,6 +1518,7 @@ Optional Features:
   --enable-trace          enable tracing mode for nvprof/nvvp (default=no)
   --disable-native-arch   disable native architecture compilation (default=no)
   --enable-cuda-debug     enable CUDA debugging (nvcc -G; default=no)
+  --disable-map-cache     disable caching bifrost.map kernels (default=no)
   --disable-python        disable building the Python bindings (default=no)
   --disable-doxygen-doc   don't generate any doxygen documentation
   --enable-doxygen-dot    generate graphics for doxygen documentation
@@ -19312,6 +19316,8 @@ fi
 
   CUDA_VERSION=0
 
+  GPU_MIN_ARCH=0
+
   GPU_MAX_ARCH=0
 
   if test "$enable_cuda" != "no"; then
@@ -19679,6 +19685,9 @@ printf "%s\n" "yes" >&6; }
       as_fn_error $? "only '$ar_valid' are supported" "$LINENO" 5
     fi
 
+    ar_min_valid=$(echo $ar_valid | ${SED} -e 's/ .*//g;' )
+    GPU_MIN_ARCH=$ar_min_valid
+
     ar_max_valid=$(echo $ar_valid | ${SED} -e 's/.* //g;' )
     GPU_MAX_ARCH=$ar_max_valid
 
@@ -19936,6 +19945,22 @@ then :
   HAVE_CUDA_DEBUG=1
 
        NVCCFLAGS="$NVCCFLAGS -G"
+fi
+
+# Check whether --enable-map_cache was given.
+if test ${enable_map_cache+y}
+then :
+  enableval=$enable_map_cache; enable_map_cache=no
+else $as_nop
+  enable_map_cache=yes
+fi
+
+HAVE_MAP_CACHE=0
+
+if test x$enable_map_cache != xno
+then :
+  HAVE_MAP_CACHE=$HAVE_CUDA
+
 fi
 
 #
@@ -24800,6 +24825,11 @@ fi
 if test x$HAVE_FLOAT128 != x0
 then :
   OPTIONS="$OPTIONS float128"
+
+fi
+if test x$enable_map_cache != xno
+then :
+  OPTIONS="$OPTIONS map_cache"
 
 fi
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: options:$OPTIONS" >&5
