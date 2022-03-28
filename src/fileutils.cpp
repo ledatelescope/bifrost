@@ -30,9 +30,9 @@
 
 std::string get_home_dir(void) {
 	const char *homedir;
-  if ((homedir = getenv("HOME")) == NULL) {
-    homedir = getpwuid(getuid())->pw_dir;
-  }
+	if ((homedir = getenv("HOME")) == NULL) {
+		homedir = getpwuid(getuid())->pw_dir;
+	}
 	return std::string(homedir);
 }
 
