@@ -71,6 +71,9 @@ jobs:
 
       - name: Deploy documentation to gh-pages
         uses: JamesIves/github-pages-deploy-action@v4.2.5
+        # Change github.ref below to master after #162 merged.  Might
+        # only deploy if changes in doc/ folder?  (But some doc pages
+        # generated from code, so maybe should reflect code changes.)
         if: |
           matrix.os == 'ubuntu-latest'
           && matrix.nixpkgs == 'pinned'
