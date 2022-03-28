@@ -42,9 +42,27 @@ try:
     import pycuda.driver as cuda
     import pycuda.autoinit
     import pycuda.gpuarray
+    import pycuda.driver
     HAVE_PYCUDA = True
 except ImportError:
     HAVE_PYCUDA = False
+
+class BifrostStreamManager(object):
+    def __init__(self, stream):
+        self._stream = stream
+        
+    def __enter__(self):
+        self._orig_stream = bf.device.get_stream()
+        stream = getattr(self._stream, 'ptr', None)
+        if stream is None:
+            stream = getattr(self._stream, 'handle', None)
+        if stream is None:
+            stream = self._stream
+        bf.device.set_stream(stream)
+        return self
+        
+    def __exit__(self, type, value, tb):
+        bf.device.set_stream(self._orig_stream)
 
 @unittest.skipUnless(BF_CUDA_ENABLED and HAVE_CUPY, "requires GPU support and cupy")
 class TestCuPy(unittest.TestCase):
@@ -68,22 +86,21 @@ class TestCuPy(unittest.TestCase):
         np_data = bf_data.copy(space='system')
         np.testing.assert_allclose(np_data, data)
         
-    def test_cupy_stream(self):
+    def test_stream(self):
         data = self.create_data()
         
         orig_stream = bf.device.get_stream()
         with cp.cuda.Stream() as stream:
-            bf.device.set_stream(stream.ptr)
-            self.assertEqual(bf.device.get_stream(), stream.ptr)
-            
-            bf_data = bf.ndarray(data, space='cuda')
-            bf.map('a = a + 2', {'a': bf_data})
-            cp_data = bf_data.as_cupy()
-            cp_data *= 4
-            np_data = cp.asnumpy(cp_data)
-        bf.device.set_stream(orig_stream)
+            with BifrostStreamManager(stream):
+                self.assertEqual(bf.device.get_stream(), stream.ptr)
+                
+                bf_data = bf.ndarray(data, space='cuda')
+                bf.map('a = a + 2', {'a': bf_data})
+                cp_data = bf_data.as_cupy()
+                cp_data *= 4
+                np_data = cp.asnumpy(cp_data)
         np.testing.assert_allclose(np_data, (data+2)*4)
-    def test_cupy_external_stream(self):
+    def test_external_stream(self):
         data = self.create_data()
         
         stream = bf.device.get_stream()
@@ -118,3 +135,18 @@ class TestPyCUDA(unittest.TestCase):
         bf_data = bf.ndarray(pc_data)
         np_data = bf_data.copy(space='system')
         np.testing.assert_allclose(np_data, data)
+        
+    def test_stream(self):
+        data = self.create_data()
+        
+        orig_stream = bf.device.get_stream()
+        stream = pycuda.driver.Stream()
+        with BifrostStreamManager(stream):
+            self.assertEqual(bf.device.get_stream(), stream.handle)
+            
+            bf_data = bf.ndarray(data, space='cuda')
+            bf.map('a = a + 2', {'a': bf_data})
+            cp_data = bf_data.as_cupy()
+            cp_data *= 4
+            np_data = cp.asnumpy(cp_data)
+        np.testing.assert_allclose(np_data, (data+2)*4)
