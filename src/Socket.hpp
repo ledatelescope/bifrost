@@ -282,8 +282,8 @@ public:
 	// Manage an existing socket (usually one returned by Socket::accept())
 	// TODO: With C++11 this could return by value (moved), which would be nicer
 	inline static Socket* manage(int fd) { return new Socket(fd, ManageTag()); }
-	inline explicit       Socket(/*sock_type*/int type=SOCK_DGRAM)
-		: _fd(-1), _type((sock_type)type), _family(AF_UNSPEC),
+	inline explicit       Socket(sock_type type=BF_SOCK_DGRAM)
+		: _fd(-1), _type(type), _family(AF_UNSPEC),
 		  _mode(Socket::MODE_CLOSED) {}
 	
 	virtual ~Socket() { this->close(); }
@@ -552,7 +552,7 @@ std::string Socket::address_string(sockaddr_storage addr) {
 	}
 }
 int Socket::discover_mtu(sockaddr_storage remote_address) {
-  Socket s(SOCK_DGRAM);
+  Socket s(BF_SOCK_DGRAM);
 	s.connect(remote_address);
 #if defined __APPLE__ && __APPLE__
   return ::get_mtu(s.get_fd());
@@ -581,7 +581,7 @@ void Socket::bind(sockaddr_storage local_address,
 	
 	check_error(::bind(_fd, (struct sockaddr*)&local_address, sizeof(local_address)),
 	            "bind socket");
-	if( _type == SOCK_STREAM ) {
+	if( _type == BF_SOCK_STREAM ) {
 		check_error(::listen(_fd, max_conn_queue),
 		            "set socket to listen");
 		_mode = Socket::MODE_LISTENING;
@@ -593,7 +593,7 @@ void Socket::bind(sockaddr_storage local_address,
 // TODO: Add timeout support? Bit of a pain to implement.
 void Socket::connect(sockaddr_storage remote_address) {
 	bool can_reuse = (_fd != -1 &&
-	                  _type == SOCK_DGRAM &&
+	                  _type == BF_SOCK_DGRAM &&
 	                  (remote_address.ss_family == AF_UNSPEC ||
 	                   remote_address.ss_family == _family));
 	if( !can_reuse ) {
