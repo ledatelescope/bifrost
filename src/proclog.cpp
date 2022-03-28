@@ -60,7 +60,7 @@ class ProcLogMgr {
 				if( pid && !process_exists(pid) ) {
 					try {
 						remove_files_recursively(std::string(base_logdir) + "/" +
-																		 std::to_string(pid));
+									 std::to_string(pid));
 					} catch( std::exception& ) {}
 				}
 			}
