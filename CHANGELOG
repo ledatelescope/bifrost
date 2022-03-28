@@ -1,5 +1,6 @@
 0.10.1
  * Cleaned up the Makefile outputs
+ * Added support for configurable, reproducible building with nix
 
 0.10.0
  * Switched over to an autotools-based build system
