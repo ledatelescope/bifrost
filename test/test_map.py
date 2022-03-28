@@ -25,11 +25,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import sys
 import ctypes
 import unittest
 import numpy as np
 import bifrost as bf
-
+try:
+    from io import StringIO
+except ImportError:
+    from StringIO import StringIO
+    
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 _FIRST_TEST = True
@@ -227,3 +232,15 @@ class TestMap(unittest.TestCase):
         a = a.copy('system')
         b = b.copy('system')
         np.testing.assert_equal(b, a[:,j,:])
+    def test_list_cache(self):
+        # TODO: would be nicer as a context manager, something like
+        #       contextlib.redirect_stdout
+        orig_stdout = sys.stdout
+        new_stdout = StringIO()
+        sys.stdout = new_stdout
+        
+        try:
+            bf.list_map_cache()
+        finally:
+            sys.stdout = orig_stdout
+            new_stdout.close()
