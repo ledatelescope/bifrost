@@ -42,8 +42,8 @@ LIBBIFROST_OBJS = \
 ifeq ($(HAVE_RECVMSG),1)
   # These files require recvmsg to compile
   LIBBIFROST_OBJS += \
-	address.o \
-	udp_socket.o \
+  address.o \
+  udp_socket.o \
   udp_capture.o \
   udp_transmit.o
 endif
