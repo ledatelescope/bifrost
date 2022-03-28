@@ -1,4 +1,5 @@
 0.10.1
+ * Cleaned up the Makefile outputs
  * Added a disk cache for bifrost.map calls
 
 0.10.0
