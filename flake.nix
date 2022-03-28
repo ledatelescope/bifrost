@@ -74,11 +74,6 @@
             python3.pkgs.simplejson
           ];
           patchPhase =
-            # Remove usage of \r and tput; not conducive to build logs.
-            ''
-              sed -i -e 's:\\r::g' -e 's:echo -n:echo:' \
-                  -e 's:\(CLEAR_LINE = \).*:\1:' src/autodep.mk src/Makefile.in
-            '' +
             # libtool wants file command, and refers to it in /usr/bin
             ''
               sed -i 's:/usr/bin/file:${file}/bin/file:' configure
