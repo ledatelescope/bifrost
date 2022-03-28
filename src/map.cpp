@@ -38,10 +38,6 @@ bfMap(3, c.shape, {"dm", "t"},
 // This enables print-out of generated source and PTX
 //#define BF_DEBUG_RTC 1
 
-#ifndef BF_MAP_KERNEL_CACHE_SIZE
-#define BF_MAP_KERNEL_CACHE_SIZE 128
-#endif
-
 #include <bifrost/config.h>
 #include <bifrost/map.h>
 #include "fileutils.hpp"

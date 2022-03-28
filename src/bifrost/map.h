@@ -93,6 +93,7 @@ BFstatus bfMap(int                  ndim,
 
 BFstatus bfMapClearCache();
 
+#define BF_MAP_KERNEL_CACHE_SIZE 128
 #define BF_MAP_KERNEL_DISK_CACHE_SUBDIR "map_cache"
 #define BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE "cache.version"
 
