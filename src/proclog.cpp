@@ -59,8 +59,8 @@ class ProcLogMgr {
 				pid_t pid = atoi(ep->d_name);
 				if( pid && !process_exists(pid) ) {
 					try {
-						remove_all(std::string(base_logdir) + "/" +
-							   std::to_string(pid));
+						remove_files_recursively(std::string(base_logdir) + "/" +
+									 std::to_string(pid));
 					} catch( std::exception& ) {}
 				}
 			}
@@ -78,7 +78,7 @@ class ProcLogMgr {
 	}
 	~ProcLogMgr() {
 		try {
-			remove_all(_logdir);
+			remove_files_recursively(_logdir);
 			this->try_base_logdir_cleanup();
 		} catch( std::exception& ) {}
 	}
@@ -129,7 +129,7 @@ public:
 	}
 	void destroy_log(std::string filename) {
 		std::lock_guard<std::mutex> lock(_mutex);
-		remove_file(filename);
+		remove_file_glob(filename);
 		_logs.erase(filename);
 	}
 	void update_log_s(std::string filename, const char* str) {

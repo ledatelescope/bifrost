@@ -206,13 +206,21 @@ AS_IF([test x$enable_cuda_debug != xno],
       [AC_SUBST([HAVE_CUDA_DEBUG], [1])
        NVCCFLAGS="$NVCCFLAGS -G"])
 
-
 AC_ARG_WITH([mapped_ring_dir],
             [AS_HELP_STRING([--with-mapped-ring-dir=...],
                             [directory to store mapped ring files in (default=/tmp/bifrost_mapped)])],
             [],
             [mapped_ring_dir=/tmp/bifrost_mapped])
 AC_SUBST([MAPPED_RING_DIR], [$mapped_ring_dir])
+
+AC_ARG_ENABLE([map_cache],
+              [AS_HELP_STRING([--disable-map-cache],
+                              [disable caching bifrost.map kernels (default=no)])],
+              [enable_map_cache=no],
+              [enable_map_cache=yes])
+AC_SUBST([HAVE_MAP_CACHE], [0])
+AS_IF([test x$enable_map_cache != xno],
+      [AC_SUBST([HAVE_MAP_CACHE], [$HAVE_CUDA])])
 
 #
 # Python
@@ -353,6 +361,8 @@ AS_IF([test x$enable_native_arch != xno],
       [AC_SUBST([OPTIONS], ["$OPTIONS native"])])
 AS_IF([test x$HAVE_FLOAT128 != x0],
       [AC_SUBST([OPTIONS], ["$OPTIONS float128"])])
+AS_IF([test x$enable_map_cache != xno],
+      [AC_SUBST([OPTIONS], ["$OPTIONS map_cache"])])
 AC_MSG_NOTICE(options:$OPTIONS)
       
 echo ""

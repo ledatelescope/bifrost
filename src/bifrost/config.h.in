@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2021, The University of New Mexico. All rights reserved.
+ * Copyright (c) 2021-2022, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2021-2022, The University of New Mexico. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,9 +45,12 @@ extern "C" {
 #define BF_CUDA_ENABLED @HAVE_CUDA@
 #define BF_CUDA_VERSION @CUDA_VERSION@
 #define BF_GPU_ARCHS "@GPU_ARCHS@"
+#define BF_GPU_MIN_ARCH @GPU_MIN_ARCH@
 #define BF_GPU_MAX_ARCH @GPU_MAX_ARCH@
 #define BF_GPU_SHAREDMEM @GPU_SHAREDMEM@
 #define BF_GPU_MANAGEDMEM @GPU_PASCAL_MANAGEDMEM@
+#define BF_MAP_KERNEL_DISK_CACHE @HAVE_MAP_CACHE@
+#define BF_MAP_KERNEL_DISK_CACHE_VERSION (1000*@PACKAGE_VERSION_MAJOR@ + 10*@PACKAGE_VERSION_MINOR@)
 
 // Features
 #define BF_FLOAT128_ENABLED @HAVE_FLOAT128@

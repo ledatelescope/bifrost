@@ -1,6 +1,6 @@
 
-# Copyright (c) 2021, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2021, The University of New Mexico. All rights reserved.
+# Copyright (c) 2021-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2021-2022, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
