@@ -994,7 +994,7 @@ public:
       while( _verbs.pkt_batch == NULL ) {
           try {
               _verbs.pkt_batch = this->receive();
-          } catch(Verbs::Error) {
+          } catch(Verbs::Error const&) {
               _verbs.pkt = NULL;
               errno = EAGAIN;
               return -1;
