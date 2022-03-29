@@ -1,6 +1,7 @@
 0.10.1
  * Cleaned up the Makefile outputs
  * Added a disk cache for bifrost.map calls
+ * Added support for configurable, reproducible builds with nix
 
 0.10.0
  * Switched over to an autotools-based build system
