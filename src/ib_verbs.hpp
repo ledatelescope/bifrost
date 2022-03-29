@@ -185,7 +185,10 @@ class Verbs {
             if( strncmp(&(line[0]), "lo", 2) == 0 ) {
                 is_lo = 1;
             }
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wstringop-truncation"
             strncpy(name, &(line[0]), IFNAMSIZ);
+            #pragma GCC diagnostic pop
         }
         pclose(fp);
         
@@ -197,7 +200,10 @@ class Verbs {
                 if( line[strlen(line)-1] == '\n' ) {
                     line[strlen(line)-1] = '\0';
                 } 
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wstringop-truncation"
                 strncpy(name, &(line[0]), IFNAMSIZ);
+                #pragma GCC diagnostic pop
             }
             pclose(fp);
         }
