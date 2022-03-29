@@ -62,7 +62,7 @@ def get_stream():
 
 class ExternalStream(object):
     """Context manager to use a stream created by outside of Bifrost"""
-    def __init__(stream):
+    def __init__(self, stream):
         self._stream = stream
     def __del__(self):
         try:
