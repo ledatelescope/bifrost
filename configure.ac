@@ -227,6 +227,10 @@ AC_ARG_ENABLE([python],
 AC_SUBST([HAVE_PYTHON], [0])
 AS_IF([test x$enable_python != xno],
       [AX_WITH_PROG(PYTHON, python, no, $PATH)
+       AS_IF([test x${PYTHON} = xno],
+             [AC_PATH_PROG(PYTHON3, python3, no, $PATH)
+              AS_IF([test x${PYTHON3} != xno],
+                    [AC_SUBST([PYTHON], [$PYTHON3])])])
        AS_IF([test x${PYTHON} != xno],
              [AC_MSG_CHECKING([whether $PYTHON as ctypesgen])
               AS_IF([! ${PYTHON} -c "import ctypesgen" 2>/dev/null],
