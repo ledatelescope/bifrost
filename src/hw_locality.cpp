@@ -27,6 +27,7 @@
  */
 
 #include "hw_locality.hpp"
+#include  <stdexcept>
 
 #if BF_HWLOC_ENABLED
 int HardwareLocality::bind_memory_to_core(int core) {
@@ -35,7 +36,14 @@ int HardwareLocality::bind_memory_to_core(int core) {
     int ret = 0;
     if( 0 <= core && core < ncore ) {
         hwloc_obj_t    obj    = hwloc_get_obj_by_depth(_topo, core_depth, core);
+#if HWLOC_API_VERSION >= 0x00020000
+        hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->cpuset);
+        if( !hwloc_bitmap_intersects(cpuset, hwloc_topology_get_allowed_cpuset(_topo)) ) {
+          throw std::runtime_error("requested core is not in the list of allowed cores");
+        }
+#else
         hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->allowed_cpuset);
+#endif
         hwloc_bitmap_singlify(cpuset); // Avoid hyper-threads
         hwloc_membind_policy_t policy = HWLOC_MEMBIND_BIND;
         hwloc_membind_flags_t  flags  = HWLOC_MEMBIND_THREAD;
