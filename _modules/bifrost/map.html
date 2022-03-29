@@ -32,7 +32,7 @@
             
   <h1>Source code for bifrost.map</h1><div class="highlight"><pre>
 <span></span>
-<span class="c1"># Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.</span>
+<span class="c1"># Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.</span>
 <span class="c1">#</span>
 <span class="c1"># Redistribution and use in source and binary forms, with or without</span>
 <span class="c1"># modification, are permitted provided that the following conditions</span>
@@ -68,6 +68,9 @@
 <span class="kn">from</span> <span class="nn">bifrost.ndarray</span> <span class="kn">import</span> <span class="n">asarray</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">ctypes</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">bifrost.libbifrost_generated</span> <span class="kn">import</span> <span class="n">BF_MAP_KERNEL_DISK_CACHE</span>
 
 <span class="kn">from</span> <span class="nn">bifrost</span> <span class="kn">import</span> <span class="n">telemetry</span>
 <span class="n">telemetry</span><span class="o">.</span><span class="n">track_module</span><span class="p">()</span>
@@ -175,6 +178,35 @@
                      <span class="n">narg</span><span class="p">,</span> <span class="n">_array</span><span class="p">(</span><span class="n">args</span><span class="p">),</span> <span class="n">_array</span><span class="p">(</span><span class="n">arg_names</span><span class="p">),</span>
                      <span class="n">func_name</span><span class="p">,</span> <span class="n">func_string</span><span class="p">,</span> <span class="n">extra_code</span><span class="p">,</span>
                      <span class="n">_array</span><span class="p">(</span><span class="n">block_shape</span><span class="p">),</span> <span class="n">_array</span><span class="p">(</span><span class="n">block_axes</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="list_map_cache"><a class="viewcode-back" href="../../bifrost.html#bifrost.map.list_map_cache">[docs]</a><span class="k">def</span> <span class="nf">list_map_cache</span><span class="p">():</span>
+    <span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;Cache enabled: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="s1">&#39;yes&#39;</span> <span class="k">if</span> <span class="n">BF_MAP_KERNEL_DISK_CACHE</span> <span class="k">else</span> <span class="s1">&#39;no&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">BF_MAP_KERNEL_DISK_CACHE</span><span class="p">:</span>
+        <span class="n">cache_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~&#39;</span><span class="p">),</span> <span class="s1">&#39;.bifrost&#39;</span><span class="p">,</span>
+                                  <span class="n">_bf</span><span class="o">.</span><span class="n">BF_MAP_KERNEL_DISK_CACHE_SUBDIR</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache_path</span><span class="p">,</span> <span class="n">_bf</span><span class="o">.</span><span class="n">BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE</span><span class="p">),</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+                <span class="n">version</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="n">mapcache</span><span class="p">,</span> <span class="n">runtime</span><span class="p">,</span> <span class="n">driver</span> <span class="o">=</span> <span class="n">version</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">mapcache</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">mapcache</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="n">mapcache</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%i</span><span class="s2">.</span><span class="si">%i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">mapcache</span><span class="o">//</span><span class="mi">1000</span><span class="p">,</span> <span class="p">(</span><span class="n">mapcache</span><span class="o">//</span><span class="mi">10</span><span class="p">)</span> <span class="o">%</span> <span class="mi">1000</span><span class="p">)</span>
+            <span class="n">runtime</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">runtime</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="n">runtime</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%i</span><span class="s2">.</span><span class="si">%i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">runtime</span><span class="o">//</span><span class="mi">1000</span><span class="p">,</span> <span class="p">(</span><span class="n">runtime</span><span class="o">//</span><span class="mi">10</span><span class="p">)</span> <span class="o">%</span> <span class="mi">1000</span><span class="p">)</span>
+            <span class="n">driver</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">driver</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="n">driver</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%i</span><span class="s2">.</span><span class="si">%i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">driver</span><span class="o">//</span><span class="mi">1000</span><span class="p">,</span> <span class="p">(</span><span class="n">driver</span><span class="o">//</span><span class="mi">10</span><span class="p">)</span> <span class="o">%</span> <span class="mi">1000</span><span class="p">)</span>
+            
+            <span class="n">entries</span> <span class="o">=</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache_path</span><span class="p">,</span> <span class="s1">&#39;*.inf&#39;</span><span class="p">))</span>
+            
+            <span class="n">output</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Cache version: </span><span class="si">%s</span><span class="s2"> (map cache) </span><span class="si">%s</span><span class="s2"> (runtime), </span><span class="si">%s</span><span class="s2"> (driver)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">mapcache</span><span class="p">,</span> <span class="n">runtime</span><span class="p">,</span> <span class="n">driver</span><span class="p">)</span>
+            <span class="n">output</span> <span class="o">+=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Cache entries: </span><span class="si">%i</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="k">pass</span>
+            
+    <span class="nb">print</span><span class="p">(</span><span class="n">output</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="clear_map_cache"><a class="viewcode-back" href="../../bifrost.html#bifrost.map.clear_map_cache">[docs]</a><span class="k">def</span> <span class="nf">clear_map_cache</span><span class="p">():</span>
+    <span class="n">_check</span><span class="p">(</span><span class="n">_bf</span><span class="o">.</span><span class="n">bfMapClearCache</span><span class="p">())</span></div>
 </pre></div>
 
           </div>
