@@ -1,6 +1,7 @@
 0.10.1
  * Cleaned up the Makefile outputs
  * Added a disk cache for bifrost.map calls
+ * Added support for a new 'mapped' ring space which is backed by a file on disk
 
 0.10.0
  * Switched over to an autotools-based build system
