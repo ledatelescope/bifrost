@@ -16,6 +16,7 @@ AC_DEFUN([AX_CHECK_CUDA],
   
   AC_SUBST([HAVE_CUDA], [0])
   AC_SUBST([CUDA_VERSION], [0])
+  AC_SUBST([GPU_MIN_ARCH], [0])
   AC_SUBST([GPU_MAX_ARCH], [0])
   if test "$enable_cuda" != "no"; then
     AC_SUBST([HAVE_CUDA], [1])
@@ -165,6 +166,8 @@ AC_DEFUN([AX_CHECK_CUDA],
       AC_MSG_ERROR(only '$ar_valid' are supported)
     fi
     
+    ar_min_valid=$(echo $ar_valid | ${SED} -e 's/ .*//g;' )
+    AC_SUBST([GPU_MIN_ARCH], [$ar_min_valid])
     ar_max_valid=$(echo $ar_valid | ${SED} -e 's/.* //g;' )
     AC_SUBST([GPU_MAX_ARCH], [$ar_max_valid])
 

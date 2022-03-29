@@ -30,111 +30,17 @@
 #include <bifrost/proclog.h>
 #include "trace.hpp"
 #include "proclog.hpp"
+#include "fileutils.hpp"
 
 #include <fstream>
 #include <cstdlib>     // For system
 #include <cstdarg>     // For va_start, va_list, va_end
-#include <sys/file.h>  // For flock
-#include <sys/stat.h>  // For fstat
 #include <sys/types.h> // For getpid
 #include <dirent.h>    // For opendir, readdir, closedir
 #include <unistd.h>    // For getpid
 #include <system_error>
 #include <set>
 #include <mutex>
-
-#if defined __APPLE__ && __APPLE__
-#include <sys/sysctl.h>
-#endif
-
-void make_dir(std::string path, int perms=775) {
-	if( std::system(("mkdir -p "+path+" -m "+std::to_string(perms)).c_str()) ) {
-		throw std::runtime_error("Failed to create path: "+path);
-	}
-}
-void remove_all(std::string path) {
-	if( std::system(("rm -rf "+path).c_str()) ) {
-		throw std::runtime_error("Failed to remove all: "+path);
-	}
-}
-void remove_dir(std::string path) {
-	if( std::system(("rmdir "+path+" 2> /dev/null").c_str()) ) {
-		throw std::runtime_error("Failed to remove dir: "+path);
-	}
-}
-void remove_file(std::string path) {
-	if( std::system(("rm -f "+path).c_str()) ) {
-		throw std::runtime_error("Failed to remove file: "+path);
-	}
-}
-bool process_exists(pid_t pid) {
-#if defined __APPLE__ && __APPLE__
-
-  // Based on information from:
-	//   https://developer.apple.com/library/archive/qa/qa2001/qa1123.html
-	
-  static const int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
-	kinfo_proc *proclist = NULL;
-	int err, found = 0;
-	size_t len, count;
-	len = 0;
-	err = sysctl((int *) name, (sizeof(name) / sizeof(*name)) - 1,
-               NULL, &len, NULL, 0);
-	if( err == 0 ) {
-		proclist = (kinfo_proc*) ::malloc(len);
-		err = sysctl((int *) name, (sizeof(name) / sizeof(*name)) - 1,
-                 proclist, &len, NULL, 0);
-		if( err == 0 ) {
-			count = len / sizeof(kinfo_proc);
-			for(int i=0; i<count; i++) {
-				pid_t c_pid = proclist[i].kp_proc.p_pid;
-				if( c_pid == pid ) {
-					found = 1;
-					break;
-				}
-			}
-		}
-		::free(proclist);
-	}
-	return (bool) found;
-#else
-	struct stat s;
-	return !(stat(("/proc/"+std::to_string(pid)).c_str(), &s) == -1
-	         && errno == ENOENT);
-#endif
-}
-
-std::string get_dirname(std::string filename) {
-	// TODO: This is crude, but works for our proclog use-case
-	return filename.substr(0, filename.find_last_of("/"));
-}
-
-class LockFile {
-	std::string _lockfile;
-	int         _fd;
-public:
-	LockFile(LockFile const& ) = delete;
-	LockFile& operator=(LockFile const& ) = delete;
-	LockFile(std::string lockfile) : _lockfile(lockfile) {
-		while( true ) {
-			_fd = open(_lockfile.c_str(), O_CREAT, 600);
-			flock(_fd, LOCK_EX);
-			struct stat fd_stat, lockfile_stat;
-			fstat(_fd, &fd_stat);
-			stat(_lockfile.c_str(), &lockfile_stat);
-			// Compare inodes
-			if( fd_stat.st_ino == lockfile_stat.st_ino ) {
-				// Got the lock
-				break;
-			}
-			close(_fd);
-		}
-	}
-	~LockFile() {
-		unlink(_lockfile.c_str());
-		flock(_fd, LOCK_UN);
-	}
-};
 
 class ProcLogMgr {
 	static constexpr const char* base_logdir = BF_PROCLOG_DIR;
@@ -153,8 +59,8 @@ class ProcLogMgr {
 				pid_t pid = atoi(ep->d_name);
 				if( pid && !process_exists(pid) ) {
 					try {
-						remove_all(std::string(base_logdir) + "/" +
-							   std::to_string(pid));
+						remove_files_recursively(std::string(base_logdir) + "/" +
+									 std::to_string(pid));
 					} catch( std::exception& ) {}
 				}
 			}
@@ -172,7 +78,7 @@ class ProcLogMgr {
 	}
 	~ProcLogMgr() {
 		try {
-			remove_all(_logdir);
+			remove_files_recursively(_logdir);
 			this->try_base_logdir_cleanup();
 		} catch( std::exception& ) {}
 	}
@@ -223,7 +129,7 @@ public:
 	}
 	void destroy_log(std::string filename) {
 		std::lock_guard<std::mutex> lock(_mutex);
-		remove_file(filename);
+		remove_file_glob(filename);
 		_logs.erase(filename);
 	}
 	void update_log_s(std::string filename, const char* str) {

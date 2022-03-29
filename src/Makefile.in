@@ -33,6 +33,7 @@ LIBBIFROST_OBJS = \
   memory.o \
   affinity.o \
   cuda.o \
+  fileutils.o \
   ring.o \
   ring_impl.o \
   array.o \
@@ -42,8 +43,8 @@ LIBBIFROST_OBJS = \
 ifeq ($(HAVE_RECVMSG),1)
   # These files require recvmsg to compile
   LIBBIFROST_OBJS += \
-	address.o \
-	udp_socket.o \
+  address.o \
+  udp_socket.o \
   packet_capture.o \
   packet_writer.o
 endif
@@ -112,8 +113,7 @@ all: $(LIBBIFROST_SO)
 .PHONY: all
 
 $(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
-	$(CLEAR_LINE)
-	@echo -n "Generating $(LIBBIFROST_VERSION_FILE)\r"
+	@echo "Generating $(LIBBIFROST_VERSION_FILE)"
 	echo "VERS_$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) {" > $@
 	echo "  global:" >> $@
 	@CTAGS@ -x --c-kinds=p $^ | @AWK@ '{print "    " $$1 ";"}' >> $@
@@ -140,8 +140,7 @@ fft_kernels.o: fft_kernels.cu fft_kernels.h Makefile
 	# Note: This needs to be compiled with "-dc" to make CUFFT callbacks work
 	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" -dc $(OUTPUT_OPTION) $<
 _cuda_device_link.o: Makefile fft_kernels.o libcufft_static_pruned.a
-	$(CLEAR_LINE)
-	@echo -n "Linking _cuda_device_link.o\r"
+	@echo "Linking _cuda_device_link.o"
 	# TODO: "nvcc -dlink ..." does not error or warn when a -lblah is not found
 	@ls ./libcufft_static_pruned.a > /dev/null
 	$(NVCC) -dlink -o $@ $(NVCCFLAGS) fft_kernels.o -L. -lcufft_static_pruned
@@ -157,13 +156,11 @@ endif
 
 # Note: $(LIB) must go at after OBJS
 $(LIBBIFROST_SO): $(LIBBIFROST_OBJS) $(LIBBIFROST_VERSION_FILE) $(CUDA_DEVICE_LINK_OBJ)
-	$(CLEAR_LINE)
-	@echo -n "Linking $(LIBBIFROST_SO_NAME)\r"
+	@echo "Linking $(LIBBIFROST_SO_NAME)"
 	mkdir -p $(LIB_DIR)
 	$(LINKER) $(SHARED_FLAG) -Wl,$(WLFLAGS) -o $@ $(LIBBIFROST_OBJS) $(CUDA_DEVICE_LINK_OBJ) $(LIB) $(LDFLAGS)
 	ln -s -f $(LIBBIFROST_SO_NAME) $(LIBBIFROST_SO_STEM).$(LIBBIFROST_MAJOR)
 	ln -s -f $(LIBBIFROST_SO_NAME) $(LIBBIFROST_SO_STEM)
-	$(CLEAR_LINE)
 	@echo "Successfully built $(LIBBIFROST_SO_NAME)"
 
 *.o: $(MAKEFILES)
@@ -173,8 +170,7 @@ map.o: $(JIT_SOURCES)
 stringify: stringify.cpp
 	$(CXX) -o stringify -Wall -O3 stringify.cpp
 %.jit: % stringify
-	@$(CLEAR_LINE)
-	@echo -n "Building JIT version of $<\r"
+	@echo "Building JIT version of $<"
 	./stringify $< > $@
 
 clean:
