@@ -530,7 +530,8 @@ inline uint64_t round_nearest(uint64_t val, uint64_t mult) {
 	return (2*val/mult+1)/2*mult;
 }
 
-class BFudpcapture_impl {
+struct BFudpcapture_impl {
+private:
 	UDPCaptureThread   _capture;
 	CHIPSDecoder       _decoder;
 	CHIPSProcessor8bit _processor;

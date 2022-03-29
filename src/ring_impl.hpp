@@ -44,16 +44,17 @@
 #include <memory>
 
 class BFsequence_impl;
-class BFspan_impl;
-class BFrspan_impl;
-class BFwspan_impl;
+struct BFspan_impl;
+struct BFrspan_impl;
+struct BFwspan_impl;
 class RingReallocLock;
 class Guarantee;
 typedef std::shared_ptr<BFsequence_impl> BFsequence_sptr;
 
-class BFring_impl {
-	friend class BFrsequence_impl;
-	friend class BFwsequence_impl;
+struct BFring_impl {
+private:
+	friend struct BFrsequence_impl;
+	friend struct BFwsequence_impl;
 	friend class RingReallocLock;
 	friend class Guarantee;
 	
@@ -256,7 +257,7 @@ inline std::unique_ptr<Guarantee> new_guarantee(BFring ring) {
 }
 
 class BFsequence_impl {
-	friend class BFring_impl;
+	friend struct BFring_impl;
 	enum { BF_SEQUENCE_OPEN = (BFoffset)-1 };
 	BFring            _ring;
 	std::string       _name;
@@ -290,7 +291,7 @@ public:
 	inline BFoffset    end()         const { return _end; }
 };
 
-class BFsequence_wrapper {
+struct BFsequence_wrapper {
 protected:
 	BFsequence_sptr _sequence;
 public:
@@ -306,7 +307,8 @@ public:
 	inline BFoffset    begin()       const { return _sequence->begin(); }
 };
 
-class BFwsequence_impl : public BFsequence_wrapper {
+struct BFwsequence_impl : public BFsequence_wrapper {
+private:
 	BFoffset _end_offset_from_head;
 	BFwsequence_impl(BFwsequence_impl const& )            = delete;
 	BFwsequence_impl& operator=(BFwsequence_impl const& ) = delete;
@@ -333,7 +335,8 @@ public:
 	}
 };
 
-class BFrsequence_impl : public BFsequence_wrapper {
+struct BFrsequence_impl : public BFsequence_wrapper {
+private:
 	std::unique_ptr<Guarantee> _guarantee;
 public:
 	// TODO: See if can make these function bodies a bit more concise
@@ -376,7 +379,8 @@ public:
 	*/
 };
 
-class BFspan_impl {
+struct BFspan_impl {
+private:
 	BFring     _ring;
 	BFsize     _size;
 	// No copy or move
@@ -401,7 +405,8 @@ public:
 	virtual void*     data()     const = 0;
 	virtual BFoffset  offset()   const = 0;
 };
-class BFwspan_impl : public BFspan_impl {
+struct BFwspan_impl : public BFspan_impl {
+private:
 	BFoffset        _begin;
 	BFsize          _commit_size;
 	void*           _data;
@@ -423,7 +428,8 @@ public:
 	//         Can't easily change the name though because it's a shared API
 	inline virtual BFoffset        offset()   const { return _begin; }
 };
-class BFrspan_impl : public BFspan_impl {
+struct BFrspan_impl : public BFspan_impl {
+private:
 	BFrsequence     _sequence;
 	BFoffset        _begin;
 	void*           _data;
