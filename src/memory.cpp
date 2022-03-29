@@ -104,14 +104,14 @@ class MappedMgr {
 		}
 		// Remove the base_logdir if it's empty
 		try { remove_dir(base_mapped_dir); }
-		catch( std::exception ) {}
+		catch( std::exception const& ) {}
 	}
     void cleanup(std::string filename, int fd) {
         if( fd >= 0 ) {
             ::close(fd);
         }
         try { remove_file_glob(filename); }
-        catch( std::exception ) {}
+        catch( std::exception const& ) {}
     } 
     MappedMgr()
         : _mapped_dir(std::string(base_mapped_dir) + "/" + std::to_string(getpid())) {
@@ -127,7 +127,7 @@ class MappedMgr {
         try {
             remove_files_recursively(_mapped_dir);
             this->try_base_mapped_dir_cleanup();
-		} catch( std::exception ) {}
+		} catch( std::exception const& ) {}
     }
 public:
     MappedMgr(MappedMgr& ) = delete;
