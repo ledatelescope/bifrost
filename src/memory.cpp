@@ -63,14 +63,15 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 10000
     } else {
         switch( ptr_attrs.type ) {
-		case cudaMemoryTypeHost:    *space = BF_SPACE_SYSTEM;       break;
-		case cudaMemoryTypeDevice:  *space = BF_SPACE_CUDA;         break;
-		case cudaMemoryTypeManaged: *space = BF_SPACE_CUDA_MANAGED; break;
-		default: {
-			// This should never be reached
-			BF_FAIL("Valid memoryType", BF_STATUS_INTERNAL_ERROR);
-		}
-		}
+        		case cudaMemoryTypeUnregistered: // fall-through
+        		case cudaMemoryTypeHost:    *space = BF_SPACE_SYSTEM;       break;
+        		case cudaMemoryTypeDevice:  *space = BF_SPACE_CUDA;         break;
+        		case cudaMemoryTypeManaged: *space = BF_SPACE_CUDA_MANAGED; break;
+        		default: {
+        			// This should never be reached
+        			BF_FAIL("Valid memoryType", BF_STATUS_INTERNAL_ERROR);
+        		}
+        }
 	}
 #else
 	} else if( ptr_attrs.isManaged ) {
