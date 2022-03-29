@@ -96,8 +96,8 @@ class MappedMgr {
 			while( (ep = readdir(dp)) ) {
 				pid_t pid = atoi(ep->d_name);
 				if( pid && !process_exists(pid) ) {
-					remove_all(std::string(base_mapped_dir) + "/" +
-					           std::to_string(pid));
+					remove_files_recursively(std::string(base_mapped_dir) + "/" +
+					                         std::to_string(pid));
 				}
 			}
 			closedir(dp);
@@ -110,7 +110,7 @@ class MappedMgr {
         if( fd >= 0 ) {
             ::close(fd);
         }
-        try { remove_file(filename); }
+        try { remove_file_glob(filename); }
         catch( std::exception ) {}
     } 
     MappedMgr()
@@ -125,7 +125,7 @@ class MappedMgr {
             this->free(x->first);
         }
         try {
-            remove_all(_mapped_dir);
+            remove_files_recursively(_mapped_dir);
             this->try_base_mapped_dir_cleanup();
 		} catch( std::exception ) {}
     }
