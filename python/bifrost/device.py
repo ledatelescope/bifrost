@@ -49,16 +49,46 @@ def get_device():
     return _get(_bf.bfDeviceGet)
 
 def set_stream(stream):
-    """Set the CUDA stream to the provided ctypes.c_ulong instance."""
+    """Set the CUDA stream to the provided stream handle"""
     stream = c_ulong(stream)
     _check(_bf.bfStreamSet(c_pointer(stream)))
     return True
     
 def get_stream():
-    """Get the current CUDA stream and return it as a ctypes.c_ulong instance."""
+    """Get the current CUDA stream and return its address"""
     stream = c_ulong(0)
     _check(_bf.bfStreamGet(c_pointer(stream)))
     return stream.value
+
+class ExternalStream(object):
+    """Context manager to use a stream created by outside of Bifrost"""
+    def __init__(stream):
+        self._stream = stream
+    def __del__(self):
+        try:
+            set_stream(self._orig_stream)
+        except AttributeError:
+            pass
+    def use(self):
+        """Make the external stream the default stream.  The original Bifrost
+        stream will be restored when this object is deleted.
+        
+        To temporirly switch streams use the 'with' statement."""
+        self._orig_stream = get_stream()
+        # cupy stream?
+        stream = getattr(self._stream, 'ptr', None)
+        if stream is None:
+            # pycuda stream?
+            stream = getattr(self._stream, 'handle', None)
+        if stream is None:
+            stream = self._stream
+        set_stream(stream)
+    def __enter__(self):
+        self.use()
+        return self
+    def __exit__(self, type, value, tb):
+        set_stream(self._orig_stream)
+        del self._orig_stream
 
 def stream_synchronize():
     _check(_bf.bfStreamSynchronize())

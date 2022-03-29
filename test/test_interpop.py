@@ -47,23 +47,6 @@ try:
 except ImportError:
     HAVE_PYCUDA = False
 
-class BifrostStreamManager(object):
-    def __init__(self, stream):
-        self._stream = stream
-        
-    def __enter__(self):
-        self._orig_stream = bf.device.get_stream()
-        stream = getattr(self._stream, 'ptr', None)
-        if stream is None:
-            stream = getattr(self._stream, 'handle', None)
-        if stream is None:
-            stream = self._stream
-        bf.device.set_stream(stream)
-        return self
-        
-    def __exit__(self, type, value, tb):
-        bf.device.set_stream(self._orig_stream)
-
 @unittest.skipUnless(BF_CUDA_ENABLED and HAVE_CUPY, "requires GPU support and cupy")
 class TestCuPy(unittest.TestCase):
     @staticmethod
@@ -89,9 +72,8 @@ class TestCuPy(unittest.TestCase):
     def test_stream(self):
         data = self.create_data()
         
-        orig_stream = bf.device.get_stream()
         with cp.cuda.Stream() as stream:
-            with BifrostStreamManager(stream):
+            with bf.device.ExternalStream(stream):
                 self.assertEqual(bf.device.get_stream(), stream.ptr)
                 
                 bf_data = bf.ndarray(data, space='cuda')
@@ -139,9 +121,8 @@ class TestPyCUDA(unittest.TestCase):
     def test_stream(self):
         data = self.create_data()
         
-        orig_stream = bf.device.get_stream()
         stream = pycuda.driver.Stream()
-        with BifrostStreamManager(stream):
+        with bf.device.ExternalStream(stream):
             self.assertEqual(bf.device.get_stream(), stream.handle)
             
             bf_data = bf.ndarray(data, space='cuda')
