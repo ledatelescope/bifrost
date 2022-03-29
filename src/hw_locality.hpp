@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #pragma once
 
 #include <bifrost/affinity.h>
+#include <bifrost/config.h>
 
 #if BF_HWLOC_ENABLED
 #include <hwloc.h>
