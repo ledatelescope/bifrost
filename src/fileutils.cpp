@@ -41,10 +41,10 @@ std::string get_home_dir(void) {
 	return std::string(homedir);
 }
 
-/* NOTE: For convenience, these functions build a shell command and pass it to
-   system(). The PATH argument is not shell-quoted or otherwise sanitized, so
-   only use with program constants, not with data from command line or config
-   files. Might eventually implement these with C++/boost filesystem library. */
+/* NOTE: For convenience on systems with compilers without C++17 support, these
+   functions build a shell command and pass it to system(). The PATH argument is
+   not shell-quoted or otherwise sanitized, so only use with program constants,
+   not with data from command line or config files. */
 
 void make_dir(std::string path, int perms) {
 #if __cplusplus >= 201703L
