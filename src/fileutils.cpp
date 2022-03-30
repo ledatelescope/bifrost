@@ -149,7 +149,7 @@ bool process_exists(pid_t pid) {
 std::string get_dirname(std::string filename) {
 #if __cplusplus >= 201703L
   std::filesystem::path path = filename;
-	return (path.parent_path()).to_string();
+	return (path.parent_path()).string();
 #else
 	// TODO: This is crude, but works for our proclog use-case
 	return filename.substr(0, filename.find_last_of("/"));
