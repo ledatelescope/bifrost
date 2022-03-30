@@ -48,8 +48,12 @@ std::string get_home_dir(void) {
 
 void make_dir(std::string path, int perms) {
 #if __cplusplus >= 201703L
-	std::filesystem::create_directories(path);
-	std::filesystem::permissions(path, \
+	std::filesystem::path ipath = path;
+	if( !std::filesystem.exists(ipath.parent_path()) ) {
+		make_dir((ipath.parent_path()).string(), perms)
+	}
+	std::filesystem::create_directory(ipath);
+	std::filesystem::permissions(ipath, \
 		                           (std::filesystem::perms) perms, \
 															 std::filesystem::perm_options::replace);
 #else
