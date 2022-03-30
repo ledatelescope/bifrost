@@ -28,6 +28,11 @@
 
 #include "fileutils.hpp"
 
+#if __cplusplus >= 201703L
+#include <regex>
+#include <filesystem>
+#endif
+
 std::string get_home_dir(void) {
 	const char *homedir;
 	if ((homedir = getenv("HOME")) == NULL) {
@@ -42,31 +47,69 @@ std::string get_home_dir(void) {
    files. Might eventually implement these with C++/boost filesystem library. */
 
 void make_dir(std::string path, int perms) {
+#if __cplusplus >= 201703L
+	std::filesystem::create_directory(path);
+	std::filesystem::permissions(path, \
+		                           (std::filesystem::perms) perms, \
+															 std::filesystem::perm_options::replace);
+#else
 	if( std::system(("mkdir -p -m "+std::to_string(perms)+" "+path).c_str()) ) {
 		throw std::runtime_error("Failed to create path: "+path);
 	}
+#endif
 }
 void remove_files_recursively(std::string path) {
+#if __cplusplus >= 201703L
+  std::filesystem::remove_all(path);
+#else
 	if( std::system(("rm -rf "+path).c_str()) ) {
 		throw std::runtime_error("Failed to remove all: "+path);
 	}
+#endif
 }
 void remove_dir(std::string path) {
+#if __cplusplus >= 201703L
+  std::filesystem::remove(path);
+#else
 	if( std::system(("rmdir "+path+" 2> /dev/null").c_str()) ) {
 		throw std::runtime_error("Failed to remove dir: "+path);
 	}
+#endif
 }
 void remove_file_glob(std::string path) {
   // Often, PATH contains wildcard, so this can't just be unlink system call.
+#if __cplusplus >= 201703L
+  // Convert the shell-style wildcards into a POSIX regex
+	// TODO: expand this to support more complicated expressions
+  std::regex special_re("\\.", std::regex::basic);
+	path = std::regex_replace(path, special_re, "\\$&");
+	std::regex wildcard_re("\\*", std::regex::basic);
+	path = std::regex_replace(path, wildcard_re, ".$&");
+  std::regex r(path, std::regex::basic);
+	
+	// Iterate through the directory's contents and remove the matches
+  std::filesystem::path ipath = path;
+	for(auto const& entry : std::filesystem::directory_iterator{ipath.parent_path()}) {
+		std::filesystem::path epath = entry.path();
+		if( std::regex_match(epath.string(), r) ) {
+			std::filesystem::remove(epath);
+		}
+	}
+#else
 	if( std::system(("rm -f "+path).c_str()) ) {
 		throw std::runtime_error("Failed to remove file: "+path);
 	}
+#endif
 }
 
 bool file_exists(std::string path) {
+#if __cplusplus >= 201703L
+  return std::filesystem::exists(path);
+#else
     struct stat s;
     return !(stat(path.c_str(), &s) == -1
 	         && errno == ENOENT);
+#endif
 }
 bool process_exists(pid_t pid) {
 #if defined(__APPLE__) && __APPLE__
@@ -99,15 +142,18 @@ bool process_exists(pid_t pid) {
 	}
 	return (bool) found;
 #else
-	struct stat s;
-	return !(stat(("/proc/"+std::to_string(pid)).c_str(), &s) == -1
-	         && errno == ENOENT);
+  return file_exists("/proc/"+std::to_string(pid));
 #endif
 }
 
 std::string get_dirname(std::string filename) {
+#if __cplusplus >= 201703L
+  std::filesystem::path path = filename;
+	return (path.parent_path()).to_string();
+#else
 	// TODO: This is crude, but works for our proclog use-case
 	return filename.substr(0, filename.find_last_of("/"));
+#endif
 }
 
 /* NOTE: In case of abnormal exit (such as segmentation fault or other signal),
