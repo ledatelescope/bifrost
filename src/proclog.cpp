@@ -73,7 +73,7 @@ class ProcLogMgr {
 	ProcLogMgr()
 		: _logdir(std::string(base_logdir) + "/" + std::to_string(getpid())) {
 		this->try_base_logdir_cleanup();
-		make_dir(base_logdir, 777);
+		make_dir(base_logdir, 0777);
 		make_dir(_logdir);
 	}
 	~ProcLogMgr() {
