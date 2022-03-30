@@ -1,4 +1,7 @@
 0.10.1
+ * Cleaned up the Makefile outputs
+ * Added a disk cache for bifrost.map calls
+ * Added support for configurable, reproducible builds with nix
  * Added set_stream and get_stream to bifrost.device to help control which CUDA stream is used
  * Added bifrost.device.ExternalStream as a context manager to help with mixing Bifrost and cupy/pycuda
 
