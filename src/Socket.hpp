@@ -280,8 +280,8 @@ public:
 		: _fd(-1), _type(type), _family(AF_UNSPEC),
 		  _mode(Socket::MODE_CLOSED) {
 		if( !(type == SOCK_DGRAM || type == SOCK_STREAM) ) {
-      throw Socket::Error("Invalid socket type");
-    }
+		  throw Socket::Error("Invalid socket type");
+		}
 	}
 	
 	virtual ~Socket() { this->close(); }
