@@ -282,7 +282,7 @@ public:
 		: _fd(-1), _type(type), _family(AF_UNSPEC),
 		  _mode(Socket::MODE_CLOSED) {
 		BF_ASSERT_EXCEPTION(type == SOCK_DGRAM || type == SOCK_STREAM,
-												BF_STATUS_INVALID_ARGUMENT);
+		                    BF_STATUS_INVALID_ARGUMENT);
 	}
 	
 	virtual ~Socket() { this->close(); }
