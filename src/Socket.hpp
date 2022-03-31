@@ -246,9 +246,7 @@ class Socket {
 	// Not copy-assignable
 	Socket(Socket const& );
 	Socket& operator=(Socket const& );
-#if __cplusplus >= 201103L
 	inline void replace(Socket& s);
-#endif
 	// Manage an existing socket descriptor
 	// Note: Accessible only via the named constructor Socket::manage
 	struct ManageTag {};
@@ -287,11 +285,9 @@ public:
 	}
 	
 	virtual ~Socket() { this->close(); }
-#if __cplusplus >= 201103L
 	// Move semantics
 	inline Socket(Socket&& s)                           { this->replace(s); }
 	inline Socket& operator=(Socket&& s) { this->close(); this->replace(s); return *this; }
-#endif
 	inline void swap(Socket& s);
 	// Address generator
 	// Note: Supports UNIX paths, IPv4 and IPv6 addrs, interfaces and hostnames
@@ -925,7 +921,6 @@ int Socket::addr_from_interface(const char* ifname,
 	::freeifaddrs(ifaddr);
 	return found;
 }
-#if __cplusplus >= 201103L
 void Socket::replace(Socket& s) {
 	_fd          = s._fd; s._fd = -1;
 	_type        = std::move(s._type);
@@ -936,7 +931,6 @@ void Socket::replace(Socket& s) {
 	_msgs        = std::move(s._msgs);
 	_iovecs      = std::move(s._iovecs);
 }
-#endif
 void Socket::swap(Socket& s) {
 	std::swap(_fd,          s._fd);
 	std::swap(_type,        s._type);
