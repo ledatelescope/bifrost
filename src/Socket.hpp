@@ -281,8 +281,9 @@ public:
 	inline explicit       Socket(int type=SOCK_DGRAM)
 		: _fd(-1), _type(type), _family(AF_UNSPEC),
 		  _mode(Socket::MODE_CLOSED) {
-		BF_ASSERT_EXCEPTION(type == SOCK_DGRAM || type == SOCK_STREAM,
-		                    BF_STATUS_INVALID_ARGUMENT);
+		if( !(type == SOCK_DGRAM || type == SOCK_STREAM) ) {
+      throw Socket::Error("Invalid socket type");
+    }
 	}
 	
 	virtual ~Socket() { this->close(); }
