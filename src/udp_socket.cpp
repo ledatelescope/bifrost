@@ -32,7 +32,7 @@
 #include <bifrost/address.h>
 
 struct BFudpsocket_impl : public Socket {
-	BFudpsocket_impl() : Socket(BF_SOCK_DGRAM) {}
+	BFudpsocket_impl() : Socket(SOCK_DGRAM) {}
 };
 
 BFstatus bfUdpSocketCreate(BFudpsocket* obj) {
