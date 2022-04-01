@@ -70,5 +70,6 @@ jobs:
           fail_ci_if_error: false
           verbose: true
       - name: "Cleanup"
+        if: always()
         run: |
           sudo make clean
