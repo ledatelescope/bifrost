@@ -69,3 +69,6 @@ jobs:
           directory: ./test/
           fail_ci_if_error: false
           verbose: true
+      - name: "Cleanup"
+        run: |
+          sudo make clean
