@@ -47,6 +47,11 @@ jobs:
                graphviz \
                ctypesgen==1.0.2 \
                coverage
+      - name: "Software Install - Python, part 2"
+        if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
+        run: python -m pip install \
+               cupy \
+               pycuda
       - name: "Build and Install"
         run: |
           ./configure
