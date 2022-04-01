@@ -1,0 +1,80 @@
+{
+  "nodes": {
+    "ctypesgen": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1575761084,
+        "narHash": "sha256-0VuIufvB1TYK8EXSFr8EegNxxRxnoHsxEKQX9y7LOdY=",
+        "owner": "ctypesgen",
+        "repo": "ctypesgen",
+        "rev": "b7ccd0764ef7d74e9ad5816924950d05b47ecc8c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ctypesgen",
+        "ref": "ctypesgen-1.0.2",
+        "repo": "ctypesgen",
+        "type": "github"
+      }
+    },
+    "flake-utils": {
+      "locked": {
+        "lastModified": 1619345332,
+        "narHash": "sha256-qHnQkEp1uklKTpx3MvKtY6xzgcqXDsz5nLilbbuL+3A=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "2ebf2558e5bf978c7fb8ea927dfaed8fefab2e28",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1641947035,
+        "narHash": "sha256-l4dnwWvh2Yte2I9sAwGhMG/qkvLkfV0v/ssgkZ5KNY4=",
+        "path": "/nix/store/3ck36g7rh9v9fa924h149pq7h6cx9nzx-source",
+        "rev": "9acedfd7ef32253237311dc3c78286773dbcb0d6",
+        "type": "path"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "type": "indirect"
+      }
+    },
+    "pre-commit-hooks": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1639823344,
+        "narHash": "sha256-jlsQb2y6A5dB1R0wVPLOfDGM0wLyfYqEJNzMtXuzCXw=",
+        "owner": "cachix",
+        "repo": "pre-commit-hooks.nix",
+        "rev": "ff9c0b459ddc4b79c06e19d44251daa8e9cd1746",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cachix",
+        "repo": "pre-commit-hooks.nix",
+        "rev": "ff9c0b459ddc4b79c06e19d44251daa8e9cd1746",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "ctypesgen": "ctypesgen",
+        "nixpkgs": "nixpkgs",
+        "pre-commit-hooks": "pre-commit-hooks"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

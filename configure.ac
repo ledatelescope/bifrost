@@ -1,9 +1,11 @@
-AC_INIT([bifrost], [0.9.0], [], [], [https://github.com/ledatelescope/bifrost/])
+AC_INIT([bifrost], [0.10.0], [], [], [https://github.com/ledatelescope/bifrost/])
 AC_LANG(C++)
 AC_CONFIG_SRCDIR([src/cuda.cpp])
 
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([config])
+
+m4_ifdef([AM_SILENT_RULES], [], [AC_SUBST([AM_DEFAULT_VERBOSITY], [1])])
 
 : ${CXXFLAGS="-O3 -Wall -pedantic"}
 
@@ -27,7 +29,7 @@ AS_IF([test x${CTAGS} = x],
 AC_MSG_CHECKING([whether ${CTAGS} is exuberant])
 AS_IF([! ${CTAGS} --version | grep -q Exuberant],
       [AC_MSG_RESULT([no])
-       AC_MSG_ERROR([exhuberant ctags is required, but ${CTAGS} is a different version])],
+       AC_MSG_ERROR([exuberant ctags is required, but ${CTAGS} is a different version])],
       [AC_MSG_RESULT([yes])])
 
 AC_SUBST(SO_EXT, $shrext_cmds)
@@ -204,6 +206,15 @@ AS_IF([test x$enable_cuda_debug != xno],
       [AC_SUBST([HAVE_CUDA_DEBUG], [1])
        NVCCFLAGS="$NVCCFLAGS -G"])
 
+AC_ARG_ENABLE([map_cache],
+              [AS_HELP_STRING([--disable-map-cache],
+                              [disable caching bifrost.map kernels (default=no)])],
+              [enable_map_cache=no],
+              [enable_map_cache=yes])
+AC_SUBST([HAVE_MAP_CACHE], [0])
+AS_IF([test x$enable_map_cache != xno],
+      [AC_SUBST([HAVE_MAP_CACHE], [$HAVE_CUDA])])
+
 #
 # Python
 #
@@ -216,6 +227,10 @@ AC_ARG_ENABLE([python],
 AC_SUBST([HAVE_PYTHON], [0])
 AS_IF([test x$enable_python != xno],
       [AX_WITH_PROG(PYTHON, python, no, $PATH)
+       AS_IF([test x${PYTHON} = xno],
+             [AC_PATH_PROG(PYTHON3, python3, no, $PATH)
+              AS_IF([test x${PYTHON3} != xno],
+                    [AC_SUBST([PYTHON], [$PYTHON3])])])
        AS_IF([test x${PYTHON} != xno],
              [AC_MSG_CHECKING([whether $PYTHON as ctypesgen])
               AS_IF([! ${PYTHON} -c "import ctypesgen" 2>/dev/null],
@@ -290,13 +305,24 @@ AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.p
 AC_OUTPUT
 
 #
+# User warnings
+#
+
+AS_IF([test x$HAVE_CUDA = x1],
+      [cufft_c2r_modifies=$( echo $CUDA_VERSION | ${GREP} -e "10\.[[1-2]]" -e "11\.[[0-6]]" )
+       if test "$cufft_c2r_modifies" != ""; then
+         echo ""
+         AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)
+       fi])
+
+#
 # User notes
 #
 
 echo ""
 
 AS_IF([test x$HAVE_CUDA = x1],
-      [AC_MSG_NOTICE(cuda: yes - $GPU_ARCHS)],
+      [AC_MSG_NOTICE(cuda: yes - v$CUDA_VERSION - $GPU_ARCHS)],
       [AC_MSG_NOTICE(cuda: no)])
 
 AS_IF([test x$HAVE_NUMA = x1],
@@ -330,6 +356,8 @@ AS_IF([test x$enable_native_arch != xno],
       [AC_SUBST([OPTIONS], ["$OPTIONS native"])])
 AS_IF([test x$HAVE_FLOAT128 != x0],
       [AC_SUBST([OPTIONS], ["$OPTIONS float128"])])
+AS_IF([test x$enable_map_cache != xno],
+      [AC_SUBST([OPTIONS], ["$OPTIONS map_cache"])])
 AC_MSG_NOTICE(options:$OPTIONS)
       
 echo ""

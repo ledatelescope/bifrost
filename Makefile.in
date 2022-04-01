@@ -101,42 +101,20 @@ endif
 # TODO: Consider adding a mode 'develop=1' that makes symlinks instead of copying
 #         the library and headers.
 
-DRY_RUN ?= 0
-
 $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN): $(LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN)
-ifeq ($(DRY_RUN),0)
+	mkdir -p $(INSTALL_LIB_DIR)
 	cp $< $@
 	ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO).$(LIBBIFROST_MAJOR)
 	ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO)
-else
-	@echo "cp $< $@"
-	@echo "ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO).$(LIBBIFROST_MAJOR)"
-	@echo "ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO)"
-endif
 
 $(INSTALL_INC_DIR)/bifrost: $(INC_DIR)/bifrost/*.h #$(INC_DIR)/bifrost/*.hpp
-ifeq ($(DRY_RUN),0)
 	mkdir -p $@
 	cp $? $@/
-else
-	@echo "mkdir -p $@"
-	@echo "cp $? $@/"
-endif
 
 $(INSTALL_DAT_DIR)/bifrost: $(DAT_DIR)/*.m4
-ifeq ($(DRY_RUN),0)
 	mkdir -p $@
 	cp $? $@/
-else
-	@echo "mkdir -p $@"
-	@echo "cp $? $@/"
-endif
 
 $(INSTALL_LIB_DIR)/pkgconfig: $(DAT_DIR)/*.pc
-ifeq ($(DRY_RUN),0)
 	mkdir -p $@
 	cp $? $@/
-else
-	@echo "mkdir -p $@"
-	@echo "cp $? $@/"
-endif

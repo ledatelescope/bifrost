@@ -1,6 +1,6 @@
 
-# Copyright (c) 2021, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2021, The University of New Mexico. All rights reserved.
+# Copyright (c) 2021-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2021-2022, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -47,29 +47,40 @@ from functools import wraps
 
 import bifrost.version
 
-# Create the cache directory
-if not os.path.exists(os.path.join(os.path.expanduser('~'), '.bifrost')):
-    os.mkdir(os.path.join(os.path.expanduser('~'), '.bifrost'))
-_CACHE_DIR = os.path.join(os.path.expanduser('~'), '.bifrost', 'telemetry_cache')
-if not os.path.exists(_CACHE_DIR):
-    os.mkdir(_CACHE_DIR)
+_DOT_BIFROST_DIR = os.path.join(os.path.expanduser('~'), '.bifrost')
+_CACHE_DIR = os.path.join(_DOT_BIFROST_DIR, 'telemetry_cache')
+_ACTIVE_KEY = os.path.join(_CACHE_DIR, 'do_not_report')
+try:
+    # Create the cache directory. If it turns out $HOME doesn't exist or is not
+    # writable (e.g. in a nix build environment), we disable telemetry in the
+    # FileNotFoundError handler below.
+    if not os.path.exists(_DOT_BIFROST_DIR):
+        os.mkdir(_DOT_BIFROST_DIR)
+    if not os.path.exists(_CACHE_DIR):
+        os.mkdir(_CACHE_DIR)
 
-# Load the install ID key, creating it if it doesn't exist
-_INSTALL_KEY = os.path.join(_CACHE_DIR, 'install.key')
-if not os.path.exists(_INSTALL_KEY):
-    with open(_INSTALL_KEY, 'w') as fh:
-        fh.write(str(uuid.uuid4()))
+    # Load the install ID key, creating it if it doesn't exist
+    _INSTALL_KEY = os.path.join(_CACHE_DIR, 'install.key')
+    if not os.path.exists(_INSTALL_KEY):
+        with open(_INSTALL_KEY, 'w') as fh:
+            fh.write(str(uuid.uuid4()))
 
-with open(_INSTALL_KEY, 'r') as fh:
-    _INSTALL_KEY = fh.read().rstrip()
+    with open(_INSTALL_KEY, 'r') as fh:
+        _INSTALL_KEY = fh.read().rstrip()
+
+    TELEMETRY_ACTIVE      = True
+    if os.path.exists(_ACTIVE_KEY):
+        TELEMETRY_ACTIVE = False
+except FileNotFoundError:
+    # Quietly disable telemetry because we don't have a place to write the data
+    # or configuration. The enable/disable functions will still fail when they
+    # try to unlink/write _ACTIVE_KEY.
+    _INSTALL_KEY = str(uuid.uuid4())
+    TELEMETRY_ACTIVE = False
 
 # Reporting control
 TELEMETRY_MAX_ENTRIES = 100
 TELEMETRY_TIMEOUT     = 120   # s
-TELEMETRY_ACTIVE      = True
-_ACTIVE_KEY = os.path.join(_CACHE_DIR, 'do_not_report')
-if os.path.exists(_ACTIVE_KEY):
-    TELEMETRY_ACTIVE = False
 
 
 class _TelemetryClient(object):

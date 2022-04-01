@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -40,7 +40,7 @@ class UnpackTest(unittest.TestCase):
                                    [(4, 5), (6, 7)],
                                    [(-8, -7), (-6, -5)]],
                                   dtype='ci8')
-        bf.unpack.unpack(iarray.copy(space='cuda'), oarray)
+        bf.unpack(iarray.copy(space='cuda'), oarray)
         oarray = oarray.copy(space='system')
         np.testing.assert_equal(oarray, oarray_known)
     def test_ci4_to_ci8(self):
@@ -74,7 +74,7 @@ class UnpackTest(unittest.TestCase):
                                    [ 4+5j,  6+7j],
                                    [-8-7j, -6-5j]],
                                   dtype='cf32')
-        bf.unpack.unpack(iarray.copy(space='cuda'), oarray)
+        bf.unpack(iarray.copy(space='cuda'), oarray)
         oarray = oarray.copy(space='system')
         np.testing.assert_equal(oarray, oarray_known)
     def test_ci4_to_cf32(self):

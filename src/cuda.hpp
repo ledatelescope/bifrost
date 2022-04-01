@@ -57,13 +57,17 @@ extern thread_local cudaStream_t g_cuda_stream;
 #endif
 
 inline int get_cuda_device_cc() {
-	int device;
+	int device, cc;
 	cudaGetDevice(&device);
 	int cc_major;
 	cudaDeviceGetAttribute(&cc_major, cudaDevAttrComputeCapabilityMajor, device);
 	int cc_minor;
 	cudaDeviceGetAttribute(&cc_minor, cudaDevAttrComputeCapabilityMinor, device);
-	return cc_major*10 + cc_minor;
+	cc = cc_major*10 + cc_minor;
+  if( cc > BF_GPU_MAX_ARCH ) {
+    cc = BF_GPU_MAX_ARCH;
+  }
+  return cc;
 }
 
 #define BF_CHECK_CUDA_EXCEPTION(call, err) \
@@ -171,14 +175,12 @@ public:
 		                      smem, stream,
 		                      &arg_ptrs[0], NULL);
 	}
-#if __cplusplus >= 201103L
 	template<typename... Args>
 	inline CUresult launch(dim3 grid, dim3 block,
 	                   unsigned int smem, CUstream stream,
 	                   Args... args) {
 		return this->launch(grid, block, smem, stream, {(void*)&args...});
 	}
-#endif
 	
 };
 

@@ -3,7 +3,7 @@ include ../config.mk
 
 INC_DIR = ../src
 
-BIFROST_PYTHON_VERSION_FILE  = bifrost/version.py
+BIFROST_PYTHON_VERSION_FILE  = bifrost/version/__init__.py
 BIFROST_PYTHON_BINDINGS_FILE = bifrost/libbifrost_generated.py
 
 PSRHOME ?= /usr/local
@@ -21,6 +21,7 @@ $(BIFROST_PYTHON_VERSION_FILE): ../config.mk
 	@echo "__version__ = \"$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR).$(LIBBIFROST_PATCH)\"" > $@
 
 define run_ctypesgen
+        # Build the libbifrost wrapper
 	@PYTHON@ -c 'from ctypesgen import main as ctypeswrap; ctypeswrap.main()' -l$1 -I$2 $^ -o $@
 	# WAR for 'const char**' being generated as POINTER(POINTER(c_char)) instead of POINTER(c_char_p)
 	@SED@ -i.orig -e 's/POINTER(c_char)/c_char_p/g' $@
@@ -50,20 +51,13 @@ build: bifrost/*.py Makefile $(BIFROST_PYTHON_VERSION_FILE) $(BIFROST_PYTHON_BIN
 	@PYTHON@ setup.py build @PYBUILDFLAGS@
 .PHONY: build
 
-DRY_RUN ?= 0
-
 install: build
-ifeq ($(DRY_RUN),0)
-	@PYTHON@ -m pip install @PYINSTALLFLAGS@ .
-else
-	@echo "@PYTHON@ -m pip install @PYINSTALLFLAGS@ ."
-endif
+	@@PYTHON@ -m pip install @PYINSTALLFLAGS@ .
 	@echo "*************************************************************************"
 	@echo "By default Bifrost installs with basic Python telemetry enabled in order"
 	@echo "to help inform how the software is used for future development.  You can"
 	@echo "opt out of telemetry collection using:"
-	@echo ">>> from bifrost import telemetry"
-	@echo ">>> telemetry.disable()"
+	@echo "python -m bifrost.telemetry --disable"
 	@echo "*************************************************************************"
 	@echo ""
 	@echo "If you have trouble importing Bifrost from Python you may need"

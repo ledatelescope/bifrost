@@ -15,6 +15,9 @@ AC_DEFUN([AX_CHECK_CUDA],
                 [enable_cuda=yes])
   
   AC_SUBST([HAVE_CUDA], [0])
+  AC_SUBST([CUDA_VERSION], [0])
+  AC_SUBST([GPU_MIN_ARCH], [0])
+  AC_SUBST([GPU_MAX_ARCH], [0])
   if test "$enable_cuda" != "no"; then
     AC_SUBST([HAVE_CUDA], [1])
     
@@ -49,7 +52,8 @@ AC_DEFUN([AX_CHECK_CUDA],
             #include <cuda.h>
             #include <cuda_runtime.h>]],
             [[cudaMalloc(0, 0);]])],
-          [AC_MSG_RESULT(yes)],
+          [CUDA_VERSION=$( ${NVCC} --version | ${GREP} -Po -e "release.*," | cut -d,  -f1 | cut -d\  -f2 )
+           AC_MSG_RESULT(yes - v$CUDA_VERSION)],
           [AC_MSG_RESULT(no)
            AC_SUBST([HAVE_CUDA], [0])])
     else
@@ -79,10 +83,15 @@ AC_DEFUN([AX_CHECK_CUDA],
   
   AC_ARG_WITH([gpu_archs],
               [AS_HELP_STRING([--with-gpu-archs=...],
-                              [default GPU architectures (default=dectect)])],
+                              [default GPU architectures (default=detect)])],
               [],
               [with_gpu_archs='auto'])
   if test "$HAVE_CUDA" = "1"; then
+    AC_MSG_CHECKING([for valid CUDA architectures])
+    ar_supported=$( ${NVCC} -h | ${GREP} -Po "'compute_[[0-9]]{2,3}" | cut -d_ -f2 | sort | uniq )
+    ar_supported_flat=$( echo $ar_supported | xargs )
+    AC_MSG_RESULT(found: $ar_supported_flat)
+    
     if test "$with_gpu_archs" = "auto"; then
       AC_MSG_CHECKING([which CUDA architectures to target])
 
@@ -132,8 +141,12 @@ AC_DEFUN([AX_CHECK_CUDA],
             [AC_SUBST([GPU_ARCHS], [`cat confarchs.out`])
              ar_supported=$( ${NVCC} -h | ${GREP} -Po "'compute_[[0-9]]{2,3}" | cut -d_ -f2 | sort | uniq )
              ar_valid=$( echo $GPU_ARCHS $ar_supported | xargs -n1 | sort | uniq -d | xargs )
-             AC_SUBST([GPU_ARCHS], [$ar_valid])
-             AC_MSG_RESULT([$GPU_ARCHS])],
+             if test "$ar_valid" = ""; then
+               AC_MSG_ERROR(failed to find any supported)
+             else
+               AC_SUBST([GPU_ARCHS], [$ar_valid])
+               AC_MSG_RESULT([$GPU_ARCHS])
+             fi],
             [AC_MSG_ERROR(failed to find any)])
 
       CXXFLAGS="$CXXFLAGS_save"
@@ -143,16 +156,20 @@ AC_DEFUN([AX_CHECK_CUDA],
       AC_SUBST([GPU_ARCHS], [$with_gpu_archs])
     fi
     
-    AC_MSG_CHECKING([for valid CUDA architectures])
+    AC_MSG_CHECKING([for valid requested CUDA architectures])
     ar_requested=$( echo "$GPU_ARCHS" | wc -w )
-    ar_supported=$( ${NVCC} -h | ${GREP} -Po "'compute_[[0-9]]{2,3}" | cut -d_ -f2 | sort | uniq )
     ar_valid=$( echo $GPU_ARCHS $ar_supported | xargs -n1 | sort | uniq -d | xargs )
     ar_found=$( echo $ar_valid | wc -w )
     if test "$ar_requested" = "$ar_found"; then
       AC_MSG_RESULT([yes])
     else
-      AC_MSG_ERROR(only architectures $ar_valid are supported)
+      AC_MSG_ERROR(only '$ar_valid' are supported)
     fi
+    
+    ar_min_valid=$(echo $ar_valid | ${SED} -e 's/ .*//g;' )
+    AC_SUBST([GPU_MIN_ARCH], [$ar_min_valid])
+    ar_max_valid=$(echo $ar_valid | ${SED} -e 's/.* //g;' )
+    AC_SUBST([GPU_MAX_ARCH], [$ar_max_valid])
 
     AC_MSG_CHECKING([for Pascal-style CUDA managed memory])
     cm_invalid=$( echo $GPU_ARCHS | ${SED} -e 's/\b[[1-5]][[0-9]]\b/PRE/g;' )

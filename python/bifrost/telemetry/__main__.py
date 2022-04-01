@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 
-# Copyright (c) 2021, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2021, The University of New Mexico. All rights reserved.
+# Copyright (c) 2021-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2021-2022, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -35,36 +34,30 @@ import sys
 import argparse
 
 from bifrost import telemetry
-telemetry.track_script()
 
+parser = argparse.ArgumentParser(
+        description='update the Bifrost telemetry setting',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+tgroup = parser.add_mutually_exclusive_group(required=False)
+tgroup.add_argument('-e', '--enable', action='store_true',
+                    help='enable telemetry for Bifrost')
+tgroup.add_argument('-d', '--disable', action='store_true',
+                    help='disable telemetry for Bifrost')
+parser.add_argument('-k', '--key', action='store_true',
+                    help='show install identification key')
+args = parser.parse_args()
 
-def main(args):
-    # Toggle
-    if args.enable:
-        telemetry.enable()
-    elif args.disable:
-        telemetry.disable()
-        
-    # Report
-    ## Status
-    print("Bifrost Telemetry is %s" % ('active' if telemetry.is_active() else 'in-active'))
+# Toggle
+if args.enable:
+    telemetry.enable()
+elif args.disable:
+    telemetry.disable()
     
-    ## Key
-    if args.key:
-        print("  Identification key: %s" % telemetry._INSTALL_KEY)
+# Report
+## Status
+print("Bifrost Telemetry is %s" % ('active' if telemetry.is_active() else 'in-active'))
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-            description='update the Bifrost telemetry setting', 
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter
-            )
-    tgroup = parser.add_mutually_exclusive_group(required=False)
-    tgroup.add_argument('-e', '--enable', action='store_true', 
-                        help='enable telemetry for Bifrost')
-    tgroup.add_argument('-d', '--disable', action='store_true', 
-                        help='disable telemetry for Bifrost')
-    parser.add_argument('-k', '--key', action='store_true',
-                        help='show install identification key')
-    args = parser.parse_args()
-    main(args)
+## Key
+if args.key:
+    print("  Identification key: %s" % telemetry._INSTALL_KEY)
