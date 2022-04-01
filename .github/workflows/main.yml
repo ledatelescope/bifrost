@@ -51,7 +51,7 @@ jobs:
         run: |
           ./configure
           make -j all
-          sudo make install
+          sudo -E make install
       - name: Test
         env:
           LD_LIBRARY_PATH: /usr/local/lib:${LD_LIBRARY_PATH}
@@ -72,5 +72,5 @@ jobs:
       - name: "Cleanup"
         if: always()
         run: |
-          sudo make clean
-          sudo rm -rf python/bifrost.egg-info
+          sudo -E make clean
+          sudo -E rm -rf python/bifrost.egg-info
