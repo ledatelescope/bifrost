@@ -108,7 +108,7 @@ inline void launch_fir_kernel(unsigned int ncoeff,
                               OutType*     d_out,
                               cudaStream_t stream=0) {
 	//cout << "LAUNCH for " << nelement << endl;
-	dim3 block(std::min(BF_TUNING_FIR_BLOCK_SIZE, nantpol), BF_TUNING_FIR_BLOCK_SIZE/std::min(BF_TUNING_FIR_BLOCK_SIZE, nantpol));
+	dim3 block(std::min((unsigned int) BF_TUNING_FIR_BLOCK_SIZE, nantpol), BF_TUNING_FIR_BLOCK_SIZE/std::min((unsigned int) BF_TUNING_FIR_BLOCK_SIZE, nantpol));
 	int first = std::min((nantpol-1)/block.x+1, 65535u);
 	int secnd = std::min((ntime/decim-1)/block.y+1, 65535u);
 	int third = std::min((ntime/decim-secnd*block.y-1)/secnd+2, 65535u);
