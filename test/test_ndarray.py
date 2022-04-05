@@ -28,6 +28,7 @@
 import unittest
 import numpy as np
 import bifrost as bf
+import ctypes
 
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
@@ -47,6 +48,19 @@ class NDArrayTest(unittest.TestCase):
         c = bf.ndarray(self.known_vals, dtype='f32')
         c = c.copy(space='cuda').copy(space='cuda_host').copy(space='system')
         np.testing.assert_equal(c, self.known_array)
+    def test_contiguous_copy(self):
+        a = np.random.rand(2,3,4,5)
+        a = a.astype(np.float64)
+        b = a.transpose(0,3,2,1).copy()
+        c = bf.zeros(a.shape, dtype=a.dtype, space='system')
+        c[...] = a
+        d = c.transpose(0,3,2,1).copy()
+        # Use ctypes to directly access the memory
+        b_data = ctypes.cast(b.ctypes.data, ctypes.POINTER(ctypes.c_double))
+        b_data = np.array([b_data[i] for i in range(b.size)])
+        d_data = ctypes.cast(d.ctypes.data, ctypes.POINTER(ctypes.c_double))
+        d_data = np.array([d_data[i] for i in range(d.size)])
+        np.testing.assert_equal(d_data, b_data)
     def test_view(self):
         d = bf.ndarray(self.known_vals, dtype='f32')
         d = d.view(dtype='cf32')
