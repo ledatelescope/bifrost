@@ -388,6 +388,8 @@ class ndarray(np.ndarray):
             raise NotImplementedError('Only order="C" is supported')
         if space is None:
             space = self.bf.space
+        if not self.flags['C_CONTIGUOUS']:
+            raise NotImplementedError('Only C contiguous arrays are supported')
         # Note: This makes an actual copy as long as space is not None
         return ndarray(self, space=space)
     def _key_returns_scalar(self, key):
