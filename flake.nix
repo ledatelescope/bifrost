@@ -45,10 +45,10 @@
       #                  │       │*Experimented w/using all supported archs, but
       #                  │       │ had to eliminate 87 because not in cufft lib.
 
-      bifrost = { stdenv, ctags, ncurses, file, enableDebug ? false
+      bifrost = { gccStdenv, ctags, ncurses, file, enableDebug ? false
         , enablePython ? true, python3, enableCuda ? false, cudatoolkit
         , util-linuxMinimal, gpuArchs ? defaultGpuArchs cudatoolkit }:
-        stdenv.mkDerivation {
+        gccStdenv.mkDerivation {
           name = lib.optionalString (!enablePython) "lib" + "bifrost"
             + lib.optionalString enablePython
             "-py${lib.versions.majorMinor python3.version}"
