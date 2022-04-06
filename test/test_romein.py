@@ -151,9 +151,15 @@ class RomeinTest(unittest.TestCase):
 
         # Transpose for non pol-major kernels
         if not polmajor:
+            data=np.array(data)
             data=data.transpose((0,1,3,2)).copy()
+            data=bf.ndarray(data)
+            locs=np.array(locs)
             locs=locs.transpose((0,1,2,4,3)).copy()
-            illum=illum.transpose((0,1,3,2,4,5)).copy()            
+            locs=bf.ndarray(locs)
+            illum=np.array(illum)
+            illum=illum.transpose((0,1,3,2,4,5)).copy()
+            illum=bf.ndarray(illum)
         
         grid = grid.copy(space='cuda')
         data = data.copy(space='cuda')
@@ -295,5 +301,3 @@ class RomeinTest(unittest.TestCase):
         self.run_positions_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2,polmajor=True)
     def test_set_positions(self):
         self.run_positions_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2,polmajor=False)
-
-
