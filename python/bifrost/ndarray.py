@@ -390,29 +390,7 @@ class ndarray(np.ndarray):
             space = self.bf.space
         if not self.flags['C_CONTIGUOUS']:
             # Deal with arrays that need to have their layouts changed
-            if space_accessible(space, ['system']):
-                ## For arrays that can be accessed from the system space, use
-                ## numpy.ndarray.copy() to do the heavy lifting
-                if space == 'cuda_managed':
-                    ## TODO: Decide where/when these need to be called
-                    device.stream_synchronize()
-                ## This actually makes two copies and throws one away
-                temp = ndarray(shape=self.shape, dtype=self.dtype, space=space)
-                temp[...] = np.array(self).copy()
-                return temp
-            else:
-                # TODO: Is this as robust as numpy.ndarray.copy()?
-                """
-                ## For arrays that can be access from CUDA, use bifrost.tranpose
-                ## to do the heavy lifting
-                permute = np.argsort(self.strides)[::-1]
-                temp = ndarray(self.shape, dtype=self.dtype, space=space)
-                array_type = ctypes.c_int * self.ndim
-                axes_array = array_type(*permute)
-                _check(_bf.bfTranspose(self.as_BFarray(), temp.as_BFarray(), axes_array))
-                return temp
-                """
-                raise NotImplementedError('For %s only C contiguous arrays are supported' % space)
+            raise NotImplementedError('Only C contiguous arrays are supported')
         # Note: This makes an actual copy as long as space is not None
         return ndarray(self, space=space)
     def _key_returns_scalar(self, key):
