@@ -394,10 +394,12 @@ class ndarray(np.ndarray):
                 ## For arrays that can be accessed from the system space, use
                 ## numpy.ndarray.copy() to do the heavy lifting
                 if space == 'cuda_managed':
-                    # TODO: Decide where/when these need to be called
+                    ## TODO: Decide where/when these need to be called
                     device.stream_synchronize()
-                temp = np.array(self)
-                return ndarray(temp.copy(order=order), space=space)
+                ## This actually makes two copies and throws one away
+                temp = ndarray(shape=self.shape, dtype=self.dtype, space=space)
+                temp[...] = np.array(self).copy()
+                return temp
             else:
                 # TODO: Is this as robust as numpy.ndarray.copy()?
                 """
