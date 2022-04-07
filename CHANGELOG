@@ -2,6 +2,7 @@
  * Cleaned up the Makefile outputs
  * Added a disk cache for bifrost.map calls
  * Added support for configurable, reproducible builds with nix
+ * Fix a problem in bifrost.ndarray.copy with arrays that are not C contiguous
 
 0.10.0
  * Switched over to an autotools-based build system
