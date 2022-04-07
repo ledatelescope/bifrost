@@ -453,9 +453,9 @@ class DiskCacheMgr {
 		
 		if( !status ) {
 		    try {
-		        remove_file_glob(_cachedir + "*.inf");
-		        remove_file_glob(_cachedir + "*.ptx");
-		        remove_file_glob(_cachedir + BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE);
+          remove_files_with_suffix(_cachedir, ".inf");
+          remove_files_with_suffix(_cachedir, ".ptx");
+          remove_file(_cachedir + BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE);
 	        } catch( std::exception const& ) {}
 	    }
 	}
@@ -575,13 +575,13 @@ class DiskCacheMgr {
 	void clear_cache() {
 	    // Do this with a file lock to avoid interference from other processes
 		LockFile lock(_cachedir + ".lock");
-		
-	    try {
-		        remove_file_glob(_cachedir + "*.inf");
-		        remove_file_glob(_cachedir + "*.ptx");
-	        } catch( std::exception const& ) {}
-	}
-	
+
+    try {
+        remove_files_with_suffix(_cachedir, ".inf");
+        remove_files_with_suffix(_cachedir, ".ptx");
+    } catch( std::exception const& ) {}
+  }
+
 	DiskCacheMgr()
 		: _cachedir(get_home_dir()+"/.bifrost/"+BF_MAP_KERNEL_DISK_CACHE_SUBDIR+"/"),
 		  _loaded(false) {

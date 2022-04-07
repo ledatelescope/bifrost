@@ -27,9 +27,16 @@
  */
 
 #include "fileutils.hpp"
+#include <sstream>
 
-#if __cplusplus >= 201703L
-#include <regex>
+/* Set this constant to 1 to force usage of <filesystem> or 0 to force usage of
+   older POSIX methods such as system, unlink, etc. Leave it unset to detect
+   based on -std=c++17. */
+#ifndef BF_USE_CXX_FILESYSTEM
+#  define BF_USE_CXX_FILESYSTEM (__cplusplus >= 201703L)
+#endif
+
+#if BF_USE_CXX_FILESYSTEM
 #include <filesystem>
 #endif
 
@@ -47,19 +54,20 @@ std::string get_home_dir(void) {
    not with data from command line or config files. */
 
 void make_dir(std::string path, int perms) {
-#if __cplusplus >= 201703L
-	std::filesystem::create_directories(path);
-	std::filesystem::permissions(path, \
-		                           (std::filesystem::perms) perms, \
-															 std::filesystem::perm_options::replace);
+#if BF_USE_CXX_FILESYSTEM
+  std::filesystem::create_directories(path);
+  std::filesystem::permissions(path, (std::filesystem::perms) perms,
+                               std::filesystem::perm_options::replace);
 #else
-	if( std::system(("mkdir -p -m "+std::to_string(perms)+" "+path).c_str()) ) {
-		throw std::runtime_error("Failed to create path: "+path);
-	}
+  std::ostringstream cmd;
+  cmd << "mkdir -p -m " << std::oct << perms << ' ' << path;
+  if( std::system(cmd.str().c_str()) ) {
+    throw std::runtime_error("Failed to create path: "+path);
+  }
 #endif
 }
 void remove_files_recursively(std::string path) {
-#if __cplusplus >= 201703L
+#if BF_USE_CXX_FILESYSTEM
   std::filesystem::remove_all(path);
 #else
 	if( std::system(("rm -rf "+path).c_str()) ) {
@@ -68,42 +76,65 @@ void remove_files_recursively(std::string path) {
 #endif
 }
 void remove_dir(std::string path) {
-#if __cplusplus >= 201703L
+#if BF_USE_CXX_FILESYSTEM
   std::filesystem::remove(path);
 #else
-	if( std::system(("rmdir "+path+" 2> /dev/null").c_str()) ) {
-		throw std::runtime_error("Failed to remove dir: "+path);
-	}
+  if(rmdir(path.c_str()) != 0) {
+    throw std::runtime_error("Failed to remove dir: "+path);
+  }
 #endif
 }
-void remove_file_glob(std::string path) {
-  // Often, PATH contains wildcard, so this can't just be unlink system call.
-#if __cplusplus >= 201703L
-  // Convert the shell-style wildcards into a POSIX regex
-	// TODO: expand this to support more complicated expressions
-  std::regex special_re("\\.", std::regex::basic);
-	path = std::regex_replace(path, special_re, "\\$&");
-	std::regex wildcard_re("\\*", std::regex::basic);
-	path = std::regex_replace(path, wildcard_re, ".$&");
-  std::regex r(path, std::regex::basic);
-	
-	// Iterate through the directory's contents and remove the matches
-  std::filesystem::path ipath = path;
-	for(auto const& entry : std::filesystem::directory_iterator{ipath.parent_path()}) {
-		std::filesystem::path epath = entry.path();
-		if( std::regex_match(epath.string(), r) ) {
-			std::filesystem::remove(epath);
-		}
-	}
+void remove_file(std::string path) {
+#if BF_USE_CXX_FILESYSTEM
+	std::filesystem::remove(path);
 #else
-	if( std::system(("rm -f "+path).c_str()) ) {
-		throw std::runtime_error("Failed to remove file: "+path);
-	}
+  if(unlink(path.c_str()) != 0) {
+    // Previously this was an 'rm -f', which is silent on non-existent path.
+    if(errno != ENOENT) {
+      throw std::runtime_error("Failed to remove file: "+path);
+    }
+  }
+#endif
+}
+
+
+// ends_with will be available in C++20; this is suggested as alternative
+// at https://stackoverflow.com/questions/874134
+static bool ends_with (std::string const &fullString, std::string const &ending) {
+  if (fullString.length() >= ending.length()) {
+    return (0 == fullString.compare(fullString.length() - ending.length(),
+                                    ending.length(), ending));
+  } else {
+    return false;
+  }
+}
+
+void remove_files_with_suffix(std::string dir, std::string suffix) {
+  if(dir.empty()) {
+    throw std::runtime_error("Empty DIR argument");
+  }
+  if(suffix.empty()) {
+    throw std::runtime_error("Empty SUFFIX argument");
+  }
+#if BF_USE_CXX_FILESYSTEM
+  // Iterate through the directory's contents and remove the matches
+  std::filesystem::path path = dir;
+  for(auto const& entry : std::filesystem::directory_iterator{dir}) {
+    std::filesystem::path epath = entry.path();
+    if( ends_with(epath.string(), suffix) ) {
+      std::filesystem::remove(epath);
+    }
+  }
+#else
+  std::string wild = dir + "/*" + suffix;
+  if( std::system(("rm -f "+wild).c_str()) ) {
+    throw std::runtime_error("Failed to remove files: "+wild);
+  }
 #endif
 }
 
 bool file_exists(std::string path) {
-#if __cplusplus >= 201703L
+#if BF_USE_CXX_FILESYSTEM
   return std::filesystem::exists(path);
 #else
     struct stat s;
@@ -147,7 +178,7 @@ bool process_exists(pid_t pid) {
 }
 
 std::string get_dirname(std::string filename) {
-#if __cplusplus >= 201703L
+#if BF_USE_CXX_FILESYSTEM
   std::filesystem::path path = filename;
 	return (path.parent_path()).string();
 #else

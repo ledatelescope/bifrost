@@ -74,9 +74,8 @@ struct TestDir {
   char* path = NULL;
   TestDir();
   ~TestDir();
-  const string filename(const string& name) {
-    return string(path) + '/' + name;
-  }
+  const string mkFileName(const string& baseName);
+  const string mkFile(const string& baseName);
 };
 
 TestDir::TestDir() {
@@ -89,8 +88,9 @@ TestDir::TestDir() {
   unsigned tmpdirLen = strlen(tmpdir);
   path = new char [tmpdirLen + 40];
   strcpy(path, tmpdir);
-  if(tmpdir[tmpdirLen-1] != '/') { // Add a slash if needed
-    strcat(path, "/");             // (TMPDIR on Mac may already end in slash?)
+  // Add a slash if needed (TMPDIR on Mac may already end in slash?)
+  if(tmpdir[tmpdirLen-1] != '/') {
+    strcat(path, "/");
   }
   strcat(path, "bifrost-testsuite.XXXXXX");
   if(mkdtemp(path) == NULL) {
@@ -105,21 +105,41 @@ TestDir::~TestDir() {
   delete [] path;
 }
 
+const string TestDir::mkFileName(const string& baseName) {
+  return string(path) + '/' + baseName;
+}
+
+const string TestDir::mkFile(const string& baseName) {
+  string fname = mkFileName(baseName);
+  ofstream file (fname);
+  file.close();
+  return fname;
+}
+
 static TestResult test_this_process_exists() {
   pid_t pid = getpid();
   ASSERT(process_exists(pid), "my PID " << pid << " not found.");
   return OK;
 }
 
+static TestResult test_dir() {
+  string path;
+  { TestDir tmp;
+    path = tmp.path;
+    ASSERT_PATH_EXISTS(path);
+  }
+  ASSERT_PATH_NOT_EXISTS(path);
+  return OK;
+}
+
 static TestResult test_make_then_remove_dir() {
   TestDir tmp;
-  string dir = tmp.filename("w0w.d");
-
-  TDEBUG("make_dir" << dir);
+  string dir = tmp.mkFileName("w0w.d");
+  TDEBUG("make_dir " << dir);
   make_dir(dir);
   ASSERT_PATH_EXISTS(dir);
 
-  TDEBUG("remove_dir" << dir);
+  TDEBUG("remove_dir " << dir);
   remove_dir(dir);
   ASSERT_PATH_NOT_EXISTS(dir);
 
@@ -128,15 +148,12 @@ static TestResult test_make_then_remove_dir() {
 
 static TestResult test_create_then_remove_file() {
   TestDir tmp;
-  string fname = tmp.filename("rain.b0w");
-
-  TDEBUG("touch " << fname);
-  ofstream file (fname);
-  file.close();
+  string fname = tmp.mkFile("rain.b0w");
+  TDEBUG("mkFile " << fname);
   ASSERT_PATH_EXISTS(fname);
 
-  TDEBUG("remove_file_glob " << fname);
-  remove_file_glob(fname);
+  TDEBUG("remove_file " << fname);
+  remove_file(fname);
   ASSERT_PATH_NOT_EXISTS(fname);
 
   return OK;
@@ -151,16 +168,13 @@ static TestResult test_remove_files_by_extension() {
       };
 
   for(unsigned i = 0; i < names.size(); i++) {
-    names.at(i) = tmp.filename(names.at(i));
-    TDEBUG("touch " << names.at(i));
-    ofstream file(names.at(i));
-    file.close();
+    names.at(i) = tmp.mkFile(names.at(i));
+    TDEBUG("mkFile " << names.at(i));
     ASSERT_PATH_EXISTS(names.at(i));
   }
 
-  string wild = tmp.filename("*.bak");
-  TDEBUG("removing " << wild);
-  remove_file_glob(wild);
+  TDEBUG("removing *.bak");
+  remove_files_with_suffix(tmp.path, ".bak");
 
   ASSERT_PATH_NOT_EXISTS(names.at(0));
   ASSERT_PATH_NOT_EXISTS(names.at(1));
@@ -176,6 +190,7 @@ int bfTestSuite() {
   int numFails = 0;
 
   numFails += test_this_process_exists();
+  numFails += test_dir();
   numFails += test_make_then_remove_dir();
   numFails += test_create_then_remove_file();
   numFails += test_remove_files_by_extension();

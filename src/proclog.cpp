@@ -129,7 +129,7 @@ public:
 	}
 	void destroy_log(std::string filename) {
 		std::lock_guard<std::mutex> lock(_mutex);
-		remove_file_glob(filename);
+		remove_file(filename);
 		_logs.erase(filename);
 	}
 	void update_log_s(std::string filename, const char* str) {
