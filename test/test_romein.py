@@ -151,15 +151,9 @@ class RomeinTest(unittest.TestCase):
 
         # Transpose for non pol-major kernels
         if not polmajor:
-            data=numpy.array(data)
             data=data.transpose((0,1,3,2)).copy()
-            data=bifrost.ndarray(data)
-            locs=numpy.array(locs)
             locs=locs.transpose((0,1,2,4,3)).copy()
-            locs=bifrost.ndarray(locs)
-            illum=numpy.array(illum)
             illum=illum.transpose((0,1,3,2,4,5)).copy()
-            illum=bifrost.ndarray(illum)
             
         grid = grid.copy(space='cuda')
         data = data.copy(space='cuda')
@@ -199,15 +193,9 @@ class RomeinTest(unittest.TestCase):
         
         # Transpose for non pol-major kernels
         if not polmajor:
-            data=numpy.array(data)
             data=data.transpose((0,1,3,2)).copy()
-            data=bifrost.ndarray(data)
-            locs=numpy.array(locs)
             locs=locs.transpose((0,1,2,4,3)).copy()
-            locs=bifrost.ndarray(locs)
-            illum=numpy.array(illum)
             illum=illum.transpose((0,1,3,2,4,5)).copy()
-            illum=bifrost.ndarray(illum)
             
         grid = grid.copy(space='cuda')
         data = data.copy(space='cuda')
@@ -251,15 +239,9 @@ class RomeinTest(unittest.TestCase):
         
         # Transpose for non pol-major kernels
         if not polmajor:
-            data=numpy.array(data)
             data=data.transpose((0,1,3,2)).copy()
-            data=bifrost.ndarray(data)
-            locs=numpy.array(locs)
             locs=locs.transpose((0,1,2,4,3)).copy()
-            locs=bifrost.ndarray(locs)
-            illum=numpy.array(illum)
             illum=illum.transpose((0,1,3,2,4,5)).copy()
-            illum=bifrost.ndarray(illum)
             
         grid = grid.copy(space='cuda')
         data = data.copy(space='cuda')
