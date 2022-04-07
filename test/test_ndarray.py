@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -48,19 +48,25 @@ class NDArrayTest(unittest.TestCase):
         c = bf.ndarray(self.known_vals, dtype='f32')
         c = c.copy(space='cuda').copy(space='cuda_host').copy(space='system')
         np.testing.assert_equal(c, self.known_array)
-    def test_contiguous_copy(self):
+    def run_contiguous_copy(self, space='system'):
         a = np.random.rand(2,3,4,5)
         a = a.astype(np.float64)
         b = a.transpose(0,3,2,1).copy()
         c = bf.zeros(a.shape, dtype=a.dtype, space='system')
         c[...] = a
-        d = c.transpose(0,3,2,1).copy()
+        c = c.copy(space=space)
+        d = c.transpose(0,3,2,1).copy(space='system')
         # Use ctypes to directly access the memory
         b_data = ctypes.cast(b.ctypes.data, ctypes.POINTER(ctypes.c_double))
         b_data = np.array([b_data[i] for i in range(b.size)])
         d_data = ctypes.cast(d.ctypes.data, ctypes.POINTER(ctypes.c_double))
         d_data = np.array([d_data[i] for i in range(d.size)])
         np.testing.assert_equal(d_data, b_data)
+    def test_contiguous_copy(self):
+        self.run_contiguous_copy()
+    @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
+    def test_space_contiguous_copy(self):
+        self.run_contiguous_copy(space='cuda')
     def test_view(self):
         d = bf.ndarray(self.known_vals, dtype='f32')
         d = d.view(dtype='cf32')
