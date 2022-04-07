@@ -12,7 +12,7 @@ jobs:
           concurrent_skipping: 'same_content'
   build:
     needs: pre_build
-    if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
+    if: ${{ needs.pre_build.outputs.should_skip != 'true' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
