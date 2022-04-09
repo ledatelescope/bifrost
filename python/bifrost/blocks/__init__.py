@@ -53,10 +53,10 @@ from bifrost.blocks.convert_visibilities import convert_visibilities, ConvertVis
 
 try: # Avoid error if portaudio library not installed
     from bifrost.blocks.audio import read_audio, AudioSourceBlock
-except ImportError:
+except (ImportError, OSError):
     pass
 
 try: # Avoid error if psrdada library not installed
     from bifrost.blocks.psrdada import read_psrdada_buffer, PsrDadaSourceBlock
-except ImportError:
+except (ImportError, OSError):
     pass
