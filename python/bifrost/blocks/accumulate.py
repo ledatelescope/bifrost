@@ -53,7 +53,6 @@ class AccumulateBlock(TransformBlock):
         return ('cuda',)
     def on_sequence(self, iseq):
         ihdr = iseq.header
-        itensor = ihdr['_tensor']
         ohdr = deepcopy(ihdr)
         otensor = ohdr['_tensor']
         if 'scales' in otensor:
