@@ -358,31 +358,15 @@
         <span class="c1">#    #           Could also try writing a custom GPUArray implem for this purpose</span>
         <span class="c1">#    return data_ptr</span>
         <span class="n">span_size</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">size</span>
-        <span class="n">stride</span>     <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">stride</span>
-        <span class="c1">#nringlet   = self.sequence.nringlet</span>
         <span class="n">nringlet</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nringlet</span>
         <span class="c1">#print(&quot;******&quot;, span_size, stride, nringlet)</span>
         <span class="c1">#BufferType = c_byte*(span_size*self.stride)</span>
         <span class="c1"># TODO: We should really map the actual ring memory space and index</span>
         <span class="c1">#         it with offset rather than mapping from the current pointer.</span>
-        <span class="n">BufferType</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_byte</span> <span class="o">*</span> <span class="p">(</span><span class="n">nringlet</span> <span class="o">*</span> <span class="n">stride</span><span class="p">)</span>
-        <span class="n">data_buffer_ptr</span> <span class="o">=</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">data_ptr</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">POINTER</span><span class="p">(</span><span class="n">BufferType</span><span class="p">))</span>
-        <span class="n">data_buffer</span>     <span class="o">=</span> <span class="n">data_buffer_ptr</span><span class="o">.</span><span class="n">contents</span>
-        <span class="c1">#print(len(data_buffer), (nringlet, span_size), (self.stride, 1))</span>
         <span class="n">_shape</span>   <span class="o">=</span> <span class="p">(</span><span class="n">nringlet</span><span class="p">,</span> <span class="n">span_size</span> <span class="o">//</span> <span class="n">itemsize</span><span class="p">)</span>
         <span class="n">strides</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stride</span><span class="p">,</span> <span class="n">itemsize</span><span class="p">)</span> <span class="k">if</span> <span class="n">nringlet</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="kc">None</span>
-        <span class="c1">#space   = self.sequence.ring.space</span>
         <span class="n">space</span>   <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ring</span><span class="o">.</span><span class="n">space</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        if space != &#39;cuda&#39;:</span>
-<span class="sd">            data_array = np.ndarray(shape=_shape, strides=strides,</span>
-<span class="sd">                                    buffer=data_buffer, dtype=dtype)</span>
-<span class="sd">        else:</span>
-<span class="sd">            data_array = GPUArray(shape=_shape, strides=strides,</span>
-<span class="sd">                                  buffer=data_ptr, dtype=dtype)</span>
-<span class="sd">            data_array.flags[&#39;SPACE&#39;] = space</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
+        
         <span class="n">data_array</span> <span class="o">=</span> <span class="n">ndarray</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">_shape</span><span class="p">,</span> <span class="n">strides</span><span class="o">=</span><span class="n">strides</span><span class="p">,</span>
                              <span class="n">buffer</span><span class="o">=</span><span class="n">data_ptr</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span>
                              <span class="n">space</span><span class="o">=</span><span class="n">space</span><span class="p">)</span>
