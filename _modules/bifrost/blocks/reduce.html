@@ -63,8 +63,8 @@
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
 
+<span class="kn">from</span> <span class="nn">bifrost</span> <span class="kn">import</span> <span class="n">reduce</span> <span class="k">as</span> <span class="n">bf_reduce</span>
 <span class="kn">from</span> <span class="nn">bifrost.pipeline</span> <span class="kn">import</span> <span class="n">TransformBlock</span>
-<span class="kn">import</span> <span class="nn">bifrost</span> <span class="k">as</span> <span class="nn">bf</span>
 
 <span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
 
@@ -115,7 +115,7 @@
         <span class="k">return</span> <span class="n">output_nframe</span></div>
 <div class="viewcode-block" id="ReduceBlock.on_data"><a class="viewcode-back" href="../../../bifrost.blocks.html#bifrost.blocks.reduce.ReduceBlock.on_data">[docs]</a>    <span class="k">def</span> <span class="nf">on_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ispan</span><span class="p">,</span> <span class="n">ospan</span><span class="p">):</span>
         <span class="n">idata</span><span class="p">,</span> <span class="n">odata</span> <span class="o">=</span> <span class="n">ispan</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">ospan</span><span class="o">.</span><span class="n">data</span>
-        <span class="n">bf</span><span class="o">.</span><span class="n">reduce</span><span class="p">(</span><span class="n">idata</span><span class="p">,</span> <span class="n">odata</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">)</span></div></div>
+        <span class="n">bf_reduce</span><span class="p">(</span><span class="n">idata</span><span class="p">,</span> <span class="n">odata</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">op</span><span class="p">)</span></div></div>
         
         <span class="c1"># TODO: Support system space using Numpy</span>
         <span class="c1">#ishape = list(idata.shape)</span>

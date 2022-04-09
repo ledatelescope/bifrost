@@ -65,7 +65,7 @@
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
 
-<span class="kn">import</span> <span class="nn">bifrost</span> <span class="k">as</span> <span class="nn">bf</span>
+<span class="kn">from</span> <span class="nn">bifrost</span> <span class="kn">import</span> <span class="nb">map</span> <span class="k">as</span> <span class="n">bf_map</span>
 <span class="kn">from</span> <span class="nn">bifrost.pipeline</span> <span class="kn">import</span> <span class="n">TransformBlock</span>
 
 <span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
@@ -99,7 +99,7 @@
         <span class="n">idata</span> <span class="o">=</span> <span class="n">ispan</span><span class="o">.</span><span class="n">data</span>
         <span class="n">odata</span> <span class="o">=</span> <span class="n">ospan</span><span class="o">.</span><span class="n">data</span>
         <span class="n">beta</span> <span class="o">=</span> <span class="mf">0.</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_count</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">1.</span>
-        <span class="n">bf</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="s2">&quot;b = beta * b + (b_type)a&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">idata</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="n">odata</span><span class="p">,</span> <span class="s1">&#39;beta&#39;</span><span class="p">:</span> <span class="n">beta</span><span class="p">})</span>
+        <span class="n">bf_map</span><span class="p">(</span><span class="s2">&quot;b = beta * b + (b_type)a&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="n">idata</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="n">odata</span><span class="p">,</span> <span class="s1">&#39;beta&#39;</span><span class="p">:</span> <span class="n">beta</span><span class="p">})</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">frame_count</span> <span class="o">+=</span> <span class="mi">1</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_count</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">nframe</span><span class="p">:</span>
             <span class="n">ncommit</span> <span class="o">=</span> <span class="mi">1</span>
