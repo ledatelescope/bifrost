@@ -124,7 +124,7 @@ class IpcBaseBuf(object):
         return self.__next__()
     def open(self):
         raise NotImplementedError()
-    def close(self):
+    def close(self, nbyte):
         raise NotImplementedError()
 
 class IpcBaseIO(IpcBaseBuf):
