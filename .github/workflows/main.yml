@@ -23,8 +23,6 @@ jobs:
         exclude:
           - os: macos-latest
             python-version: 2.7
-          - os: macos-latest
-            python-version: 3.6
       fail-fast: false
     steps:
       - name: "Software Install - Ubuntu"
