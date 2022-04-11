@@ -32,7 +32,7 @@ nframe times before outputting the accumulated result.
 
 from __future__ import absolute_import
 
-from bifrost import map as bf_map
+from bifrost.map import map as bf_map
 from bifrost.pipeline import TransformBlock
 
 from copy import deepcopy

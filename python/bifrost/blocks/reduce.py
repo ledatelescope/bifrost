@@ -30,7 +30,7 @@
 
 from __future__ import absolute_import
 
-from bifrost import reduce as bf_reduce
+from bifrost.reduce import reduce as bf_reduce
 from bifrost.pipeline import TransformBlock
 
 from copy import deepcopy

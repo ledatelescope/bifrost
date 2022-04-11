@@ -27,7 +27,7 @@
 
 from __future__ import absolute_import
 
-from bifrost import unpack as bf_unpack
+from bifrost.unpack import unpack as bf_unpack
 from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
 

@@ -27,7 +27,7 @@
 
 from __future__ import absolute_import
 
-from bifrost import quantize as bf_quantize
+from bifrost.quantize import quantize as bf_quantize
 from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
 

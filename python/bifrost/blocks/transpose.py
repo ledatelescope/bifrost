@@ -26,7 +26,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import absolute_import
-from bifrost import transpose as bf_transpose
+from bifrost.transpose import transpose as bf_transpose
 from bifrost.memory import space_accessible
 from bifrost.pipeline import TransformBlock
 

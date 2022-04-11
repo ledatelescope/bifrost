@@ -31,7 +31,7 @@ import sys
 if sys.version_info < (3,):
     range = xrange
     
-from bifrost import map as bf_map
+from bifrost.map import map as bf_map
 from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
 
