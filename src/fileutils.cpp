@@ -33,7 +33,10 @@
    older POSIX methods such as system, unlink, etc. Leave it unset to detect
    based on -std=c++17. */
 #ifndef BF_USE_CXX_FILESYSTEM
-#  define BF_USE_CXX_FILESYSTEM (__cplusplus >= 201703L)
+#ifndef __cpp_lib_filesystem
+#  define __cpp_lib_filesystem 0
+#endif
+#  define BF_USE_CXX_FILESYSTEM (__cplusplus >= 201703L && __cpp_lib_filesystem)
 #endif
 
 #if BF_USE_CXX_FILESYSTEM
@@ -97,7 +100,8 @@ void remove_file(std::string path) {
 #endif
 }
 
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 // ends_with will be available in C++20; this is suggested as alternative
 // at https://stackoverflow.com/questions/874134
 static bool ends_with (std::string const &fullString, std::string const &ending) {
@@ -108,6 +112,7 @@ static bool ends_with (std::string const &fullString, std::string const &ending)
     return false;
   }
 }
+#pragma GCC diagnostic pop
 
 void remove_files_with_suffix(std::string dir, std::string suffix) {
   if(dir.empty()) {
