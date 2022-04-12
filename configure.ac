@@ -289,17 +289,21 @@ AC_SUBST([PACKAGE_VERSION_MICRO], [`echo $PACKAGE_VERSION | $AWK -F. '{print $3}
 # C++17/C++14/C++11 toggling
 #
 
+AC_SUBST([MAP_KERNEL_STDCXX], [c++11])
 AS_IF([test x$HAVE_CXX17 = x1],
       [CXXFLAGS="-std=c++17 $CXXFLAGS"
        AS_IF([test x$CUDA_HAVE_CXX17 = x1],
-             [NVCCFLAGS="-std=c++17 $NVCCFLAGS"],
+             [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
+              AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
              [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
-                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"],
+                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                     AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
                     [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])],
       [AS_IF([test x$HAVE_CXX14 = x1],
              [CXXFLAGS="-std=c++14 $CXXFLAGS"
               AS_IF([test x$CUDA_HAVE_CXX14 = x1],
-                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"],
+                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                     AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
                     [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])],
              [CXXFLAGS="-std=c++11 $CXXFLAGS"
               NVCCFLAGS="-std=c++11 -Xcompiler \"-DTHRUST_IGNORE_DEPRECATED_CPP_DIALECT\" $NVCCFLAGS"])])

@@ -658,6 +658,7 @@ ac_includes_default="\
 ac_header_c_list=
 ac_subst_vars='OPTIONS
 LTLIBOBJS
+MAP_KERNEL_STDCXX
 PACKAGE_VERSION_MICRO
 PACKAGE_VERSION_MINOR
 PACKAGE_VERSION_MAJOR
@@ -23398,16 +23399,22 @@ PACKAGE_VERSION_MICRO=`echo $PACKAGE_VERSION | $AWK -F. '{print $3}'`
 # C++17/C++14/C++11 toggling
 #
 
+MAP_KERNEL_STDCXX=c++11
+
 if test x$HAVE_CXX17 = x1
 then :
   CXXFLAGS="-std=c++17 $CXXFLAGS"
        if test x$CUDA_HAVE_CXX17 = x1
 then :
   NVCCFLAGS="-std=c++17 $NVCCFLAGS"
+              MAP_KERNEL_STDCXX=c++17
+
 else $as_nop
   if test x$CUDA_HAVE_CXX14 = x1
 then :
   NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                     MAP_KERNEL_STDCXX=c++14
+
 else $as_nop
   NVCCFLAGS="-std=c++11 $NVCCFLAGS"
 fi
@@ -23419,6 +23426,8 @@ then :
               if test x$CUDA_HAVE_CXX14 = x1
 then :
   NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                     MAP_KERNEL_STDCXX=c++14
+
 else $as_nop
   NVCCFLAGS="-std=c++11 $NVCCFLAGS"
 fi
