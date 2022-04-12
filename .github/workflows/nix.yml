@@ -10,9 +10,9 @@ jobs:
           - macos-latest
         nixpkgs:
           - pinned
-          - release-21.11
-          - release-21.05
-          - nixpkgs-unstable
+          # - release-21.11
+          # - release-21.05
+          # - nixpkgs-unstable
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
