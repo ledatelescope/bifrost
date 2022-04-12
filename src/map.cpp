@@ -335,7 +335,13 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	                                   program_name,
 	                                   nheader, header_codes, header_names) );
 	std::vector<std::string> options;
-	options.push_back("--std=c++11");
+	std::stringstream cs_ss;
+#if defined(BF_MAP_KERNEL_STDCXX)
+	cs_ss << BF_MAP_KERNEL_STDCXX;
+#else
+	cs_ss << "c++11";
+#endif
+	options.push_back("--std="+cs_ss.str());
 	options.push_back("--device-as-default-execution-space");
 	options.push_back("--use_fast_math");
 	std::stringstream cc_ss;
