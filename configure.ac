@@ -291,10 +291,16 @@ AC_SUBST([PACKAGE_VERSION_MICRO], [`echo $PACKAGE_VERSION | $AWK -F. '{print $3}
 
 AS_IF([test x$HAVE_CXX17 = x1],
       [CXXFLAGS="-std=c++17 $CXXFLAGS"
-       NVCCFLAGS="-std=c++17 $NVCCFLAGS"],
+       AS_IF([test x$CUDA_HAVE_CXX17 = x1],
+             [NVCCFLAGS="-std=c++17 $NVCCFLAGS"],
+             [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"],
+                    [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])],
       [AS_IF([test x$HAVE_CXX14 = x1],
              [CXXFLAGS="-std=c++14 $CXXFLAGS"
-              NVCCFLAGS="-std=c++14 $NVCCFLAGS"],
+              AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"],
+                    [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])],
              [CXXFLAGS="-std=c++11 $CXXFLAGS"
               NVCCFLAGS="-std=c++11 -Xcompiler \"-DTHRUST_IGNORE_DEPRECATED_CPP_DIALECT\" $NVCCFLAGS"])])
 
