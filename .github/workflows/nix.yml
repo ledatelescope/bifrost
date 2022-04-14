@@ -6,6 +6,6 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Say hello
-      - run: |
+        run: |
           echo "Hello, world!"
           nvidia-smi
