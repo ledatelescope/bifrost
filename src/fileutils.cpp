@@ -28,7 +28,6 @@
 
 #include "fileutils.hpp"
 #include <sstream>
-#include <iostream>
 
 /* Set this constant to 1 to force usage of <filesystem> or 0 to force usage of
    older POSIX methods such as system, unlink, etc. Leave it unset to detect
@@ -56,7 +55,6 @@ std::string get_home_dir(void) {
 
 void make_dir(std::string path, int perms) {
 #if BF_USE_CXX_FILESYSTEM
-  std::cout << "here" << std::endl;
   std::filesystem::create_directories(path);
   std::filesystem::permissions(path, (std::filesystem::perms) perms,
                                std::filesystem::perm_options::replace);
