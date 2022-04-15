@@ -1519,8 +1519,8 @@ Optional Features:
   --disable-numa          disable numa support (default=no)
   --disable-hwloc         disable hwloc support (default=no)
   --enable-vma            enable vma support (default=no)
-  --enable-verbs          enable Infiniband verbs support (default=no)
-  --enable-rdma           enable RDMA support (default=no)
+  --disable-verbs         disable Infiniband verbs support (default=no)
+  --diable-rdma           disable RDMA support (default=no)
   --disable-cuda          disable cuda support (default=no)
   --enable-debug          enable debugging mode (default=no)
   --enable-trace          enable tracing mode for nvprof/nvvp (default=no)
@@ -19294,9 +19294,9 @@ fi
 # Check whether --enable-verbs was given.
 if test ${enable_verbs+y}
 then :
-  enableval=$enable_verbs; enable_verbs=yes
+  enableval=$enable_verbs; enable_verbs=no
 else $as_nop
-  enable_verbs=no
+  enable_verbs=yes
 fi
 
 HAVE_VERBS=0
@@ -19353,9 +19353,9 @@ fi
 # Check whether --enable-rdma was given.
 if test ${enable_rdma+y}
 then :
-  enableval=$enable_rdma; enable_rdma=yes
+  enableval=$enable_rdma; enable_rdma=no
 else $as_nop
-  enable_rdma=no
+  enable_rdma=yes
 fi
 
 HAVE_RDMA=0

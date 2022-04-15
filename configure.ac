@@ -135,10 +135,10 @@ AS_IF([test x$enable_vma != xno],
 #
 
 AC_ARG_ENABLE([verbs],
-              AS_HELP_STRING([--enable-verbs],
-                             [enable Infiniband verbs support (default=no)]),
-              [enable_verbs=yes],
-              [enable_verbs=no])
+              AS_HELP_STRING([--disable-verbs],
+                             [disable Infiniband verbs support (default=no)]),
+              [enable_verbs=no],
+              [enable_verbs=yes])
 AC_SUBST([HAVE_VERBS], [0])
 AS_IF([test x$enable_verbs != xno],
       [AC_CHECK_LIB([ibverbs], [ibv_query_device],
@@ -150,10 +150,10 @@ AS_IF([test x$enable_verbs != xno],
 #
 
 AC_ARG_ENABLE([rdma],
-              AS_HELP_STRING([--enable-rdma],
-                             [enable RDMA support (default=no)]),
-              [enable_rdma=yes],
-              [enable_rdma=no])
+              AS_HELP_STRING([--diable-rdma],
+                             [disable RDMA support (default=no)]),
+              [enable_rdma=no],
+              [enable_rdma=yes])
 AC_SUBST([HAVE_RDMA], [0])
 AS_IF([test x$enable_rdma != xno],
       [AC_CHECK_LIB([rdmacm], [rdma_get_devices],
