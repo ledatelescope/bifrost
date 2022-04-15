@@ -31,6 +31,9 @@ import os, sys
 sys.path.append('..')
 import make_header
 
+from bifrost import telemetry
+telemetry.track_module()
+
 disk_names = [ "ledastorage", "longterm", "offsite", "data" ]
 ledaovro_names = [ "ledaovro1", "ledaovro2", "ledaovro3", "ledaovro4", "ledaovro5", "ledaovro6", "ledaovro7", "ledaovro8", "ledaovro9", "ledaovro10", "ledaovro11","ledaovro12" ]
 data_names = [ "data1", "data2" ]
@@ -197,4 +200,3 @@ class BandFiles(object):
     for f in self.files:
       if f.freq in frequencies: has.append(f.freq)
     return has
-

@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-# Copyright (c) 2017, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2021, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,68 +27,37 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os
+# Python2 compatibility
+from __future__ import print_function
 import sys
+if sys.version_info < (3,):
+    range = xrange
+    
+import os
 import glob
 import time
 import curses
-import getopt
 import socket
+import argparse
 import traceback
 import subprocess
+
 try:
-    import cStringIO as StringIO
+    from cStringIO import StringIO
 except ImportError:
-    import StringIO
+    from io import StringIO
 
 os.environ['VMA_TRACELEVEL'] = '0'
-from bifrost.proclog import load_by_pid
+from bifrost.proclog import PROCLOG_DIR, load_by_pid
+
+from bifrost import telemetry
+telemetry.track_script()
 
 
-BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
-
-def usage(exitCode=None):
-    print """%s - Display perfomance of different blocks in various bifrost processes
-
-Usage: %s [OPTIONS]
-
-Options:
--h, --help                  Display this help information
-""" % (os.path.basename(__file__), os.path.basename(__file__))
-
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
+BIFROST_STATS_BASE_DIR = PROCLOG_DIR
 
 
-def parseOptions(args):
-    config = {}
-    # Command line flags - default values
-    config['args'] = []
-
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "h", ["help",])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        else:
-            assert False
-
-    # Add in arguments
-    config['args'] = args
-
-    # Return configuration
-    return config
-
-
-def _getLoadAverage():
+def get_load_average():
     """
     Query the /proc/loadavg interface to get the 1, 5, and 10 minutes load 
     averages.  The contents of this file is returned as a dictionary.
@@ -113,9 +81,9 @@ def _getLoadAverage():
         data['lastPID'] = fields[4]
     return data
 
-global _CPU_STATE
+_CPU_STATE
 _CPU_STATE = {}
-def _getProcessorUsage():
+def get_processor_usage():
     """
     Read in the /proc/stat file to return a dictionary of the load on each \
     CPU.  This dictionary also includes an 'avg' entry that gives the average
@@ -127,7 +95,9 @@ def _getProcessorUsage():
     NOTE::  Many of these details could be avoided by using something like the
           Python 'psutil' module.
     """
-
+    
+    global _CPU_STATE
+    
     data = {'avg': {'user':0.0, 'nice':0.0, 'sys':0.0, 'idle':0.0, 'wait':0.0, 'irq':0.0, 'sirq':0.0, 'steal':0.0, 'total':0.0}}
 
     with open('/proc/stat', 'r') as fh:
@@ -171,7 +141,7 @@ def _getProcessorUsage():
     return data
 
 
-def _getMemoryAndSwapUsage():
+def get_memory_swap_usage():
     """
     Read in the /proc/meminfo and return a dictionary of the memory and swap 
     usage for all processes.
@@ -208,7 +178,7 @@ def _getMemoryAndSwapUsage():
     return data
 
 
-def _getGpuMemoryUsage():
+def get_gpu_memory_usage():
     """
     Grab nvidia-smi output and return a dictionary of the memory usage.
     """
@@ -220,6 +190,9 @@ def _getGpuMemoryUsage():
     try:
         p = subprocess.Popen(['nvidia-smi', q_flag, fmt_flag], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, err = p.communicate()
+        if sys.version_info.major > 2 and isinstance(output, bytes):
+            # decode the output to utf-8 in python 3
+            output = output.decode("utf-8")
     except (OSError, ValueError) as e:
         pass
     else:
@@ -245,7 +218,7 @@ def _getGpuMemoryUsage():
     return data
 
 
-def _getCommandLine(pid):
+def get_command_line(pid):
     """
     Given a PID, use the /proc interface to get the full command line for 
     the process.  Return an empty string if the PID doesn't have an entry in
@@ -263,7 +236,7 @@ def _getCommandLine(pid):
     return cmd
 
 
-def _addLine(screen, y, x, string, *args):
+def _add_line(screen, y, x, string, *args):
     """
     Helper function for curses to add a line, clear the line to the end of 
     the screen, and update the line number counter.
@@ -278,8 +251,6 @@ _REDRAW_INTERVAL_SEC = 0.2
 
 
 def main(args):
-    config = parseOptions(args)
-
     hostname = socket.gethostname()
 
     scr = curses.initscr()
@@ -335,10 +306,10 @@ def main(args):
             ## Do we need to poll the system again?
             if t-tLastPoll > poll_interval:
                 ## Load in the various bits form /proc that we need
-                load = _getLoadAverage()
-                cpu  = _getProcessorUsage()
-                mem  = _getMemoryAndSwapUsage()
-                gpu  = _getGpuMemoryUsage()
+                load = get_load_average()
+                cpu  = get_processor_usage()
+                mem  = get_memory_swap_usage()
+                gpu  = get_gpu_memory_usage()
                 
                 ## Determine if we have GPU data to display
                 if gpu['devCount'] > 0:
@@ -354,7 +325,7 @@ def main(args):
                     pid = int(os.path.basename(pidDir), 10)
                     contents = load_by_pid(pid)
 
-                    cmd = _getCommandLine(pid)
+                    cmd = get_command_line(pid)
                     if cmd == '':
                         continue
 
@@ -385,20 +356,20 @@ def main(args):
             k = 0
             ### General - load average
             output = '%s - %s - load average: %s, %s, %s\n' % (os.path.basename(__file__), hostname, load['1min'], load['5min'], load['10min'])
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - process counts
             output = 'Processes: %s total, %s running\n' % (load['procTotal'], load['procRunning'])
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - average processor usage
             c = cpu['avg']
             output = 'CPU(s):%5.1f%%us,%5.1f%%sy,%5.1f%%ni,%5.1f%%id,%5.1f%%wa,%5.1f%%hi,%5.1f%%si,%5.1f%%st\n' % (100.0*c['user'], 100.0*c['sys'], 100.0*c['nice'], 100.0*c['idle'], 100.0*c['wait'], 100.0*c['irq'], 100.0*c['sirq'], 100.0*c['steal'])
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - memory
             output = 'Mem:    %9ik total, %9ik used, %9ik free, %9ik buffers\n' % (mem['memTotal'], mem['memUsed'], mem['memFree'], mem['buffers'])
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - swap
             output = 'Swap:   %9ik total, %9ik used, %9ik free, %9ik cached\n' % (mem['swapTotal'], mem['swapUsed'], mem['swapFree'], mem['cached'])
-            k = _addLine(scr, k, 0, output, std)
+            k = _add_line(scr, k, 0, output, std)
             ### General - GPU, if avaliable
             if display_gpu:
                 if gpu['pwrLimit'] != 0.0:
@@ -408,14 +379,14 @@ def main(args):
                         output = 'GPU(s): %9ik total, %9ik used, %9ik free, %.0f/%.0fW\n' % (gpu['memTotal'], gpu['memUsed'], gpu['memFree'], gpu['pwrDraw'], gpu['pwrLimit'])
                 else:
                     output = 'GPU(s): %9ik total, %9ik used, %9ik free, %i device(s)\n' % (gpu['memTotal'], gpu['memUsed'], gpu['memFree'], gpu['devCount'])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
             ### Header
-            k = _addLine(scr, k, 0, ' ', std)
+            k = _add_line(scr, k, 0, ' ', std)
             output = '%6s  %15s  %4s  %5s  %7s  %7s  %7s  %7s  Cmd' % ('PID', 'Block', 'Core', '%CPU', 'Total', 'Acquire', 'Process', 'Reserve')
             csize = size[1]-len(output)
             output += ' '*csize
             output += '\n'
-            k = _addLine(scr, k, 0, output, rev)
+            k = _add_line(scr, k, 0, output, rev)
             ### Data
             for o in order:
                 d = blockList[o]
@@ -425,7 +396,7 @@ def main(args):
                 except KeyError:
                     c = '%5s' % ' '
                 output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'][:15], d['core'], c, d['total'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
-                k = _addLine(scr, k, 0, output, std)
+                k = _add_line(scr, k, 0, output, std)
                 if k >= size[0] - 1:
                     break
             ### Clear to the bottom
@@ -441,7 +412,7 @@ def main(args):
 
     except Exception as error:
         exc_type, exc_value, exc_traceback = sys.exc_info()
-        fileObject = StringIO.StringIO()
+        fileObject = StringIO()
         traceback.print_tb(exc_traceback, file=fileObject)
         tbString = fileObject.getvalue()
         fileObject.close()
@@ -449,11 +420,10 @@ def main(args):
     # Save the window contents
     contents = ''
     y,x = scr.getmaxyx()
-    for i in xrange(y-1):
-        for j in xrange(x):
+    for i in range(y-1):
+        for j in range(x):
             d = scr.inch(i,j)
             c = d&0xFF
-            a = (d>>8)&0xFF
             contents += chr(c)
 
     # Tear down curses
@@ -461,18 +431,23 @@ def main(args):
     curses.echo()
     curses.nocbreak()
     curses.endwin()
-    
+
     # Final reporting
     try:
         ## Error
-        print "%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), traceback.tb_lineno(exc_traceback))
+        print("%s: failed with %s at line %i" % (os.path.basename(__file__), str(error), exc_traceback.tb_lineno))
         for line in tbString.split('\n'):
-            print line
+            print(line)
     except NameError:
         ## Last window contents sans attributes
-        print contents
+        print(contents)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='Display perfomance of different blocks of Bifrost pipelines',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    args = parser.parse_args()
+    main(args)
     

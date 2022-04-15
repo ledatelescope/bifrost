@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,16 +25,25 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
 from __future__ import absolute_import, print_function
-
+import sys
+if sys.version_info < (3,):
+    range = xrange
+    
 from bifrost.pipeline import SinkBlock, SourceBlock
 import os
+import warnings
 try:
     import simplejson as json
 except ImportError:
-    print("WARNING: Install simplejson for better performance")
+    warnings.warn("Install simplejson for better performance", RuntimeWarning)
     import json
 import glob
+from functools import reduce
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def _parse_bifrost_filename(fname):
     inds = fname[fname.find('.bf.') + 4:].split('.')[:-1]
@@ -58,7 +67,7 @@ class BifrostReader(object):
         if self.nringlet > 0:
             ringlet_inds = [inds[0] for inds in ringlet_inds]
             self.ringlet_files = []
-            for ringlet in xrange(self.nringlet):
+            for ringlet in range(self.nringlet):
                 ringlet_filenames = [f for f, r in zip(data_filenames, ringlet_inds)
                                      if r == ringlet]
                 ringlet_filenames.sort()
@@ -97,7 +106,7 @@ class BifrostReader(object):
         if nbyte_read % frame_nbyte != 0:
             raise IOError("Unexpected end of file")
         nframe_read += nbyte_read // frame_nbyte
-        while nbyte_read < buf.nbytes:
+        while nbyte_read < buf[0].nbytes:
             self.cur_file += 1
             if self.cur_file == self.nfile:
                 break
@@ -118,7 +127,6 @@ class DeserializeBlock(SourceBlock):
     def create_reader(self, sourcename):
         return BifrostReader(sourcename)
     def on_sequence(self, ireader, sourcename):
-        hdr = ireader.header
         return [ireader.header]
     def on_data(self, reader, ospans):
         ospan = ospans[0]
@@ -187,7 +195,7 @@ class SerializeBlock(SinkBlock):
             ndigit    = len(str(self.nringlet-1))
             filenames = [self.basename + ('.bf.%012i.%0'+str(ndigit)+'i.dat') %
                          (frame_offset, i)
-                         for i in xrange(self.nringlet)]
+                         for i in range(self.nringlet)]
         else:
             # TODO: Need to deal with separating multiple ringlet axes
             #         E.g., separate each ringlet dim with a dot
@@ -229,7 +237,7 @@ class SerializeBlock(SinkBlock):
         if self.nringlet == 1:
             ispan.data.tofile(self.ofiles[0])
         else:
-            for r in xrange(self.nringlet):
+            for r in range(self.nringlet):
                 ispan.data[r].tofile(self.ofiles[r])
 
 def serialize(iring, path=None, max_file_size=None, *args, **kwargs):
@@ -270,4 +278,3 @@ def serialize(iring, path=None, max_file_size=None, *args, **kwargs):
         SerializeBlock: A new block instance.
     """
     return SerializeBlock(iring, path, max_file_size, *args, **kwargs)
-

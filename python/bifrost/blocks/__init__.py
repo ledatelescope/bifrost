@@ -1,4 +1,5 @@
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,36 +27,36 @@
 
 from __future__ import absolute_import
 
-from .copy import copy, CopyBlock
-from .transpose import transpose, TransposeBlock
-from .reverse import reverse, ReverseBlock
-from .fft import fft, FftBlock
-from .fftshift import fftshift, FftShiftBlock
-from .fdmt import fdmt, FdmtBlock
-from .detect import detect, DetectBlock
-from .guppi_raw import read_guppi_raw, GuppiRawSourceBlock
-from .print_header import print_header, PrintHeaderBlock
-from .sigproc import read_sigproc, SigprocSourceBlock
-from .sigproc import write_sigproc, SigprocSinkBlock
-from .scrunch import scrunch, ScrunchBlock
-from .accumulate import accumulate, AccumulateBlock
-from .binary_io import BinaryFileReadBlock, BinaryFileWriteBlock
-from .binary_io import binary_read, binary_write
-from .unpack import unpack, UnpackBlock
-from .quantize import quantize, QuantizeBlock
-from .wav import read_wav, WavSourceBlock
-from .wav import write_wav, WavSinkBlock
-from .serialize import serialize, SerializeBlock, deserialize, DeserializeBlock
-from .reduce import reduce, ReduceBlock
-from .correlate import correlate, CorrelateBlock
-from .convert_visibilities import convert_visibilities, ConvertVisibilitiesBlock
+from bifrost.blocks.copy import copy, CopyBlock
+from bifrost.blocks.transpose import transpose, TransposeBlock
+from bifrost.blocks.reverse import reverse, ReverseBlock
+from bifrost.blocks.fft import fft, FftBlock
+from bifrost.blocks.fftshift import fftshift, FftShiftBlock
+from bifrost.blocks.fdmt import fdmt, FdmtBlock
+from bifrost.blocks.detect import detect, DetectBlock
+from bifrost.blocks.guppi_raw import read_guppi_raw, GuppiRawSourceBlock
+from bifrost.blocks.print_header import print_header, PrintHeaderBlock
+from bifrost.blocks.sigproc import read_sigproc, SigprocSourceBlock
+from bifrost.blocks.sigproc import write_sigproc, SigprocSinkBlock
+from bifrost.blocks.scrunch import scrunch, ScrunchBlock
+from bifrost.blocks.accumulate import accumulate, AccumulateBlock
+from bifrost.blocks.binary_io import BinaryFileReadBlock, BinaryFileWriteBlock
+from bifrost.blocks.binary_io import binary_read, binary_write
+from bifrost.blocks.unpack import unpack, UnpackBlock
+from bifrost.blocks.quantize import quantize, QuantizeBlock
+from bifrost.blocks.wav import read_wav, WavSourceBlock
+from bifrost.blocks.wav import write_wav, WavSinkBlock
+from bifrost.blocks.serialize import serialize, SerializeBlock, deserialize, DeserializeBlock
+from bifrost.blocks.reduce import reduce, ReduceBlock
+from bifrost.blocks.correlate import correlate, CorrelateBlock
+from bifrost.blocks.convert_visibilities import convert_visibilities, ConvertVisibilitiesBlock
 
 try: # Avoid error if portaudio library not installed
-    from .audio import read_audio, AudioSourceBlock
-except:
+    from bifrost.blocks.audio import read_audio, AudioSourceBlock
+except (ImportError, OSError):
     pass
 
 try: # Avoid error if psrdada library not installed
-    from .psrdada import read_psrdada_buffer, PsrDadaSourceBlock
-except:
+    from bifrost.blocks.psrdada import read_psrdada_buffer, PsrDadaSourceBlock
+except (ImportError, OSError):
     pass

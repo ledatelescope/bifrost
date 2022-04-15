@@ -29,6 +29,7 @@
 
 // TODO: Consider adding Add BF_TRY( ) to destructors too to ease debugging
 
+#include <bifrost/config.h>
 #include <bifrost/ring.h>
 #include "ring_impl.hpp"
 #include "assert.hpp"

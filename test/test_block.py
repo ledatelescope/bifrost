@@ -1,4 +1,4 @@
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -69,7 +69,8 @@ class TestTestingBlock(unittest.TestCase):
         self.blocks.append((TestingBlock(test_array), [], [0]))
         self.blocks.append((WriteHeaderBlock('.log2.txt'), [0], []))
         Pipeline(self.blocks).main()
-        header = eval(open('.log2.txt').read()) # pylint:disable=eval-used
+        with open('.log2.txt') as fh:
+            header = eval(fh.read()) # pylint:disable=eval-used
         dumped_numbers = np.loadtxt('.log.txt').reshape(header['shape'])
         np.testing.assert_almost_equal(dumped_numbers, test_array)
 class TestCopyBlock(unittest.TestCase):
@@ -90,7 +91,8 @@ class TestCopyBlock(unittest.TestCase):
         self.blocks.append((CopyBlock(), [0], [1]))
         self.blocks.append((WriteAsciiBlock(logfile), [1], []))
         Pipeline(self.blocks).main()
-        test_byte = open(logfile, 'r').read(1)
+        with open(logfile, 'r') as fh:
+            test_byte = fh.read(1)
         self.assertEqual(test_byte, '2')
     def test_multi_copy(self):
         """Test which performs a read of a sigproc file,
@@ -102,7 +104,8 @@ class TestCopyBlock(unittest.TestCase):
                 (CopyBlock(), [i], [i + 1]))
         self.blocks.append((WriteAsciiBlock(logfile), [10], []))
         Pipeline(self.blocks).main()
-        test_byte = open(logfile, 'r').read(1)
+        with open(logfile, 'r') as fh:
+            test_byte = fh.read(1)
         self.assertEqual(test_byte, '2')
     def test_non_linear_multi_copy(self):
         """Test which reads in a sigproc file, and
@@ -117,8 +120,9 @@ class TestCopyBlock(unittest.TestCase):
         self.blocks.append((CopyBlock(), [5], [6]))
         self.blocks.append((WriteAsciiBlock(logfile), [6], []))
         Pipeline(self.blocks).main()
-        log_nums = open(logfile, 'r').read(500).split(' ')
-        test_num = np.float(log_nums[8])
+        with open(logfile, 'r') as fh:
+            log_nums = fh.read(500).split(' ')
+        test_num = float(log_nums[8])
         self.assertEqual(test_num, 3)
     def test_single_block_multi_copy(self):
         """Test which forces one block to do multiple
@@ -129,9 +133,9 @@ class TestCopyBlock(unittest.TestCase):
         self.blocks.append((WriteAsciiBlock(logfiles[0]), [1], []))
         self.blocks.append((WriteAsciiBlock(logfiles[1]), [2], []))
         Pipeline(self.blocks).main()
-        test_bytes = int(
-            open(logfiles[0], 'r').read(1)) + int(
-                open(logfiles[1], 'r').read(1))
+        with open(logfiles[0], 'r') as fh0:
+            with open(logfiles[1], 'r') as fh1:
+                test_bytes = int(fh0.read(1)) + int(fh1.read(1))
         self.assertEqual(test_bytes, 4)
     def test_32bit_copy(self):
         """Perform a simple test to confirm that 32 bit
@@ -145,8 +149,9 @@ class TestCopyBlock(unittest.TestCase):
         self.blocks.append((CopyBlock(), [0], [1]))
         self.blocks.append((WriteAsciiBlock(logfile), [1], []))
         Pipeline(self.blocks).main()
-        test_bytes = open(logfile, 'r').read(500).split(' ')
-        self.assertAlmostEqual(np.float(test_bytes[0]), 0.72650784254)
+        with open(logfile, 'r') as fh:
+            test_bytes = fh.read(500).split(' ')
+        self.assertAlmostEqual(float(test_bytes[0]), 0.72650784254)
 class TestFoldBlock(unittest.TestCase):
     """This tests functionality of the FoldBlock."""
     def setUp(self):
@@ -163,8 +168,9 @@ class TestFoldBlock(unittest.TestCase):
         logfile = ".log.txt"
         self.blocks.append((WriteAsciiBlock(logfile), [1], []))
         Pipeline(self.blocks).main()
-        test_bytes = open(logfile, 'r').read().split(' ')
-        histogram = np.array([np.float(x) for x in test_bytes])
+        with open(logfile, 'r') as fh:
+            test_bytes = fh.read().split(' ')
+        histogram = np.array([float(x) for x in test_bytes])
         return histogram
     def test_simple_pulsar(self):
         """Test whether a pulsar histogram
@@ -234,7 +240,8 @@ class TestKurtosisBlock(unittest.TestCase):
         blocks.append((
             WriteAsciiBlock('.log.txt'), [1], []))
         Pipeline(blocks).main()
-        test_byte = open('.log.txt', 'r').read().split(' ')
+        with open('.log.txt', 'r') as fh:
+            test_byte = fh.read().split(' ')
         test_nums = np.array([float(x) for x in test_byte])
         self.assertLess(np.max(test_nums), 256)
         self.assertEqual(test_nums.size, 12800)
@@ -253,12 +260,14 @@ class TestFFTBlock(unittest.TestCase):
     def test_throughput(self):
         """Test that any data is being put through"""
         Pipeline(self.blocks).main()
-        test_string = open(self.logfile, 'r').read()
+        with open(self.logfile, 'r') as fh:
+            test_string = fh.read()
         self.assertGreater(len(test_string), 0)
     def test_throughput_size(self):
         """Number of elements going out should be double that of basic copy"""
         Pipeline(self.blocks).main()
-        number_fftd = len(open(self.logfile, 'r').read().split('\n'))
+        with open(self.logfile, 'r') as fh:
+            number_fftd = len(fh.read().split('\n'))
         number_fftd = np.loadtxt(self.logfile).size
         open(self.logfile, 'w').close()
         # Run pipeline again with simple copy
@@ -467,11 +476,11 @@ class TestMultiTransformBlock(unittest.TestCase):
             if self.i > 1 and self.i < 11:
                 with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
                     span_gen = curr_seq.read(1)
-                    self.all_sequence_starts.append(int(span_gen.next().data[0]))
+                    self.all_sequence_starts.append(int(next(span_gen).data[0]))
             if self.i > 12:
                 with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
                     span_gen = curr_seq.read(1)
-                    self.all_sequence_starts.append(int(span_gen.next().data[0]))
+                    self.all_sequence_starts.append(int(next(span_gen).data[0]))
             self.i += 1
             return array
 
@@ -543,7 +552,7 @@ class TestNumpyBlock(unittest.TestCase):
         def first_half(array):
             """Only return the first half of the input vector"""
             array = np.array(array)
-            return array[:int(array.size / 2)]
+            return array[:int(array.size // 2)]
         self.blocks.append([
             NumpyBlock(function=first_half),
             {'in_1': 0, 'out_1': 1}])

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,13 +25,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
 from __future__ import absolute_import
-
-import bifrost as bf
+import sys
+if sys.version_info < (3,):
+    range = xrange
+    
+from bifrost.map import map as bf_map
 from bifrost.pipeline import TransformBlock
-from bifrost.DataType import DataType
 
 from copy import deepcopy
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class FftShiftBlock(TransformBlock):
     def __init__(self, iring, axes, inverse=False,
@@ -47,7 +53,7 @@ class FftShiftBlock(TransformBlock):
         ihdr = iseq.header
         itensor = ihdr['_tensor']
         self.axes = [itensor['labels'].index(axis)
-                     if isinstance(axis, basestring)
+                     if isinstance(axis, str)
                      else axis
                      for axis in self.specified_axes]
         frame_axis = itensor['shape'].index(-1)
@@ -68,7 +74,7 @@ class FftShiftBlock(TransformBlock):
         idata = ispan.data
         odata = ospan.data
         shape = idata.shape
-        ind_names = ['i%i' % i for i in xrange(idata.ndim)]
+        ind_names = ['i%i' % i for i in range(idata.ndim)]
         inds = list(ind_names)
         for ax in self.axes:
             if self.inverse:
@@ -76,7 +82,7 @@ class FftShiftBlock(TransformBlock):
             else:
                 inds[ax] += '-a.shape(%i)/2' % ax
         inds = ','.join(inds)
-        bf.map("b = a(%s)" % inds, shape=shape, axis_names=ind_names,
+        bf_map("b = a(%s)" % inds, shape=shape, axis_names=ind_names,
                data={'a': idata, 'b': odata})
 
 def fftshift(iring, axes, inverse=False, *args, **kwargs):

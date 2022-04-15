@@ -32,10 +32,13 @@ nframe times before outputting the accumulated result.
 
 from __future__ import absolute_import
 
-import bifrost as bf
+from bifrost.map import map as bf_map
 from bifrost.pipeline import TransformBlock
 
 from copy import deepcopy
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class AccumulateBlock(TransformBlock):
     def __init__(self, iring, nframe, dtype=None, gulp_nframe=1,
@@ -50,7 +53,6 @@ class AccumulateBlock(TransformBlock):
         return ('cuda',)
     def on_sequence(self, iseq):
         ihdr = iseq.header
-        itensor = ihdr['_tensor']
         ohdr = deepcopy(ihdr)
         otensor = ohdr['_tensor']
         if 'scales' in otensor:
@@ -64,7 +66,7 @@ class AccumulateBlock(TransformBlock):
         idata = ispan.data
         odata = ospan.data
         beta = 0. if self.frame_count == 0 else 1.
-        bf.map("b = beta * b + (b_type)a", {'a': idata, 'b': odata, 'beta': beta})
+        bf_map("b = beta * b + (b_type)a", {'a': idata, 'b': odata, 'beta': beta})
         self.frame_count += 1
         if self.frame_count == self.nframe:
             ncommit = 1

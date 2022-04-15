@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,7 +30,8 @@ from __future__ import absolute_import
 from bifrost.pipeline import SourceBlock
 import bifrost.guppi_raw as guppi_raw
 
-import numpy as np
+from bifrost import telemetry
+telemetry.track_module()
 
 def _get_with_default(obj, key, default=None):
     return obj[key] if key in obj else default

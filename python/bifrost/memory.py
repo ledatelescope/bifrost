@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,8 +26,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from libbifrost import _bf, _check, _get, _string2space
+# Python2 compatibility
+from __future__ import absolute_import
+
+from bifrost.libbifrost import _bf, _check, _get, _string2space
 import ctypes
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def space_accessible(space, from_spaces):
     if from_spaces == 'any': # TODO: This is a little bit hacky

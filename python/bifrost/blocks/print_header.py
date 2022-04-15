@@ -24,12 +24,15 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 import pprint
 
 from bifrost.pipeline import SinkBlock
 
 from threading import Lock
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class PrintHeaderBlock(SinkBlock):
     lock = Lock()

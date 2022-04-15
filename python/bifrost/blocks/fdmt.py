@@ -34,6 +34,9 @@ from bifrost.units import convert_units
 from copy import deepcopy
 import math
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class FdmtBlock(TransformBlock):
     def __init__(self, iring, max_dm=None, max_delay=None, max_diagonal=None,
                  exponent=-2.0, negative_delays=False,

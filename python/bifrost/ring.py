@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -27,17 +26,21 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import print_function
+# Python2 compatibility
+from __future__ import print_function, absolute_import
 
-from libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string, EndOfDataStop
 #from GPUArray import GPUArray
-from DataType import DataType
-from ndarray import ndarray, _address_as_buffer
+from bifrost.DataType import DataType
+from bifrost.ndarray import ndarray, _address_as_buffer
 
 import ctypes
 import string
 import numpy as np
 from uuid import uuid4
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def _slugify(name):
     valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
@@ -49,6 +52,11 @@ class Ring(BifrostObject):
         if name is None:
             name = str(uuid4())
         name = _slugify(name)
+        try:
+            name = name.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         space = _string2space(space)
         #self.obj = None
         #self.obj = _get(_bf.bfRingCreate(name=name, space=space), retarg=0)
@@ -107,8 +115,11 @@ class Ring(BifrostObject):
     def read(self, whence='earliest', guarantee=True):
         with ReadSequence(self, which=whence, guarantee=guarantee) as cur_seq:
             while True:
-                yield cur_seq
-                cur_seq.increment()
+                try:
+                    yield cur_seq
+                    cur_seq.increment()
+                except EndOfDataStop:
+                    return
     #def _data(self):
     #    data_ptr = _get(self.lib.bfRingLockedGetData, self.obj)
     #    #data_ptr = c_void_p()
@@ -196,10 +207,21 @@ class WriteSequence(SequenceBase):
         header_size = len(header)
         if isinstance(header, np.ndarray):
             header = header.ctypes.data
+        elif isinstance(header, str):
+            try:
+                header = header.encode()
+            except AttributeError:
+                # Python2 catch
+                pass
         #print("hdr:", header_size, type(header))
         name = str(name)
         offset_from_head = 0
         self.obj = _bf.BFwsequence()
+        try:
+            name = name.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         _check(_bf.bfRingSequenceBegin(
             self.obj,
             ring.obj,
@@ -257,9 +279,12 @@ class ReadSequence(SequenceBase):
             stride = span_size
         offset = begin
         while True:
-            with self.acquire(offset, span_size) as ispan:
-                yield ispan
-            offset += stride
+            try:
+                with self.acquire(offset, span_size) as ispan:
+                    yield ispan
+                offset += stride
+            except EndOfDataStop:
+                return
 
 class SpanBase(object):
     def __init__(self, ring, writeable):
@@ -300,31 +325,15 @@ class SpanBase(object):
         #    #           Could also try writing a custom GPUArray implem for this purpose
         #    return data_ptr
         span_size  = self.size
-        stride     = self.stride
-        #nringlet   = self.sequence.nringlet
         nringlet   = self.nringlet
         #print("******", span_size, stride, nringlet)
         #BufferType = c_byte*(span_size*self.stride)
         # TODO: We should really map the actual ring memory space and index
         #         it with offset rather than mapping from the current pointer.
-        BufferType = ctypes.c_byte * (nringlet * stride)
-        data_buffer_ptr = ctypes.cast(data_ptr, ctypes.POINTER(BufferType))
-        data_buffer     = data_buffer_ptr.contents
-        #print(len(data_buffer), (nringlet, span_size), (self.stride, 1))
         _shape   = (nringlet, span_size // itemsize)
         strides = (self.stride, itemsize) if nringlet > 1 else None
-        #space   = self.sequence.ring.space
         space   = self.ring.space
-        """
-        if space != 'cuda':
-            data_array = np.ndarray(shape=_shape, strides=strides,
-                                    buffer=data_buffer, dtype=dtype)
-        else:
-            data_array = GPUArray(shape=_shape, strides=strides,
-                                  buffer=data_ptr, dtype=dtype)
-            data_array.flags['SPACE'] = space
-        """
-
+        
         data_array = ndarray(shape=_shape, strides=strides,
                              buffer=data_ptr, dtype=dtype,
                              space=space)

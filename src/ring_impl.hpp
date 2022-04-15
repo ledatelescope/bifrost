@@ -43,10 +43,6 @@
 #include <set>
 #include <memory>
 
-#ifndef BF_NUMA_ENABLED
-#define BF_NUMA_ENABLED 0
-#endif
-
 class BFsequence_impl;
 class BFspan_impl;
 class BFrspan_impl;

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,8 +25,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
 from __future__ import absolute_import
-
+import sys
+if sys.version_info < (3,):
+    range = xrange
+    
 from bifrost.pipeline import SourceBlock, SinkBlock
 from bifrost.DataType import DataType
 from bifrost.units import convert_units
@@ -34,11 +38,25 @@ from bifrost.units import convert_units
 import struct
 import os
 
+from bifrost import telemetry
+telemetry.track_module()
+
 def wav_read_chunk_desc(f):
     id_, size, fmt = struct.unpack('<4sI4s', f.read(12))
+    try:
+        id_ = id_.decode()
+        fmt = fmt.decode()
+    except AttributeError:
+        # Catch for Python2
+        pass
     return id_, size, fmt
 def wav_read_subchunk_desc(f):
     id_, size = struct.unpack('<4sI', f.read(8))
+    try:
+        id_ = id_.decode()
+    except AttributeError:
+        # Catch for Python2
+        pass
     return id_, size
 def wav_read_subchunk_fmt(f, size):
     assert(size >= 16)
@@ -163,7 +181,7 @@ class WavSinkBlock(SinkBlock):
             wav_write_header(self.ofile, ohdr)
         elif ndim == 3 and axnames[-2] == 'time':
             nfile = shape[-3]
-            filenames = [filename + '.%09i.tim' % i for i in xrange(nfile)]
+            filenames = [filename + '.%09i.tim' % i for i in range(nfile)]
             self.ofiles = [open(fname + '.wav', 'wb') for fname in filenames]
             for ofile in self.ofiles:
                 wav_write_header(ofile, ohdr)

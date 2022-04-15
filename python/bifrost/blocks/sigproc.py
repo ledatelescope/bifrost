@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,16 +25,22 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Python2 compatibility
 from __future__ import absolute_import, print_function
-
+import sys
+if sys.version_info < (3,):
+    range = xrange
+    
 from bifrost.pipeline import SourceBlock, SinkBlock
 import bifrost.sigproc2 as sigproc
 from bifrost.DataType import DataType
 from bifrost.units import convert_units
 from numpy import transpose
 
-from copy import deepcopy
 import os
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def _get_with_default(obj, key, default=None):
     return obj[key] if key in obj else default
@@ -201,7 +207,7 @@ class SigprocSinkBlock(SinkBlock):
 
         filename = os.path.join(self.path, ihdr['name'])
 
-        if ndim >= 3 and axnames[-3:] == ('time', 'pol', 'freq'):
+        if ndim >= 3 and axnames[-3:] == ['time', 'pol', 'freq']:
             self.data_format = 'filterbank'
             assert(dtype.is_real)
             sigproc_hdr['data_type'] = 1
@@ -226,9 +232,9 @@ class SigprocSinkBlock(SinkBlock):
                 nbeam = shape[-4]
                 sigproc_hdr['nbeams'] = nbeam
                 filenames = [filename + '.%06iof.%06i.fil' % (b + 1, nbeam)
-                             for b in xrange(nbeam)]
+                             for b in range(nbeam)]
                 self.ofiles = [open(fname, 'wb') for fname in filenames]
-                for b in xrange(nbeam):
+                for b in range(nbeam):
                     sigproc_hdr['ibeam'] = b
                     sigproc.write_header(sigproc_hdr, self.ofiles[b])
             else:
@@ -278,7 +284,7 @@ class SigprocSinkBlock(SinkBlock):
                 ndm = shape[-3]
                 dm0 = scales[-3][0]
                 ddm = scales[-3][1]
-                dms = [dm0 + ddm * d for d in xrange(ndm)]
+                dms = [dm0 + ddm * d for d in range(ndm)]
                 dms = [convert_units(dm, units[-3], 'pc cm^-3') for dm in dms]
                 filenames = [filename + '.%09.2f.tim' % dm for dm in dms]
                 self.ofiles = [open(fname, 'wb') for fname in filenames]
@@ -288,7 +294,7 @@ class SigprocSinkBlock(SinkBlock):
             else:
                 raise ValueError("Too many dimensions")
 
-        elif ndim == 4 and axnames[-3:] == ('pol', 'freq', 'phase'):
+        elif ndim == 4 and axnames[-3:] == ['pol', 'freq', 'phase']:
             self.data_format = 'pulseprofile'
             assert(dtype.is_real)
             sigproc_hdr['data_type'] = 2
@@ -329,19 +335,19 @@ class SigprocSinkBlock(SinkBlock):
             if len(idata.shape) == 3:
                 idata.tofile(self.ofile)
             else:
-                for b in xrange(idata.shape[0]):
+                for b in range(idata.shape[0]):
                     idata[b].tofile(self.ofiles[b])
         elif self.data_format == 'timeseries':
             ndim = len(idata.shape)
             if self.pol_axis != ndim - 1:
-                perm = list(xrange(ndim))
+                perm = list(range(ndim))
                 del perm[self.pol_axis]
                 perm.append(self.pol_axis);
                 idata = transpose(idata, perm)
             if ndim == 2:
                 idata.tofile(self.ofile)
             else:
-                for d in xrange(idata.shape[0]):
+                for d in range(idata.shape[0]):
                     idata[d].tofile(self.ofiles[d])
         elif self.data_format == 'pulseprofile':
             time_unix = self.t0 + ispan.frame_offset * self.dt

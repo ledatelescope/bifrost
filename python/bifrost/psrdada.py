@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -41,15 +41,15 @@ libtest_la_LDFLAGS = -version-info 0:0:0
 
 from __future__ import absolute_import, print_function
 
-from bifrost.pipeline import SourceBlock, SinkBlock
-from bifrost.DataType import DataType
 import bifrost.libpsrdada_generated as _dada
 import numpy as np
 from bifrost.ndarray import _address_as_buffer
+from bifrost.libbifrost import EndOfDataStop
 
-from copy import deepcopy
-import os
 import ctypes
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def get_pointer_value(ptr):
     return ctypes.c_void_p.from_buffer(ptr).value
@@ -112,17 +112,19 @@ class IpcBaseBuf(object):
             raise IOError("Failed to reset buffer")
     def __iter__(self):
         return self
-    def next(self):
+    def __next__(self):
         block = IpcBufBlock(self, self.mutable)
         if block.nbyte > 0:
             return block
         else:
             del block
             self.reset()
-            raise StopIteration()
+            raise EndOfDataStop('IpcBufBlock empty')
+    def next(self):
+        return self.__next__()
     def open(self):
         raise NotImplementedError()
-    def close(self):
+    def close(self, nbyte):
         raise NotImplementedError()
 
 class IpcBaseIO(IpcBaseBuf):
