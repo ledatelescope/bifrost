@@ -56,7 +56,7 @@ uninstall:
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ)
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN)
 	rm -rf $(INSTALL_INC_DIR)/bifrost/
-	rm -ff $(INSTALL_DAT_DIR)/bifrost/
+	rm -rf $(INSTALL_DAT_DIR)/bifrost/
 	rm -f $(INSTALL_LIB_DIR)/pkgconfig/bifrost.pc
 ifeq ($(HAVE_PYTHON),1)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) uninstall
