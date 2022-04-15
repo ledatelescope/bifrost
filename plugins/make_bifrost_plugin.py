@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2019, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2019, The University of New Mexico. All rights reserved.
+# Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2022, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -43,14 +43,15 @@ BIFROST_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Makefile template
 _MAKEFILE_PATH = os.path.dirname(os.path.abspath(__file__))
-_MAKEFILE_TEMPLATE = open(os.path.join(_MAKEFILE_PATH, 'Makefile.template'), 'r').read()
+with open(os.path.join(_MAKEFILE_PATH, 'Makefile.template'), 'r') as fh:
+    _MAKEFILE_TEMPLATE = fh.read()
 
 
 def resolve_bifrost(bifrost_path=None):
     """
     Given a base path for a Bifrost installation, find all of the necessary 
-    components for the Makefile.  Returns a four-element tuple of the
-    configuration path, includes path, library path, and plugin scripts path.
+    components for the Makefile.  Returns a three-element tuple of the includes
+    path, library path, and plugin scripts path.
     """
     
     # Get the Bifrost source path, if needed
