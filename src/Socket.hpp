@@ -299,7 +299,6 @@ public:
 	                                sa_family_t    family=AF_UNSPEC);
 	inline static sockaddr_storage any_address(sa_family_t family=AF_UNSPEC);
 	inline static std::string      address_string(sockaddr_storage const& addr);
-	inline static int              discover_mtu(sockaddr_storage remote_address);
 	
 	// Server initialisation
 	inline void bind(sockaddr_storage const& local_address,
@@ -317,6 +316,8 @@ public:
 	inline void shutdown(int how=SHUT_RD);
 	//void shutdown(int how=SHUT_RDWR);
 	inline void close();
+	// MTU discovery
+	inline static int discover_mtu(sockaddr_storage const& remote_address);
 	// Send/receive
 	// Note: These four methods return the number of packets received/sent
 	inline size_t recv_block(size_t            npacket,       // Max for UDP
@@ -547,15 +548,6 @@ std::string Socket::address_string(sockaddr_storage const& addr) {
 	default: throw Socket::Error("Invalid address family");
 	}
 }
-int Socket::discover_mtu(sockaddr_storage remote_address) {
-  Socket s(SOCK_DGRAM);
-	s.connect(remote_address);
-#if defined __APPLE__ && __APPLE__
-  return ::get_mtu(s.get_fd());
-#else
-	return s.get_option<int>(IP_MTU, IPPROTO_IP);
-#endif
-}
 void Socket::bind(sockaddr_storage const& local_address,
                   int                     max_conn_queue) {
 	if( _mode != Socket::MODE_CLOSED ) {
@@ -652,6 +644,15 @@ void Socket::shutdown(int how) {
 	if( ret < 0 && errno != EOPNOTSUPP && errno != ENOTCONN ) {
 		check_error(ret, "shutdown socket");
 	}
+}
+int Socket::discover_mtu(sockaddr_storage const& remote_address) {
+  Socket s(SOCK_DGRAM);
+	s.connect(remote_address);
+#if defined __APPLE__ && __APPLE__
+  return ::get_mtu(s.get_fd());
+#else
+	return s.get_option<int>(IP_MTU, IPPROTO_IP);
+#endif
 }
 // Note: If offsets is NULL, assumes uniform spacing of sizes[0]
 void Socket::prepare_msgs(size_t            npacket,
