@@ -42,125 +42,8 @@ BIFROST_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # Makefile template
-_MAKEFILE_TEMPLATE = r"""
-include {bifrost_config}/config.mk {bifrost_config}/user.mk
-
-ifndef NOCUDA
-# All CUDA archs supported by this version of nvcc
-GPU_ARCHS_SUPPORTED := $(shell $(NVCC) -h | grep -Po "compute_[0-9]{{2}}" | cut -d_ -f2 | sort | uniq)
-# Intersection of user-specified archs and supported archs
-GPU_ARCHS_VALID     := $(shell echo $(GPU_ARCHS) $(GPU_ARCHS_SUPPORTED) | xargs -n1 | sort | uniq -d | xargs)
-# Latest valid arch
-GPU_ARCH_LATEST     := $(shell echo $(GPU_ARCHS_VALID) | rev | cut -d' ' -f1 | rev)
-
-# This creates SASS for all valid requested archs, and PTX for the latest one
-NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS_VALID), \
-  -gencode arch=compute_$(arch),"code=sm_$(arch)") \
-  -gencode arch=compute_$(GPU_ARCH_LATEST),"code=compute_$(GPU_ARCH_LATEST)"
-endif
-
-CXXFLAGS  += -std=c++11 -fPIC -fopenmp
-NVCCFLAGS += -std=c++11 -Xcompiler "-fPIC" $(NVCC_GENCODE)
-
-#NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
-#NVCCFLAGS += --expt-relaxed-constexpr
-
-ifndef NODEBUG
-  CPPFLAGS  += -DBF_DEBUG=1
-  CXXFLAGS  += -g
-  NVCCFLAGS += -g
-endif
-
-LIB += -lgomp
-
-ifdef TRACE
-  CPPFLAGS   += -DBF_TRACE_ENABLED=1
-endif
-
-ifdef NUMA
-  # Requires libnuma-dev to be installed
-  LIB        += -lnuma
-  CPPFLAGS   += -DBF_NUMA_ENABLED=1
-endif
-
-ifdef HWLOC
-  # Requires libhwloc-dev to be installed
-  LIB        += -lhwloc
-  CPPFLAGS   += -DBF_HWLOC_ENABLED=1
-endif
-
-ifdef VMA
-  # Requires Mellanox libvma to be installed
-  LIB        += -lvma
-  CPPFLAGS   += -DBF_VMA_ENABLED=1
-endif
-
-ifdef ALIGNMENT
-  CPPFLAGS   += -DBF_ALIGNMENT=$(ALIGNMENT)
-endif
-
-ifdef CUDA_DEBUG
-  NVCCFLAGS += -G
-endif
-
-ifndef NOCUDA
-  CPPFLAGS  += -DBF_CUDA_ENABLED=1
-  LDFLAGS   += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lculibos -lnvToolsExt
-endif
-
-ifndef ANY_ARCH
-  CXXFLAGS  += -march=native
-  NVCCFLAGS += -Xcompiler "-march=native"
-endif
-
-CPPFLAGS += -I{bifrost_include} -I. -I$(CUDA_INCDIR)
-
-LDFLAGS += -L{bifrost_library} -lbifrost
-
-GCCFLAGS += -fmessage-length=80 #-fdiagnostics-color=auto
-
-PYTHON_BINDINGS_FILE={libname}_generated.py
-PYTHON_WRAPPER_FILE={libname}.py
-
-.PHONY: all
-all: lib{libname}.so $(PYTHON_BINDINGS_FILE) $(PYTHON_WRAPPER_FILE)
-
-define run_ctypesgen
-	python -c 'from ctypesgen import main as ctypeswrap; ctypeswrap.main()' -l$1 -I. -I{bifrost_include} $^ -o $@
-	# WAR for 'const char**' being generated as POINTER(POINTER(c_char)) instead of POINTER(c_char_p)
-	sed -i 's/POINTER(c_char)/c_char_p/g' $@
-	# WAR for a buggy WAR in ctypesgen that breaks type checking and auto-byref functionality
-	sed -i 's/def POINTER/def POINTER_not_used/' $@
-	# WAR for a buggy WAR in ctypesgen that breaks string buffer arguments (e.g., as in address.py)
-	sed -i 's/class String/String = c_char_p\nclass String_not_used/' $@
-	sed -i 's/String.from_param/String_not_used.from_param/g' $@
-	sed -i 's/def ReturnString/ReturnString = c_char_p\ndef ReturnString_not_used/' $@
-	sed -i '/errcheck = ReturnString/s/^/#/' $@
-endef
-
-define run_wrapper
-	python {bifrost_script}/wrap_bifrost_plugin.py $1
-endef
-
-lib{libname}.so: {libname}.o
-	$(CXX) -o lib{libname}.so {libname}.o -lm -shared -fopenmp $(LDFLAGS)
-
-%.o: %.cpp {includes}
-	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(GCCFLAGS) $(TARGET_ARCH) -c $(OUTPUT_OPTION) $<
-
-%.o: %.cu {includes}
-	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" $(TARGET_ARCH) -c $(OUTPUT_OPTION) $<
-
-$(PYTHON_BINDINGS_FILE): {includes}
-	$(call run_ctypesgen,{libname},{includes})
-
-$(PYTHON_WRAPPER_FILE): $(PYTHON_BINDINGS_FILE)
-	$(call run_wrapper,$(PYTHON_BINDINGS_FILE))
-
-clean:
-	rm -f lib{libname}.so {libname}.o $(PYTHON_BINDINGS_FILE) $(PYTHON_WRAPPER_FILE)
-
-"""
+_MAKEFILE_PATH = os.path.dirname(os.path.abspath(__file__))
+_MAKEFILE_TEMPLATE = open(os.path.join(_MAKEFILE_PATH, 'Makefile.template'), 'r').read()
 
 
 def resolve_bifrost(bifrost_path=None):
@@ -175,11 +58,6 @@ def resolve_bifrost(bifrost_path=None):
         bifrost_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
     # Setup the dependant paths
-    ## Configuration files
-    bifrost_config_path = bifrost_path+'/include/bifrost/config'
-    if not os.path.exists(os.path.join(bifrost_config_path, 'config.mk')):
-        ### Fallback to this being in the directory itself
-        bifrost_config_path = bifrost_path
     ## Includes
     bifrost_include_path = bifrost_path+'/include'
     if not os.path.exists(os.path.join(bifrost_include_path, 'bifrost', 'ring.h')):
@@ -191,7 +69,7 @@ def resolve_bifrost(bifrost_path=None):
     bifrost_script_path = os.path.dirname(os.path.abspath(__file__))
     
     # Done
-    return bifrost_config_path, bifrost_include_path, bifrost_library_path, bifrost_script_path
+    return bifrost_include_path, bifrost_library_path, bifrost_script_path
 
 
 def get_makefile_name(libname):
@@ -213,15 +91,15 @@ def create_makefile(libname, includes, bifrost_path=None):
         includes = " ".join(includes)
         
     # Get the Bifrost paths
-    bifrost_config, bifrost_include, bifrost_library, bifrost_script = resolve_bifrost(bifrost_path=bifrost_path)
+    bifrost_include, bifrost_library, bifrost_script = resolve_bifrost(bifrost_path=bifrost_path)
        
     # Fill the template, save it, and return the filename
     template = _MAKEFILE_TEMPLATE.format(libname=libname,
                                          includes=includes,
-                                         bifrost_config=bifrost_config,
                                          bifrost_include=bifrost_include,
                                          bifrost_library=bifrost_library,
                                          bifrost_script=bifrost_script)
+    template = template.replace('-L. -lcufft_static_pruned', '')
     filename = get_makefile_name(libname)
     with open(filename, 'w') as fh:
         fh.write(template)

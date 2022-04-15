@@ -16,6 +16,7 @@ src/Makefile
 python/Makefile
 share/bifrost.pc
 src/bifrost/config.h
+plugins/Makefile.template
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

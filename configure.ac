@@ -300,7 +300,7 @@ AS_IF([test x$HAVE_CXX14 = x1],
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
 NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
 
-AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h])
+AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h plugins/Makefile.template])
 
 AC_OUTPUT
 
