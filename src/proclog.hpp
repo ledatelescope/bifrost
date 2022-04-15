@@ -48,6 +48,9 @@ public:
 	}
 };
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wmismatched-tags"
+#endif
 class BFproclog_impl {
 	friend class ProcLogStream;
 	std::string _filename;

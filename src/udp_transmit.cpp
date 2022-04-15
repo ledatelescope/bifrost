@@ -140,6 +140,9 @@ public:
 	}
 };
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wmismatched-tags"
+#endif
 class BFudptransmit_impl {
 	UDPTransmitThread  _transmit;
 	ProcLog            _type_log;

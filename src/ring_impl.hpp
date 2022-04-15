@@ -43,6 +43,9 @@
 #include <set>
 #include <memory>
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wmismatched-tags"
+#endif
 class BFsequence_impl;
 class BFspan_impl;
 class BFrspan_impl;

@@ -530,6 +530,9 @@ inline uint64_t round_nearest(uint64_t val, uint64_t mult) {
 	return (2*val/mult+1)/2*mult;
 }
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wmismatched-tags"
+#endif
 class BFudpcapture_impl {
 	UDPCaptureThread   _capture;
 	CHIPSDecoder       _decoder;
