@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -298,14 +298,14 @@ public:
 	                                int            port,
 	                                sa_family_t    family=AF_UNSPEC);
 	inline static sockaddr_storage any_address(sa_family_t family=AF_UNSPEC);
-	inline static std::string      address_string(sockaddr_storage addr);
-	inline static int              discover_mtu(sockaddr_storage remote_address);
+	inline static std::string      address_string(sockaddr_storage const& addr);
+	inline static int              discover_mtu(sockaddr_storage const& remote_address);
 	
 	// Server initialisation
-	inline void bind(sockaddr_storage local_address,
+	inline void bind(sockaddr_storage const& local_address,
 	          int              max_conn_queue=DEFAULT_MAX_CONN_QUEUE);
 	// Client initialisation
-	inline void connect(sockaddr_storage remote_address);
+	inline void connect(sockaddr_storage const& remote_address);
 	// Accept incoming SOCK_STREAM connection requests
 	// TODO: With C++11 this could return by value (moved), which would be nicer
 	inline Socket* accept(double timeout_secs=-1);
@@ -519,7 +519,7 @@ sockaddr_storage Socket::address(//const char*    addrstr,
 		throw Socket::Error("Not a valid IP address, interface or hostname");
 	}
 }
-std::string Socket::address_string(sockaddr_storage addr) {
+std::string Socket::address_string(sockaddr_storage const& addr) {
 	switch( addr.ss_family ) {
 	case AF_UNIX: {
 		// WAR for sun_path not always being NULL-terminated
@@ -547,7 +547,7 @@ std::string Socket::address_string(sockaddr_storage addr) {
 	default: throw Socket::Error("Invalid address family");
 	}
 }
-int Socket::discover_mtu(sockaddr_storage remote_address) {
+int Socket::discover_mtu(sockaddr_storage const& remote_address) {
   Socket s(SOCK_DGRAM);
 	s.connect(remote_address);
 #if defined __APPLE__ && __APPLE__
@@ -556,8 +556,8 @@ int Socket::discover_mtu(sockaddr_storage remote_address) {
 	return s.get_option<int>(IP_MTU, IPPROTO_IP);
 #endif
 }
-void Socket::bind(sockaddr_storage local_address,
-                  int              max_conn_queue) {
+void Socket::bind(sockaddr_storage const& local_address,
+                  int                     max_conn_queue) {
 	if( _mode != Socket::MODE_CLOSED ) {
 		throw Socket::Error("Socket is already open");
 	}
@@ -587,7 +587,7 @@ void Socket::bind(sockaddr_storage local_address,
 	}
 }
 // TODO: Add timeout support? Bit of a pain to implement.
-void Socket::connect(sockaddr_storage remote_address) {
+void Socket::connect(sockaddr_storage const& remote_address) {
 	bool can_reuse = (_fd != -1 &&
 	                  _type == SOCK_DGRAM &&
 	                  (remote_address.ss_family == AF_UNSPEC ||
