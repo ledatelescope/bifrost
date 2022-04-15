@@ -305,7 +305,7 @@ public:
 	inline void bind(sockaddr_storage const& local_address,
 	          int              max_conn_queue=DEFAULT_MAX_CONN_QUEUE);
 	// Client initialisation
-	inline void connect(sockaddr_storage const& remote_address);
+	inline void connect(sockaddr_storage remote_address);
 	// Accept incoming SOCK_STREAM connection requests
 	// TODO: With C++11 this could return by value (moved), which would be nicer
 	inline Socket* accept(double timeout_secs=-1);
@@ -587,7 +587,7 @@ void Socket::bind(sockaddr_storage const& local_address,
 	}
 }
 // TODO: Add timeout support? Bit of a pain to implement.
-void Socket::connect(sockaddr_storage const& remote_address) {
+void Socket::connect(sockaddr_storage remote_address) {
 	bool can_reuse = (_fd != -1 &&
 	                  _type == SOCK_DGRAM &&
 	                  (remote_address.ss_family == AF_UNSPEC ||
