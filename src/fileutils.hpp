@@ -28,6 +28,8 @@
 
 #pragma once
 
+#include <bifrost/config.h>
+
 #include <sys/file.h>  // For flock
 #include <sys/stat.h>  // For fstat
 #include <sys/types.h> // For getpid
