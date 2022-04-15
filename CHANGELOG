@@ -2,6 +2,7 @@
  * Cleaned up the Makefile outputs
  * Added a disk cache for bifrost.map calls
  * Added support for configurable, reproducible builds with nix
+ * Added horizontal scrolling for long command names to like_bmon.py
  * Fix a problem in bifrost.ndarray.copy with arrays that are not C contiguous
 
 0.10.0
