@@ -299,7 +299,7 @@ public:
 	                                sa_family_t    family=AF_UNSPEC);
 	inline static sockaddr_storage any_address(sa_family_t family=AF_UNSPEC);
 	inline static std::string      address_string(sockaddr_storage const& addr);
-	inline static int              discover_mtu(sockaddr_storage const& remote_address);
+	inline static int              discover_mtu(sockaddr_storage remote_address);
 	
 	// Server initialisation
 	inline void bind(sockaddr_storage const& local_address,
