@@ -29,13 +29,6 @@
 #include "fileutils.hpp"
 #include <sstream>
 
-/* Set this constant to 1 to force usage of <filesystem> or 0 to force usage of
-   older POSIX methods such as system, unlink, etc. Leave it unset to detect
-   based on -std=c++17. */
-#ifndef BF_USE_CXX_FILESYSTEM
-#  define BF_USE_CXX_FILESYSTEM (__cplusplus >= 201703L)
-#endif
-
 #if BF_USE_CXX_FILESYSTEM
 #include <filesystem>
 #endif
