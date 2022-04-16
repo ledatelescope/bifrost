@@ -6,8 +6,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2.4.0
-      - name: Say hello
+      - name: Build and run bifrost.version
         run: |
-          echo "Hello, world!"
-          nvidia-smi
-          nix run nixpkgs#neofetch
+          nix run --print-build-logs .#python3-bifrost-debug -- \
+              -m bifrost.version --config
