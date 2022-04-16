@@ -8,5 +8,5 @@ jobs:
       - uses: actions/checkout@v2.4.0
       - name: Build and run bifrost.version
         run: |
-          nix run --print-build-logs .#python3-bifrost-debug -- \
+          nix run --print-build-logs .#python3-bifrost-cuda10-debug -- \
               -m bifrost.version --config
