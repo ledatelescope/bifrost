@@ -6,7 +6,10 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2.4.0
-      - name: Build and run bifrost.version
+      - name: Build bifrost with cuda10
         run: |
-          nix run --print-build-logs .#python3-bifrost-cuda10-debug -- \
-              -m bifrost.version --config
+          nix build --print-build-logs .#python3-bifrost-cuda10-debug
+      - name: Run bifrost.version
+        run: |
+          export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:
+          result/bin/python -m bifrost.version --config
