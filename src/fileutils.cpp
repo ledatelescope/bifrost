@@ -90,10 +90,12 @@ void remove_file(std::string path) {
 #endif
 }
 
-#if !defined(HAVE_CXX_ENDS_WITH) || !HAVE_CXX_ENDS_WITH
+static bool ends_with (std::string const &fullString, std::string const &ending) {
+#if defined(HAVE_CXX_ENDS_WITH) && HAVE_CXX_ENDS_WITH
+  return fullString.ends_with(ending);
+#else
 // ends_with will be available in C++20; this is suggested as alternative
 // at https://stackoverflow.com/questions/874134
-static bool ends_with (std::string const &fullString, std::string const &ending) {
   if (fullString.length() >= ending.length()) {
     return (0 == fullString.compare(fullString.length() - ending.length(),
                                     ending.length(), ending));
