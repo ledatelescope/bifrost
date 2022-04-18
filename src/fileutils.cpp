@@ -102,8 +102,8 @@ static bool ends_with (std::string const &fullString, std::string const &ending)
   } else {
     return false;
   }
-}
 #endif
+}
 
 void remove_files_with_suffix(std::string dir, std::string suffix) {
   if(dir.empty()) {
