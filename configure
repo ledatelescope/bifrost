@@ -737,6 +737,7 @@ HAVE_FLOAT128
 HAVE_OPENMP
 LIBOBJS
 HAVE_RECVMSG
+HAVE_CXX_ENDS_WITH
 HAVE_CXX_FILESYSTEM
 HAVE_CXX11
 HAVE_CXX14
@@ -19451,6 +19452,80 @@ printf "%s\n" "yes" >&6; }
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
   fi
+
+  CXXFLAGS="$CXXFLAGS_save"
+  LDFLAGS="$LDFLAGS_save"
+  LIBS="$LIBS_save"
+
+
+
+
+  HAVE_CXX_ENDS_WITH=0
+
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for a C++ std::string::ends_with support" >&5
+printf %s "checking for a C++ std::string::ends_with support... " >&6; }
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+        #include <string>
+int
+main (void)
+{
+(std::string("This is a message")).ends_with("suffix")
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"
+then :
+  HAVE_CXX_ENDS_WITH=1
+
+else $as_nop
+  HAVE_CXX_ENDS_WITH=0
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+  if test "$HAVE_CXX_ENDS_WITH" = "1"; then
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+      #include <string>
+int
+main (void)
+{
+(std::string("This is a message")).ends_with("suffix")
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"
+then :
+  HAVE_CXX_ENDS_WITH=1
+
+else $as_nop
+  HAVE_CXX_ENDS_WITH=0
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+  fi
+
+  if test "$HAVE_CXX_ENDS_WITH" = "1"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+  else
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+  fi
+
+  CXXFLAGS="$CXXFLAGS_save"
+  LDFLAGS="$LDFLAGS_save"
+  LIBS="$LIBS_save"
 
 ac_fn_cxx_check_func "$LINENO" "memset" "ac_cv_func_memset"
 if test "x$ac_cv_func_memset" = xyes

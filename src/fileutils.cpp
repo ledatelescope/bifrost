@@ -90,8 +90,7 @@ void remove_file(std::string path) {
 #endif
 }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-function"
+#if !BF_USE_CXX_ENDS_WITH
 // ends_with will be available in C++20; this is suggested as alternative
 // at https://stackoverflow.com/questions/874134
 static bool ends_with (std::string const &fullString, std::string const &ending) {
@@ -102,7 +101,7 @@ static bool ends_with (std::string const &fullString, std::string const &ending)
     return false;
   }
 }
-#pragma GCC diagnostic pop
+#endif
 
 void remove_files_with_suffix(std::string dir, std::string suffix) {
   if(dir.empty()) {

@@ -31,4 +31,8 @@ AC_DEFUN([AX_CHECK_CXX_FILESYSTEM],
   else
     AC_MSG_RESULT([no])
   fi
+  
+  CXXFLAGS="$CXXFLAGS_save"
+  LDFLAGS="$LDFLAGS_save"
+  LIBS="$LIBS_save"
 ])
