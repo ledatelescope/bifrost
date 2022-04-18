@@ -29,7 +29,7 @@
 #include "fileutils.hpp"
 #include <sstream>
 
-#if define(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
 #include <filesystem>
 #endif
 
@@ -47,7 +47,7 @@ std::string get_home_dir(void) {
    not with data from command line or config files. */
 
 void make_dir(std::string path, int perms) {
-#if define(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
   std::filesystem::create_directories(path);
   std::filesystem::permissions(path, (std::filesystem::perms) perms,
                                std::filesystem::perm_options::replace);
@@ -60,7 +60,7 @@ void make_dir(std::string path, int perms) {
 #endif
 }
 void remove_files_recursively(std::string path) {
-#if define(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
   std::filesystem::remove_all(path);
 #else
 	if( std::system(("rm -rf "+path).c_str()) ) {
@@ -69,7 +69,7 @@ void remove_files_recursively(std::string path) {
 #endif
 }
 void remove_dir(std::string path) {
-#if define(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
   std::filesystem::remove(path);
 #else
   if(rmdir(path.c_str()) != 0) {
@@ -78,7 +78,7 @@ void remove_dir(std::string path) {
 #endif
 }
 void remove_file(std::string path) {
-#if define(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
 	std::filesystem::remove(path);
 #else
   if(unlink(path.c_str()) != 0) {
@@ -110,7 +110,7 @@ void remove_files_with_suffix(std::string dir, std::string suffix) {
   if(suffix.empty()) {
     throw std::runtime_error("Empty SUFFIX argument");
   }
-#if define(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
   // Iterate through the directory's contents and remove the matches
   std::filesystem::path path = dir;
   for(auto const& entry : std::filesystem::directory_iterator{dir}) {
@@ -128,7 +128,7 @@ void remove_files_with_suffix(std::string dir, std::string suffix) {
 }
 
 bool file_exists(std::string path) {
-#if define(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
   return std::filesystem::exists(path);
 #else
     struct stat s;
@@ -172,7 +172,7 @@ bool process_exists(pid_t pid) {
 }
 
 std::string get_dirname(std::string filename) {
-#if define(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
   std::filesystem::path path = filename;
 	return (path.parent_path()).string();
 #else
