@@ -24,11 +24,8 @@ AC_DEFUN([AX_CHECK_CXX_ENDS_WITH],
   
   if test "$HAVE_CXX_ENDS_WITH" = "1"; then
     AC_MSG_RESULT([yes])
+    CXXFLAGS="$CXXFLAGS -D\"HAVE_CXX_ENDS_WITH=1\""
   else
     AC_MSG_RESULT([no])
   fi
-  
-  CXXFLAGS="$CXXFLAGS_save"
-  LDFLAGS="$LDFLAGS_save"
-  LIBS="$LIBS_save"
 ])

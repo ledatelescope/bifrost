@@ -19392,10 +19392,6 @@ fi
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for a C++ std::filesystem support" >&5
 printf %s "checking for a C++ std::filesystem support... " >&6; }
 
-  CXXFLAGS_save="$CXXFLAGS"
-  LDFLAGS_save="$LDFLAGS"
-  LIBS_save="$LIBS"
-
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -19448,14 +19444,11 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
   if test "$HAVE_CXX_FILESYSTEM" = "1"; then
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
+    CXXFLAGS="$CXXFLAGS -D\"HAVE_CXX_FILESYSTEM=1\""
   else
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
   fi
-
-  CXXFLAGS="$CXXFLAGS_save"
-  LDFLAGS="$LDFLAGS_save"
-  LIBS="$LIBS_save"
 
 
 
@@ -19518,14 +19511,11 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
   if test "$HAVE_CXX_ENDS_WITH" = "1"; then
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
+    CXXFLAGS="$CXXFLAGS -D\"HAVE_CXX_ENDS_WITH=1\""
   else
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
   fi
-
-  CXXFLAGS="$CXXFLAGS_save"
-  LDFLAGS="$LDFLAGS_save"
-  LIBS="$LIBS_save"
 
 ac_fn_cxx_check_func "$LINENO" "memset" "ac_cv_func_memset"
 if test "x$ac_cv_func_memset" = xyes
