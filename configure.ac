@@ -39,11 +39,13 @@ AC_SUBST(SO_EXT, $shrext_cmds)
 #
 
 AC_C_INLINE
-AX_CXX_COMPILE_STDCXX(17, noext, optional)
-AS_IF([test x$HAVE_CXX17 != x1],
-      [AX_CXX_COMPILE_STDCXX(14, noext, optional)
-       AS_IF([test x$HAVE_CXX14 != x1],
-             [AX_CXX_COMPILE_STDCXX(11, noext, mandatory)])])
+AX_CXX_COMPILE_STDCXX(20, noext, optional)
+AS_IF([test x$HAVE_CXX20 != x1],
+      [AX_CXX_COMPILE_STDCXX(17, noext, optional)
+       AS_IF([test x$HAVE_CXX17 != x1],
+             [AX_CXX_COMPILE_STDCXX(14, noext, optional)
+              AS_IF([test x$HAVE_CXX14 != x1],
+                    [AX_CXX_COMPILE_STDCXX(11, noext, mandatory)])])])
 AX_CHECK_CXX_FILESYSTEM
 AX_CHECK_CXX_ENDS_WITH
 AC_CHECK_FUNCS([memset])
@@ -292,23 +294,41 @@ AC_SUBST([PACKAGE_VERSION_MICRO], [`echo $PACKAGE_VERSION | $AWK -F. '{print $3}
 #
 
 AC_SUBST([MAP_KERNEL_STDCXX], [c++11])
+AC_SUBST([STDCXX_IS_SET], [0])
+AS_IF([test x$HAVE_CXX20 = x1],
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++20 $CXXFLAGS"
+       AS_IF([test x$CUDA_HAVE_CXX20 = x1],
+             [NVCCFLAGS="-std=c++20 $NVCCFLAGS"
+              AC_SUBST([MAP_KERNEL_STDCXX], [c++20])],
+             [AS_IF([test x$CUDA_HAVE_CXX17 = x1],
+                    [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
+                     AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
+                    [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+                           [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                            AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+                           [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])])
 AS_IF([test x$HAVE_CXX17 = x1],
-      [CXXFLAGS="-std=c++17 $CXXFLAGS"
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++17 $CXXFLAGS"
        AS_IF([test x$CUDA_HAVE_CXX17 = x1],
              [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
               AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
              [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
                     [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
                      AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
-                    [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])],
-      [AS_IF([test x$HAVE_CXX14 = x1],
-             [CXXFLAGS="-std=c++14 $CXXFLAGS"
-              AS_IF([test x$CUDA_HAVE_CXX14 = x1],
-                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
-                     AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
-                    [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])],
-             [CXXFLAGS="-std=c++11 $CXXFLAGS"
-              NVCCFLAGS="-std=c++11 -Xcompiler \"-DTHRUST_IGNORE_DEPRECATED_CPP_DIALECT\" $NVCCFLAGS"])])
+                    [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])
+AS_IF([test x$HAVE_CXX14 = x1],
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++14 $CXXFLAGS"
+       AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+             [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+              AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+             [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])
+AS_IF([test x$STDCXX_IS_SET != x1],
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++11 $CXXFLAGS"
+       NVCCFLAGS="-std=c++11 -Xcompiler \"-DTHRUST_IGNORE_DEPRECATED_CPP_DIALECT\" $NVCCFLAGS"])
 
 #
 # Linking flags
