@@ -4,7 +4,7 @@ AC_DEFUN([AX_CHECK_CXX_ENDS_WITH],
   
   AC_SUBST([HAVE_CXX_ENDS_WITH], [0])
   
-  AC_MSG_CHECKING([for a C++ std::string::ends_with support])
+  AC_MSG_CHECKING([for C++ std::string::ends_with support])
   
   AC_COMPILE_IFELSE([
     AC_LANG_PROGRAM([[

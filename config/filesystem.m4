@@ -4,7 +4,7 @@ AC_DEFUN([AX_CHECK_CXX_FILESYSTEM],
   
   AC_SUBST([HAVE_CXX_FILESYSTEM], [0])
   
-  AC_MSG_CHECKING([for a C++ std::filesystem support])
+  AC_MSG_CHECKING([for C++ std::filesystem support])
   
   AC_COMPILE_IFELSE([
     AC_LANG_PROGRAM([[
