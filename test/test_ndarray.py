@@ -67,6 +67,44 @@ class NDArrayTest(unittest.TestCase):
     @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
     def test_space_contiguous_copy(self):
         self.run_contiguous_copy(space='cuda')
+    def run_slice_copy(self, space='system'):
+        a = np.random.rand(2,3,4,5)
+        a = a.astype(np.float64)
+        b = a[:,1:,:,:].copy()
+        c = bf.zeros(a.shape, dtype=a.dtype, space='system')
+        c[...] = a
+        c = c.copy(space=space)
+        d = c[:,1:,:,:].copy(space='system')
+        # Use ctypes to directly access the memory
+        b_data = ctypes.cast(b.ctypes.data, ctypes.POINTER(ctypes.c_double))
+        b_data = np.array([b_data[i] for i in range(b.size)])
+        d_data = ctypes.cast(d.ctypes.data, ctypes.POINTER(ctypes.c_double))
+        d_data = np.array([d_data[i] for i in range(d.size)])
+        np.testing.assert_equal(d_data, b_data)
+    def test_slice_copy(self):
+        self.run_slice_copy()
+    @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
+    def test_space_slice_copy(self):
+        self.run_slice_copy(space='cuda')
+    def run_contiguous_slice_copy(self, space='system'):
+        a = np.random.rand(2,3,4,5)
+        a = a.astype(np.float64)
+        b = a.transpose(0,3,2,1)[:,1:,:,:].copy()
+        c = bf.zeros(a.shape, dtype=a.dtype, space='system')
+        c[...] = a
+        c = c.copy(space=space)
+        d = c.transpose(0,3,2,1)[:,1:,:,:].copy(space='system')
+        # Use ctypes to directly access the memory
+        b_data = ctypes.cast(b.ctypes.data, ctypes.POINTER(ctypes.c_double))
+        b_data = np.array([b_data[i] for i in range(b.size)])
+        d_data = ctypes.cast(d.ctypes.data, ctypes.POINTER(ctypes.c_double))
+        d_data = np.array([d_data[i] for i in range(d.size)])
+        np.testing.assert_equal(d_data, b_data)
+    def test_contiguous_slice_copy(self):
+        self.run_contiguous_slice_copy()
+    @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
+    def test_space_contiguous_slice_copy(self):
+        self.run_contiguous_slice_copy(space='cuda')
     def test_view(self):
         d = bf.ndarray(self.known_vals, dtype='f32')
         d = d.view(dtype='cf32')
