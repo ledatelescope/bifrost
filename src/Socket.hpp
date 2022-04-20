@@ -143,7 +143,7 @@ inline static int accept4(int sockfd,
 inline static sa_family_t get_family(int sockfd) {
   int ret;
   sockaddr addr;
-  socklen_t len;
+  socklen_t len = sizeof(addr);
   ret = ::getsockname(sockfd, &addr, &len);
   if(ret<0) {
     return AF_UNSPEC;
@@ -185,7 +185,7 @@ inline static int get_mtu(int sockfd) {
         }
       } else if( ifa_family == AF_INET6 ) {
         struct sockaddr_in6* inaddr6 = (struct sockaddr_in6*) ifa->ifa_addr;
-        if( inaddr6->sin6_addr.s6_addr == addr6->sin6_addr.s6_addr ) {
+        if( std::memcmp(inaddr6->sin6_addr.s6_addr, addr6->sin6_addr.s6_addr, 16) == 0 ) {
           found = true;
         }
       }

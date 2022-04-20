@@ -27,6 +27,11 @@
  */
 
 #include "fileutils.hpp"
+#include <sstream>
+
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+#include <filesystem>
+#endif
 
 std::string get_home_dir(void) {
 	const char *homedir;
@@ -36,37 +41,102 @@ std::string get_home_dir(void) {
 	return std::string(homedir);
 }
 
-/* NOTE: For convenience, these functions build a shell command and pass it to
-   system(). The PATH argument is not shell-quoted or otherwise sanitized, so
-   only use with program constants, not with data from command line or config
-   files. Might eventually implement these with C++/boost filesystem library. */
+/* NOTE: For convenience on systems with compilers without C++17 support, these
+   functions build a shell command and pass it to system(). The PATH argument is
+   not shell-quoted or otherwise sanitized, so only use with program constants,
+   not with data from command line or config files. */
 
 void make_dir(std::string path, int perms) {
-	if( std::system(("mkdir -p -m "+std::to_string(perms)+" "+path).c_str()) ) {
-		throw std::runtime_error("Failed to create path: "+path);
-	}
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+  std::filesystem::create_directories(path);
+  std::filesystem::permissions(path, (std::filesystem::perms) perms,
+                               std::filesystem::perm_options::replace);
+#else
+  std::ostringstream cmd;
+  cmd << "mkdir -p -m " << std::oct << perms << ' ' << path;
+  if( std::system(cmd.str().c_str()) ) {
+    throw std::runtime_error("Failed to create path: "+path);
+  }
+#endif
 }
 void remove_files_recursively(std::string path) {
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+  std::filesystem::remove_all(path);
+#else
 	if( std::system(("rm -rf "+path).c_str()) ) {
 		throw std::runtime_error("Failed to remove all: "+path);
 	}
+#endif
 }
 void remove_dir(std::string path) {
-	if( std::system(("rmdir "+path+" 2> /dev/null").c_str()) ) {
-		throw std::runtime_error("Failed to remove dir: "+path);
-	}
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+  std::filesystem::remove(path);
+#else
+  if(rmdir(path.c_str()) != 0) {
+    throw std::runtime_error("Failed to remove dir: "+path);
+  }
+#endif
 }
-void remove_file_glob(std::string path) {
-  // Often, PATH contains wildcard, so this can't just be unlink system call.
-	if( std::system(("rm -f "+path).c_str()) ) {
-		throw std::runtime_error("Failed to remove file: "+path);
-	}
+void remove_file(std::string path) {
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+	std::filesystem::remove(path);
+#else
+  if(unlink(path.c_str()) != 0) {
+    // Previously this was an 'rm -f', which is silent on non-existent path.
+    if(errno != ENOENT) {
+      throw std::runtime_error("Failed to remove file: "+path);
+    }
+  }
+#endif
+}
+
+static bool ends_with (std::string const &fullString, std::string const &ending) {
+#if defined(HAVE_CXX_ENDS_WITH) && HAVE_CXX_ENDS_WITH
+  return fullString.ends_with(ending);
+#else
+// ends_with will be available in C++20; this is suggested as alternative
+// at https://stackoverflow.com/questions/874134
+  if (fullString.length() >= ending.length()) {
+    return (0 == fullString.compare(fullString.length() - ending.length(),
+                                    ending.length(), ending));
+  } else {
+    return false;
+  }
+#endif
+}
+
+void remove_files_with_suffix(std::string dir, std::string suffix) {
+  if(dir.empty()) {
+    throw std::runtime_error("Empty DIR argument");
+  }
+  if(suffix.empty()) {
+    throw std::runtime_error("Empty SUFFIX argument");
+  }
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+  // Iterate through the directory's contents and remove the matches
+  std::filesystem::path path = dir;
+  for(auto const& entry : std::filesystem::directory_iterator{dir}) {
+    std::filesystem::path epath = entry.path();
+    if( ends_with(epath.string(), suffix) ) {
+      std::filesystem::remove(epath);
+    }
+  }
+#else
+  std::string wild = dir + "/*" + suffix;
+  if( std::system(("rm -f "+wild).c_str()) ) {
+    throw std::runtime_error("Failed to remove files: "+wild);
+  }
+#endif
 }
 
 bool file_exists(std::string path) {
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+  return std::filesystem::exists(path);
+#else
     struct stat s;
     return !(stat(path.c_str(), &s) == -1
 	         && errno == ENOENT);
+#endif
 }
 bool process_exists(pid_t pid) {
 #if defined(__APPLE__) && __APPLE__
@@ -99,15 +169,18 @@ bool process_exists(pid_t pid) {
 	}
 	return (bool) found;
 #else
-	struct stat s;
-	return !(stat(("/proc/"+std::to_string(pid)).c_str(), &s) == -1
-	         && errno == ENOENT);
+  return file_exists("/proc/"+std::to_string(pid));
 #endif
 }
 
 std::string get_dirname(std::string filename) {
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
+  std::filesystem::path path = filename;
+	return (path.parent_path()).string();
+#else
 	// TODO: This is crude, but works for our proclog use-case
 	return filename.substr(0, filename.find_last_of("/"));
+#endif
 }
 
 /* NOTE: In case of abnormal exit (such as segmentation fault or other signal),
