@@ -143,14 +143,13 @@ inline static int accept4(int sockfd,
 inline static sa_family_t get_family(int sockfd) {
   int ret;
   sockaddr addr;
-  socklen_t len;
-  ret = ::getsockname(sockfd, &addr, &len);
-  if(ret<0) {
+  socklen_t addr_len = sizeof(addr);
+  sockaddr_in* addr4 = reinterpret_cast<sockaddr_in*>(&addr);
+  if( ::getsockname(sockfd, (struct sockaddr*)&addr, &addr_len) < 0 ) {
     return AF_UNSPEC;
   }
   
-  sockaddr_in* sa = reinterpret_cast<sockaddr_in*> (&addr);
-  return sa->sin_family;
+  return addr4->sin_family;
 }
 
 inline static int get_mtu(int sockfd) {
@@ -299,7 +298,7 @@ public:
 	                                sa_family_t    family=AF_UNSPEC);
 	inline static sockaddr_storage any_address(sa_family_t family=AF_UNSPEC);
 	inline static std::string      address_string(sockaddr_storage const& addr);
-	inline static int              discover_mtu(sockaddr_storage remote_address);
+	inline static int              discover_mtu(sockaddr_storage const& remote_address);
 	
 	// Server initialisation
 	inline void bind(sockaddr_storage const& local_address,
@@ -547,7 +546,7 @@ std::string Socket::address_string(sockaddr_storage const& addr) {
 	default: throw Socket::Error("Invalid address family");
 	}
 }
-int Socket::discover_mtu(sockaddr_storage remote_address) {
+int Socket::discover_mtu(sockaddr_storage const& remote_address) {
   Socket s(SOCK_DGRAM);
 	s.connect(remote_address);
 #if defined __APPLE__ && __APPLE__
