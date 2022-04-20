@@ -143,7 +143,7 @@ inline static int accept4(int sockfd,
 inline static sa_family_t get_family(int sockfd) {
   int ret;
   sockaddr addr;
-  socklen_t len;
+  socklen_t len = sizeof(addr);
   ret = ::getsockname(sockfd, &addr, &len);
   if(ret<0) {
     return AF_UNSPEC;
