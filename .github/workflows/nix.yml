@@ -10,9 +10,9 @@ jobs:
           - macos-latest
         nixpkgs:
           - pinned
-          - release-21.11
-          - release-21.05
-          - nixpkgs-unstable
+          # - release-21.11
+          # - release-21.05
+          # - nixpkgs-unstable
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -44,26 +44,20 @@ jobs:
 
       - name: Build for default python3
         run: |
-          nix build --print-build-logs .#bifrost-py3
+          nix build --print-build-logs .#bifrost-py3-gcc11
 
       - name: Build with enable-debug for python3, if pinned nixpkgs
         if: matrix.nixpkgs == 'pinned'
         run: |
           nix build --print-build-logs .#bifrost-py3-debug
 
-      - name: Build for python38, unless nixpkgs-unstable
-        # For unstable, 3.8 packages are no longer in the build cache
-        if: matrix.nixpkgs != 'nixpkgs-unstable'
-        run: |
-          nix build --print-build-logs .#bifrost-py38
-
       - name: Run Python test suite
         # Skipped during nix build because it needs network data.
         run: |
           cd test
           bash download_test_data.sh
-          nix run ..#python3-bifrost -- -m bifrost.telemetry --disable
-          nix run ..#python3-bifrost -- -m unittest discover
+          nix run ..#python3-bifrost-gcc11 -- -m bifrost.telemetry --disable
+          nix run ..#python3-bifrost-gcc11 -- -m unittest discover
 
       - name: Build documentation
         run: |
