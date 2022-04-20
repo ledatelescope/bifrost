@@ -28,6 +28,9 @@
       version = "${acVersion}.dev"
         + lib.optionalString (self ? shortRev) "+g${self.shortRev}";
 
+      compilerName = stdenv:
+        lib.replaceStrings [ "-wrapper" ] [ "" ] stdenv.cc.pname;
+
       # Can inspect the cuda version to guess at what architectures would be
       # most useful. Take care not to instatiate the cuda package though, which
       # would happen if you start inspecting header files or trying to run nvcc.
@@ -49,7 +52,8 @@
         , enablePython ? true, python3, enableCuda ? false, cudatoolkit
         , util-linuxMinimal, gpuArchs ? defaultGpuArchs cudatoolkit }:
         stdenv.mkDerivation {
-          name = lib.optionalString (!enablePython) "lib" + "bifrost"
+          name = lib.optionalString (!enablePython) "lib" + "bifrost-"
+            + compilerName stdenv + lib.versions.majorMinor stdenv.cc.version
             + lib.optionalString enablePython
             "-py${lib.versions.majorMinor python3.version}"
             + lib.optionalString enableCuda
@@ -260,9 +264,8 @@
               clang10Stdenv
             ]);
           cxxName = stdenv:
-            lib.optionalString (stdenv != pkgs.stdenv) ("-"
-              + lib.replaceStrings [ "-wrapper" ] [ "" ] stdenv.cc.pname
-              + lib.versions.major stdenv.cc.version);
+            lib.optionalString (stdenv != pkgs.stdenv)
+            ("-" + compilerName stdenv + lib.versions.major stdenv.cc.version);
 
           eachBool = f: lib.concatMap f [ true false ];
           eachCuda = f: lib.concatMap f ([ null ] ++ lib.attrNames cudaAttrs);
