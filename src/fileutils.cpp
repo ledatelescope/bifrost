@@ -90,6 +90,7 @@ void remove_file(std::string path) {
 #endif
 }
 
+#if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
 static bool ends_with (std::string const &fullString, std::string const &ending) {
 #if defined(HAVE_CXX_ENDS_WITH) && HAVE_CXX_ENDS_WITH
   return fullString.ends_with(ending);
@@ -104,6 +105,7 @@ static bool ends_with (std::string const &fullString, std::string const &ending)
   }
 #endif
 }
+#endif
 
 void remove_files_with_suffix(std::string dir, std::string suffix) {
   if(dir.empty()) {
