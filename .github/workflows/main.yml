@@ -85,7 +85,7 @@ jobs:
           coverage run --source=bifrost.ring,bifrost,bifrost.pipeline -m unittest discover
           coverage xml
       - name: "Upload Coverage"
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.8' }}
+        if: ${{ matrix.os == 'self-hosted' && matrix.python-version == '3.8' }}
         uses: codecov/codecov-action@v2
         with:
           directory: ./test/
