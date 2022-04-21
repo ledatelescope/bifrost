@@ -14,7 +14,6 @@ jobs:
           do_not_skip: '["pull_request", "workflow_dispatch", "schedule"]'
   build:
     needs: pre_build
-    if: ${{ needs.pre_build.outputs.should_skip != 'true' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
