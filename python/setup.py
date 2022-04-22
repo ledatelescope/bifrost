@@ -55,11 +55,6 @@ except IOError:
     print("*************************************************************************")
     raise
 
-# Build the PyPy3 compatibility module, if needed
-modules = []
-if sys.version.find('PyPy') != -1:
-    modules.append(Extension('_pypy3_compat', ['bifrost/pypy3_compat.c']))
-
 # Build up a list of scripts to install
 scripts = glob.glob(os.path.join('..', 'tools', '*.py'))
 
@@ -79,5 +74,4 @@ setup(name='bifrost',
           "ctypesgen==1.0.2",
           "matplotlib"
       ],
-      ext_package='bifrost',
-      ext_modules = modules)
+      ext_package='bifrost')
