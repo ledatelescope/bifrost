@@ -27,7 +27,7 @@
 
 from __future__ import absolute_import
 
-import bifrost as bf
+from bifrost.quantize import quantize as bf_quantize
 from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
 
@@ -61,7 +61,7 @@ class QuantizeBlock(TransformBlock):
     def on_data(self, ispan, ospan):
         idata = ispan.data
         odata = ospan.data
-        bf.quantize(idata, odata, self.scale)
+        bf_quantize(idata, odata, self.scale)
 
 def quantize(iring, dtype, scale=1., *args, **kwargs):
     """Apply a requantization of bit depth for the data.

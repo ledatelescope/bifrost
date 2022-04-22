@@ -31,7 +31,7 @@ import sys
 if sys.version_info < (3,):
     range = xrange
     
-import bifrost as bf
+from bifrost.map import map as bf_map
 from bifrost.pipeline import TransformBlock
 
 from copy import deepcopy
@@ -82,7 +82,7 @@ class FftShiftBlock(TransformBlock):
             else:
                 inds[ax] += '-a.shape(%i)/2' % ax
         inds = ','.join(inds)
-        bf.map("b = a(%s)" % inds, shape=shape, axis_names=ind_names,
+        bf_map("b = a(%s)" % inds, shape=shape, axis_names=ind_names,
                data={'a': idata, 'b': odata})
 
 def fftshift(iring, axes, inverse=False, *args, **kwargs):

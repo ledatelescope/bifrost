@@ -16,6 +16,11 @@ AC_DEFUN([AX_CHECK_CUDA],
   
   AC_SUBST([HAVE_CUDA], [0])
   AC_SUBST([CUDA_VERSION], [0])
+  AC_SUBST([CUDA_HAVE_CXX20], [0])
+  AC_SUBST([CUDA_HAVE_CXX17], [0])
+  AC_SUBST([CUDA_HAVE_CXX14], [0])
+  AC_SUBST([CUDA_HAVE_CXX11], [0])
+  AC_SUBST([GPU_MIN_ARCH], [0])
   AC_SUBST([GPU_MAX_ARCH], [0])
   if test "$enable_cuda" != "no"; then
     AC_SUBST([HAVE_CUDA], [1])
@@ -63,6 +68,33 @@ AC_DEFUN([AX_CHECK_CUDA],
     CXXFLAGS="$CXXFLAGS_save"
     LDFLAGS="$LDFLAGS_save"
     LIBS="$LIBS_save"
+  fi
+  
+  if test "$HAVE_CUDA" = "1"; then
+    AC_MSG_CHECKING([for CUDA CXX standard support])
+    
+    CUDA_STDCXX=$( ${NVCC} --help | ${GREP} -Po -e "--std.*}" | ${SED} 's/.*|//;s/}//;' )
+    if test "$CUDA_STDCXX" = "c++20"; then
+      AC_MSG_RESULT(C++20)
+      AC_SUBST([CUDA_HAVE_CXX20], [1])
+    else
+      if test "$CUDA_STDCXX" = "c++17"; then
+        AC_MSG_RESULT(C++17)
+        AC_SUBST([CUDA_HAVE_CXX17], [1])
+      else
+        if test "$CUDA_STDCXX" = "c++14"; then
+          AC_MSG_RESULT(C++14)
+          AC_SUBST([CUDA_HAVE_CXX14], [1])
+        else
+          if test "$CUDA_STDCXX" = "c++11"; then
+            AC_MSG_RESULT(C++11)
+            AC_SUBST([CUDA_HAVE_CXX11], [1])
+          else
+            AC_MSG_ERROR(nvcc does not support at least C++11)
+          fi
+        fi
+      fi
+    fi
   fi
   
   AC_ARG_WITH([nvcc_flags],
@@ -165,6 +197,8 @@ AC_DEFUN([AX_CHECK_CUDA],
       AC_MSG_ERROR(only '$ar_valid' are supported)
     fi
     
+    ar_min_valid=$(echo $ar_valid | ${SED} -e 's/ .*//g;' )
+    AC_SUBST([GPU_MIN_ARCH], [$ar_min_valid])
     ar_max_valid=$(echo $ar_valid | ${SED} -e 's/.* //g;' )
     AC_SUBST([GPU_MAX_ARCH], [$ar_max_valid])
 

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -35,6 +35,9 @@ from bifrost.libbifrost import _bf, _check, _array
 from bifrost.ndarray import asarray
 import numpy as np
 import ctypes
+import glob
+import os
+from bifrost.libbifrost_generated import BF_MAP_KERNEL_DISK_CACHE
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -142,3 +145,32 @@ def map(func_string, data, axis_names=None, shape=None,
                      narg, _array(args), _array(arg_names),
                      func_name, func_string, extra_code,
                      _array(block_shape), _array(block_axes)))
+
+def list_map_cache():
+    output = "Cache enabled: %s" % ('yes' if BF_MAP_KERNEL_DISK_CACHE else 'no')
+    if BF_MAP_KERNEL_DISK_CACHE:
+        cache_path = os.path.join(os.path.expanduser('~'), '.bifrost',
+                                  _bf.BF_MAP_KERNEL_DISK_CACHE_SUBDIR)
+        try:
+            with open(os.path.join(cache_path, _bf.BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE), 'r') as fh:
+                version = fh.read()
+            mapcache, runtime, driver = version.split(None, 2)
+            mapcache = int(mapcache, 10)
+            mapcache = "%i.%i" % (mapcache//1000, (mapcache//10) % 1000)
+            runtime = int(runtime, 10)
+            runtime = "%i.%i" % (runtime//1000, (runtime//10) % 1000)
+            driver = int(driver, 10)
+            driver = "%i.%i" % (driver//1000, (driver//10) % 1000)
+            
+            entries = glob.glob(os.path.join(cache_path, '*.inf'))
+            
+            output += "\nCache version: %s (map cache) %s (runtime), %s (driver)" % (mapcache, runtime, driver)
+            output += "\nCache entries: %i" % len(entries)
+        except OSError:
+            pass
+            
+    print(output)
+
+
+def clear_map_cache():
+    _check(_bf.bfMapClearCache())

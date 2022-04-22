@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,17 +25,29 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import sys
 import ctypes
 import unittest
 import numpy as np
 import bifrost as bf
-
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+    
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED
+
+_FIRST_TEST = True
 
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestMap(unittest.TestCase):
+    # TODO: @classmethod; def setUpClass(kls)
     def setUp(self):
         np.random.seed(1234)
+        global _FIRST_TEST
+        if _FIRST_TEST:
+            bf.clear_map_cache()
+            _FIRST_TEST = False
     def run_simple_test(self, x, funcstr, func):
         x_orig = x
         x = bf.asarray(x, 'cuda')
@@ -220,3 +232,15 @@ class TestMap(unittest.TestCase):
         a = a.copy('system')
         b = b.copy('system')
         np.testing.assert_equal(b, a[:,j,:])
+    def test_list_cache(self):
+        # TODO: would be nicer as a context manager, something like
+        #       contextlib.redirect_stdout
+        orig_stdout = sys.stdout
+        new_stdout = StringIO()
+        sys.stdout = new_stdout
+        
+        try:
+            bf.list_map_cache()
+        finally:
+            sys.stdout = orig_stdout
+            new_stdout.close()

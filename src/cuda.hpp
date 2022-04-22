@@ -175,14 +175,12 @@ public:
 		                      smem, stream,
 		                      &arg_ptrs[0], NULL);
 	}
-#if __cplusplus >= 201103L
 	template<typename... Args>
 	inline CUresult launch(dim3 grid, dim3 block,
 	                   unsigned int smem, CUstream stream,
 	                   Args... args) {
 		return this->launch(grid, block, smem, stream, {(void*)&args...});
 	}
-#endif
 	
 };
 

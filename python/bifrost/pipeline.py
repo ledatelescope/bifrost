@@ -417,7 +417,7 @@ class Block(BlockScope):
     def commit_spans(self, ospans, ostrides_actual, ogulp_overlaps):
         # Allow returning None to indicate complete consumption
         if ostrides_actual is None:
-            ostrides = [None] * len(ospans)
+            ostrides_actual = [None] * len(ospans)
         # Note: If ospan.nframe < ogulp_overlap, no frames will be committed
         ostrides = [ostride if ostride is not None
                     else max(ospan.nframe - ogulp_overlap, 0)
