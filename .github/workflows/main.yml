@@ -24,6 +24,8 @@ jobs:
           - os: macos-latest
             python-version: 2.7
       fail-fast: false
+    env:
+      OS: ${{ matrix.os }}
     steps:
       - name: "Software Install - Ubuntu"
         if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'self-hosted' }}
@@ -88,6 +90,6 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           directory: ./test/
-          env_vars: OS,PYTHON
+          env_vars: OS
           fail_ci_if_error: false
           verbose: true
