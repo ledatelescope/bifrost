@@ -110,7 +110,7 @@ class MappedMgr {
         if( fd >= 0 ) {
             ::close(fd);
         }
-        try { remove_file_glob(filename); }
+        try { remove_file(filename); }
         catch( std::exception const& ) {}
     } 
     MappedMgr()
