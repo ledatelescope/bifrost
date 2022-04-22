@@ -31,9 +31,9 @@ import unittest
 import numpy as np
 import bifrost as bf
 try:
-    from io import StringIO
-except ImportError:
     from StringIO import StringIO
+except ImportError:
+    from io import StringIO
     
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
