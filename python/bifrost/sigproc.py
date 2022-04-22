@@ -378,12 +378,12 @@ class SigprocFile(SigprocSettings):
         if start is not None:
             if start < 0:
                 read_start = (nframe + start) * self.nifs * self.nchans
-            elif start >= 0:
+            else:
                 read_start = start * self.nifs * self.nchans
         if end is not None:
             if end < 0:
                 end_read = (nframe + end) * self.nifs * self.nchans
-            elif end >= 0:
+            else:
                 end_read = end * self.nifs * self.nchans
         self.file_object.seek(read_start, os.SEEK_CUR)
         nbytes_to_read = end_read - read_start

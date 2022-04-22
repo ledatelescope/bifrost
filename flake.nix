@@ -28,6 +28,9 @@
       version = "${acVersion}.dev"
         + lib.optionalString (self ? shortRev) "+g${self.shortRev}";
 
+      compilerName = stdenv:
+        lib.replaceStrings [ "-wrapper" ] [ "" ] stdenv.cc.pname;
+
       # Can inspect the cuda version to guess at what architectures would be
       # most useful. Take care not to instatiate the cuda package though, which
       # would happen if you start inspecting header files or trying to run nvcc.
@@ -49,7 +52,8 @@
         , enablePython ? true, python3, enableCuda ? false, cudatoolkit
         , util-linuxMinimal, gpuArchs ? defaultGpuArchs cudatoolkit }:
         stdenv.mkDerivation {
-          name = lib.optionalString (!enablePython) "lib" + "bifrost"
+          name = lib.optionalString (!enablePython) "lib" + "bifrost-"
+            + compilerName stdenv + lib.versions.majorMinor stdenv.cc.version
             + lib.optionalString enablePython
             "-py${lib.versions.majorMinor python3.version}"
             + lib.optionalString enableCuda
@@ -57,7 +61,7 @@
             + lib.optionalString enableDebug "-debug" + "-${version}";
           inherit version;
           src = ./.;
-          buildInputs = [ ctags ncurses ] ++ lib.optionals enablePython [
+          buildInputs = [ stdenv ctags ncurses ] ++ lib.optionals enablePython [
             python3
             python3.pkgs.ctypesgen
             python3.pkgs.setuptools
@@ -245,17 +249,37 @@
             (name: pkg: isCuda name && lib.elem pkgs.system pkg.meta.platforms)
             pkgs;
 
+          # Which C++ compilers can we build with? How to name them?
+          eachCxx = f:
+            lib.concatMap f (with pkgs; [
+              stdenv
+              gcc8Stdenv
+              gcc9Stdenv
+              gcc10Stdenv
+              gcc11Stdenv
+              clang6Stdenv
+              clang7Stdenv
+              clang8Stdenv
+              clang9Stdenv
+              clang10Stdenv
+            ]);
+          cxxName = stdenv:
+            lib.optionalString (stdenv != pkgs.stdenv)
+            ("-" + compilerName stdenv + lib.versions.major stdenv.cc.version);
+
           eachBool = f: lib.concatMap f [ true false ];
           eachCuda = f: lib.concatMap f ([ null ] ++ lib.attrNames cudaAttrs);
           eachConfig = f:
             eachBool (enableDebug:
               eachCuda (cuda:
-                f (lib.optionalString (cuda != null) "-${shortenCuda cuda}"
-                  + lib.optionalString enableDebug "-debug") {
-                    inherit enableDebug;
-                    enableCuda = cuda != null;
-                    cudatoolkit = pkgs.${cuda};
-                  }));
+                eachCxx (stdenv:
+                  f (cxxName stdenv
+                    + lib.optionalString (cuda != null) "-${shortenCuda cuda}"
+                    + lib.optionalString enableDebug "-debug") {
+                      inherit stdenv enableDebug;
+                      enableCuda = cuda != null;
+                      cudatoolkit = pkgs.${cuda};
+                    })));
 
           # Runnable ctypesgen per python. Though it's just the executable we
           # need, it's possible something about ctypes library could change
@@ -293,9 +317,10 @@
             hooks.nixfmt.enable = true;
             hooks.nix-linter.enable = true;
             hooks.yamllint.enable = true;
+            hooks.yamllint.excludes = [ ".github/workflows/main.yml" ];
           };
 
-        in pkgs.mkShell {
+        in pkgs.mkShellNoCC {
           inherit (pre-commit) shellHook;
 
           # Tempting to include bifrost-doc.buildInputs here, but that requires
