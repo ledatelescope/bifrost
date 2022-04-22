@@ -18,8 +18,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [self-hosted]
-        python-version: ['3.8']
+        os: [self-hosted, ubuntu-latest, macos-latest]
+        python-version: ['2.7', '3.6', '3.8']
         exclude:
           - os: macos-latest
             python-version: 2.7
@@ -85,11 +85,12 @@ jobs:
           coverage xml
       - name: "Upload Coverage"
         env:
-          OS: ${{ matrix.os }}
+           UNITTEST_OS: ${{ matrix.os }}
+           UNITTEST_PY: ${{ matrix.python-version }}
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version == '3.8' }}
         uses: codecov/codecov-action@v2
         with:
           directory: ./test/
-          env_vars: OS
+          env_vars: UNITTEST_OS,UNITTEST_PY
           fail_ci_if_error: false
           verbose: true
