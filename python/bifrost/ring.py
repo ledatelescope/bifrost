@@ -114,35 +114,6 @@ class Ring(BifrostObject):
                     cur_seq.increment()
                 except EndOfDataStop:
                     return
-    #def _data(self):
-    #    data_ptr = _get(self.lib.bfRingLockedGetData, self.obj)
-    #    #data_ptr = c_void_p()
-    #    #self._check( self.lib.bfRingLockedGetData(self.obj, pointer(data_ptr)) )
-    #    #data_ptr = data_ptr.value
-    #    #data_ptr = self.lib.bfRingLockedGetData(self.obj)
-    #    if self.space == 'cuda':
-    #        # TODO: See if can wrap this in something like PyCUDA's GPUArray
-    #        #         Ideally actual GPUArray, but it doesn't appear to support wrapping pointers
-    #        return data_ptr
-    #    span     = self._total_span()
-    #    stride   = self._stride()
-    #    nringlet = self._nringlet()
-    #    #print("******", span, stride, nringlet)
-    #    BufferType = c_byte*(nringlet*stride)
-    #    data_buffer_ptr = cast(data_ptr, POINTER(BufferType))
-    #    data_buffer     = data_buffer_ptr.contents
-    #    data_array = np.ndarray(shape=(nringlet, span),
-    #                            strides=(stride, 1) if nringlet > 1 else None,
-    #                            buffer=data_buffer, dtype=np.uint8)
-    #    return data_array
-    #def _contiguous_span(self):
-    #    return self._get(BFsize, self.lib.bfRingLockedGetContiguousSpan, self.obj)
-    #def _total_span(self):
-    #    return self._get(BFsize, self.lib.bfRingLockedGetTotalSpan, self.obj)
-    #def _nringlet(self):
-    #    return self._get(BFsize, self.lib.bfRingLockedGetNRinglet, self.obj)
-    #def _stride(self):
-    #    return self._get(BFsize, self.lib.bfRingLockedGetStride, self.obj)
 
 class RingWriter(object):
     def __init__(self, ring: Ring):
@@ -308,15 +279,8 @@ class SpanBase(object):
         assert( self.size   % itemsize == 0 )
         assert( self.stride % itemsize == 0 )
         data_ptr = self._data_ptr
-        #if self.sequence.ring.space == 'cuda':
-        #    # TODO: See if can wrap this in something like PyCUDA's GPUArray
-        #    #         Ideally actual GPUArray, but it doesn't appear to support wrapping pointers
-        #    #           Could also try writing a custom GPUArray implem for this purpose
-        #    return data_ptr
         span_size  = self.size
         nringlet   = self.nringlet
-        #print("******", span_size, stride, nringlet)
-        #BufferType = c_byte*(span_size*self.stride)
         # TODO: We should really map the actual ring memory space and index
         #         it with offset rather than mapping from the current pointer.
         _shape   = (nringlet, span_size // itemsize)
