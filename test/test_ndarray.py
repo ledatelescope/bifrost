@@ -31,6 +31,7 @@ import bifrost as bf
 import ctypes
 
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED
+from bifrost.dtype import split_name_nbit, name_nbit2numpy as dtype_bf2np
 
 class NDArrayTest(unittest.TestCase):
     def setUp(self):
@@ -152,3 +153,37 @@ class NDArrayTest(unittest.TestCase):
         np.testing.assert_equal(g.copy('system'), np.array([[99,88],[2,3],[4,5]]))
         g[:,1] = [77,66,55]
         np.testing.assert_equal(g.copy('system'), np.array([[99,77],[2,66],[4,55]]))
+    def run_type_conversion(self, space='system'):
+        # Real
+        a = np.array(self.known_vals, dtype=np.float32)
+        c = bf.ndarray(a, dtype='f32', space=space)
+        for dtype in ('i8', 'i16', 'i32', 'i64', 'f64', 'cf64'):
+            np_dtype = dtype_bf2np(*split_name_nbit(dtype))
+            if space == 'cuda':
+                print(dtype, '->',  np_dtype)
+            b = a.astype(np_dtype)
+            d = c.astype(dtype)
+            d = d.copy(space='system')
+            np.testing.assert_equal(b, d)
+            
+        # Complex
+        a = np.array(self.known_vals, dtype=np.float32)
+        a = np.stack([a,a[::-1]], axis=0)
+        a = a.view(np.complex64)
+        c = bf.ndarray(a, dtype='cf32', space=space)
+        for dtype in ('ci8', 'ci16', 'ci32', 'cf64', 'i8', 'i16', 'i32', 'i64', 'f64'):
+            np_dtype = dtype_bf2np(*split_name_nbit(dtype))
+            b = a.astype(np_dtype)
+            d = c.astype(dtype)
+            d = d.copy(space='system')
+            if space == 'cuda':
+                print(dtype, '->', np_dtype)
+                print(b)
+                print(d)
+            np.testing.assert_equal(b, d)
+            
+    def test_type_conversion(self):
+        self.run_type_conversion()
+    @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
+    def test_space_type_conversion(self):
+        self.run_type_conversion(space='cuda')
