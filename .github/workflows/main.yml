@@ -46,7 +46,6 @@ jobs:
             curl \
             ctags-exuberant \
             gawk \
-            git \
             gnu-sed \
             pkg-config
       - uses: actions/setup-python@v2
