@@ -18,8 +18,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [self-hosted, ubuntu-latest, macos-latest]
-        python-version: ['2.7', '3.6', '3.8']
+        os: [self-hosted]
+        python-version: ['3.8']
         exclude:
           - os: macos-latest
             python-version: 2.7
