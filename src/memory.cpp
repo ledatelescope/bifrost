@@ -116,7 +116,7 @@ class MappedMgr {
     MappedMgr()
         : _mapped_dir(std::string(base_mapped_dir) + "/" + std::to_string(getpid())) {
 		this->try_base_mapped_dir_cleanup();
-		make_dir(base_mapped_dir, 777);
+		make_dir(base_mapped_dir, 0777);
 		make_dir(_mapped_dir);
 	}
     ~MappedMgr() {
