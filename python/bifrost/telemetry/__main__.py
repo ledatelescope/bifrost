@@ -29,8 +29,6 @@
 # Python2 compatibility
 from __future__ import print_function, division, absolute_import
     
-import os
-import sys
 import argparse
 
 from bifrost import telemetry

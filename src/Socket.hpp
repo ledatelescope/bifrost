@@ -143,7 +143,7 @@ inline static int accept4(int sockfd,
 inline static sa_family_t get_family(int sockfd) {
   int ret;
   sockaddr addr;
-  socklen_t len;
+  socklen_t len = sizeof(addr);
   ret = ::getsockname(sockfd, &addr, &len);
   if(ret<0) {
     return AF_UNSPEC;
@@ -185,7 +185,7 @@ inline static int get_mtu(int sockfd) {
         }
       } else if( ifa_family == AF_INET6 ) {
         struct sockaddr_in6* inaddr6 = (struct sockaddr_in6*) ifa->ifa_addr;
-        if( inaddr6->sin6_addr.s6_addr == addr6->sin6_addr.s6_addr ) {
+        if( std::memcmp(inaddr6->sin6_addr.s6_addr, addr6->sin6_addr.s6_addr, 16) == 0 ) {
           found = true;
         }
       }
@@ -246,9 +246,7 @@ class Socket {
 	// Not copy-assignable
 	Socket(Socket const& );
 	Socket& operator=(Socket const& );
-#if __cplusplus >= 201103L
 	inline void replace(Socket& s);
-#endif
 	// Manage an existing socket descriptor
 	// Note: Accessible only via the named constructor Socket::manage
 	struct ManageTag {};
@@ -275,23 +273,21 @@ public:
 #endif
 		DEFAULT_MAX_CONN_QUEUE = 128
 	};
-	enum sock_type {
-	  BF_SOCK_DGRAM  = SOCK_DGRAM,
-		BF_SOCK_STREAM = SOCK_STREAM
-	};
 	// Manage an existing socket (usually one returned by Socket::accept())
 	// TODO: With C++11 this could return by value (moved), which would be nicer
 	inline static Socket* manage(int fd) { return new Socket(fd, ManageTag()); }
-	inline explicit       Socket(/*sock_type*/int type=SOCK_DGRAM)
-		: _fd(-1), _type((sock_type)type), _family(AF_UNSPEC),
-		  _mode(Socket::MODE_CLOSED) {}
+	inline explicit       Socket(int type=SOCK_DGRAM)
+		: _fd(-1), _type(type), _family(AF_UNSPEC),
+		  _mode(Socket::MODE_CLOSED) {
+		if( !(type == SOCK_DGRAM || type == SOCK_STREAM) ) {
+		  throw Socket::Error("Invalid socket type");
+		}
+	}
 	
 	virtual ~Socket() { this->close(); }
-#if __cplusplus >= 201103L
 	// Move semantics
 	inline Socket(Socket&& s)                           { this->replace(s); }
 	inline Socket& operator=(Socket&& s) { this->close(); this->replace(s); return *this; }
-#endif
 	inline void swap(Socket& s);
 	// Address generator
 	// Note: Supports UNIX paths, IPv4 and IPv6 addrs, interfaces and hostnames
@@ -434,7 +430,7 @@ private:
 	                               sockaddr*   address,
 	                               sa_family_t family=AF_UNSPEC);
 	int         _fd;
-	sock_type   _type;
+	int         _type;
 	sa_family_t _family;
 	enum {
 		MODE_CLOSED,
@@ -925,7 +921,6 @@ int Socket::addr_from_interface(const char* ifname,
 	::freeifaddrs(ifaddr);
 	return found;
 }
-#if __cplusplus >= 201103L
 void Socket::replace(Socket& s) {
 	_fd          = s._fd; s._fd = -1;
 	_type        = std::move(s._type);
@@ -936,7 +931,6 @@ void Socket::replace(Socket& s) {
 	_msgs        = std::move(s._msgs);
 	_iovecs      = std::move(s._iovecs);
 }
-#endif
 void Socket::swap(Socket& s) {
 	std::swap(_fd,          s._fd);
 	std::swap(_type,        s._type);
@@ -948,7 +942,7 @@ void Socket::swap(Socket& s) {
 	std::swap(_iovecs,      s._iovecs);
 }
 Socket::Socket(int fd, ManageTag ) : _fd(fd) {
-	_type   = this->get_option<sock_type>(SO_TYPE);
+	_type   = this->get_option<int>(SO_TYPE);
 #if defined __APPLE__ && __APPLE__
   _family = get_family(fd);
 #else
