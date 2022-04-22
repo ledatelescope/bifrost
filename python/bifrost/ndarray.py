@@ -45,7 +45,7 @@ if sys.version_info < (3,):
 import ctypes
 import numpy as np
 from bifrost.memory import raw_malloc, raw_free, raw_get_space, space_accessible
-from bifrost.libbifrost import _bf, _check
+from bifrost.libbifrost import _bf, _check, _array
 from bifrost import device
 from bifrost.DataType import DataType
 from bifrost.Space import Space
@@ -358,13 +358,34 @@ class ndarray(np.ndarray):
             v.bf.dtype = dtype_bf
             v._update_BFarray()
             return v
-    #def astype(self, dtype):
-    #    dtype_bf = DataType(dtype)
-    #    dtype_np = dtype_bf.as_numpy_dtype()
-    #    # TODO: This segfaults for cuda space; need type conversion support in backend
-    #    a = super(ndarray, self).astype(dtype_np)
-    #    a.bf.dtype = dtype_bf
-    #    return a
+    def astype(self, dtype):
+       dtype_bf = DataType(dtype)
+       dtype_np = dtype_bf.as_numpy_dtype()
+       if space_accessible(self.bf.space, ['system']):
+            ## For arrays that can be accessed from the system space, use
+            ## numpy.ndarray.copy() to do the heavy lifting
+            if self.bf.space == 'cuda_managed':
+                ## TODO: Decide where/when these need to be called
+                device.stream_synchronize()
+            a = super(ndarray, self).astype(dtype_np)
+            a.bf.dtype = dtype_bf
+       else:
+            a = ndarray(shape=self.shape, dtype=dtype_bf, space=self.bf.space)
+            if dtype_bf.is_complex:
+                if self.bf.dtype.is_complex:
+                    func_string = b'a.real = b.real; a.imag = b.imag'
+                else:
+                    func_string = b'a.real = b; a.imag = 0'
+            else:
+                if self.bf.dtype.is_complex:
+                    np.ComplexWarning()
+                    func_string = b'a = b.real'
+                else:
+                    func_string = b'a = b'
+            _check(_bf.bfMap(0, _array(None, dtype=ctypes.c_long), _array(None),
+                     2, _array([a.as_BFarray(), self.as_BFarray()]), _array(['a', 'b']),
+                     None, func_string, None, _array(None), _array(None)))
+       return a
     def _system_accessible_copy(self):
         if space_accessible(self.bf.space, ['system']):
             return self
