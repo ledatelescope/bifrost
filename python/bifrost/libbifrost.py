@@ -170,7 +170,7 @@ STRING2SPACE = {'auto':         _bf.BF_SPACE_AUTO,
 def _string2space(s):
     if s not in STRING2SPACE:
         raise KeyError("Invalid space '" + str(s) +
-                       "'.\nValid spaces: " + str(list(LUT.keys())))
+                       "'.\nValid spaces: " + str(list(STRING2SPACE.keys())))
     return STRING2SPACE[s]
 
 SPACE2STRING = {_bf.BF_SPACE_AUTO:         'auto',

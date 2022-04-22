@@ -335,7 +335,13 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	                                   program_name,
 	                                   nheader, header_codes, header_names) );
 	std::vector<std::string> options;
-	options.push_back("--std=c++11");
+	std::stringstream cs_ss;
+#if defined(BF_MAP_KERNEL_STDCXX)
+	cs_ss << BF_MAP_KERNEL_STDCXX;
+#else
+	cs_ss << "c++11";
+#endif
+	options.push_back("--std="+cs_ss.str());
 	options.push_back("--device-as-default-execution-space");
 	options.push_back("--use_fast_math");
 	std::stringstream cc_ss;
@@ -453,9 +459,9 @@ class DiskCacheMgr {
 		
 		if( !status ) {
 		    try {
-		        remove_file_glob(_cachedir + "*.inf");
-		        remove_file_glob(_cachedir + "*.ptx");
-		        remove_file_glob(_cachedir + BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE);
+          remove_files_with_suffix(_cachedir, ".inf");
+          remove_files_with_suffix(_cachedir, ".ptx");
+          remove_file(_cachedir + BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE);
 	        } catch( std::exception const& ) {}
 	    }
 	}
@@ -575,13 +581,13 @@ class DiskCacheMgr {
 	void clear_cache() {
 	    // Do this with a file lock to avoid interference from other processes
 		LockFile lock(_cachedir + ".lock");
-		
-	    try {
-		        remove_file_glob(_cachedir + "*.inf");
-		        remove_file_glob(_cachedir + "*.ptx");
-	        } catch( std::exception const& ) {}
-	}
-	
+
+    try {
+        remove_files_with_suffix(_cachedir, ".inf");
+        remove_files_with_suffix(_cachedir, ".ptx");
+    } catch( std::exception const& ) {}
+  }
+
 	DiskCacheMgr()
 		: _cachedir(get_home_dir()+"/.bifrost/"+BF_MAP_KERNEL_DISK_CACHE_SUBDIR+"/"),
 		  _loaded(false) {

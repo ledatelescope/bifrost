@@ -184,7 +184,7 @@ inline static int get_mtu(int sockfd) {
         }
       } else if( ifa_family == AF_INET6 ) {
         struct sockaddr_in6* inaddr6 = (struct sockaddr_in6*) ifa->ifa_addr;
-        if( inaddr6->sin6_addr.s6_addr == addr6->sin6_addr.s6_addr ) {
+        if( std::memcmp(inaddr6->sin6_addr.s6_addr, addr6->sin6_addr.s6_addr, 16) == 0 ) {
           found = true;
         }
       }

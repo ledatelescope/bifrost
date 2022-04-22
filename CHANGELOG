@@ -2,6 +2,8 @@
  * Cleaned up the Makefile outputs
  * Added a disk cache for bifrost.map calls
  * Added support for configurable, reproducible builds with nix
+ * Added horizontal scrolling for long command names to like_bmon.py
+ * Use std::filesystem for where possible for file and directory management
 
 0.10.0
  * Switched over to an autotools-based build system
