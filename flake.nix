@@ -317,6 +317,7 @@
             hooks.nixfmt.enable = true;
             hooks.nix-linter.enable = true;
             hooks.yamllint.enable = true;
+            hooks.yamllint.excludes = [ ".github/workflows/main.yml" ];
           };
 
         in pkgs.mkShellNoCC {

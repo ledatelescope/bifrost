@@ -86,7 +86,7 @@ jobs:
       - name: "Upload Coverage"
         env:
           OS: ${{ matrix.os }}
-        if: ${{ matrix.python-version == '3.8' }}
+        if: ${{ matrix.os == 'self-hosted' && matrix.python-version == '3.8' }}
         uses: codecov/codecov-action@v2
         with:
           directory: ./test/
