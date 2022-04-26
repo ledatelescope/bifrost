@@ -155,33 +155,40 @@ class NDArrayTest(unittest.TestCase):
         np.testing.assert_equal(g.copy('system'), np.array([[99,77],[2,66],[4,55]]))
     def run_type_conversion(self, space='system'):
         # Real
-        a = np.array(self.known_vals, dtype=np.float32)
-        c = bf.ndarray(a, dtype='f32', space=space)
-        for dtype in ('i8', 'i16', 'i32', 'i64', 'f64', 'cf64'):
-            np_dtype = dtype_bf2np(*split_name_nbit(dtype))
-            if space == 'cuda':
-                print(dtype, '->',  np_dtype)
-            b = a.astype(np_dtype)
-            d = c.astype(dtype)
-            d = d.copy(space='system')
-            np.testing.assert_equal(b, d)
-            
+        for dtype_in in (np.int8, np.int16, np.int32, np.float32, np.float64):
+            a = np.array(self.known_vals, dtype=dtype_in)
+            c = bf.ndarray(a, dtype=dtype_in, space=space)
+            for dtype in ('i8', 'i16', 'i32', 'i64', 'f64', 'ci8', 'ci16', 'ci32', 'cf32', 'cf64'):
+                np_dtype = dtype_bf2np(*split_name_nbit(dtype))
+                try:
+                    ## Catch for the complex integer types
+                    len(np_dtype)
+                    b = np.zeros(a.shape, dtype=np_dtype)
+                    b['re'] = a
+                except TypeError:
+                    b = a.astype(np_dtype)
+                d = c.astype(dtype)
+                d = d.copy(space='system')
+                np.testing.assert_equal(b, d)
         # Complex
-        a = np.array(self.known_vals, dtype=np.float32)
-        a = np.stack([a,a[::-1]], axis=0)
-        a = a.view(np.complex64)
-        c = bf.ndarray(a, dtype='cf32', space=space)
-        for dtype in ('ci8', 'ci16', 'ci32', 'cf64', 'i8', 'i16', 'i32', 'i64', 'f64'):
-            np_dtype = dtype_bf2np(*split_name_nbit(dtype))
-            b = a.astype(np_dtype)
-            d = c.astype(dtype)
-            d = d.copy(space='system')
-            if space == 'cuda':
-                print(dtype, '->', np_dtype)
-                print(b)
-                print(d)
-            np.testing.assert_equal(b, d)
-            
+        for dtype_in,dtype_in_cmplx in zip((np.float32,np.float64), ('cf32', 'cf64')):
+            a = np.array(self.known_vals, dtype=dtype_in)
+            a = np.stack([a,a[::-1]], axis=0)
+            a = a.view(np.complex64)
+            c = bf.ndarray(a, dtype=dtype_in_cmplx, space=space)
+            for dtype in ('ci8', 'ci16', 'ci32', 'cf32', 'cf64', 'i8', 'i16', 'i32', 'i64', 'f64'):
+                np_dtype = dtype_bf2np(*split_name_nbit(dtype))
+                try:
+                    ## Catch for the complex integer types
+                    len(np_dtype)
+                    b = np.zeros(a.shape, dtype=np_dtype)
+                    b['re'] = a.real
+                    b['im'] = a.imag
+                except TypeError:
+                    b = a.astype(np_dtype)
+                d = c.astype(dtype)
+                d = d.copy(space='system')
+                np.testing.assert_equal(b, d)
     def test_type_conversion(self):
         self.run_type_conversion()
     @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")

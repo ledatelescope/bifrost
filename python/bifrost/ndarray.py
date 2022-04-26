@@ -367,7 +367,13 @@ class ndarray(np.ndarray):
             if self.bf.space == 'cuda_managed':
                 ## TODO: Decide where/when these need to be called
                 device.stream_synchronize()
-            a = super(ndarray, self).astype(dtype_np)
+            if dtype_bf.is_complex and dtype_bf.is_integer:
+                ## Catch for the complex integer types
+                a = ndarray(shape=self.shape, dtype=dtype_bf)
+                a['re'] = self.real.astype(dtype_bf.as_real())
+                a['im'] = self.imag.astype(dtype_bf.as_real())
+            else:
+                a = super(ndarray, self).astype(dtype_np)
             a.bf.dtype = dtype_bf
        else:
             a = ndarray(shape=self.shape, dtype=dtype_bf, space=self.bf.space)
