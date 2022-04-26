@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -388,6 +388,42 @@ class ndarray(np.ndarray):
             raise NotImplementedError('Only order="C" is supported')
         if space is None:
             space = self.bf.space
+        if not self.flags['C_CONTIGUOUS']:
+            # Deal with arrays that need to have their layouts changed
+            # TODO: Is there a better way to handle this?
+            if space_accessible(self.bf.space, ['system']):
+                ## For arrays that can be accessed from the system space, use
+                ## numpy.ndarray.copy() to do the heavy lifting
+                if space == 'cuda_managed':
+                    ## TODO: Decide where/when these need to be called
+                    device.stream_synchronize()
+                ## This actually makes two copies and throws one away
+                temp = ndarray(shape=self.shape, dtype=self.dtype, space=self.bf.space)
+                temp[...] = np.array(self).copy()
+                if self.bf.space != space:
+                    return ndarray(temp, space=space)
+                return temp
+            else:
+                ## For arrays that can be access from CUDA, use bifrost.transpose
+                ## to do the heavy lifting
+                ### Figure out the correct axis order for C
+                permute = np.argsort(self.strides)[::-1]
+                c_shape = [self.shape[p] for p in permute]
+                ### Make a BFarray wrapper for self so we can reset shape/strides
+                ### to what they should be for a C ordered array
+                self_corder = self.as_BFarray()
+                shape_type = ctypes.c_long*_bf.BF_MAX_DIMS
+                self_corder.shape = shape_type(*c_shape)
+                self_corder.strides = shape_type(*[self.strides[p] for p in permute])
+                ### Make a temporary array with the right shape that will be C ordered
+                temp = ndarray(shape=self.shape, dtype=self.dtype, space=self.bf.space)
+                ### Run the transpose using the BFarray wrapper and the temporary array
+                array_type = ctypes.c_int * self.ndim
+                axes_array = array_type(*permute)
+                _check(_bf.bfTranspose(self_corder, temp.as_BFarray(), axes_array))
+                if self.bf.space != space:
+                    return ndarray(temp, space=space)
+                return temp
         # Note: This makes an actual copy as long as space is not None
         return ndarray(self, space=space)
     def _key_returns_scalar(self, key):

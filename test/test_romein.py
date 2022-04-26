@@ -1,5 +1,5 @@
 
-# Copyright (c) 2018, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2018-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -62,52 +62,48 @@ class RomeinTest(unittest.TestCase):
             unpack(data, data_unpacked)
             data = data_unpacked
             
-        #Excruciatingly slow, but it's just for testing purposes...
-        #Could probably use a blas based function for simplicity.
-        grid = numpy.zeros(shape=grid_shape,dtype=dtype)
-        for t in numpy.arange(ntime):
-            for c in numpy.arange(nchan):
-                for p in numpy.arange(npol):
-                    for d in numpy.arange(ndata):
-                        datapoint = data[t,c,p,d]
-                        if data.dtype != dtype:
-                            try:
-                                datapoint = dtype(datapoint[0]+1j*datapoint[1])
-                            except IndexError:
-                                datapoint = dtype(datapoint)
-                                
-                        #if(d==128):
-                        #    print(datapoint)
-                        x_s = xlocs[t,c,p,d]
-                        y_s = ylocs[t,c,p,d]
-                        for y in numpy.arange(y_s,y_s+illum.shape[4]):
-                            for x in numpy.arange(x_s,x_s+illum.shape[5]):
-                                illump = illum[t,c,p,d,y-y_s,x-x_s]
-                                grid[t,c,p,y,x] += datapoint * illump
+        # Create the output grid
+        grid = bifrost.zeros(shape=grid_shape,dtype=dtype)
+        
+        # Combine axes
+        xlocs_flat = xlocs.reshape(-1,ndata)
+        ylocs_flat = ylocs.reshape(-1,ndata)
+        data_flat = data.reshape(-1,ndata)
+        grid_flat = grid.reshape(-1,grid.shape[-2],grid.shape[-1])
+        illum_flat = illum.reshape(-1,ndata,illum.shape[-2],illum.shape[-1])
+        
+        # Excruciatingly slow, but it's just for testing purposes...
+        # Could probably use a blas based function for simplicity.
+        for tcp in range(data_flat.shape[0]):
+            for d in range(ndata):
+                datapoint = data_flat[tcp,d]
+                if data.dtype != dtype:
+                    try:
+                        datapoint = dtype(datapoint[0]+1j*datapoint[1])
+                    except IndexError:
+                        datapoint = dtype(datapoint)
+                        
+                #if(d==128):
+                #    print(datapoint)
+                x_s = xlocs_flat[tcp,d]
+                y_s = ylocs_flat[tcp,d]
+                for y in range(y_s,y_s+illum_flat.shape[-2]):
+                    for x in range(x_s,x_s+illum_flat.shape[-1]):
+                        illump = illum_flat[tcp,d,y-y_s,x-x_s]
+                        grid_flat[tcp,y,x] += datapoint * illump
 
         return grid
         
     def _create_illum(self, illum_size, data_size, ntime, npol, nchan, dtype=numpy.complex64):
         illum_shape = (ntime,nchan,npol,data_size,illum_size,illum_size)
-        illum = numpy.ones(shape=illum_shape,dtype=dtype)
-        illum = numpy.copy(illum,order='C')
-        illum = bifrost.ndarray(illum)
+        illum = bifrost.zeros(shape=illum_shape,dtype=dtype)
+        illum += 1
         
         return illum
         
     def _create_locs(self, data_size, ntime, nchan, npol, loc_min, loc_max):
         ishape = (ntime,nchan,npol,data_size)
-        xlocs = numpy.random.uniform(loc_min, loc_max, size=ishape)
-        ylocs = numpy.random.uniform(loc_min, loc_max, size=ishape)
-        zlocs = numpy.random.uniform(loc_min, loc_max, size=ishape)
-        xlocs = numpy.copy(xlocs.astype(numpy.int32),order='C')
-        ylocs = numpy.copy(ylocs.astype(numpy.int32),order='C')
-        zlocs = numpy.copy(zlocs.astype(numpy.int32),order='C')
-        xlocs = bifrost.ndarray(xlocs)
-        ylocs = bifrost.ndarray(ylocs)
-        zlocs = bifrost.ndarray(zlocs)
-        locs = numpy.stack((xlocs, ylocs, zlocs))
-        #locs = numpy.transpose(locs,(1,2,3,4,0))
+        locs = numpy.random.uniform(loc_min, loc_max, size=(3,)+ishape)
         locs = numpy.copy(locs.astype(numpy.int32),order='C')
         locs = bifrost.ndarray(locs)
         
@@ -115,12 +111,10 @@ class RomeinTest(unittest.TestCase):
         
     def _create_data(self, data_size, ntime, nchan, npol, dtype=numpy.complex64):
         ishape = (ntime,nchan,npol,data_size)
-        data = numpy.zeros(shape=ishape,dtype=numpy.complex64)
-        data_i = numpy.zeros(shape=(ntime,nchan,npol,data_size,2), dtype=numpy.complex64)
-        data_i[:,:,:,:,0] = numpy.random.normal(0,1.0,size=(ntime,nchan,npol,data_size))
-        data_i[:,:,:,:,1] = numpy.random.normal(0,1.0,size=(ntime,nchan,npol,data_size))
-        data = 7*numpy.copy(data,order='C')
-        data = bifrost.ndarray(data_i[...,0] + 1j * data_i[...,1])
+        data = bifrost.zeros(shape=ishape,dtype=numpy.complex64)
+        data.real[...] = numpy.random.normal(0,1.0,size=ishape)
+        data.imag[...] = numpy.random.normal(0,1.0,size=ishape)
+        data *= 7
         if dtype not in (numpy.complex64, 'cf32'):
             data_quantized = bifrost.ndarray(shape=data.shape, dtype=dtype)
             quantize(data, data_quantized)
@@ -135,9 +129,7 @@ class RomeinTest(unittest.TestCase):
         illum_shape = (ntime,nchan,npol,data_size,illum_size,illum_size)
 
         # Create grid and illumination pattern
-        grid = numpy.zeros(shape=gridshape,dtype=otype)
-        grid = numpy.copy(grid,order='C')
-        grid = bifrost.ndarray(grid)
+        grid = bifrost.zeros(shape=gridshape,dtype=otype)
         illum = self._create_illum(illum_size, data_size, ntime, npol, nchan, dtype=otype)
         
         # Create data
@@ -151,10 +143,10 @@ class RomeinTest(unittest.TestCase):
 
         # Transpose for non pol-major kernels
         if not polmajor:
-            data=data.transpose((0,1,3,2)).copy()
-            locs=locs.transpose((0,1,2,4,3)).copy()
-            illum=illum.transpose((0,1,3,2,4,5)).copy()            
-        
+            data = data.transpose((0,1,3,2)).copy()
+            locs = locs.transpose((0,1,2,4,3)).copy()
+            illum = illum.transpose((0,1,3,2,4,5)).copy()
+            
         grid = grid.copy(space='cuda')
         data = data.copy(space='cuda')
         illum = illum.copy(space='cuda')
@@ -177,9 +169,7 @@ class RomeinTest(unittest.TestCase):
         illum_shape = (ntime,nchan,npol,data_size,illum_size,illum_size)
 
         # Create grid and illumination pattern
-        grid = numpy.zeros(shape=gridshape,dtype=numpy.complex64)
-        grid = numpy.copy(grid,order='C')
-        grid = bifrost.ndarray(grid)
+        grid = bifrost.zeros(shape=gridshape,dtype=numpy.complex64)
         illum = self._create_illum(illum_size, data_size, ntime, npol, nchan)
         
         # Create data
@@ -193,10 +183,10 @@ class RomeinTest(unittest.TestCase):
         
         # Transpose for non pol-major kernels
         if not polmajor:
-            data=data.transpose((0,1,3,2)).copy()
-            locs=locs.transpose((0,1,2,4,3)).copy()
-            illum=illum.transpose((0,1,3,2,4,5)).copy()            
-        
+            data = data.transpose((0,1,3,2)).copy()
+            locs = locs.transpose((0,1,2,4,3)).copy()
+            illum = illum.transpose((0,1,3,2,4,5)).copy()
+            
         grid = grid.copy(space='cuda')
         data = data.copy(space='cuda')
         illum = illum.copy(space='cuda')
@@ -223,9 +213,7 @@ class RomeinTest(unittest.TestCase):
         illum_shape = (ntime,nchan,npol,data_size,illum_size,illum_size)
 
         # Create grid and illumination pattern
-        grid = numpy.zeros(shape=gridshape,dtype=numpy.complex64)
-        grid = numpy.copy(grid,order='C')
-        grid = bifrost.ndarray(grid)
+        grid = bifrost.zeros(shape=gridshape,dtype=numpy.complex64)
         illum = self._create_illum(illum_size, data_size, ntime, npol, nchan)
         
         # Create data
@@ -239,10 +227,10 @@ class RomeinTest(unittest.TestCase):
         
         # Transpose for non pol-major kernels
         if not polmajor:
-            data=data.transpose((0,1,3,2)).copy()
-            locs=locs.transpose((0,1,2,4,3)).copy()
-            illum=illum.transpose((0,1,3,2,4,5)).copy()            
-        
+            data = data.transpose((0,1,3,2)).copy()
+            locs = locs.transpose((0,1,2,4,3)).copy()
+            illum = illum.transpose((0,1,3,2,4,5)).copy()
+            
         grid = grid.copy(space='cuda')
         data = data.copy(space='cuda')
         illum = illum.copy(space='cuda')
@@ -295,5 +283,3 @@ class RomeinTest(unittest.TestCase):
         self.run_positions_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2,polmajor=True)
     def test_set_positions(self):
         self.run_positions_test(grid_size=64, illum_size=3, data_size=256, ntime=8, npol=3, nchan=2,polmajor=False)
-
-
