@@ -165,7 +165,7 @@ class NDArrayTest(unittest.TestCase):
                     len(np_dtype)
                     b = np.zeros(a.shape, dtype=np_dtype)
                     b['re'] = a
-                except TypeError:
+                except (IndexError, TypeError):
                     b = a.astype(np_dtype)
                 d = c.astype(dtype)
                 d = d.copy(space='system')
@@ -184,7 +184,7 @@ class NDArrayTest(unittest.TestCase):
                     b = np.zeros(a.shape, dtype=np_dtype)
                     b['re'] = a.real
                     b['im'] = a.imag
-                except TypeError:
+                except (IndexError, TypeError):
                     b = a.astype(np_dtype)
                 d = c.astype(dtype)
                 d = d.copy(space='system')
