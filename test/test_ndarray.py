@@ -31,7 +31,7 @@ import bifrost as bf
 import ctypes
 
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED
-from bifrost.dtype import split_name_nbit, name_nbit2numpy as dtype_bf2np
+from bifrost.DataType import DataType
 
 class NDArrayTest(unittest.TestCase):
     def setUp(self):
@@ -159,7 +159,7 @@ class NDArrayTest(unittest.TestCase):
             a = np.array(self.known_vals, dtype=dtype_in)
             c = bf.ndarray(a, dtype=dtype_in, space=space)
             for dtype in ('i8', 'i16', 'i32', 'i64', 'f64', 'ci8', 'ci16', 'ci32', 'cf32', 'cf64'):
-                np_dtype = dtype_bf2np(*split_name_nbit(dtype))
+                np_dtype = DataType(dtype).as_numpy_dtype()
                 try:
                     ## Catch for the complex integer types
                     len(np_dtype)
@@ -177,7 +177,7 @@ class NDArrayTest(unittest.TestCase):
             a = a.view(np.complex64)
             c = bf.ndarray(a, dtype=dtype_in_cmplx, space=space)
             for dtype in ('ci8', 'ci16', 'ci32', 'cf32', 'cf64', 'i8', 'i16', 'i32', 'i64', 'f64'):
-                np_dtype = dtype_bf2np(*split_name_nbit(dtype))
+                np_dtype = DataType(dtype).as_numpy_dtype()
                 try:
                     ## Catch for the complex integer types
                     len(np_dtype)
