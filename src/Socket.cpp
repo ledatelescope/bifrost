@@ -86,7 +86,8 @@ static int get_mtu(int sockfd) {
     }
 
     if( found ) {
-      ::strncpy(ifr.ifr_name, ifa->ifa_name, sizeof(ifr.ifr_name));
+      ::strncpy(ifr.ifr_name, ifa->ifa_name, IFNAMSIZ-1);
+      ifr.ifr_name[IFNAMSIZ-1] = '\0';
       if( ::ioctl(sockfd, SIOCGIFMTU, &ifr) != -1) {
         mtu = ifr.ifr_mtu;
       }
