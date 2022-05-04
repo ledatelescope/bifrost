@@ -106,7 +106,7 @@ int recvmmsg(int sockfd,
              struct timespec *timeout) {
   int count = 0;
   int recv;
-  for(int i=0; i<vlen; i++) {
+  for(unsigned int i=0; i<vlen; i++) {
     recv = ::recvmsg(sockfd, &(msgvec[count].msg_hdr), flags);
     if(recv > 0) {
       count++;
@@ -122,7 +122,7 @@ int sendmmsg(int sockfd,
              int flags) {
   int count = 0;
   int sent;
-  for(int i=0; i<vlen; i++) {
+  for(unsigned int i=0; i<vlen; i++) {
     sent = ::sendmsg(sockfd, &(msgvec[i].msg_hdr), flags);
     msgvec[i].msg_len = sent;
     count++;
