@@ -51,7 +51,7 @@ static int get_mtu(int sockfd) {
   int mtu = 0;
   sa_family_t family = ::get_family(sockfd);
 
-  sockaddr addr;
+  sockaddr_storage addr;
   socklen_t addr_len = sizeof(addr);
   sockaddr_in*  addr4 = reinterpret_cast<sockaddr_in*> (&addr);
   sockaddr_in6* addr6 = reinterpret_cast<sockaddr_in6*>(&addr);
