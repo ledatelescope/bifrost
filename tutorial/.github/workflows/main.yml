@@ -39,7 +39,11 @@ jobs:
                simplejson \
                pint \
                graphviz \
-               ctypesgen==1.0.2
+               ctypesgen==1.0.2 \
+               jupyterlab \
+               jupyter_client \
+               nbformat \
+               nbconvert
       - name: "Software Install - Bifrost"
         run: |
           git clone https://github.com/ledatelescope/bifrost
