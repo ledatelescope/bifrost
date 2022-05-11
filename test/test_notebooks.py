@@ -109,7 +109,7 @@ def _test_generator(notebook):
     return test
 
 
-_NOTEBOOKS = glob.glob(os.path.join(os.path.dirname(__file__), '..', '*.ipynb'))
+_NOTEBOOKS = glob.glob(os.path.join(os.path.dirname(__file__), '..', 'tutorial', '*.ipynb'))
 _NOTEBOOKS.sort()
 for notebook in _NOTEBOOKS:
     test = _test_generator(notebook)

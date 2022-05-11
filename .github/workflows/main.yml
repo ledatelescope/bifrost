@@ -67,7 +67,12 @@ jobs:
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
         run: python -m pip install \
                cupy \
-               pycuda
+               pycuda \
+               numba \
+               jupyterlab \
+               jupyter_client \
+               nbformat \
+               nbconvert
       - name: "Build and Install"
         run: |
           ./configure
