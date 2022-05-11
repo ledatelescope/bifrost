@@ -112,7 +112,7 @@ def _test_generator(notebook):
 _NOTEBOOKS = glob.glob(os.path.join(os.path.dirname(__file__), '..', 'tutorial', '*.ipynb'))
 _NOTEBOOKS.sort()
 for notebook in _NOTEBOOKS:
-    if notebook.startswith('06_'):
+    if notebook.find('06_data_capture') != -1:
         # Skip this for now
         continue
     test = _test_generator(notebook)
