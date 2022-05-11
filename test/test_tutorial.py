@@ -17,12 +17,12 @@ from tempfile import mkdtemp
 from shutil import rmtree
 
 
-run_notebooks_tests = False
+run_tutorial_tests = False
 try:
     import jupyter_client
     import nbformat
     from nbconvert.preprocessors import ExecutePreprocessor
-    run_notebooks_tests = True
+    run_tutorial_tests = True
 except ImportError:
     pass
 
@@ -45,7 +45,7 @@ def run_notebook(notebook_path, run_path=None, kernel_name=None):
         
     cleanup = False
     if run_path is None:
-        run_path = mkdtemp(prefix='test-notebooks-', suffix='.tmp')
+        run_path = mkdtemp(prefix='test-tutorial-', suffix='.tmp')
         cleanup = True
         
     proc = ExecutePreprocessor(timeout=600, kernel_name=kernel_name)
@@ -72,8 +72,8 @@ def run_notebook(notebook_path, run_path=None, kernel_name=None):
     return nb, errors
 
 
-@unittest.skipUnless(run_notebooks_tests, "requires the 'nbformat' and 'nbconvert' modules")
-class notebooks_tests(unittest.TestCase):
+@unittest.skipUnless(run_tutorial_tests, "requires the 'nbformat' and 'nbconvert' modules")
+class tutorial_tests(unittest.TestCase):
     """A unittest.TestCase collection of unit tests for the Bifrost tutorial notebooks."""
     
     def setUp(self):
@@ -119,10 +119,10 @@ for notebook in _NOTEBOOKS:
     name = 'test_%s' % os.path.splitext(os.path.basename(notebook))[0].replace(' ', '_')
     doc = """Execution of the '%s' notebook.""" % os.path.basename(notebook)
     setattr(test, '__doc__', doc)
-    setattr(notebooks_tests, name, test)
+    setattr(tutorial_tests, name, test)
 
 
-class notebooks_test_suite(unittest.TestSuite):
+class tutorial_test_suite(unittest.TestSuite):
     """A unittest.TestSuite class which contains all of the Bifrost tutorial
     notebook tests."""
     
@@ -130,7 +130,7 @@ class notebooks_test_suite(unittest.TestSuite):
         unittest.TestSuite.__init__(self)
         
         loader = unittest.TestLoader()
-        self.addTests(loader.loadTestsFromTestCase(notebooks_tests))
+        self.addTests(loader.loadTestsFromTestCase(tutorial_tests))
 
 
 if __name__ == '__main__':
