@@ -48,6 +48,15 @@ inline size_t pre_fftshift(size_t        offset,
 	}
 	return offset;
 }
+
+template<typename Complex>
+__device__
+inline void precall_fftshift(Complex* dataIn,
+			     Complex* dataOut,
+			     CallbackData* cb) {
+	/* Something */
+}
+
 template<typename Complex>
 __device__
 inline Complex post_fftshift(size_t        offset,
