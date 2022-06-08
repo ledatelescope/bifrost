@@ -127,7 +127,11 @@ class TestFFT(unittest.TestCase):
         ishape[axes[-1]] = shape[axes[-1]] // 2 + 1
         oshape[axes[-1]] = (ishape[axes[-1]] - 1) * 2
         ishape[-1] *= 2 # For complex
-        known_data = np.random.normal(size=ishape).astype(np.float32).view(np.complex64)
+        # Note: We need to make a set of known_data that are consistent with a
+        # a real real-to-complex FFT.
+        known_data_real = np.np.random.normal(size=oshape).astype(np.float32)
+        know_data = gold_fftn(know_data_real, axes=axes)
+        know_data = know_data.copy().astype(np.complex64)
         idata = bf.ndarray(known_data, space='cuda')
         odata = bf.ndarray(shape=oshape, dtype='f32', space='cuda')
         fft = Fft()
