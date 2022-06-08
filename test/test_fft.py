@@ -130,7 +130,7 @@ class TestFFT(unittest.TestCase):
         # Note: We need to make a set of known_data that are consistent with a
         # a real real-to-complex FFT.
         known_data_real = np.random.normal(size=oshape).astype(np.float32)
-        know_data = gold_fftn(know_data_real, axes=axes)
+        know_data = gold_rfftn(known_data_real, axes=axes)
         know_data = know_data.copy().astype(np.complex64)
         idata = bf.ndarray(known_data, space='cuda')
         odata = bf.ndarray(shape=oshape, dtype='f32', space='cuda')
