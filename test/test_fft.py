@@ -150,7 +150,7 @@ class TestFFT(unittest.TestCase):
         self.run_test_c2c_impl(shape, axes, inverse=True, fftshift=True)
     def run_test_c2r(self, shape, axes):
         self.run_test_c2r_impl(shape, axes)
-        self.run_test_c2r_impl(shape, axes, fftshift=True)
+        #self.run_test_c2r_impl(shape, axes, fftshift=True)
 
     def test_1D(self):
         self.run_test_c2c(self.shape1D, [0])
