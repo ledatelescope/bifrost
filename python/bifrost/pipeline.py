@@ -377,7 +377,7 @@ class Block(BlockScope):
                 self.pipeline.block_init_queue.put((self, False))
                 sys.stderr.write("From block instantiated here:\n")
                 sys.stderr.write(self.init_trace)
-                raise
+                return
     def num_outputs(self):
         # TODO: This is a little hacky
         return len(self.orings)
