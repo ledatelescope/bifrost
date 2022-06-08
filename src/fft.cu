@@ -236,7 +236,7 @@ BFstatus BFfft_impl::init(BFarray const* in,
 #if CUDA_VERSION >= 10100
 	// Figure out what to do with c2r with fftshift on CUDA 10.1+
 	if( type == CUFFT_C2R || type == CUFFT_Z2D ) {
-		_do_fftshift_before_c2r = true;
+		_do_fftshift_before_c2r = false;
 	}
 #endif
 	_dv_callback_data.resize(1);
