@@ -135,7 +135,7 @@ class TestFFT(unittest.TestCase):
         idata = bf.ndarray(known_data, space='cuda')
         odata = bf.ndarray(shape=oshape, dtype='f32', space='cuda')
         fft = Fft()
-        fft.init(idata, odata, axes=axes, apply_fftshift=fftshift)
+        fft.init(idata, odata, axes=axes)
         fft.execute(idata, odata)
         # Note: Numpy applies normalization while CUFFT does not
         norm = reduce(lambda a, b: a * b, [shape[d] for d in axes])
