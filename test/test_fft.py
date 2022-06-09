@@ -121,7 +121,7 @@ class TestFFT(unittest.TestCase):
             self.run_test_r2c_dtype(shape, axes, np.int16, (1 << 15) - 1, misalign=misalign)
         for misalign in range(8):
             self.run_test_r2c_dtype(shape, axes, np.int8,  (1 << 7 ) - 1, misalign=misalign)
-    def run_test_c2r_impl(self, shape, axes, fftshift=False):
+    def run_test_c2r_impl(self, shape, axes):
         ishape = list(shape)
         oshape = list(shape)
         ishape[axes[-1]] = shape[axes[-1]] // 2 + 1
@@ -139,8 +139,6 @@ class TestFFT(unittest.TestCase):
         fft.execute(idata, odata)
         # Note: Numpy applies normalization while CUFFT does not
         norm = reduce(lambda a, b: a * b, [shape[d] for d in axes])
-        if fftshift:
-            known_data = np.fft.ifftshift(known_data, axes=axes)
         known_result = gold_irfftn(known_data, axes=axes) * norm
         compare(odata.copy('system'), known_result)
     def run_test_c2c(self, shape, axes):
@@ -150,7 +148,6 @@ class TestFFT(unittest.TestCase):
         self.run_test_c2c_impl(shape, axes, inverse=True, fftshift=True)
     def run_test_c2r(self, shape, axes):
         self.run_test_c2r_impl(shape, axes)
-        #self.run_test_c2r_impl(shape, axes, fftshift=True)
 
     def test_1D(self):
         self.run_test_c2c(self.shape1D, [0])

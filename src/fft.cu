@@ -60,7 +60,6 @@ class BFfft_impl {
 	size_t           _workspace_size;
 	std::vector<int> _axes;
 	bool             _do_fftshift;
-	bool             _do_fftshift_before_c2r;
 	bool             _using_load_callback;
 	thrust::device_vector<char> _dv_tmp_storage;
 	thrust::device_vector<CallbackData> _dv_callback_data;
@@ -232,17 +231,10 @@ BFstatus BFfft_impl::init(BFarray const* in,
 	
 	_axes.assign(axes, axes+rank);
 	_do_fftshift = do_fftshift;
-	_do_fftshift_before_c2r = false;
-#if CUDA_VERSION >= 10100
-	// Figure out what to do with c2r with fftshift on CUDA 10.1+
-	if( type == CUFFT_C2R || type == CUFFT_Z2D ) {
-		_do_fftshift_before_c2r = false;
-	}
-#endif
 	_dv_callback_data.resize(1);
 	_hv_callback_data.resize(1);
 	CallbackData* callback_data = thrust::raw_pointer_cast(&_dv_callback_data[0]);
-	BF_CHECK( set_fft_load_callback(in->dtype, _nbit, _handle, _do_fftshift ^ _do_fftshift_before_c2r,
+	BF_CHECK( set_fft_load_callback(in->dtype, _nbit, _handle, _do_fftshift,
 	                                callback_data, &_using_load_callback) );
 	
 	if( tmp_storage_size ) {
@@ -269,13 +261,6 @@ BFstatus BFfft_impl::execute_impl(BFarray const* in,
 	void* idata = in->data;
 	void* odata = out->data;
 	
-	// Apply a pre-call fftshift to deal with c2r problems in CUDA 10.1+
-#if CUDA_VERSION >= 10100
-	if( _do_fftshift_before_c2r ) {
-		/* Pre-call fftshift here */
-	}
-#endif
-	
 	// TODO: This sync is needed to ensure that the previous h2d copy of
 	//         h_callback_data has finished before we overwrite it.
 	//         We could potentially use a CUDA event as a lighter-weight
@@ -297,7 +282,7 @@ BFstatus BFfft_impl::execute_impl(BFarray const* in,
 	
 	// Set callback data needed for applying fftshift
 	h_callback_data->inverse = _real_out || (!_real_in && inverse);
-	h_callback_data->do_fftshift = _do_fftshift ^ _do_fftshift_before_c2r;
+	h_callback_data->do_fftshift = _do_fftshift ^ _real_out;
 	h_callback_data->ndim = _axes.size();
 	for( int d=0; d<h_callback_data->ndim; ++d ) {
 		h_callback_data->shape[d]    = in->shape[_axes[d]];
