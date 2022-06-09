@@ -50,11 +50,6 @@ def compare(result, gold):
     absmean = np.abs(gold).mean()
     np.testing.assert_allclose(result, gold, rtol=RTOL, atol=MTOL * absmean)
 
-def cudaExpectedFailure(testcase):
-    if BF_CUDA_VERSION < 10.1 or BF_CUDA_VERSION > 11.6:
-        return testcase
-    return unittest.expectedFailure(testcase)
-
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestFFT(unittest.TestCase):
     def setUp(self):
@@ -202,13 +197,10 @@ class TestFFT(unittest.TestCase):
     def test_r2c_3D(self):
         self.run_test_r2c(self.shape3D, [0, 1, 2])
 
-    @cudaExpectedFailure
     def test_c2r_1D(self):
         self.run_test_c2r(self.shape1D, [0])
-    @cudaExpectedFailure
     def test_c2r_2D(self):
         self.run_test_c2r(self.shape2D, [0, 1])
-    @cudaExpectedFailure
     def test_c2r_3D(self):
         self.run_test_c2r(self.shape3D, [0, 1, 2])
 
