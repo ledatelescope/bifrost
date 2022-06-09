@@ -373,11 +373,11 @@ class Block(BlockScope):
             active_orings = self.begin_writing(oring_stack, self.orings)
             try:
                 self.main(active_orings)
-            except Exception as e:
+            except Exception:
                 self.pipeline.block_init_queue.put((self, False))
                 sys.stderr.write("From block instantiated here:\n")
                 sys.stderr.write(self.init_trace)
-                raise e
+                raise
     def num_outputs(self):
         # TODO: This is a little hacky
         return len(self.orings)
