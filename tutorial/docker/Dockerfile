@@ -137,7 +137,8 @@ RUN cd /home/$LSL_USER/bifrost && \
     make -j all && \
     make doc && \
     make install && \
-    cd /home/$LSL_USER
+    cd /home/$LSL_USER && \
+    ln -s /home/$LSL_USER/bifrost/tutorial /home/$LSL_USER/bifrost_tutorial
 
 # Back to root
 USER root
