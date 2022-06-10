@@ -1156,8 +1156,7 @@ int Socket::get_promiscuous() {
   return false;
 #endif
 }
-   
-#if __cplusplus >= 201103L
+
 void Socket::replace(Socket& s) {
 	_fd          = s._fd; s._fd = -1;
 	_type        = std::move(s._type);
