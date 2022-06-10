@@ -852,6 +852,7 @@ enable_vma
 with_cuda_home
 enable_cuda
 with_nvcc_flags
+with_stream_model
 with_gpu_archs
 with_shared_mem
 with_alignment
@@ -1558,6 +1559,8 @@ Optional Packages:
   --with-cuda-home        CUDA install path (default=/usr/local/cuda)
   --with-nvcc-flags       flags to pass to NVCC (default='-O3 -Xcompiler
                           "-Wall"')
+  --with-stream-model     CUDA stream model to use: 'legacy' or 'per-thread'
+                          (default='per-thread')
   --with-gpu-archs=...    default GPU architectures (default=detect)
   --with-shared-mem=N     default GPU shared memory in bytes (default=16384)
   --with-alignment=N      default memory alignment in bytes (default=4096)
@@ -21499,6 +21502,35 @@ fi
 
   NVCCFLAGS=$with_nvcc_flags
 
+
+
+# Check whether --with-stream_model was given.
+if test ${with_stream_model+y}
+then :
+  withval=$with_stream_model;
+else $as_nop
+  with_stream_model='per-thread'
+fi
+)
+
+
+  if test "$HAVE_CUDA" = "1"; then
+    dsm_supported=$( ${NVCC} -h | ${GREP} -Po -e "--default-stream" )
+    if test "$dsm_supported" = "--default-stream"; then
+      if test "$with_stream_model" = "per-thread"; then
+        NVCCFLAGS="$NVCCFLAGS -default-stream per-thread"
+      else
+        if test "$with_stream_model" = "legacy"; then
+          NVCCFLAGS="$NVCCFLAGS -default-stream legacy"
+        else
+          as_fn_error $? "Invalid CUDA stream model: '$with_stream_model'" "$LINENO" 5
+        fi
+      fi
+    else
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: Only the 'legacy' stream model is supported" >&5
+printf "%s\n" "$as_me: WARNING: Only the 'legacy' stream model is supported" >&2;}
+    fi
+  fi
 
   if test "$HAVE_CUDA" = "1"; then
     CPPFLAGS="$CPPFLAGS -DBF_CUDA_ENABLED=1"
