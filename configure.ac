@@ -39,9 +39,15 @@ AC_SUBST(SO_EXT, $shrext_cmds)
 #
 
 AC_C_INLINE
-AX_CXX_COMPILE_STDCXX(14, noext, optional)
-AS_IF([test x$HAVE_CXX14 != x1],
-      [AX_CXX_COMPILE_STDCXX(11, noext, mandatory)])
+AX_CXX_COMPILE_STDCXX(20, noext, optional)
+AS_IF([test x$HAVE_CXX20 != x1],
+      [AX_CXX_COMPILE_STDCXX(17, noext, optional)
+       AS_IF([test x$HAVE_CXX17 != x1],
+             [AX_CXX_COMPILE_STDCXX(14, noext, optional)
+              AS_IF([test x$HAVE_CXX14 != x1],
+                    [AX_CXX_COMPILE_STDCXX(11, noext, mandatory)])])])
+AX_CHECK_CXX_FILESYSTEM
+AX_CHECK_CXX_ENDS_WITH
 AC_CHECK_FUNCS([memset])
 AC_CHECK_FUNCS([rint])
 AC_CHECK_FUNCS([socket])
@@ -127,6 +133,9 @@ AC_ARG_ENABLE([vma],
 AC_SUBST([HAVE_VMA], [0])
 AS_IF([test x$enable_vma != xno],
       [AC_CHECK_LIB([vma], [recvfrom_zcopy],
+                    [AC_SUBST([HAVE_VMA], [1])
+                     LIBS="$LIBS -lvma"])
+       AC_CHECK_LIB([vma], [vma_recvfrom_zcopy],
                     [AC_SUBST([HAVE_VMA], [1])
                      LIBS="$LIBS -lvma"])])
 
@@ -266,6 +275,10 @@ AC_ARG_ENABLE([python],
 AC_SUBST([HAVE_PYTHON], [0])
 AS_IF([test x$enable_python != xno],
       [AX_WITH_PROG(PYTHON, python, no, $PATH)
+       AS_IF([test x${PYTHON} = xno],
+             [AC_PATH_PROG(PYTHON3, python3, no, $PATH)
+              AS_IF([test x${PYTHON3} != xno],
+                    [AC_SUBST([PYTHON], [$PYTHON3])])])
        AS_IF([test x${PYTHON} != xno],
              [AC_MSG_CHECKING([whether $PYTHON as ctypesgen])
               AS_IF([! ${PYTHON} -c "import ctypesgen" 2>/dev/null],
@@ -319,13 +332,44 @@ AC_SUBST([PACKAGE_VERSION_MINOR], [`echo $PACKAGE_VERSION | $AWK -F. '{print $2}
 AC_SUBST([PACKAGE_VERSION_MICRO], [`echo $PACKAGE_VERSION | $AWK -F. '{print $3}'`])
 
 #
-# C++14/C++11 toggling
+# C++17/C++14/C++11 toggling
 #
 
+AC_SUBST([MAP_KERNEL_STDCXX], [c++11])
+AC_SUBST([STDCXX_IS_SET], [0])
+AS_IF([test x$HAVE_CXX20 = x1],
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++20 $CXXFLAGS"
+       AS_IF([test x$CUDA_HAVE_CXX20 = x1],
+             [NVCCFLAGS="-std=c++20 $NVCCFLAGS"
+              AC_SUBST([MAP_KERNEL_STDCXX], [c++20])],
+             [AS_IF([test x$CUDA_HAVE_CXX17 = x1],
+                    [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
+                     AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
+                    [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+                           [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                            AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+                           [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])])
+AS_IF([test x$HAVE_CXX17 = x1],
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++17 $CXXFLAGS"
+       AS_IF([test x$CUDA_HAVE_CXX17 = x1],
+             [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
+              AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
+             [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                     AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+                    [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])
 AS_IF([test x$HAVE_CXX14 = x1],
-      [CXXFLAGS="-std=c++14 $CXXFLAGS"
-       NVCCFLAGS="-std=c++14 $NVCCFLAGS"],
-      [CXXFLAGS="-std=c++11 $CXXFLAGS"
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++14 $CXXFLAGS"
+       AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+             [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+              AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+             [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])
+AS_IF([test x$STDCXX_IS_SET != x1],
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++11 $CXXFLAGS"
        NVCCFLAGS="-std=c++11 -Xcompiler \"-DTHRUST_IGNORE_DEPRECATED_CPP_DIALECT\" $NVCCFLAGS"])
 
 #
@@ -344,7 +388,7 @@ AC_OUTPUT
 #
 
 AS_IF([test x$HAVE_CUDA = x1],
-      [cufft_c2r_modifies=$( echo $CUDA_VERSION | ${GREP} -e "10\.[[1-2]]" -e "11\.[[0-6]]" )
+      [cufft_c2r_modifies=$( echo $CUDA_VERSION | ${GREP} -e "10\.[[1-2]]" -e "11\.[[0-7]]" )
        if test "$cufft_c2r_modifies" != ""; then
          echo ""
          AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)

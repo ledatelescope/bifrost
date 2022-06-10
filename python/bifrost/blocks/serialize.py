@@ -127,7 +127,6 @@ class DeserializeBlock(SourceBlock):
     def create_reader(self, sourcename):
         return BifrostReader(sourcename)
     def on_sequence(self, ireader, sourcename):
-        hdr = ireader.header
         return [ireader.header]
     def on_data(self, reader, ospans):
         ospan = ospans[0]
