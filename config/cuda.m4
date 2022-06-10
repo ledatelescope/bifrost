@@ -106,25 +106,28 @@ AC_DEFUN([AX_CHECK_CUDA],
   
   AC_ARG_WITH([stream_model],
               [AS_HELP_STRING([--with-stream-model],
-                              [CUDA stream model to use: 'legacy' or 'per-thread' (default='per-thread')])],
+                              [CUDA default stream model to use: 'legacy' or 'per-thread' (default='per-thread')])],
               [],
-              [with_stream_model='per-thread']))
+              [with_stream_model='per-thread'])
   
   
   if test "$HAVE_CUDA" = "1"; then
+    AC_MSG_CHECKING([for different CUDA default stream models])
     dsm_supported=$( ${NVCC} -h | ${GREP} -Po -e "--default-stream" )
     if test "$dsm_supported" = "--default-stream"; then
       if test "$with_stream_model" = "per-thread"; then
         NVCCFLAGS="$NVCCFLAGS -default-stream per-thread"
+        AC_MSG_RESULT([yes, using 'per-thread'])
       else
         if test "$with_stream_model" = "legacy"; then
           NVCCFLAGS="$NVCCFLAGS -default-stream legacy"
+          AC_MSG_RESULT([yes, using 'legacy'])
         else
           AC_MSG_ERROR(Invalid CUDA stream model: '$with_stream_model')
         fi
       fi
     else
-      AC_MSG_WARN(Only the 'legacy' stream model is supported)
+      AC_MSG_RESULT([no, only the 'legacy' stream model is supported])
     fi
   fi
   
