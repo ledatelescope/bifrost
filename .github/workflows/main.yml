@@ -70,7 +70,7 @@ jobs:
                pycuda
       - name: "Build and Install"
         run: |
-          ./configure
+          ./configure --enable-debug
           make -j all
           sudo make install
       - name: Test
