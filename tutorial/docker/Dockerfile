@@ -128,20 +128,16 @@ RUN pip install \
         numba \
         pint \
         simplejson \
-        git+https://github.com/olsonse/ctypesgen.git@9bd2d249aa4011c6383a10890ec6f203d7b7990f
+        ctypesgen==1.0.2
 ## Bifrost
-RUN git clone https://github.com/jaycedowell/bifrost.git && \
-    cd /home/$LSL_USER/bifrost && \
-    git checkout disk-readers
-COPY config.mk user.mk /home/$LSL_USER/bifrost/
+RUN git clone https://github.com/ledatelescope/bifrost.git && \
+    cd /home/$LSL_USER/bifrost
 RUN cd /home/$LSL_USER/bifrost && \
-    make clean && \
+    ./configure --with-gpu-archs="35 50 61 75" && \
     make -j all && \
     make doc && \
     make install && \
     cd /home/$LSL_USER
-## The tutorial
-RUN git clone https://github.com/ledatelescope/bifrost_tutorial.git
 
 # Back to root
 USER root
