@@ -21176,6 +21176,47 @@ then :
                      LIBS="$LIBS -lvma"
 fi
 
+       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for vma_recvfrom_zcopy in -lvma" >&5
+printf %s "checking for vma_recvfrom_zcopy in -lvma... " >&6; }
+if test ${ac_cv_lib_vma_vma_recvfrom_zcopy+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lvma  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+namespace conftest {
+  extern "C" int vma_recvfrom_zcopy ();
+}
+int
+main (void)
+{
+return conftest::vma_recvfrom_zcopy ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"
+then :
+  ac_cv_lib_vma_vma_recvfrom_zcopy=yes
+else $as_nop
+  ac_cv_lib_vma_vma_recvfrom_zcopy=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_vma_vma_recvfrom_zcopy" >&5
+printf "%s\n" "$ac_cv_lib_vma_vma_recvfrom_zcopy" >&6; }
+if test "x$ac_cv_lib_vma_vma_recvfrom_zcopy" = xyes
+then :
+  HAVE_VMA=1
+
+                     LIBS="$LIBS -lvma"
+fi
+
 fi
 
 #

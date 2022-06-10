@@ -134,6 +134,9 @@ AC_SUBST([HAVE_VMA], [0])
 AS_IF([test x$enable_vma != xno],
       [AC_CHECK_LIB([vma], [recvfrom_zcopy],
                     [AC_SUBST([HAVE_VMA], [1])
+                     LIBS="$LIBS -lvma"])
+       AC_CHECK_LIB([vma], [vma_recvfrom_zcopy],
+                    [AC_SUBST([HAVE_VMA], [1])
                      LIBS="$LIBS -lvma"])])
 
 #
