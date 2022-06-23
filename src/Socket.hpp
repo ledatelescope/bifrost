@@ -152,14 +152,12 @@ inline static int accept4(int sockfd,
 inline static sa_family_t get_family(int sockfd) {
   int ret;
   sockaddr addr;
-  socklen_t len = sizeof(addr);
-  ret = ::getsockname(sockfd, &addr, &len);
-  if(ret<0) {
+  socklen_t addr_len = sizeof(addr);
+  sockaddr_in* addr4 = reinterpret_cast<sockaddr_in*>(&addr);
+  if( ::getsockname(sockfd, (struct sockaddr*)&addr, &addr_len) < 0 ) {
     return AF_UNSPEC;
   }
-  
-  sockaddr_in* sa = reinterpret_cast<sockaddr_in*> (&addr);
-  return sa->sin_family;
+  return addr4->sin_family;
 }
 
 inline static int get_mtu(int sockfd) {
@@ -624,7 +622,7 @@ void Socket::bind(sockaddr_storage local_address,
         base_address.sin_family = reinterpret_cast<sockaddr_in*>(&local_address)->sin_family;
         base_address.sin_addr.s_addr = htonl(INADDR_ANY);
         base_address.sin_port = htons(reinterpret_cast<sockaddr_in*>(&local_address)->sin_port);
-        check_error(::bind(_fd, (struct sockaddr*)&local_address, sizeof(local_address)),
+        check_error(::bind(_fd, (struct sockaddr*)&local_address, sizeof(struct sockaddr)),
                     "bind socket");
         
         if( _type == SOCK_STREAM ) {
