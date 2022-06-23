@@ -48,9 +48,9 @@ class TestHeaderStandardHandlesGoodHeaders(unittest.TestCase):
     def test_numpy_types(self):
         """Same values, but some are numpy types"""
         self.header_dict = {
-            'nchans': np.int(1), 'nifs': 1, 'nbits': 8,
-            'fch1': np.float(100.0), 'foff': np.float(1e-5),
-            'tstart': 1e5, 'tsamp': np.float(1e-5)}
+            'nchans': np.int32(1), 'nifs': 1, 'nbits': 8,
+            'fch1': np.float32(100.0), 'foff': np.float64(1e-5),
+            'tstart': 1e5, 'tsamp': np.float32(1e-5)}
     def test_extra_parameters(self):
         """Add some extra parameters"""
         self.header_dict = {

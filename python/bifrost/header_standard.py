@@ -43,6 +43,8 @@ Optional parameters (which some blocks require):
 
 """
 
+import numpy as np
+
 from bifrost import telemetry
 telemetry.track_module()
 
@@ -51,13 +53,13 @@ telemetry.track_module()
 # Format:
 # 'parameter name':(type, minimum)
 STANDARD_HEADER = {
-    'nchans': (int, 1),
-    'nifs': (int, 1, ),
-    'nbits': (int, 1),
-    'fch1': (float, 0),
-    'foff': (float, None),
-    'tstart': (float, 0),
-    'tsamp': (float, 0)}
+    'nchans': ((int, np.integer), 1),
+    'nifs': ((int, np.integer), 1, ),
+    'nbits': ((int, np.integer), 1),
+    'fch1': ((float, np.floating), 0),
+    'foff': ((float, np.floating), None),
+    'tstart': ((float, np.floating), 0),
+    'tsamp': ((float, np.floating), 0)}
 
 def enforce_header_standard(header_dict):
     """Raise an error if the header dictionary passed
