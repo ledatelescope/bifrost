@@ -230,6 +230,10 @@
         {
           bifrost = final.callPackage bifrost { };
           bifrost-doc = final.callPackage bifrost-doc { };
+          github_stats = final.writeShellScriptBin "github_stats" ''
+            ${final.python3.withPackages (p: [p.PyGithub])}/bin/python \
+              ${tools/github_stats.py} "$@"
+          '';
         }
         # Apply the python overlay to every python package set we find.
         // lib.mapAttrs (_: py: py.override { packageOverrides = pyOverlay; })
@@ -308,7 +312,7 @@
               value = py.withPackages (p: [ (p.bifrost.override config) ]);
             }) (pythonAttrs pkgs)));
 
-        in { inherit (pkgs) bifrost-doc; } // cgens // bfs // pys);
+        in { inherit (pkgs) bifrost-doc github_stats; } // cgens // bfs // pys);
 
       devShells = eachSystem (pkgs: {
         default = let
