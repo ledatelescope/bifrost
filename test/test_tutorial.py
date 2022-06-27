@@ -40,7 +40,7 @@ def run_notebook(notebook_path, run_path=None, kernel_name=None):
     nb_name, _ = os.path.splitext(os.path.basename(notebook_path))
     dirname = os.path.dirname(notebook_path)
     
-    with open(notebook_path) as f:
+    with open(notebook_path, encoding='utf-8') as f:
         nb = nbformat.read(f, as_version=4)
         
     cleanup = False
