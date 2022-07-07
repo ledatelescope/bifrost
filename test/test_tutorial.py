@@ -40,7 +40,7 @@ def run_notebook(notebook_path, run_path=None, kernel_name=None):
     nb_name, _ = os.path.splitext(os.path.basename(notebook_path))
     dirname = os.path.dirname(notebook_path)
     
-    with open(notebook_path) as f:
+    with open(notebook_path, encoding='utf-8') as f:
         nb = nbformat.read(f, as_version=4)
         
     cleanup = False
@@ -54,7 +54,7 @@ def run_notebook(notebook_path, run_path=None, kernel_name=None):
     proc.preprocess(nb, {'metadata': {'path': run_path}})
     output_path = os.path.join(dirname, '{}_all_output.ipynb'.format(nb_name))
     
-    with open(output_path, mode='wt') as f:
+    with open(output_path, mode='wt', encoding='utf-8') as f:
         nbformat.write(nb, f)
     errors = []
     for cell in nb.cells:
