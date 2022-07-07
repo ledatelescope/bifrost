@@ -63,8 +63,14 @@ try:
     _INSTALL_KEY = os.path.join(_CACHE_DIR, 'install.key')
     if not os.path.exists(_INSTALL_KEY):
         with open(_INSTALL_KEY, 'w') as fh:
-            fh.write(str(uuid.uuid4()))
-
+            install_id = str(uuid.uuid4())
+            try:
+                import google.colab
+                install_id = 'c01ab' + install_id[5:]
+            except ImportError:
+                pass
+            fh.write(install_id)
+            
     with open(_INSTALL_KEY, 'r') as fh:
         _INSTALL_KEY = fh.read().rstrip()
 
