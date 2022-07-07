@@ -20,6 +20,7 @@ AC_DEFUN([AX_CHECK_CUDA],
   AC_SUBST([CUDA_HAVE_CXX17], [0])
   AC_SUBST([CUDA_HAVE_CXX14], [0])
   AC_SUBST([CUDA_HAVE_CXX11], [0])
+  AC_SUBST([CUDA_HAVE_GRAPH], [0])
   AC_SUBST([GPU_MIN_ARCH], [0])
   AC_SUBST([GPU_MAX_ARCH], [0])
   if test "$enable_cuda" != "no"; then
@@ -64,6 +65,29 @@ AC_DEFUN([AX_CHECK_CUDA],
       AC_MSG_RESULT(no)
       AC_SUBST([HAVE_CUDA], [0])
     fi
+    
+    CXXFLAGS="$CXXFLAGS_save"
+    LDFLAGS="$LDFLAGS_save"
+    LIBS="$LIBS_save"
+  fi
+  
+  if test "$HAVE_CUDA" = "1"; then
+    AC_MSG_CHECKING([for CUDA graph support])
+  
+    CXXFLAGS_save="$CXXFLAGS"
+    LDFLAGS_save="$LDFLAGS"
+    LIBS_save="$LIBS"
+    
+    ac_compile='$NVCC -c $NVCCFLAGS conftest.$ac_ext >&5'
+    AC_COMPILE_IFELSE([
+      AC_LANG_PROGRAM([[
+          #include <cuda.h>
+          #include <cuda_runtime.h>]],
+          [[cudaGraph_t graph;]])],
+          [AC_MSG_RESULT(yes)
+           AC_SUBST([CUDA_HAVE_GRAPH], [1])],
+          [AC_MSG_RESULT(no)
+           AC_SUBST([CUDA_HAVE_GRAPH], [0])])
     
     CXXFLAGS="$CXXFLAGS_save"
     LDFLAGS="$LDFLAGS_save"

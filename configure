@@ -725,6 +725,7 @@ NVPRUNE
 NVCC
 GPU_MAX_ARCH
 GPU_MIN_ARCH
+CUDA_HAVE_GRAPH
 CUDA_HAVE_CXX11
 CUDA_HAVE_CXX14
 CUDA_HAVE_CXX17
@@ -21228,6 +21229,8 @@ fi
 
   CUDA_HAVE_CXX11=0
 
+  CUDA_HAVE_GRAPH=0
+
   GPU_MIN_ARCH=0
 
   GPU_MAX_ARCH=0
@@ -21456,6 +21459,48 @@ printf "%s\n" "no" >&6; }
   fi
 
   if test "$HAVE_CUDA" = "1"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for CUDA graph support" >&5
+printf %s "checking for CUDA graph support... " >&6; }
+
+    CXXFLAGS_save="$CXXFLAGS"
+    LDFLAGS_save="$LDFLAGS"
+    LIBS_save="$LIBS"
+
+    ac_compile='$NVCC -c $NVCCFLAGS conftest.$ac_ext >&5'
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+          #include <cuda.h>
+          #include <cuda_runtime.h>
+int
+main (void)
+{
+cudaGraph_t graph;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+           CUDA_HAVE_GRAPH=1
+
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+           CUDA_HAVE_GRAPH=0
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+
+    CXXFLAGS="$CXXFLAGS_save"
+    LDFLAGS="$LDFLAGS_save"
+    LIBS="$LIBS_save"
+  fi
+
+  if test "$HAVE_CUDA" = "1"; then
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for CUDA CXX standard support" >&5
 printf %s "checking for CUDA CXX standard support... " >&6; }
 
@@ -21544,6 +21589,12 @@ printf "%s\n" "no, only the 'legacy' stream model is supported" >&6; }
     NVCCFLAGS="$NVCCFLAGS -DBF_CUDA_ENABLED=1"
     LDFLAGS="$LDFLAGS -L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
     LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"
+
+    if test "$CUDA_HAVE_GRAPH" = "1"; then
+      CPPFLAGS="$CPPFLAGS -DBF_CUDA_GRAPH_ENABLED=1"
+      CXXFLAGS="$CXXFLAGS -DBF_CUDA_GRAPH_ENABLED=1"
+      NVCCFLAGS="$NVCCFLAGS -DBF_CUDA_GRAPH_ENABLED=1"
+    fi
   fi
 
 
