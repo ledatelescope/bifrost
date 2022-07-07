@@ -101,14 +101,14 @@ BFstatus bfDevicesSetNoSpinCPU() {
 
 class BFgraph_impl {
 private:
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	cudaGraph_t     _graph;
 	cudaGraphExec_t _exec;
 	cudaStream_t    _stream;
 #endif
 	bool            _created;
 public:
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
   BFgraph_impl() : _stream(g_cuda_stream), _created(false) {}
 	~BFgraph_impl() {
 		if( _created ) {
@@ -122,7 +122,7 @@ public:
 #endif
 	inline int created() const { return _created;  }
 	void init() {}
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	void begin_capture() {
 		BF_ASSERT_EXCEPTION(!_created, BF_STATUS_INVALID_STATE);
 		
@@ -147,7 +147,7 @@ public:
 };
 
 BFstatus bfGraphCreate(BFgraph* plan_ptr) {
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRACE();
 #endif
 	BF_ASSERT(plan_ptr, BF_STATUS_INVALID_POINTER);
@@ -156,51 +156,51 @@ BFstatus bfGraphCreate(BFgraph* plan_ptr) {
 }
 
 BFstatus bfGraphInit(BFgraph plan) {
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRACE();
 #endif
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRY_RETURN(plan->init());
 #else
-  BF_FAIL("Built without CUDA support (bfGraphInit)", BF_STATUS_INVALID_STATE);
+  BF_FAIL("Built without CUDA 10+ support (bfGraphInit)"__CUDACC_VER_MAJOR__, BF_STATUS_INVALID_STATE);
 #endif
 }
 
 BFstatus bfGraphSetStream(BFgraph      plan,
                           void const*  stream) {
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRACE();
 #endif
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(!plan->created(), BF_STATUS_INVALID_STATE);
 	
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRY_RETURN(plan->set_stream(*(cudaStream_t*)stream));
 #else
   BF_FAIL("Built without CUDA support (bfGraphInit)", BF_STATUS_INVALID_STATE);
 #endif
 }
 BFstatus bfGraphBeginCapture(BFgraph plan) {
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRACE();
 #endif
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRY_RETURN(plan->begin_capture());
 #else
   BF_FAIL("Built without CUDA support (bfGraphInit)", BF_STATUS_INVALID_STATE);
 #endif
 }
 BFstatus bfGraphEndCapture(BFgraph plan) {
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRACE();
 #endif
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRY_RETURN(plan->end_capture());
 #else
   BF_FAIL("Built without CUDA support (bfGraphInit)", BF_STATUS_INVALID_STATE);
@@ -208,12 +208,12 @@ BFstatus bfGraphEndCapture(BFgraph plan) {
 }
 BFstatus bfGraphCreated(BFgraph plan,
 	                      int*    created) {
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRACE();
 #endif
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(created, BF_STATUS_INVALID_POINTER);
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	*created = plan->created();
 #else
 	*created = 0;
@@ -221,13 +221,13 @@ BFstatus bfGraphCreated(BFgraph plan,
 	return BF_STATUS_SUCCESS;
 }
 BFstatus bfGraphExecute(BFgraph plan) {
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRACE();
 #endif
 	BF_ASSERT(plan,            BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(plan->created(), BF_STATUS_INVALID_STATE);
 	
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRY_RETURN(plan->execute());
 #else
   BF_FAIL("Built without CUDA support (bfGraphInit)", BF_STATUS_INVALID_STATE);
@@ -235,7 +235,7 @@ BFstatus bfGraphExecute(BFgraph plan) {
 }
 
 BFstatus bfGraphDestroy(BFgraph plan) {
-#if BF_CUDA_ENABLED && defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 10
+#if BF_CUDA_ENABLED && BF_CUDA_GRAPH_ENABLED
 	BF_TRACE();
 #endif
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
