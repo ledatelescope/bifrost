@@ -29,6 +29,7 @@
 #include <bifrost/cuda.h>
 #include "cuda.hpp"
 #include "assert.hpp"
+#include "trace.hpp"
 
 #if BF_CUDA_ENABLED
 thread_local cudaStream_t g_cuda_stream = cudaStreamPerThread;
@@ -95,5 +96,149 @@ BFstatus bfDevicesSetNoSpinCPU() {
 	}
 	BF_CHECK_CUDA(cudaSetDevice(old_device), BF_STATUS_DEVICE_ERROR);
 #endif
+	return BF_STATUS_SUCCESS;
+}
+
+class BFgraph_impl {
+private:
+#if BF_CUDA_ENABLED
+	cudaGraph_t     _graph;
+	cudaGraphExec_t _exec;
+	cudaStream_t    _stream;
+#endif
+	bool            _created;
+public:
+#if BF_CUDA_ENABLED
+  BFgraph_impl() : _stream(g_cuda_stream), _created(false) {}
+	~BFgraph_impl() {
+		if( _created ) {
+			cudaGraphExecDestroy(_exec);
+			cudaGraphDestroy(_graph);
+			_created = false;
+		}
+	}
+#else
+  BFgraph_impl() : _created(false) {}
+#endif
+	inline int created() const { return _created;  }
+	void init() {}
+#if BF_CUDA_ENABLED
+	void begin_capture() {
+		BF_ASSERT_EXCEPTION(!_created, BF_STATUS_INVALID_STATE);
+		
+		cudaStreamBeginCapture(_stream, cudaStreamCaptureModeThreadLocal);
+	}
+	void end_capture() {
+		BF_ASSERT_EXCEPTION(!_created, BF_STATUS_INVALID_STATE);
+		
+		cudaStreamEndCapture(_stream, &_graph);
+    cudaGraphInstantiate(&_exec, _graph, NULL, NULL, 0);
+    _created = true;
+	}
+	void execute() {
+		BF_ASSERT_EXCEPTION(_created, BF_STATUS_INVALID_STATE);
+		
+		cudaGraphLaunch(_exec, _stream);
+  }
+	void set_stream(cudaStream_t stream) {
+		_stream = stream;
+	}
+#endif
+};
+
+BFstatus bfGraphCreate(BFgraph* plan_ptr) {
+#if BF_CUDA_ENABLED
+	BF_TRACE();
+#endif
+	BF_ASSERT(plan_ptr, BF_STATUS_INVALID_POINTER);
+	BF_TRY_RETURN_ELSE(*plan_ptr = new BFgraph_impl(),
+	                   *plan_ptr = 0);
+}
+
+BFstatus bfGraphInit(BFgraph plan) {
+#if BF_CUDA_ENABLED
+	BF_TRACE();
+#endif
+	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
+#if BF_CUDA_ENABLED
+	BF_TRY_RETURN(plan->init());
+#else
+  BF_FAIL("Built without CUDA support (bfGraphInit)", BF_STATUS_INVALID_STATE);
+#endif
+}
+
+BFstatus bfGraphSetStream(BFgraph      plan,
+                          void const*  stream) {
+#if BF_CUDA_ENABLED
+	BF_TRACE();
+#endif
+	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
+	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
+	BF_ASSERT(!plan->created(), BF_STATUS_INVALID_STATE);
+	
+#if BF_CUDA_ENABLED
+	BF_TRY_RETURN(plan->set_stream(*(cudaStream_t*)stream));
+#else
+  BF_FAIL("Built without CUDA support (bfGraphInit)", BF_STATUS_INVALID_STATE);
+#endif
+}
+BFstatus bfGraphBeginCapture(BFgraph plan) {
+#if BF_CUDA_ENABLED
+	BF_TRACE();
+#endif
+	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
+	
+#if BF_CUDA_ENABLED
+	BF_TRY_RETURN(plan->begin_capture());
+#else
+  BF_FAIL("Built without CUDA support (bfGraphInit)", BF_STATUS_INVALID_STATE);
+#endif
+}
+BFstatus bfGraphEndCapture(BFgraph plan) {
+#if BF_CUDA_ENABLED
+	BF_TRACE();
+#endif
+	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
+	
+#if BF_CUDA_ENABLED
+	BF_TRY_RETURN(plan->end_capture());
+#else
+  BF_FAIL("Built without CUDA support (bfGraphInit)", BF_STATUS_INVALID_STATE);
+#endif
+}
+BFstatus bfGraphCreated(BFgraph plan,
+	                      int*    created) {
+#if BF_CUDA_ENABLED
+	BF_TRACE();
+#endif
+	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
+	BF_ASSERT(created, BF_STATUS_INVALID_POINTER);
+#if BF_CUDA_ENABLED
+	*created = plan->created();
+#else
+	*created = 0;
+#endif
+	return BF_STATUS_SUCCESS;
+}
+BFstatus bfGraphExecute(BFgraph plan) {
+#if BF_CUDA_ENABLED
+	BF_TRACE();
+#endif
+	BF_ASSERT(plan,            BF_STATUS_INVALID_HANDLE);
+	BF_ASSERT(plan->created(), BF_STATUS_INVALID_STATE);
+	
+#if BF_CUDA_ENABLED
+	BF_TRY_RETURN(plan->execute());
+#else
+  BF_FAIL("Built without CUDA support (bfGraphInit)", BF_STATUS_INVALID_STATE);
+#endif
+}
+
+BFstatus bfGraphDestroy(BFgraph plan) {
+#if BF_CUDA_ENABLED
+	BF_TRACE();
+#endif
+	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
+	delete plan;
 	return BF_STATUS_SUCCESS;
 }

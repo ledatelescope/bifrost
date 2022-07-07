@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,8 @@
 extern "C" {
 #endif
 
+typedef struct BFgraph_impl* BFgraph;
+
 BFstatus bfStreamGet(void*       stream);
 BFstatus bfStreamSet(void const* stream);
 BFstatus bfStreamSynchronize();
@@ -43,6 +45,17 @@ BFstatus bfDeviceSet(int  device);
 BFstatus bfDeviceSetById(const char* pci_bus_id);
 // This must be called _before_ initializing any devices in the current process
 BFstatus bfDevicesSetNoSpinCPU();
+
+BFstatus bfGraphCreate(BFgraph* plan);
+BFstatus bfGraphInit(BFgraph plan);
+BFstatus bfGraphSetStream(BFgraph       plan,
+                          void const* stream);
+BFstatus bfGraphBeginCapture(BFgraph plan);
+BFstatus bfGraphEndCapture(BFgraph plan);
+BFstatus bfGraphCreated(BFgraph plan,
+                        int*    created);
+BFstatus bfGraphExecute(BFgraph plan);
+BFstatus bfGraphDestroy(BFgraph plan);
 
 #ifdef __cplusplus
 } // extern "C"

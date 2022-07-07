@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,7 +29,7 @@
 from __future__ import absolute_import
 
 from ctypes import c_ulong, pointer as c_pointer
-from bifrost.libbifrost import _bf, _check, _get
+from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -100,3 +100,20 @@ def set_devices_no_spin_cpu():
     This function must be called _before_ any GPU devices are
     initialized (i.e., at the start of the process)."""
     _check(_bf.bfDevicesSetNoSpinCPU())
+
+class Graph(BifrostObject):
+    """Context manager to use create a use a CUDA graph inside Bifrost"""
+    def __init__(self):
+        BifrostObject.__init__(self, _bf.bfGraphCreate, _bf.bfGraphDestroy)
+        _check( _bf.bfGraphInit(self.obj) )
+    @property
+    def created(self):
+        """Return whether or not the graph as been created"""
+        return bool(_get(_bf.bfGraphCreated, self.obj))
+    def __enter__(self):
+        if not self.created:
+            _check( _bf.bfGraphBeginCapture(self.obj) )
+    def __exit__(self, type, value, tb):
+        if not self.created:
+            _check( _bf.bfGraphEndCapture(self.obj) )
+        _check( _bf.bfGraphExecute(self.obj) )
