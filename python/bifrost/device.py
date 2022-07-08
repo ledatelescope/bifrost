@@ -101,6 +101,12 @@ def set_devices_no_spin_cpu():
     initialized (i.e., at the start of the process)."""
     _check(_bf.bfDevicesSetNoSpinCPU())
 
+class GraphCreatedError(RuntimeError):
+    """Error used in the Graph context manager to figure out when we already
+    have a graph that is ready to run"""
+    
+    pass
+
 class Graph(BifrostObject):
     """Context manager to use create a use a CUDA graph inside Bifrost"""
     def __init__(self):
@@ -114,6 +120,14 @@ class Graph(BifrostObject):
         if not self.created:
             _check( _bf.bfGraphBeginCapture(self.obj) )
     def __exit__(self, type, value, tb):
-        if not self.created:
+        if self.created:
+            if issubclass(type, GraphCreatedError):
+                _check( _bf.bfGraphExecute(self.obj) )
+                return True
+        else:
             _check( _bf.bfGraphEndCapture(self.obj) )
-        _check( _bf.bfGraphExecute(self.obj) )
+    def copy_array(self, dst, src):
+        """Version of bifrost.ndarray.copy_array that *does not* call
+        bifrost.device.stream_synchronize() under any circumstance"""
+        _check(_bf.bfArrayCopy(dst.as_BFarray(),
+                               src.as_BFarray()))
