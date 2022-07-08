@@ -115,12 +115,16 @@ class Graph(BifrostObject):
         if not self.created:
             if not self._init_pass:
                 _check( _bf.bfGraphBeginCapture(self.obj) )
-                self._init_pass = False
+                
     def __exit__(self, type, value, tb):
         if self.created:
             _check( _bf.bfGraphExecute(self.obj) )
-        elif not self._init_pass:
-            _check( _bf.bfGraphEndCapture(self.obj) )
+        else:
+            if self._init_pass:
+                self._init_pass = False
+            else:
+                _check( _bf.bfGraphEndCapture(self.obj) )
+                _check( _bf.bfGraphExecute(self.obj) )
     def copy_array(self, dst, src):
         """Version of bifrost.ndarray.copy_array that *does not* call
         bifrost.device.stream_synchronize() under any circumstance"""
