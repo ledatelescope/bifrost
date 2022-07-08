@@ -112,19 +112,22 @@ class Graph(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfGraphCreate, _bf.bfGraphDestroy)
         _check( _bf.bfGraphInit(self.obj) )
+        self._init_pass = True
     @property
     def created(self):
         """Return whether or not the graph as been created"""
         return bool(_get(_bf.bfGraphCreated, self.obj))
     def __enter__(self):
         if not self.created:
-            _check( _bf.bfGraphBeginCapture(self.obj) )
+            if not self._init_pass:
+                _check( _bf.bfGraphBeginCapture(self.obj) )
+                self._init_pass = False
     def __exit__(self, type, value, tb):
         if self.created:
             if issubclass(type, GraphCreatedError):
                 _check( _bf.bfGraphExecute(self.obj) )
                 return True
-        else:
+        elif not self._init_pass:
             _check( _bf.bfGraphEndCapture(self.obj) )
     def copy_array(self, dst, src):
         """Version of bifrost.ndarray.copy_array that *does not* call
