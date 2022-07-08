@@ -50,23 +50,48 @@ class TestGraph(unittest.TestCase):
         # call to stream_synchronize() inside of a graph capture so we can't
         # directly use copy_array when the two arrays are in different spaces.
         x = bf.asarray(x_orig, space='cuda')
-        x_alt = bf.asarray(x_orig, space='cuda')
         y = bf.empty_like(x)
-        copy_array(x, x_alt)
+        copy_array(x, x_orig)
         bf.map('y = x + 1', {'x': x, 'y': y})
-        bf.map('y = x - 2', {'x': x, 'y': y})
-        bf.map('y = x + 3', {'x': x, 'y': y})
+        bf.map('y = y + 3', {'x': x, 'y': y})
+        
+        graph = bf.device.Graph()
+        for i in range(10):
+            with graph:
+                if graph.created:
+                    raise bf.device.GraphCreatedError
+                bf.map('y = y + 3', {'x': x, 'y': y})
+            bf.device.stream_synchronize()
+            
+        y = y.copy('system')
+        np.testing.assert_equal(y, x_orig+1+10*3)
+    def test_graph_copy(self):
+        n = 7917
+        x = np.random.randint(256, size=n)
+        
+        x_orig = bf.asarray(x)
+        
+        # TODO: New map calls interact with Graph so we need to make sure the
+        # map cache is populated before we use a Graph.  We also can't make a
+        # call to stream_synchronize() inside of a graph capture so we can't
+        # directly use copy_array when the two arrays are in different spaces.
+        x = bf.asarray(x_orig, space='cuda')
+        y = bf.empty_like(x)
+        copy_array(x, x_orig)
+        bf.map('y = x + 1', {'x': x, 'y': y})
+        bf.map('y = y + 3', {'x': x, 'y': y})
         bf.map('x = x + 1', {'x': x})
         
         graph = bf.device.Graph()
         for i in range(10):
             with graph:
-                copy_array(x, x_alt)
+                if graph.created:
+                    raise bf.device.GraphCreatedError
+                graph.copy_array(x, x_orig)
                 bf.map('y = x + 1', {'x': x, 'y': y})
-                bf.map('y = x - 2', {'x': x, 'y': y})
-                bf.map('y = x + 3', {'x': x, 'y': y})
+                bf.map('y = y + 3', {'x': x, 'y': y})
                 bf.map('x = x + 1', {'x': x})
             bf.device.stream_synchronize()
             
         y = y.copy('system')
-        np.testing.assert_equal(y, x_orig+3)
+        np.testing.assert_equal(y, x_orig+1+3)
