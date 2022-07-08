@@ -32,6 +32,7 @@ import unittest
 import numpy as np
 import bifrost as bf
 from bifrost.ndarray import copy_array
+from bifrost.fft import Fft
 
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
@@ -39,47 +40,39 @@ from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 class TestGraph(unittest.TestCase):
     def setUp(self):
         np.random.seed(1234)
+        self.shape2D = (128, 2048)
     def test_graph(self):
         n = 7917
         x = np.random.randint(256, size=n)
         
         x_orig = bf.asarray(x)
         
-        # TODO: New map calls interact with Graph so we need to make sure the
-        # map cache is populated before we use a Graph.  We also can't make a
-        # call to stream_synchronize() inside of a graph capture so we can't
-        # directly use copy_array when the two arrays are in different spaces.
+        # TODO: We can't make a call to stream_synchronize() inside of a graph
+        # capture so we can't directly use bifrost.ndarray.copy_array when the
+        # two arrays arenin different spaces.
         x = bf.asarray(x_orig, space='cuda')
-        y = bf.empty_like(x)
-        copy_array(x, x_orig)
-        bf.map('y = x + 1', {'x': x, 'y': y})
-        bf.map('y = y + 3', {'x': x, 'y': y})
         
         graph = bf.device.Graph()
         for i in range(10):
             with graph:
                 if graph.created:
                     raise bf.device.GraphCreatedError
-                bf.map('y = y + 3', {'x': x, 'y': y})
+                    
+                bf.map('x = x + 3', {'x': x})
             bf.device.stream_synchronize()
             
-        y = y.copy('system')
-        np.testing.assert_equal(y, x_orig+1+10*3)
+        x = x.copy('system')
+        np.testing.assert_equal(x, x_orig+10*3)
     def test_graph_copy(self):
         n = 7917
         x = np.random.randint(256, size=n)
         
         x_orig = bf.asarray(x)
         
-        # TODO: New map calls interact with Graph so we need to make sure the
-        # map cache is populated before we use a Graph.  We also can't make a
-        # call to stream_synchronize() inside of a graph capture so we can't
-        # directly use copy_array when the two arrays are in different spaces.
+        # TODO: We can't make a call to stream_synchronize() inside of a graph
+        # capture so we can't directly use bifrost.ndarray.copy_array when the
+        # two arrays arenin different spaces.
         x = bf.asarray(x_orig, space='cuda')
-        y = bf.empty_like(x)
-        copy_array(x, x_orig)
-        bf.map('y = x + 1', {'x': x, 'y': y})
-        bf.map('y = y + 3', {'x': x, 'y': y})
         bf.map('x = x + 1', {'x': x})
         
         graph = bf.device.Graph()
@@ -87,11 +80,36 @@ class TestGraph(unittest.TestCase):
             with graph:
                 if graph.created:
                     raise bf.device.GraphCreatedError
-                graph.copy_array(x, x_orig)
-                bf.map('y = x + 1', {'x': x, 'y': y})
-                bf.map('y = y + 3', {'x': x, 'y': y})
+                    
                 bf.map('x = x + 1', {'x': x})
+                graph.copy_array(x, x_orig)
+                bf.map('x = x + 3', {'x': x})
+            bf.device.stream_synchronize()
+            
+        x = x.copy('system')
+        np.testing.assert_equal(x, x_orig+3)
+    def test_graph_fft(self):
+        shape = list(self.shape2D)
+        shape[-1] *= 2 # For complex
+        known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
+        x = bf.ndarray(known_data, space='cuda')
+        y = bf.empty_like(x)
+        
+        graph = bf.device.Graph()
+        for i in range(10):
+            with graph:
+                if graph.created:
+                    raise bf.device.GraphCreatedError
+                    
+                try:
+                    f.execute(x, y, inverse=False)
+                except NameError:
+                    f = Fft()
+                    f.init(x, y, axes=0)
+                    f.execute(x, y, inverse=False)
             bf.device.stream_synchronize()
             
         y = y.copy('system')
-        np.testing.assert_equal(y, x_orig+1+3)
+        y_gold = np.fft.fft2(known_data, axes=[0,])
+        absmean = np.abs(y_gold).mean()
+        np.testing.assert_allclose(y, y_gold, rtol=1e-1, atol=1e-6 * absmean)
