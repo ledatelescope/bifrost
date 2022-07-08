@@ -55,10 +55,8 @@ class TestGraph(unittest.TestCase):
         graph = bf.device.Graph()
         for i in range(10):
             with graph:
-                if graph.created:
-                    raise bf.device.GraphCreatedError
-                    
-                bf.map('x = x + 3', {'x': x})
+                if not graph.created:
+                    bf.map('x = x + 3', {'x': x})
             bf.device.stream_synchronize()
             
         x = x.copy('system')
@@ -78,12 +76,10 @@ class TestGraph(unittest.TestCase):
         graph = bf.device.Graph()
         for i in range(10):
             with graph:
-                if graph.created:
-                    raise bf.device.GraphCreatedError
-                    
-                bf.map('x = x + 1', {'x': x})
-                graph.copy_array(x, x_orig)
-                bf.map('x = x + 3', {'x': x})
+                if not graph.created:
+                    bf.map('x = x + 1', {'x': x})
+                    graph.copy_array(x, x_orig)
+                    bf.map('x = x + 3', {'x': x})
             bf.device.stream_synchronize()
             
         x = x.copy('system')
@@ -98,15 +94,13 @@ class TestGraph(unittest.TestCase):
         graph = bf.device.Graph()
         for i in range(10):
             with graph:
-                if graph.created:
-                    raise bf.device.GraphCreatedError
-                    
-                try:
-                    f.execute(x, y, inverse=False)
-                except NameError:
-                    f = Fft()
-                    f.init(x, y, axes=0)
-                    f.execute(x, y, inverse=False)
+                if not graph.created:
+                    try:
+                        f.execute(x, y, inverse=False)
+                    except NameError:
+                        f = Fft()
+                        f.init(x, y, axes=0)
+                        f.execute(x, y, inverse=False)
             bf.device.stream_synchronize()
             
         y = y.copy('system')
