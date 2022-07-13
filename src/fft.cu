@@ -65,6 +65,7 @@ class BFfft_impl {
 	thrust::device_vector<CallbackData> _dv_callback_data;
 	typedef thrust::cuda::experimental::pinned_allocator<CallbackData> pinned_allocator_type;
 	thrust::host_vector<CallbackData, pinned_allocator_type> _hv_callback_data;
+	int              _hv_index;
 	
 	BFstatus execute_impl(BFarray const* in,
 	                      BFarray const* out,
@@ -233,6 +234,7 @@ BFstatus BFfft_impl::init(BFarray const* in,
 	_do_fftshift = do_fftshift;
 	_dv_callback_data.resize(1);
 	_hv_callback_data.resize(1);
+	_hv_index = 0;
 	CallbackData* callback_data = thrust::raw_pointer_cast(&_dv_callback_data[0]);
 	BF_CHECK( set_fft_load_callback(in->dtype, _nbit, _handle, _do_fftshift,
 	                                callback_data, &_using_load_callback) );
@@ -261,12 +263,7 @@ BFstatus BFfft_impl::execute_impl(BFarray const* in,
 	void* idata = in->data;
 	void* odata = out->data;
 	
-	// TODO: This sync is needed to ensure that the previous h2d copy of
-	//         h_callback_data has finished before we overwrite it.
-	//         We could potentially use a CUDA event as a lighter-weight
-	//           solution.
-	cudaStreamSynchronize(g_cuda_stream);
-	CallbackData* h_callback_data = &_hv_callback_data[0];
+	CallbackData* h_callback_data = &_hv_callback_data[_hv_index++];
 	// WAR for CUFFT insisting that pointer be aligned to sizeof(cufftComplex)
 	int alignment = (_nbit == 32 ?
 	                 sizeof(cufftComplex) :
@@ -348,6 +345,12 @@ BFstatus BFfft_impl::execute(BFarray const* in,
 	//         on the same stream to avoid race conditions (use of workspace?).
 	BF_CHECK_CUFFT( cufftSetStream(_handle, stream) );
 	ShapeIndexer<BF_MAX_DIMS> shape_indexer(_batch_shape, in->ndim);
+	
+	// Resize the host callback data structure vector so that we have one
+	// element per batch dimenion.  This should remove the need for a sync.
+	// call inside execute_impl().
+	_hv_callback_data.resize(shape_indexer.size());
+	_hv_index = 0;
 	for( long i=0; i<shape_indexer.size(); ++i ) {
 		auto inds = shape_indexer.at(i);
 		
