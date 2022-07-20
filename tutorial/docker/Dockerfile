@@ -136,12 +136,14 @@ RUN cd /home/$LSL_USER/bifrost && \
     ./configure --with-gpu-archs="35 50 61 75" && \
     make -j all && \
     make doc && \
-    make install && \
     cd /home/$LSL_USER && \
     ln -s /home/$LSL_USER/bifrost/tutorial /home/$LSL_USER/bifrost_tutorial
 
 # Back to root
 USER root
+
+RUN cd /home/$LSL_USER/bifrost && \
+    make install
 
 # Setup work directory for backward-compatibility
 RUN mkdir /home/$LSL_USER/work && \
