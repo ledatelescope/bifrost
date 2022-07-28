@@ -8,8 +8,7 @@
   };
 
   inputs.pre-commit-hooks = {
-    url =
-      "github:cachix/pre-commit-hooks.nix/ff9c0b459ddc4b79c06e19d44251daa8e9cd1746";
+    url = "github:cachix/pre-commit-hooks.nix";
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
@@ -231,7 +230,7 @@
           bifrost = final.callPackage bifrost { };
           bifrost-doc = final.callPackage bifrost-doc { };
           github_stats = final.writeShellScriptBin "github_stats" ''
-            ${final.python3.withPackages (p: [p.PyGithub])}/bin/python \
+            ${final.python3.withPackages (p: [ p.PyGithub ])}/bin/python \
               ${tools/github_stats.py} "$@"
           '';
         }
@@ -247,10 +246,10 @@
           # the default 10 and 11. It's easy to generate other point releases
           # from the overlay. (Versions prior to 10 are not supported anymore by
           # nixpkgs.)
-          isCuda = name: builtins.match "cudatoolkit(_1[01])" name != null;
-          shortenCuda = lib.replaceStrings [ "toolkit" "_" ] [ "" "" ];
-          cudaAttrs = lib.filterAttrs
-            (name: pkg: isCuda name && lib.elem pkgs.system pkg.meta.platforms)
+          isCuda = name: builtins.match "cudaPackages(_1[01])" name != null;
+          shortenCuda = lib.replaceStrings [ "Packages" "_" ] [ "" "" ];
+          cudaAttrs = lib.filterAttrs (name: pkg:
+            isCuda name && lib.elem pkgs.system pkg.cudatoolkit.meta.platforms)
             pkgs;
 
           # Which C++ compilers can we build with? How to name them?
@@ -282,7 +281,7 @@
                     + lib.optionalString enableDebug "-debug") {
                       inherit stdenv enableDebug;
                       enableCuda = cuda != null;
-                      cudatoolkit = pkgs.${cuda};
+                      cudatoolkit = pkgs.${cuda}.cudatoolkit;
                     })));
 
           # Runnable ctypesgen per python. Though it's just the executable we
