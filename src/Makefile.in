@@ -34,6 +34,7 @@ LIBBIFROST_OBJS = \
   testsuite.o \
   ring.o \
   ring_impl.o \
+  Socket.o \
   array.o \
   unpack.o \
   quantize.o \

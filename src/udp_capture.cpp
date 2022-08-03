@@ -541,7 +541,6 @@ class BFudpcapture_impl {
 	ProcLog            _chan_log;
 	ProcLog            _stat_log;
 	ProcLog            _perf_log;
-	pid_t              _pid;
 	
 	std::chrono::high_resolution_clock::time_point _t0;
 	std::chrono::high_resolution_clock::time_point _t1;

@@ -1,0 +1,62 @@
+name: Test
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron:  '30 5 4 * *'
+
+jobs:
+  build:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        python-version: ['3.6', '3.8']
+      fail-fast: false
+    steps:
+      - name: "Software Install - Ubuntu"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            ca-certificates \
+            curl \
+            exuberant-ctags \
+            gfortran \
+            git \
+            libopenblas-dev \
+            pkg-config \
+            software-properties-common
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/checkout@v2
+      - name: "Software Install - Python"
+        run: python -m pip install \
+               setuptools \
+               numpy \
+               matplotlib \
+               contextlib2 \
+               simplejson \
+               pint \
+               graphviz \
+               ctypesgen==1.0.2 \
+               numba \
+               jupyterlab \
+               jupyter_client \
+               nbformat \
+               nbconvert
+      - name: "Software Install - Bifrost"
+        run: |
+          git clone https://github.com/ledatelescope/bifrost
+          cd bifrost
+          ./configure
+          make -j all
+          sudo make install
+          cd ..
+      - name: Test
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib:${{ env.LD_LIBRARY_PATH }}
+        run: |
+          python -m pip install scipy
+          cd test
+          python -m unittest discover
