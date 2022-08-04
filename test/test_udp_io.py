@@ -403,9 +403,11 @@ class UDPIOTest(unittest.TestCase):
         final = bf.ndarray(shape=(final.shape[0],2,4096), dtype='ci4', buffer=final.ctypes.data)
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
-        data = data[:,[0,1],:]
-        for i in range(2, data.shape[0]):
-            np.testing.assert_equal(final[i,...], data[i,...])
+        for i in range(1, data.shape[0]):
+            print(i)
+            for j in range(2):
+                print(j)
+                np.testing.assert_equal(final[i,j,...], data[i,j,...])
             
         # Clean up
         del oop
