@@ -264,7 +264,8 @@ class UDPIOTest(unittest.TestCase):
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
         for i in range(2, data.shape[0]):
-            np.testing.assert_equal(final[i,...], data[i,...])
+            for j in range(data.shape[1]):
+                np.testing.assert_equal(final[i,j,...], data[i,j,...])
             
         # Clean up
         del oop
@@ -342,7 +343,8 @@ class UDPIOTest(unittest.TestCase):
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
         for i in range(2, data.shape[0]):
-            np.testing.assert_equal(final[i,...], data[i,...])
+            for j in range(data.shape[1]):
+                np.testing.assert_equal(final[i,j,...], data[i,j,...])
             
         # Clean up
         del oop
@@ -404,9 +406,7 @@ class UDPIOTest(unittest.TestCase):
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
         for i in range(1, data.shape[0]):
-            print(i)
             for j in range(2):
-                print(j)
                 np.testing.assert_equal(final[i,j,...], data[i,j,...])
             
         # Clean up
@@ -544,7 +544,8 @@ class UDPIOTest(unittest.TestCase):
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
         for i in range(2, data.shape[0]):
-            np.testing.assert_equal(final[i,...], data[i,...])
+            for j in range(data.shape[1]):
+                np.testing.assert_equal(final[i,j,...], data[i,j,...])
             
         # Clean up
         del oop
