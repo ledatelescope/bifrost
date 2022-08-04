@@ -263,7 +263,7 @@ class UDPIOTest(unittest.TestCase):
         final = bf.ndarray(shape=(final.shape[0],32,512), dtype='ci8', buffer=final.ctypes.data)
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
-        for i in range(1, data.shape[0]):
+        for i in range(2, data.shape[0]):
             np.testing.assert_equal(final[i,...], data[i,...])
             
         # Clean up
@@ -341,7 +341,7 @@ class UDPIOTest(unittest.TestCase):
         final = bf.ndarray(shape=(final.shape[0],4,4096), dtype='ci4', buffer=final.ctypes.data)
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
-        for i in range(1, data.shape[0]):
+        for i in range(2, data.shape[0]):
             np.testing.assert_equal(final[i,...], data[i,...])
             
         # Clean up
@@ -404,7 +404,7 @@ class UDPIOTest(unittest.TestCase):
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
         data = data[:,[0,1],:]
-        for i in range(1, data.shape[0]):
+        for i in range(2, data.shape[0]):
             np.testing.assert_equal(final[i,...], data[i,...])
             
         # Clean up
@@ -480,7 +480,7 @@ class UDPIOTest(unittest.TestCase):
         final = final.transpose(0,2,1).copy()
         ## Reduce to match the capture block size
         data = data[:(final.shape[0]//240-1)*240,...]
-        for i in range(1, data.shape[0]):
+        for i in range(2, data.shape[0]):
             np.testing.assert_equal(final[i,...], data[i,...])
             
         # Clean up
@@ -541,7 +541,7 @@ class UDPIOTest(unittest.TestCase):
         final = bf.ndarray(shape=(final.shape[0],32,512), dtype='ci8', buffer=final.ctypes.data)
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
-        for i in range(1, data.shape[0]):
+        for i in range(2, data.shape[0]):
             np.testing.assert_equal(final[i,...], data[i,...])
             
         # Clean up
