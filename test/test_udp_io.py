@@ -251,7 +251,7 @@ class UDPIOTest(unittest.TestCase):
         desc, data = self._get_tbn_data()
         for p in range(data.shape[0]):
             oop.send(desc, p*1960*512, 1960*512, 0, 1, data[p,...].reshape(1,32,512))
-            time.sleep(1e-3)
+            time.sleep(0.005)
         reader.join()
         accumu.join()
         
@@ -329,7 +329,7 @@ class UDPIOTest(unittest.TestCase):
         for p in range(data.shape[0]):
             oop.send(desc, p*10*4096, 10*4096, (1<<3), 128, data[p,[0,1],...].reshape(1,2,4096))
             oop.send(desc, p*10*4096, 10*4096, (2<<3), 128, data[p,[2,3],...].reshape(1,2,4096))
-            time.sleep(1e-3)
+            time.sleep(0.005)
         reader.join()
         accumu.join()
         
@@ -391,7 +391,7 @@ class UDPIOTest(unittest.TestCase):
         desc.set_nsrc(2)
         for p in range(data.shape[0]):
             oop.send(desc, p*10*4096, 10*4096, (1<<3), 128, data[p,[0,1],:].reshape(1,2,4096))
-            time.sleep(1e-3)
+            time.sleep(0.005)
         reader.join()
         accumu.join()
         
@@ -469,7 +469,7 @@ class UDPIOTest(unittest.TestCase):
         desc, data = self._get_pbeam_data()
         for p in range(data.shape[0]):
             oop.send(desc, p*24, 24, 0, 1, data[p,...].reshape(1,1,128*4))
-            time.sleep(1e-3)
+            time.sleep(0.005)
         reader.join()
         accumu.join()
         
@@ -489,7 +489,7 @@ class UDPIOTest(unittest.TestCase):
         osock.close()
         
     def test_write_multicast(self):
-        addr = Address('224.0.0.101', 7147)
+        addr = Address('224.0.0.251', 7147)
         sock = UDPSocket()
         sock.connect(addr)
         op = UDPTransmit('tbn', sock)
@@ -505,7 +505,7 @@ class UDPIOTest(unittest.TestCase):
         ring = Ring(name="capture_multi")
         
         # Setup the blocks
-        addr = Address('224.0.0.101', 7147)
+        addr = Address('224.0.0.251', 7147)
         ## Output via UDPTransmit
         osock = UDPSocket()
         osock.connect(addr)
@@ -529,7 +529,7 @@ class UDPIOTest(unittest.TestCase):
         desc, data = self._get_tbn_data()
         for p in range(data.shape[0]):
             oop.send(desc, p*1960*512, 1960*512, 0, 1, data[p,...].reshape(1,32,512))
-            time.sleep(1e-3)
+            time.sleep(0.005)
         reader.join()
         accumu.join()
         
