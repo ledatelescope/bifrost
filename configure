@@ -26896,8 +26896,8 @@ echo ""
 
 if test x$HAVE_CUDA = x1
 then :
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: cuda: yes - v$CUDA_VERSION - $GPU_ARCHS" >&5
-printf "%s\n" "$as_me: cuda: yes - v$CUDA_VERSION - $GPU_ARCHS" >&6;}
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: cuda: yes - v$CUDA_VERSION - $GPU_ARCHS - $with_stream_model streams" >&5
+printf "%s\n" "$as_me: cuda: yes - v$CUDA_VERSION - $GPU_ARCHS - $with_stream_model streams" >&6;}
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: cuda: no" >&5
 printf "%s\n" "$as_me: cuda: no" >&6;}
