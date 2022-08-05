@@ -852,6 +852,7 @@ enable_vma
 with_cuda_home
 enable_cuda
 with_nvcc_flags
+with_stream_model
 with_gpu_archs
 with_shared_mem
 with_alignment
@@ -1558,6 +1559,8 @@ Optional Packages:
   --with-cuda-home        CUDA install path (default=/usr/local/cuda)
   --with-nvcc-flags       flags to pass to NVCC (default='-O3 -Xcompiler
                           "-Wall"')
+  --with-stream-model     CUDA default stream model to use: 'legacy' or
+                          'per-thread' (default='per-thread')
   --with-gpu-archs=...    default GPU architectures (default=detect)
   --with-shared-mem=N     default GPU shared memory in bytes (default=16384)
   --with-alignment=N      default memory alignment in bytes (default=4096)
@@ -21541,6 +21544,41 @@ fi
   NVCCFLAGS=$with_nvcc_flags
 
 
+
+# Check whether --with-stream_model was given.
+if test ${with_stream_model+y}
+then :
+  withval=$with_stream_model;
+else $as_nop
+  with_stream_model='per-thread'
+fi
+
+
+
+  if test "$HAVE_CUDA" = "1"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for different CUDA default stream models" >&5
+printf %s "checking for different CUDA default stream models... " >&6; }
+    dsm_supported=$( ${NVCC} -h | ${GREP} -Po -e "--default-stream" )
+    if test "$dsm_supported" = "--default-stream"; then
+      if test "$with_stream_model" = "per-thread"; then
+        NVCCFLAGS="$NVCCFLAGS -default-stream per-thread"
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes, using 'per-thread'" >&5
+printf "%s\n" "yes, using 'per-thread'" >&6; }
+      else
+        if test "$with_stream_model" = "legacy"; then
+          NVCCFLAGS="$NVCCFLAGS -default-stream legacy"
+          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes, using 'legacy'" >&5
+printf "%s\n" "yes, using 'legacy'" >&6; }
+        else
+          as_fn_error $? "Invalid CUDA stream model: '$with_stream_model'" "$LINENO" 5
+        fi
+      fi
+    else
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no, only the 'legacy' stream model is supported" >&5
+printf "%s\n" "no, only the 'legacy' stream model is supported" >&6; }
+    fi
+  fi
+
   if test "$HAVE_CUDA" = "1"; then
     CPPFLAGS="$CPPFLAGS -DBF_CUDA_ENABLED=1"
     CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1"
@@ -26858,8 +26896,8 @@ echo ""
 
 if test x$HAVE_CUDA = x1
 then :
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: cuda: yes - v$CUDA_VERSION - $GPU_ARCHS" >&5
-printf "%s\n" "$as_me: cuda: yes - v$CUDA_VERSION - $GPU_ARCHS" >&6;}
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: cuda: yes - v$CUDA_VERSION - $GPU_ARCHS - $with_stream_model streams" >&5
+printf "%s\n" "$as_me: cuda: yes - v$CUDA_VERSION - $GPU_ARCHS - $with_stream_model streams" >&6;}
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: cuda: no" >&5
 printf "%s\n" "$as_me: cuda: no" >&6;}

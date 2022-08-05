@@ -5,6 +5,8 @@
  * Added horizontal scrolling for long command names to like_bmon.py
  * Use std::filesystem for where possible for file and directory management
  * Fixed a problem in bifrost.ndarray.copy with arrays that are not C contiguous
+ * Added set_stream and get_stream to bifrost.device to help control which CUDA stream is used
+ * Added bifrost.device.ExternalStream as a context manager to help with mixing Bifrost and cupy/pycuda
 
 0.10.0
  * Switched over to an autotools-based build system

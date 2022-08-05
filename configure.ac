@@ -362,7 +362,7 @@ AS_IF([test x$HAVE_CUDA = x1],
 echo ""
 
 AS_IF([test x$HAVE_CUDA = x1],
-      [AC_MSG_NOTICE(cuda: yes - v$CUDA_VERSION - $GPU_ARCHS)],
+      [AC_MSG_NOTICE(cuda: yes - v$CUDA_VERSION - $GPU_ARCHS - $with_stream_model streams)],
       [AC_MSG_NOTICE(cuda: no)])
 
 AS_IF([test x$HAVE_NUMA = x1],
