@@ -266,7 +266,7 @@ class UDPIOTest(unittest.TestCase):
         for i in range(2, data.shape[0]):
             for j in range(data.shape[1]):
                 np.testing.assert_equal(final[i,j,...], data[i,j,...])
-            
+                
         # Clean up
         del oop
         isock.close()
@@ -345,7 +345,7 @@ class UDPIOTest(unittest.TestCase):
         for i in range(2, data.shape[0]):
             for j in range(data.shape[1]):
                 np.testing.assert_equal(final[i,j,...], data[i,j,...])
-            
+                
         # Clean up
         del oop
         isock.close()
@@ -408,7 +408,7 @@ class UDPIOTest(unittest.TestCase):
         for i in range(1, data.shape[0]):
             for j in range(2):
                 np.testing.assert_equal(final[i,j,...], data[i,j,...])
-            
+                
         # Clean up
         del oop
         isock.close()
@@ -546,7 +546,7 @@ class UDPIOTest(unittest.TestCase):
         for i in range(2, data.shape[0]):
             for j in range(data.shape[1]):
                 np.testing.assert_equal(final[i,j,...], data[i,j,...])
-            
+                
         # Clean up
         del oop
         isock.close()
