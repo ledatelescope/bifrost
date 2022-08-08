@@ -36,6 +36,7 @@ jobs:
             exuberant-ctags \
             gfortran \
             git \
+            libhwloc-dev \
             libopenblas-dev \
             pkg-config \
             software-properties-common
@@ -47,6 +48,7 @@ jobs:
             ctags-exuberant \
             gawk \
             gnu-sed \
+            hwloc \
             pkg-config
       - uses: actions/setup-python@v2
         with:
