@@ -92,21 +92,6 @@ AS_IF([test x$HAVE_HAVE_LONG_DOUBLE_WIDER = x1],
       [AC_SUBST([HAVE_FLOAT128], [0])])
 
 #
-# NUMA
-#
-
-AC_ARG_ENABLE([numa],
-              AS_HELP_STRING([--disable-numa],
-                             [disable numa support (default=no)]),
-              [enable_numa=no],
-              [enable_numa=yes])
-AC_SUBST([HAVE_NUMA], [0])
-AS_IF([test x$enable_numa != xno],
-      [AC_CHECK_LIB([numa], [numa_node_of_cpu],
-                    [AC_SUBST([HAVE_NUMA], [1])
-                     LIBS="$LIBS -lnuma"])])
-
-#
 # HWLOC
 #
 
@@ -403,10 +388,6 @@ echo ""
 AS_IF([test x$HAVE_CUDA = x1],
       [AC_MSG_NOTICE(cuda: yes - v$CUDA_VERSION - $GPU_ARCHS)],
       [AC_MSG_NOTICE(cuda: no)])
-
-AS_IF([test x$HAVE_NUMA = x1],
-      [AC_MSG_NOTICE(numa: yes)],
-      [AC_MSG_NOTICE(numa: no)])
 
 AS_IF([test x$HAVE_HWLOC = x1],
       [AC_MSG_NOTICE(hwloc: yes)],

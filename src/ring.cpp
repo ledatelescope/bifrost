@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -69,7 +69,7 @@ BFstatus bfRingGetSpace(BFring ring, BFspace* space) {
 BFstatus bfRingSetAffinity(BFring ring, int  core) {
 	BF_ASSERT(ring, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(core >= -1, BF_STATUS_INVALID_ARGUMENT);
-	BF_ASSERT(BF_NUMA_ENABLED, BF_STATUS_UNSUPPORTED);
+	BF_ASSERT(BF_HWLOC_ENABLED, BF_STATUS_UNSUPPORTED);
 	BF_TRY_RETURN(ring->set_core(core));
 }
 BFstatus bfRingGetAffinity(BFring ring, int* core) {

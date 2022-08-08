@@ -45,7 +45,9 @@ public:
     ~HardwareLocality() {
         hwloc_topology_destroy(_topo);
     }
-    int bind_memory_to_core(int core);
+    int get_numa_node_of_core(int core);
+    int bind_thread_memory_to_core(int core);
+    int bind_memory_area_to_numa_node(const void* addr, size_t size, int node);
 };
 #endif // BF_HWLOC_ENABLED
 
@@ -57,7 +59,7 @@ public:
     BoundThread(int core) {
         bfAffinitySetCore(core);
 #if BF_HWLOC_ENABLED
-        assert(_hwloc.bind_memory_to_core(core) == 0);
+        assert(_hwloc.bind_thread_memory_to_core(core) == 0);
 #endif
     }
 };

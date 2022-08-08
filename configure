@@ -737,7 +737,6 @@ HAVE_RDMA
 HAVE_VERBS
 HAVE_VMA
 HAVE_HWLOC
-HAVE_NUMA
 HAVE_FLOAT128
 HAVE_OPENMP
 LIBOBJS
@@ -849,7 +848,6 @@ with_gnu_ld
 with_sysroot
 enable_libtool_lock
 with_ctags
-enable_numa
 enable_hwloc
 enable_vma
 enable_verbs
@@ -1527,7 +1525,6 @@ Optional Features:
   --enable-fast-install[=PKGS]
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
-  --disable-numa          disable numa support (default=no)
   --disable-hwloc         disable hwloc support (default=no)
   --enable-vma            enable vma support (default=no)
   --disable-verbs         disable Infiniband verbs support (default=no)
@@ -21012,65 +21009,6 @@ then :
 fi
 
 #
-# NUMA
-#
-
-# Check whether --enable-numa was given.
-if test ${enable_numa+y}
-then :
-  enableval=$enable_numa; enable_numa=no
-else $as_nop
-  enable_numa=yes
-fi
-
-HAVE_NUMA=0
-
-if test x$enable_numa != xno
-then :
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for numa_node_of_cpu in -lnuma" >&5
-printf %s "checking for numa_node_of_cpu in -lnuma... " >&6; }
-if test ${ac_cv_lib_numa_numa_node_of_cpu+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lnuma  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-namespace conftest {
-  extern "C" int numa_node_of_cpu ();
-}
-int
-main (void)
-{
-return conftest::numa_node_of_cpu ();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_link "$LINENO"
-then :
-  ac_cv_lib_numa_numa_node_of_cpu=yes
-else $as_nop
-  ac_cv_lib_numa_numa_node_of_cpu=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_numa_numa_node_of_cpu" >&5
-printf "%s\n" "$ac_cv_lib_numa_numa_node_of_cpu" >&6; }
-if test "x$ac_cv_lib_numa_numa_node_of_cpu" = xyes
-then :
-  HAVE_NUMA=1
-
-                     LIBS="$LIBS -lnuma"
-fi
-
-fi
-
-#
 # HWLOC
 #
 
@@ -27008,15 +26946,6 @@ printf "%s\n" "$as_me: cuda: yes - v$CUDA_VERSION - $GPU_ARCHS" >&6;}
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: cuda: no" >&5
 printf "%s\n" "$as_me: cuda: no" >&6;}
-fi
-
-if test x$HAVE_NUMA = x1
-then :
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: numa: yes" >&5
-printf "%s\n" "$as_me: numa: yes" >&6;}
-else $as_nop
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: numa: no" >&5
-printf "%s\n" "$as_me: numa: no" >&6;}
 fi
 
 if test x$HAVE_HWLOC = x1

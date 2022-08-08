@@ -32,6 +32,7 @@ LIBBIFROST_OBJS = \
   common.o \
   memory.o \
   affinity.o \
+  hw_locality.o \
   cuda.o \
   fileutils.o \
   testsuite.o \
@@ -47,7 +48,6 @@ ifeq ($(HAVE_RECVMSG),1)
   LIBBIFROST_OBJS += \
   address.o \
   udp_socket.o \
-	hw_locality.o \
   packet_capture.o \
   packet_writer.o
 endif
