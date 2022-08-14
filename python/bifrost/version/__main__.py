@@ -46,7 +46,6 @@ if args.config:
     print("\nConfiguration:")
     print(" Memory alignment: %i B" % BF_ALIGNMENT)
     print(" OpenMP support: %s" % _yes_no(BF_OPENMP_ENABLED))
-    print(" NUMA support %s" % _yes_no(BF_NUMA_ENABLED))
     print(" Hardware locality support: %s" % _yes_no(BF_HWLOC_ENABLED))
     print(" Mellanox messaging accelerator (VMA) support: %s" % _yes_no(BF_VMA_ENABLED))
     print(" Infiniband verbs support: %s" % _yes_no(BF_VERBS_ENABLED))
