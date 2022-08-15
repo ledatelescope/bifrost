@@ -83,7 +83,7 @@ jobs:
           cd test
           bash ./download_test_data.sh
           python -c "from bifrost import telemetry; telemetry.disable()"
-          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline -m unittest discover
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline -m unittest discover -v
           coverage xml
       - name: "Upload Coverage"
         env:
