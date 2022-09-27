@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         os: [self-hosted, ubuntu-latest, macos-latest]
-        python-version: ['2.7', '3.6', '3.8', '3.10']
+        python-version: ['2.7', '3.6', '3.8.13', '3.10']
         exclude:
           - os: macos-latest
             python-version: 2.7
@@ -64,8 +64,6 @@ jobs:
                ctypesgen==1.0.2 \
                coverage
       - name: "Software Install - Python, part 2"
-        env:
-          CPLUS_INCLUDE_PATH: ${{ env.CPLUS_INCLUDE_PATH }}:/opt/hostedtoolcache/Python/3.8.14/x64/include
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
         run: python -m pip install \
                cupy-cuda112 \
@@ -94,7 +92,7 @@ jobs:
         env:
            UNITTEST_OS: ${{ matrix.os }}
            UNITTEST_PY: ${{ matrix.python-version }}
-        if: ${{ matrix.os == 'self-hosted' && matrix.python-version == '3.8' }}
+        if: ${{ matrix.os == 'self-hosted' && matrix.python-version == '3.8.13' }}
         uses: codecov/codecov-action@v2
         with:
           directory: ./test/
