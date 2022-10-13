@@ -51,7 +51,7 @@ def compare(result, gold):
     np.testing.assert_allclose(result, gold, rtol=RTOL, atol=MTOL * absmean)
 
 def cudaExpectedFailure(testcase):
-    if BF_CUDA_VERSION < 10.1 or BF_CUDA_VERSION > 11.6:
+    if BF_CUDA_VERSION < 10.1 or BF_CUDA_VERSION > 11.7:
         return testcase
     return unittest.expectedFailure(testcase)
 

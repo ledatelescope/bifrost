@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -58,6 +58,7 @@ class EndOfDataStop(RuntimeError):
 class BifrostObject(object):
     """Base class for simple objects with create/destroy functions"""
     def __init__(self, constructor, destructor, *args):
+        self._obj_basename = constructor.__name__.replace('Create','')
         self.obj = destructor.argtypes[0]()
         _check(constructor(ctypes.byref(self.obj), *args))
         self._destructor = destructor
@@ -71,6 +72,22 @@ class BifrostObject(object):
         return self
     def __exit__(self, type, value, tb):
         self._destroy()
+    def set_stream(self, stream):
+        set_fnc = getattr(_bf, self._obj_basename+"SetStream", None)
+        if set_fnc is None:
+            raise AttributeError("set_stream() is not supported by %s objects" % self._obj_basename)
+            
+        _check( set_fnc(self.obj,
+                        ctypes.pointer(stream)) )
+    def get_stream(self):
+        get_fnc = getattr(_bf, self._obj_basename+"GetStream", None)
+        if get_fnc is None:
+            raise AttributeError("get_stream() is not supported by %s objects" % self._obj_basename)
+            
+        stream = ctypes.c_ulong(0)
+        _check( get_fnc(self.obj,
+                        ctypes.pointer(stream)))
+        return stream.value
 
 def _array(size_or_vals, dtype=None):
     if size_or_vals is None:

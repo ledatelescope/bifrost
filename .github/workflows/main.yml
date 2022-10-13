@@ -66,8 +66,13 @@ jobs:
       - name: "Software Install - Python, part 2"
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
         run: python -m pip install \
-               cupy \
-               pycuda
+               cupy-cuda112 \
+               pycuda \
+               numba \
+               jupyterlab \
+               jupyter_client \
+               nbformat \
+               nbconvert
       - name: "Build and Install"
         run: |
           ./configure
