@@ -37,7 +37,6 @@ jobs:
             gfortran \
             git \
             libopenblas-dev \
-            libboost-all-dev \
             pkg-config \
             software-properties-common
       - name: "Software Install - MacOS"
@@ -49,7 +48,7 @@ jobs:
             gawk \
             gnu-sed \
             pkg-config
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
       - uses: actions/checkout@v2
