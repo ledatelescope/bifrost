@@ -51,7 +51,7 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: "Software Install - Python"
         run: python -m pip install \
                setuptools \
