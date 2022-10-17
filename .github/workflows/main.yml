@@ -67,7 +67,6 @@ jobs:
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
         run: python -m pip install \
                cupy-cuda112 \
-               pycuda \
                numba \
                jupyterlab \
                jupyter_client \
