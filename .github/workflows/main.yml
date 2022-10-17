@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         os: [self-hosted, ubuntu-latest, macos-latest]
-        python-version: ['2.7', '3.6', '3.8.13', '3.10']
+        python-version: ['2.7', '3.6', '3.8', '3.10']
         exclude:
           - os: macos-latest
             python-version: 2.7
@@ -37,6 +37,7 @@ jobs:
             gfortran \
             git \
             libopenblas-dev \
+            libboost-all-dev \
             pkg-config \
             software-properties-common
       - name: "Software Install - MacOS"
