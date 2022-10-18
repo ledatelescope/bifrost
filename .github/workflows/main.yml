@@ -36,9 +36,11 @@ jobs:
             exuberant-ctags \
             gfortran \
             git \
+            gzip \
             libopenblas-dev \
             pkg-config \
-            software-properties-common
+            software-properties-common \
+            tar
       - name: "Software Install - MacOS"
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
