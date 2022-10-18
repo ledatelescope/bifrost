@@ -36,11 +36,9 @@ jobs:
             exuberant-ctags \
             gfortran \
             git \
-            gzip \
             libopenblas-dev \
             pkg-config \
-            software-properties-common \
-            tar
+            software-properties-common
       - name: "Software Install - MacOS"
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
@@ -69,19 +67,12 @@ jobs:
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
         run: python -m pip install \
                cupy-cuda112 \
+               pycuda \
                numba \
                jupyterlab \
                jupyter_client \
                nbformat \
                nbconvert
-      - name: "Software Install - Python, part 3"
-        if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
-        run: python -m pip download pycuda && \
-             tar xzf pycuda*.tar.gz && \
-             cd `ls -d pycuda* | grep -v tar.gz` && \
-             python ./configure.py && \
-             make && \
-             make install
       - name: "Build and Install"
         run: |
           ./configure
