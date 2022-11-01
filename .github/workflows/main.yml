@@ -36,7 +36,6 @@ jobs:
             exuberant-ctags \
             gfortran \
             git \
-            libboost-all-dev \
             libopenblas-dev \
             pkg-config \
             software-properties-common
