@@ -52,7 +52,6 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: actions/checkout@v3
       - name: "Software Install - Python"
         run: python -m pip install \
                setuptools \
@@ -91,6 +90,7 @@ jobs:
                   --no-cuda-enable-curand && \
              make && \
              make install
+      - uses: actions/checkout@v3
       - name: "Build and Install"
         run: |
           ./configure
