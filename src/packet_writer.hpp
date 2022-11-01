@@ -302,8 +302,10 @@ public:
             _stats.ninvalid += npackets;
             _stats.ninvalid_bytes += npackets * (hdr_size + data_size);
         } else {
-            _stats.nvalid += npackets;
-            _stats.nvalid_bytes += npackets * (hdr_size + data_size);
+            _stats.nvalid += nsent;
+            _stats.nvalid_bytes += nsent * (hdr_size + data_size);
+            _stats.ninvalid += (npackets - nsent);
+            _stats.ninvalid_bytes += (npackets - nsent) * (hdr_size + data_size);
             _limiter.end_and_wait(npackets);
         }
         return nsent;
