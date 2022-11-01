@@ -76,7 +76,7 @@ jobs:
       - name: "Software Install - Python, part 3"
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
         run: python -m pip download pycuda && \
-             /bin/tar xzf pycuda*.tar.gz && \
+             `find / -name tar` xzf pycuda*.tar.gz && \
              cd `ls -d pycuda* | grep -v tar.gz` && \
              rm siteconf.py && \
              python ./configure.py \
