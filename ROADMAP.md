@@ -27,3 +27,7 @@ stated, the items on this page have not yet been developed.
  * CPU backends for existing CUDA-only algorithms
  * Support for inter-process shared memory rings
  * Optimisations for low-latency applications
+
+## Platform and dependency updates
+
+ * Python 2.x will no longer be supported after the end of 2022.
