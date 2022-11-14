@@ -54,7 +54,7 @@ BFstatus bfRayleighSetStream(BFrayleigh  plan,
 BFstatus bfRayleighResetState(BFrayleigh plan);
 BFstatus bfRayleighExecute(BFrayleigh     plan,
                            BFarray const* in,
-                           BFarray const* out
+                           BFarray const* out,
                            BFsize*        flags);
 BFstatus bfRayleighDestroy(BFrayleigh plan);
 

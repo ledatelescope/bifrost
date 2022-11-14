@@ -41,12 +41,12 @@ telemetry.track_module()
 class Rayleigh(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfRayleighCreate, _bf.bfRayleighDestroy)
-    def init(self, nantpols, alpha=0.75, clip_sigmas=4, max_flag_frac=0.5, space='cuda'):
+    def init(self, nantpols, alpha=0.75, clip_sigmas=6, max_flag_frac=0.25, space='cuda'):
         space = _string2space(space)
         psize = None
         self._clip_sigmas = clip_sigmas
         self._max_flag_frac = max_flag_frac
-        _check( _bf.bfRayleighInit(self.obj, nantpols, alpha, clip_sigmas, max_flag_frac, space, 0, psize) )
+        _check( _bf.bfRayleighInit(self.obj, nantpols, alpha, clip_sigmas*clip_sigmas, max_flag_frac, space, 0, psize) )
     def reset_state(self):
         _check( _bf.bfRayleighResetState(self.obj) )
     def execute(self, idata, odata):
@@ -57,6 +57,6 @@ class Rayleigh(BifrostObject):
                                       asarray(odata).as_BFarray(),
                                       c_pointer(flags)) )
         if flags.value > 0:
-            warnings.warn("Found %i inputs with flagging fractions > %.3f", flags.value, self._max_flag_frac)
+            warnings.warn("Found %i inputs with flagging fractions > %.3f" % (flags.value, self._max_flag_frac))
             
-        return odata
+        return flags, odata

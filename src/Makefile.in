@@ -91,7 +91,8 @@ NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS_VALID), \
   -gencode arch=compute_$(GPU_ARCH_LATEST),\"code=compute_$(GPU_ARCH_LATEST)\"
 endif
 
-NVCCFLAGS += $(NVCC_GENCODE) -lcurand
+NVCCFLAGS += $(NVCC_GENCODE) -lcurand_static -lculibos
+LDFLAGS += -lcurand_static -lculibos
 
 #NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
 #NVCCFLAGS += --expt-relaxed-constexpr

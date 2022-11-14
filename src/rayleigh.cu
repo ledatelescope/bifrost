@@ -27,7 +27,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <bifrost/fir.h>
+#include <bifrost/rayleigh.h>
 #include "assert.hpp"
 #include "utils.hpp"
 #include "workspace.hpp"
@@ -52,33 +52,81 @@ using std::endl;
 
 #define BF_POOL_SIZE 268435456
 
+// cuRAND API errors - from 
+static const char *curandGetErrorString(curandStatus_t error)
+{
+    switch (error)
+    {
+        case CURAND_STATUS_SUCCESS:
+            return "CURAND_STATUS_SUCCESS";
+
+        case CURAND_STATUS_VERSION_MISMATCH:
+            return "CURAND_STATUS_VERSION_MISMATCH";
+
+        case CURAND_STATUS_NOT_INITIALIZED:
+            return "CURAND_STATUS_NOT_INITIALIZED";
+
+        case CURAND_STATUS_ALLOCATION_FAILED:
+            return "CURAND_STATUS_ALLOCATION_FAILED";
+
+        case CURAND_STATUS_TYPE_ERROR:
+            return "CURAND_STATUS_TYPE_ERROR";
+
+        case CURAND_STATUS_OUT_OF_RANGE:
+            return "CURAND_STATUS_OUT_OF_RANGE";
+
+        case CURAND_STATUS_LENGTH_NOT_MULTIPLE:
+            return "CURAND_STATUS_LENGTH_NOT_MULTIPLE";
+
+        case CURAND_STATUS_DOUBLE_PRECISION_REQUIRED:
+            return "CURAND_STATUS_DOUBLE_PRECISION_REQUIRED";
+
+        case CURAND_STATUS_LAUNCH_FAILURE:
+            return "CURAND_STATUS_LAUNCH_FAILURE";
+
+        case CURAND_STATUS_PREEXISTING_FAILURE:
+            return "CURAND_STATUS_PREEXISTING_FAILURE";
+
+        case CURAND_STATUS_INITIALIZATION_FAILED:
+            return "CURAND_STATUS_INITIALIZATION_FAILED";
+
+        case CURAND_STATUS_ARCH_MISMATCH:
+            return "CURAND_STATUS_ARCH_MISMATCH";
+
+        case CURAND_STATUS_INTERNAL_ERROR:
+            return "CURAND_STATUS_INTERNAL_ERROR";
+    }
+
+    return "<unknown>";
+}
+
 #define BF_CHECK_CURAND_EXCEPTION(call, err) \
 	do { \
-		cudaError_t cuda_ret = call; \
+		curandStatus_t cuda_ret = call; \
 		if( cuda_ret != CURAND_STATUS_SUCCESS ) { \
-			BF_DEBUG_PRINT(cudaGetErrorString(cuda_ret)); \
+			BF_DEBUG_PRINT(curandGetErrorString(cuda_ret)); \
 		} \
 		/*BF_ASSERT(cuda_ret == cudaSuccess, err);*/ \
-		BF_ASSERT_EXCEPTION(cuda_ret == cudaSuccess, err); \
+		BF_ASSERT_EXCEPTION(cuda_ret == CURAND_STATUS_SUCCESS, err); \
 	} while(0)
 
 #define BF_CHECK_CURAND(call, err) \
 	do { \
-		cudaError_t cuda_ret = call; \
+		curandStatus_t cuda_ret = call; \
 		if( cuda_ret != CURAND_STATUS_SUCCESS ) { \
-			BF_DEBUG_PRINT(cudaGetErrorString(cuda_ret)); \
+			BF_DEBUG_PRINT(curandGetErrorString(cuda_ret)); \
 		} \
 		BF_ASSERT(cuda_ret == CURAND_STATUS_SUCCES, err); \
 	} while(0)
 
 template<typename InType>
-__global__ void flagger_kernel(unsigned int               ntime, 
+__global__ void flagger_kernel(unsigned int               ntime,
                                unsigned int               nantpol,
                                float                      alpha,
                                unsigned int               clip_sigmas,
                                float                      max_flag_frac,
                                float*                     state,
-                               const float*               pool,
+                               const float* __restrict__  pool,
                                unsigned int*              flags,
                                const InType* __restrict__ d_in,
                                InType* __restrict__       d_out) {
@@ -87,31 +135,29 @@ __global__ void flagger_kernel(unsigned int               ntime,
   int r = a;
   if( r > BF_POOL_SIZE ) r %= BF_POOL_SIZE;
   
-	int c, t, t0;
-  int count, bad_count;
-  float mean;
-	float power;
+	int t, count, bad_count;
+  float power, mean;
 	if( a < nantpol ) {
     mean = 0.0;
-    count = 0.0;
-    
+    count = bad_count = 0;
     
 		for(t=0; t<ntime; t++) {
       power  = d_in[t*nantpol*2 + a*2 + 0]*d_in[t*nantpol*2 + a*2 + 0];
       power += d_in[t*nantpol*2 + a*2 + 1]*d_in[t*nantpol*2 + a*2 + 1];
       
-      mean += power;
-      count += 1;
-      
-      if( power >= clip_sigmas*sqrt(4/D_PI -1)*state[a]) ) {
-        d_out[t*nantpol*2 + a*2 + 0] = pool[r++] * sqrt(2/D_PI)*state[a];
+      if( power >= (clip_sigmas*sqrt(4/CUDART_PI_F-1)*state[a]) && state[a] != 0 ) {
+        d_out[t*nantpol*2 + a*2 + 0] = pool[r++] * sqrt(2/CUDART_PI_F)*state[a];
         if( r > BF_POOL_SIZE ) r = 0;
-        d_out[t*nantpol*2 + a*2 + 1] = pool[r++] * sqrt(2/D_PI)*state[a];
+        d_out[t*nantpol*2 + a*2 + 1] = pool[r++] * sqrt(2/CUDART_PI_F)*state[a];
         if( r > BF_POOL_SIZE ) r = 0;
-        bad_count += 1;
+				
+        bad_count++;
       } else {
         d_out[t*nantpol*2 + a*2 + 0] = d_in[t*nantpol*2 + a*2 + 0];
         d_out[t*nantpol*2 + a*2 + 1] = d_in[t*nantpol*2 + a*2 + 1];
+				
+				mean += power;
+	      count++;
 			}
 		}
     
@@ -125,35 +171,39 @@ __global__ void flagger_kernel(unsigned int               ntime,
 }
 
 template<typename InType>
-inline void launch_flagger_kernel(unsigned int ntime, 
-                                  unsigned int nantpol,
-                                  float        alpha,
-                                  unsigned int clip_sigmas,
-                                  float        max_flag_frac,
-                                  float*       state,
-                                  float*       pool,
-                                  usigned int* flags,
-                                  InType*      d_in,
-                                  InType*      d_out,
-                                  cudaStream_t stream=0) {
+inline void launch_flagger_kernel(unsigned int  ntime, 
+                                  unsigned int  nantpol,
+                                  float         alpha,
+                                  unsigned int  clip_sigmas,
+                                  float         max_flag_frac,
+                                  float*        state,
+                                  float*        pool,
+                                  BFsize*       flags,
+                                  InType*       d_in,
+                                  InType*       d_out,
+                                  cudaStream_t  stream=0) {
 	//cout << "LAUNCH for " << nelement << endl;
-	dim3 block(std::min(256u, nantpol), 256u/std::min(256u, nantpol));
+	dim3 block(std::min(256u, nantpol), nantpol/std::min(256u, nantpol));
 	int first = std::min((nantpol-1)/block.x+1, 65535u);
 	dim3 grid(first, 1u, 1u);
 
+  /*
 	cout << "  Block size is " << block.x << " by " << block.y << endl;
 	cout << "  Grid  size is " << grid.x << " by " << grid.y << " by " << grid.z << endl;
 	cout << "  Maximum size is " << block.y*grid.y*grid.z << endl;
-	if( block.y*grid.y*grid.z >= ntime ) {
-		cout << "  -> Valid" << endl;
-	}
-
+	*/
 	
+	BF_CHECK_CUDA_EXCEPTION(cudaMemsetAsync(flags,
+	                                        0,
+	                                        sizeof(BFsize),
+	                                        stream),
+                         	BF_STATUS_MEM_OP_FAILED );
+														 					 
 	void* args[] = {&ntime, 
 	                &nantpol,
 	                &alpha,
                   &clip_sigmas,
-	                &max_flag_frac
+	                &max_flag_frac,
 	                &state,
                   &pool,
                   &flags,
@@ -178,6 +228,7 @@ private:
   float     _max_flag_frac;
   float*    _state = NULL;
   float*    _pool = NULL;
+	BFsize*   _flags = NULL;
 	IType     _plan_stride;
 	Workspace _plan_storage;
 	// TODO: Use something other than Thrust
@@ -208,7 +259,9 @@ public:
 		Workspace workspace(ALIGNMENT_BYTES);
 		_plan_stride = round_up(_nantpol, ALIGNMENT_ELMTS);
 		workspace.reserve(_nantpol+1, &_state);
-    workspace.reserve((_nantpol+1)*BF_POOL_SIZE, &_pool);
+    workspace.reserve(BF_POOL_SIZE+1, &_pool);
+		workspace.reserve(1, &_flags);
+		
 		if( storage_size ) {
 			if( !storage_ptr ) {
 				// Return required storage size
@@ -230,7 +283,9 @@ public:
 		return true;
 	}
 	void reset_state() {
+		std::cout << "reset" << std::endl;
 		BF_ASSERT_EXCEPTION(_state != NULL,  BF_STATUS_INVALID_STATE);
+		BF_ASSERT_EXCEPTION(_pool != NULL,   BF_STATUS_INVALID_STATE);
 		
 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 		
@@ -241,18 +296,23 @@ public:
 		                                         _stream),
 		                         BF_STATUS_MEM_OP_FAILED );
 		BF_CHECK_CUDA_EXCEPTION( cudaStreamSynchronize(_stream),
-		                         BF_STATUS_DEVICE_ERROR );
+ 		                         BF_STATUS_DEVICE_ERROR );
+ 		
+ 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 		
-		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
-    
     curandGenerator_t gen;
     BF_CHECK_CURAND_EXCEPTION(curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT),
                               BF_STATUS_DEVICE_ERROR);
-    BF_CHECK_CURAND_EXCEPTION(curandSetPseudoRandomGeneratorSeed(gen, 98105102114111115116ULL),
+    BF_CHECK_CURAND_EXCEPTION(curandSetPseudoRandomGeneratorSeed(gen, 102114111115116ULL),
                               BF_STATUS_DEVICE_ERROR);
     BF_CHECK_CURAND_EXCEPTION(curandGenerateNormal(gen, _pool, BF_POOL_SIZE, 0.0, 1.0),
                               BF_STATUS_DEVICE_ERROR);
     BF_CHECK_CURAND_EXCEPTION(curandDestroyGenerator(gen), BF_STATUS_DEVICE_ERROR);
+		
+		BF_CHECK_CUDA_EXCEPTION( cudaStreamSynchronize(_stream),
+		                         BF_STATUS_DEVICE_ERROR );
+		
+		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 	}
 	void execute(BFarray const* in,
 	             BFarray const* out,
@@ -268,9 +328,10 @@ public:
 #define LAUNCH_FLAGGER_KERNEL(IterType) \
 		launch_flagger_kernel(in->shape[0], _nantpol, \
                           _alpha, _clip_sigmas, _max_flag_frac, \
-		                      _state, _pool, flags, \
+		                      _state, _pool, _flags, \
 		                      (IterType)in->data, (IterType)out->data, \
-		                      _stream)
+		                      _stream); \
+		cudaMemcpyAsync(flags, _flags, sizeof(BFsize), cudaMemcpyDeviceToHost, _stream);
 		
     *flags = 0;
 		switch( in->dtype ) {
@@ -289,7 +350,7 @@ public:
 	}
 };
 
-BFstatus bfRayleighCreate(BFfir* plan_ptr) {
+BFstatus bfRayleighCreate(BFrayleigh* plan_ptr) {
 	BF_TRACE();
 	BF_ASSERT(plan_ptr, BF_STATUS_INVALID_POINTER);
 	BF_TRY_RETURN_ELSE(*plan_ptr = new BFrayleigh_impl(),
@@ -326,14 +387,14 @@ BFstatus bfRayleighResetState(BFrayleigh plan) {
 }
 BFstatus bfRayleighExecute(BFrayleigh     plan,
                            BFarray const* in,
-                           BFarray const* out
+                           BFarray const* out,
                            BFsize*        flags) {
 	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(in,   BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(out,  BF_STATUS_INVALID_POINTER);
-	BF_ASSERT( in->ndim >= 2,                              BF_STATUS_INVALID_SHAPE);
-	BF_ASSERT(out->ndim == in->ndim,                       BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT( in->ndim >= 2,        BF_STATUS_INVALID_SHAPE);
+	BF_ASSERT(out->ndim == in->ndim, BF_STATUS_INVALID_SHAPE);
 	
 	BFarray out_flattened, in_flattened;
 	if( in->ndim > 2 ) {
