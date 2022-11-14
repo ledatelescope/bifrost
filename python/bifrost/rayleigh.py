@@ -29,7 +29,6 @@
 # Python2 compatibility
 from __future__ import absolute_import
 
-import warnings
 from ctypes import c_ulong, pointer as c_pointer
 
 from bifrost.libbifrost import _bf, _check, BifrostObject, _string2space
@@ -56,7 +55,4 @@ class Rayleigh(BifrostObject):
                                       asarray(idata).as_BFarray(),
                                       asarray(odata).as_BFarray(),
                                       c_pointer(flags)) )
-        if flags.value > 0:
-            warnings.warn("Found %i inputs with flagging fractions > %.3f" % (flags.value, self._max_flag_frac))
-            
-        return flags, odata
+        return flags.value, odata
