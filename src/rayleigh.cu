@@ -283,7 +283,6 @@ public:
 		return true;
 	}
 	void reset_state() {
-		std::cout << "reset" << std::endl;
 		BF_ASSERT_EXCEPTION(_state != NULL,  BF_STATUS_INVALID_STATE);
 		BF_ASSERT_EXCEPTION(_pool != NULL,   BF_STATUS_INVALID_STATE);
 		
