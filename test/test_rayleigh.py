@@ -64,14 +64,12 @@ class TestRayleigh(unittest.TestCase):
         odata = bf.empty_like(idata)
         
         rayleigh = Rayleigh()
-        print(idata.shape)
         rayleigh.init(idata.shape[-1], max_flag_frac=1/idata.shape[0])
         flag, _ = rayleigh.execute(idata, odata)
         idata[5,10] = np.complex64(50+40j)
         idata[50,10] = np.complex64(50+40j)
         idata[75,10] = np.complex64(50+40j)
         flag, _ = rayleigh.execute(idata, odata)
-        print(flag)
         odata = odata.copy('system')
         
         self.assertEqual(flag.value, 1)
@@ -82,7 +80,6 @@ class TestRayleigh(unittest.TestCase):
         odata = bf.empty_like(idata)
         
         rayleigh = Rayleigh()
-        print(idata.shape)
         rayleigh.init(idata.shape[-1], max_flag_frac=1/idata.shape[0])
         flag, _ = rayleigh.execute(idata, odata)
         rayleigh.reset_state()
@@ -90,7 +87,6 @@ class TestRayleigh(unittest.TestCase):
         idata[50,10] = np.complex64(50+40j)
         idata[75,10] = np.complex64(50+40j)
         flag, _ = rayleigh.execute(idata, odata)
-        print(flag)
         odata = odata.copy('system')
         
         self.assertEqual(flag.value, 0)
@@ -107,7 +103,6 @@ class TestRayleigh(unittest.TestCase):
         idata[50,10,0] = np.complex64(50+40j)
         idata[75,10,0] = np.complex64(50+40j)
         flag, _ = rayleigh.execute(idata, odata)
-        print(flag)
         odata = odata.copy('system')
         
         self.assertEqual(flag.value, 1)
@@ -125,7 +120,6 @@ class TestRayleigh(unittest.TestCase):
         idata[50,10,0] = np.complex64(50+40j)
         idata[75,10,0] = np.complex64(50+40j)
         flag, _ = rayleigh.execute(idata, odata)
-        print(flag)
         odata = odata.copy('system')
         
         self.assertEqual(flag.value, 0)
