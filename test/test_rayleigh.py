@@ -72,7 +72,7 @@ class TestRayleigh(unittest.TestCase):
         flag, _ = rayleigh.execute(idata, odata)
         odata = odata.copy('system')
         
-        self.assertEqual(flag.value, 1)
+        self.assertEqual(flag, 1)
     def test_2d_reset(self):
         shape = self.shape2D
         known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
@@ -89,7 +89,7 @@ class TestRayleigh(unittest.TestCase):
         flag, _ = rayleigh.execute(idata, odata)
         odata = odata.copy('system')
         
-        self.assertEqual(flag.value, 0)
+        self.assertEqual(flag, 0)
     def test_3d(self):
         shape = self.shape3D
         known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
@@ -105,7 +105,7 @@ class TestRayleigh(unittest.TestCase):
         flag, _ = rayleigh.execute(idata, odata)
         odata = odata.copy('system')
         
-        self.assertEqual(flag.value, 1)
+        self.assertEqual(flag, 1)
     def test_3d_reset(self):
         shape = self.shape3D
         known_data = np.random.normal(size=shape).astype(np.float32).view(np.complex64)
@@ -122,4 +122,4 @@ class TestRayleigh(unittest.TestCase):
         flag, _ = rayleigh.execute(idata, odata)
         odata = odata.copy('system')
         
-        self.assertEqual(flag.value, 0)
+        self.assertEqual(flag, 0)
