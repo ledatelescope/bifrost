@@ -63,7 +63,8 @@ ifeq ($(HAVE_CUDA),1)
   reduce.o \
   fir.o \
   guantize.o \
-  gunpack.o
+  gunpack.o \
+	rayleigh.o
 endif
 
 JIT_SOURCES ?= \
@@ -90,7 +91,7 @@ NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS_VALID), \
   -gencode arch=compute_$(GPU_ARCH_LATEST),\"code=compute_$(GPU_ARCH_LATEST)\"
 endif
 
-NVCCFLAGS += $(NVCC_GENCODE)
+NVCCFLAGS += $(NVCC_GENCODE) -lcurand
 
 #NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
 #NVCCFLAGS += --expt-relaxed-constexpr
