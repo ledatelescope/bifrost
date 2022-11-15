@@ -119,12 +119,23 @@ static const char *curandGetErrorString(curandStatus_t error)
 		BF_ASSERT(cuda_ret == CURAND_STATUS_SUCCES, err); \
 	} while(0)
 
+struct __attribute__((aligned(1))) nibble2 {
+    // Yikes!  This is dicey since the packing order is implementation dependent!  
+    signed char y:4, x:4;
+};
+
+struct __attribute__((aligned(1))) blenib2 {
+    // Yikes!  This is dicey since the packing order is implementation dependent!
+    signed char x:4, y:4;
+};
+
 template<typename InType>
 __global__ void flagger_kernel(unsigned int               ntime,
                                unsigned int               nantpol,
                                float                      alpha,
                                unsigned int               clip_sigmas,
                                float                      max_flag_frac,
+                               unsigned int               is_first,
                                float*                     state,
                                const float* __restrict__  pool,
                                unsigned int*              flags,
@@ -141,24 +152,24 @@ __global__ void flagger_kernel(unsigned int               ntime,
     mean = 0.0;
     count = bad_count = 0;
     
+    InType temp;
+    
 		for(t=0; t<ntime; t++) {
-      power  = d_in[t*nantpol*2 + a*2 + 0]*d_in[t*nantpol*2 + a*2 + 0];
-      power += d_in[t*nantpol*2 + a*2 + 1]*d_in[t*nantpol*2 + a*2 + 1];
+      temp = d_in[t*nantpol + a];
+      power  = temp.x*temp.x + temp.y*temp.y;
       
-      if( power >= (clip_sigmas*sqrt(4/CUDART_PI_F-1)*state[a]) && state[a] != 0 ) {
-        d_out[t*nantpol*2 + a*2 + 0] = pool[r++] * sqrt(2/CUDART_PI_F)*state[a];
+      if( power >= (clip_sigmas*sqrt(4/CUDART_PI_F-1)*state[a]) && is_first == 0 ) {
+        temp.x = pool[r++] * sqrt(2/CUDART_PI_F)*state[a];
         if( r > BF_POOL_SIZE ) r = 0;
-        d_out[t*nantpol*2 + a*2 + 1] = pool[r++] * sqrt(2/CUDART_PI_F)*state[a];
+        temp.y = pool[r++] * sqrt(2/CUDART_PI_F)*state[a];
         if( r > BF_POOL_SIZE ) r = 0;
 				
         bad_count++;
       } else {
-        d_out[t*nantpol*2 + a*2 + 0] = d_in[t*nantpol*2 + a*2 + 0];
-        d_out[t*nantpol*2 + a*2 + 1] = d_in[t*nantpol*2 + a*2 + 1];
-				
-				mean += power;
+        mean += power;
 	      count++;
 			}
+      d_out[t*nantpol + a] = temp;
 		}
     
     mean /= count;
@@ -176,6 +187,7 @@ inline void launch_flagger_kernel(unsigned int  ntime,
                                   float         alpha,
                                   unsigned int  clip_sigmas,
                                   float         max_flag_frac,
+                                  unsigned int  is_first,
                                   float*        state,
                                   float*        pool,
                                   BFsize*       flags,
@@ -183,7 +195,7 @@ inline void launch_flagger_kernel(unsigned int  ntime,
                                   InType*       d_out,
                                   cudaStream_t  stream=0) {
 	//cout << "LAUNCH for " << nelement << endl;
-	dim3 block(std::min(256u, nantpol), nantpol/std::min(256u, nantpol));
+	dim3 block(std::min(256u, nantpol), 1);
 	int first = std::min((nantpol-1)/block.x+1, 65535u);
 	dim3 grid(first, 1u, 1u);
 
@@ -192,18 +204,13 @@ inline void launch_flagger_kernel(unsigned int  ntime,
 	cout << "  Grid  size is " << grid.x << " by " << grid.y << " by " << grid.z << endl;
 	cout << "  Maximum size is " << block.y*grid.y*grid.z << endl;
 	*/
-	
-	BF_CHECK_CUDA_EXCEPTION(cudaMemsetAsync(flags,
-	                                        0,
-	                                        sizeof(BFsize),
-	                                        stream),
-                         	BF_STATUS_MEM_OP_FAILED );
-														 					 
+				 					 
 	void* args[] = {&ntime, 
 	                &nantpol,
 	                &alpha,
                   &clip_sigmas,
 	                &max_flag_frac,
+	                &is_first,
 	                &state,
                   &pool,
                   &flags,
@@ -226,6 +233,7 @@ private:
   float     _alpha;
   UType     _clip_sigmas;
   float     _max_flag_frac;
+	UType     _first;
   float*    _state = NULL;
   float*    _pool = NULL;
 	BFsize*   _flags = NULL;
@@ -235,7 +243,7 @@ private:
 	thrust::device_vector<char> _dv_plan_storage;
 	cudaStream_t _stream;
 public:
-	BFrayleigh_impl() : _stream(g_cuda_stream) {}
+	BFrayleigh_impl() : _first(1), _stream(g_cuda_stream) {}
 	inline UType nantpol()  const { return _nantpol; }
 	void init(UType nantpol, 
             float alpha,
@@ -312,6 +320,7 @@ public:
 		                         BF_STATUS_DEVICE_ERROR );
 		
 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+		_first = 1;
 	}
 	void execute(BFarray const* in,
 	             BFarray const* out,
@@ -325,23 +334,32 @@ public:
 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 		
 #define LAUNCH_FLAGGER_KERNEL(IterType) \
+    cudaMemsetAsync(_flags, 0, sizeof(BFsize), _stream); \
 		launch_flagger_kernel(in->shape[0], _nantpol, \
                           _alpha, _clip_sigmas, _max_flag_frac, \
-		                      _state, _pool, _flags, \
+		                      _first, _state, _pool, _flags, \
 		                      (IterType)in->data, (IterType)out->data, \
 		                      _stream); \
 		cudaMemcpyAsync(flags, _flags, sizeof(BFsize), cudaMemcpyDeviceToHost, _stream);
 		
     *flags = 0;
 		switch( in->dtype ) {
-			case BF_DTYPE_CI8:  LAUNCH_FLAGGER_KERNEL(int8_t*);  break;
-			case BF_DTYPE_CI16: LAUNCH_FLAGGER_KERNEL(int16_t*); break;
-			case BF_DTYPE_CI32: LAUNCH_FLAGGER_KERNEL(int32_t*); break;
-			case BF_DTYPE_CI64: LAUNCH_FLAGGER_KERNEL(int64_t*); break;
-			case BF_DTYPE_CF32: LAUNCH_FLAGGER_KERNEL(float*);   break;
-			case BF_DTYPE_CF64: LAUNCH_FLAGGER_KERNEL(double*);  break;
+			case BF_DTYPE_CI4:
+        if( in->big_endian ) {
+          LAUNCH_FLAGGER_KERNEL(nibble2*);
+        } else {
+          LAUNCH_FLAGGER_KERNEL(blenib2*);
+        }
+        break;
+			case BF_DTYPE_CI8:  LAUNCH_FLAGGER_KERNEL(char2*);  break;
+			case BF_DTYPE_CI16: LAUNCH_FLAGGER_KERNEL(short2*); break;
+			case BF_DTYPE_CI32: LAUNCH_FLAGGER_KERNEL(int2*); break;
+			case BF_DTYPE_CI64: LAUNCH_FLAGGER_KERNEL(long2*); break;
+			case BF_DTYPE_CF32: LAUNCH_FLAGGER_KERNEL(float2*);   break;
+			case BF_DTYPE_CF64: LAUNCH_FLAGGER_KERNEL(double2*);  break;
 			default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 		}
+		_first = 0;
 #undef LAUNCH_FLAGGER_KERNEL
 	}
 	void set_stream(cudaStream_t stream) {
