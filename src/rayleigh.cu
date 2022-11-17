@@ -328,8 +328,7 @@ public:
 		BF_TRACE();
 		BF_TRACE_STREAM(_stream);
 		BF_ASSERT_EXCEPTION(_state != NULL, BF_STATUS_INVALID_STATE);
-		BF_ASSERT_EXCEPTION(out->dtype == BF_DTYPE_CF32 || \
-		                    out->dtype == BF_DTYPE_CF64,     BF_STATUS_UNSUPPORTED_DTYPE);
+		BF_ASSERT_EXCEPTION(in->dtype == out->dtype, BF_STATUS_UNSUPPORTED_DTYPE);
 		
 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 		
@@ -345,12 +344,12 @@ public:
     *flags = 0;
 		switch( in->dtype ) {
 			case BF_DTYPE_CI4:
-        if( in->big_endian ) {
-          LAUNCH_FLAGGER_KERNEL(nibble2*);
-        } else {
-          LAUNCH_FLAGGER_KERNEL(blenib2*);
-        }
-        break;
+				if( in->big_endian ) {
+					LAUNCH_FLAGGER_KERNEL(nibble2*);
+				} else {
+					LAUNCH_FLAGGER_KERNEL(blenib2*);
+				}
+				break;
 			case BF_DTYPE_CI8:  LAUNCH_FLAGGER_KERNEL(char2*);  break;
 			case BF_DTYPE_CI16: LAUNCH_FLAGGER_KERNEL(short2*); break;
 			case BF_DTYPE_CI32: LAUNCH_FLAGGER_KERNEL(int2*); break;
