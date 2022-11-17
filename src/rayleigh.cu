@@ -119,6 +119,8 @@ static const char *curandGetErrorString(curandStatus_t error)
 		BF_ASSERT(cuda_ret == CURAND_STATUS_SUCCES, err); \
 	} while(0)
 
+#define CUDART_SQRT_4_OVER_PI_MINUS_ONE_F 0.522723201f
+
 struct __attribute__((aligned(1))) nibble2 {
     // Yikes!  This is dicey since the packing order is implementation dependent!  
     signed char y:4, x:4;
@@ -158,10 +160,10 @@ __global__ void flagger_kernel(unsigned int               ntime,
       temp = d_in[t*nantpol + a];
       power  = temp.x*temp.x + temp.y*temp.y;
       
-      if( power >= (clip_sigmas*sqrt(4/CUDART_PI_F-1)*state[a]) && is_first == 0 ) {
-        temp.x = pool[r++] * sqrt(2/CUDART_PI_F)*state[a];
+      if( power >= (clip_sigmas*CUDART_SQRT_4_OVER_PI_MINUS_ONE_F*state[a]) && is_first == 0 ) {
+        temp.x = pool[r++] * CUDART_SQRT_2_OVER_PI_F*state[a];
         if( r > BF_POOL_SIZE ) r = 0;
-        temp.y = pool[r++] * sqrt(2/CUDART_PI_F)*state[a];
+        temp.y = pool[r++] * CUDART_SQRT_2_OVER_PI_F*state[a];
         if( r > BF_POOL_SIZE ) r = 0;
 				
         bad_count++;
