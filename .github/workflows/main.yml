@@ -54,11 +54,13 @@ jobs:
             gawk \
             gnu-sed \
             pkg-config
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4.3.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: "Software Install - Python"
-        run: python -m pip install \
+        run: |
+          env | grep -i python
+          python -m pip install \
                setuptools \
                numpy \
                matplotlib \
