@@ -44,7 +44,7 @@ jobs:
             pkg-config \
             software-properties-common
           ls /usr/include
-          ls /usr/include/Python3.8
+          ls /usr/include/python3.6
       - name: "Software Install - MacOS"
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
