@@ -154,12 +154,12 @@ class NDArrayTest(unittest.TestCase):
         np.testing.assert_equal(g.copy('system'), np.array([[99,77],[2,66],[4,55]]))
     def test_BFarray(self):
         """ Test ndarray.as_BFarray() roundtrip """
-        a = bifrost.ndarray(np.arange(100), dtype='i32')
+        a = bf.ndarray(np.arange(100), dtype='i32')
         aa = a.as_BFarray()
-        b = bifrost.ndarray(aa)
+        b = bf.ndarray(aa)
         np.testing.assert_equal(a, b)
 
-        a = bifrost.ndarray(np.arange(100), dtype='cf32')
+        a = bf.ndarray(np.arange(100), dtype='cf32')
         aa = a.as_BFarray()
-        b = bifrost.ndarray(aa)
+        b = bf.ndarray(aa)
         np.testing.assert_equal(a, b)
