@@ -18,8 +18,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [self-hosted, ubuntu-latest, macos-latest]
-        python-version: ['2.7', '3.6', '3.8', '3.10']
+        os: [self-hosted]
+        # os: [self-hosted, ubuntu-latest, macos-latest]
+        python-version: ['3.8']
+        # python-version: ['2.7', '3.6', '3.8', '3.10']
         exclude:
           - os: macos-latest
             python-version: 2.7
@@ -37,8 +39,12 @@ jobs:
             gfortran \
             git \
             libopenblas-dev \
+            libboost-dev \
+            libboost-python-dev \
             pkg-config \
             software-properties-common
+          ls /usr/include
+          ls /usr/include/Python3.8
       - name: "Software Install - MacOS"
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
@@ -64,14 +70,13 @@ jobs:
                coverage
       - name: "Software Install - Python, part 2"
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
-        run: python -m pip install \
-               cupy-cuda112 \
-               pycuda \
-               numba \
-               jupyterlab \
-               jupyter_client \
-               nbformat \
-               nbconvert
+        run: python -m pip install pycuda
+               # cupy-cuda112 \
+               # numba \
+               # jupyterlab \
+               # jupyter_client \
+               # nbformat \
+               # nbconvert
       - uses: actions/checkout@v3
       - name: "Build and Install"
         run: |
