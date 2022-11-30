@@ -20,7 +20,7 @@ jobs:
       matrix:
         os: [self-hosted]
         # os: [self-hosted, ubuntu-latest, macos-latest]
-        python-version: ['3.8']
+        python-version: ['3.6', '3.8', '3.10']
         # python-version: ['2.7', '3.6', '3.8', '3.10']
         exclude:
           - os: macos-latest
@@ -43,8 +43,6 @@ jobs:
             libboost-python-dev \
             pkg-config \
             software-properties-common
-          ls /usr/include
-          ls /usr/include/python3.6
       - name: "Software Install - MacOS"
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
@@ -75,7 +73,7 @@ jobs:
         # Setting CPLUS_INCLUDE_PATH helps pycuda find the right
         # header files for its embedded subset of Boost.
         run: |
-          export CPLUS_INCLUDE_PATH="$pythonLocation/include/python3.8"
+          export CPLUS_INCLUDE_PATH="$pythonLocation/include/python${{ matrix.python-version }}"
           python -m pip install \
             cupy-cuda112 \
             pycuda \
