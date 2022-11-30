@@ -77,8 +77,6 @@ jobs:
                coverage
       - name: "Software Install - Python, part 2"
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
-        env:
-          CPLUS_INCLUDE_PATH: "$pythonLocation/include/python3.8"
         # cupy-cuda112 \
         # numba \
         # jupyterlab \
@@ -86,6 +84,7 @@ jobs:
         # nbformat \
         # nbconvert
         run: |
+          export CPLUS_INCLUDE_PATH="$pythonLocation/include/python3.8"
           echo "INCLUDE $CPLUS_INCLUDE_PATH"
           python -m pip install pycuda
       - uses: actions/checkout@v3
