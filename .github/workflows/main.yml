@@ -60,6 +60,10 @@ jobs:
       - name: "Software Install - Python"
         run: |
           env | grep -i python
+          which python
+          python -m pip --version
+          which pip
+          pip --version
           python -m pip install \
                setuptools \
                numpy \
