@@ -53,7 +53,6 @@ jobs:
             gnu-sed \
             pkg-config
       - uses: actions/setup-python@v4.3.0
-        id: py
         with:
           python-version: ${{ matrix.python-version }}
       - name: "Software Install - Python"
@@ -72,16 +71,16 @@ jobs:
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
         # Setting CPLUS_INCLUDE_PATH helps pycuda find the right
         # header files for its embedded subset of Boost.
-        run: |
-          export CPLUS_INCLUDE_PATH="$pythonLocation/include/python${{ matrix.python-version }}"
-          python -m pip install \
-            cupy-cuda112 \
-            pycuda \
-            numba \
-            jupyterlab \
-            jupyter_client \
-            nbformat \
-            nbconvert
+        env:
+          CPLUS_INCLUDE_PATH: ${{ env.pythonLocation }}/include/python${{ matrix.python-version }}
+        run: python -m pip install \
+               cupy-cuda112 \
+               pycuda \
+               numba \
+               jupyterlab \
+               jupyter_client \
+               nbformat \
+               nbconvert
       - uses: actions/checkout@v3
       - name: "Build and Install"
         run: |
