@@ -144,7 +144,7 @@ AS_IF([test x$enable_verbs != xno],
 #
 
 AC_ARG_ENABLE([rdma],
-              AS_HELP_STRING([--diable-rdma],
+              AS_HELP_STRING([--disable-rdma],
                              [disable RDMA support (default=no)]),
               [enable_rdma=no],
               [enable_rdma=yes])

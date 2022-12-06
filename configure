@@ -1528,7 +1528,7 @@ Optional Features:
   --disable-hwloc         disable hwloc support (default=no)
   --enable-vma            enable vma support (default=no)
   --disable-verbs         disable Infiniband verbs support (default=no)
-  --diable-rdma           disable RDMA support (default=no)
+  --disable-rdma          disable RDMA support (default=no)
   --disable-cuda          disable cuda support (default=no)
   --enable-debug          enable debugging mode (default=no)
   --enable-trace          enable tracing mode for nvprof/nvvp (default=no)
