@@ -3,7 +3,7 @@ name: "Build and Test"
 "on": [push, pull_request]
 jobs:
   pre_build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [self-hosted, ubuntu-latest, macos-latest]
+        os: [self-hosted, ubuntu-20.04, macos-latest]
         python-version: ['2.7', '3.6', '3.8', '3.10']
         exclude:
           - os: macos-latest
@@ -27,7 +27,7 @@ jobs:
       fail-fast: false
     steps:
       - name: "Software Install - Ubuntu"
-        if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'self-hosted' }}
+        if: ${{ matrix.os == 'ubuntu-20.04' || matrix.os == 'self-hosted' }}
         run: |
           sudo apt-get update && \
           sudo apt-get install -y \
