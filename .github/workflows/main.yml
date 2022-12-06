@@ -1,5 +1,6 @@
+---
 name: "Build and Test"
-on: [push, pull_request]
+"on": [push, pull_request]
 jobs:
   pre_build:
     runs-on: ubuntu-latest
@@ -7,7 +8,7 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v3.4.1
+        uses: fkirc/skip-duplicate-actions@v5
         with:
           concurrent_skipping: 'same_content'
           skip_after_successful_duplicate: 'true'
@@ -19,7 +20,7 @@ jobs:
     strategy:
       matrix:
         os: [self-hosted, ubuntu-latest, macos-latest]
-        python-version: ['2.7', '3.6', '3.8']
+        python-version: ['2.7', '3.6', '3.8', '3.10']
         exclude:
           - os: macos-latest
             python-version: 2.7
@@ -50,10 +51,9 @@ jobs:
             gnu-sed \
             hwloc \
             pkg-config
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4.3.0
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: actions/checkout@v2
       - name: "Software Install - Python"
         run: python -m pip install \
                setuptools \
@@ -67,9 +67,21 @@ jobs:
                coverage
       - name: "Software Install - Python, part 2"
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
+        # Setting CPLUS_INCLUDE_PATH helps pycuda find the right
+        # Python header files <pyconfig.h> to use with its embedded
+        # subset of Boost.
+        env:
+          CPLUS_INCLUDE_PATH: "${{ env.pythonLocation }}/include/python\
+            ${{ matrix.python-version }}"
         run: python -m pip install \
-               cupy \
-               pycuda
+               cupy-cuda112 \
+               pycuda \
+               numba \
+               jupyterlab \
+               jupyter_client \
+               nbformat \
+               nbconvert
+      - uses: actions/checkout@v3
       - name: "Build and Install"
         run: |
           ./configure
@@ -83,12 +95,13 @@ jobs:
           cd test
           bash ./download_test_data.sh
           python -c "from bifrost import telemetry; telemetry.disable()"
-          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline -m unittest discover -v
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline \
+            -m unittest discover -v
           coverage xml
       - name: "Upload Coverage"
         env:
-           UNITTEST_OS: ${{ matrix.os }}
-           UNITTEST_PY: ${{ matrix.python-version }}
+          UNITTEST_OS: ${{ matrix.os }}
+          UNITTEST_PY: ${{ matrix.python-version }}
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version == '3.8' }}
         uses: codecov/codecov-action@v2
         with:
