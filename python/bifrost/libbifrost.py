@@ -35,11 +35,23 @@
 #  E.g., _bf.bfRingSequenceGetName(<BFspan>) [should be <BFsequence>]
 
 import ctypes
+from typing import NewType
 import bifrost.libbifrost_generated as _bf
 bf = _bf # Public access to library
 
 from bifrost import telemetry
 telemetry.track_module()
+
+# Typing helpers
+
+#: Type for Bifrost return codes
+BFstatusT = NewType('BFstatus', int)
+
+#: Type for Bifrost memory spaces
+BFspaceT = NewType('BFspace', int)
+
+#: Type for Bifrost data types
+BFdtypeT = NewType('BFdtype', int)
 
 # Internal helpers below
 

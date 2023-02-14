@@ -29,12 +29,15 @@ from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
 import ctypes
 from socket import AF_UNSPEC
+from typing import NewVar, Optional
 
 from bifrost import telemetry
 telemetry.track_module()
 
+AFfamily = NewVar('AFfamily', int)
+
 class Address(BifrostObject):
-    def __init__(self, address, port, family=None):
+    def __init__(self, address: str, port: int, family: Optional[AFfamily]=None):
         address = address.encode()
         assert(isinstance(port, int))
         if family is None:
@@ -43,19 +46,19 @@ class Address(BifrostObject):
             self, _bf.bfAddressCreate, _bf.bfAddressDestroy,
             address, port, family)
     @property
-    def family(self):
+    def family(self) -> int:
         return _get(_bf.bfAddressGetFamily, self.obj)
     @property
-    def port(self):
+    def port(self) -> int:
         return _get(_bf.bfAddressGetPort, self.obj)
     @property
-    def mtu(self):
+    def mtu(self) -> int:
         return _get(_bf.bfAddressGetMTU, self.obj)
     @property
-    def address(self):
+    def address(self) -> str:
         buflen = 128
         buf = ctypes.create_string_buffer(buflen)
         _check(_bf.bfAddressGetString(self.obj, buflen, buf))
         return buf.value.decode()
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.address}:{self.port}"

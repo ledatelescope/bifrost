@@ -26,16 +26,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from bifrost.libbifrost import _bf, _check, _get, _array
+from bifrost.libbifrost import _bf, _check, _get, _array, BFstatusT
+
+from typing import List
 
 from bifrost import telemetry
 telemetry.track_module()
 
-def get_core():
+def get_core() -> int:
     return _get(_bf.bfAffinityGetCore)
-def set_core(core):
+def set_core(core: int) -> BFstatusT:
     _check(_bf.bfAffinitySetCore(core))
-def set_openmp_cores(cores):
+def set_openmp_cores(cores: List[int]) -> BFstatusT:
     # PYCLIBRARY ISSUE
     # TODO: Would be really nice to be able to directly pass
     #         a list here instead of needing to specify _array+type.
