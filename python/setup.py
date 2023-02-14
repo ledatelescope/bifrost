@@ -72,4 +72,4 @@ setup(name='bifrost',
           "matplotlib"
       ],
       ext_package='bifrost',
-      ext_modules = []])
+      ext_modules = [])
