@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,12 +29,6 @@
 This file contains blocks specific to LEDA-OVRO.
 """
 
-# Python2 compatibility
-from __future__ import print_function
-import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 import os
 import bandfiles
 import bifrost
@@ -120,7 +114,7 @@ class DadaReadBlock(object):
 
           print("Opening", f.name)
 
-          with open(f.name,'rb') as ifile:
+          with open(f.name, 'rb') as ifile:
             ifile.read(self.HEADER_SIZE)
 
             ohdr["cfreq"] = f.freq
