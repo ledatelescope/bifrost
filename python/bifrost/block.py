@@ -910,8 +910,8 @@ class NumpyBlock(MultiTransformBlock):
             @param[in] outputs The number of output rings and the number of output
                 numpy arrays from the function."""
         super(NumpyBlock, self).__init__()
-        self.inputs = ['in_%d' % (i + 1) for i in range(inputs)]
-        self.outputs = ['out_%d' % (i + 1) for i in range(outputs)]
+        self.inputs = [f"in_{i + 1}" for i in range(inputs)]
+        self.outputs = [f"out_{i + 1}" for i in range(outputs)]
         self.ring_names = {}
         self.create_ring_names()
         self.function = function
@@ -1061,9 +1061,9 @@ class NumpySourceBlock(MultiTransformBlock):
         if self.grab_headers:
             self.load_user_headers(headers, arrays)
 
-        for outspans in self.write(*['out_%d' % (i + 1) for i in range(len(self.ring_names))]):
+        for outspans in self.write(*[f"out_{i + 1}" for i in range(len(self.ring_names))]):
             for i in range(len(self.ring_names)):
-                dtype = self.header['out_%d' % (i + 1)]['dtype']
+                dtype = self.header[f"out_{i + 1}"]['dtype']
                 outspans[i][:] = arrays[i].astype(np.dtype(dtype).type).ravel()
 
             try:

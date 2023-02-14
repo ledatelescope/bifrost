@@ -183,8 +183,8 @@ def write_header(hdr, f):
         elif key in _character_values:
             _header_write(f, key, int(val), fmt='=b')
         else:
-            #raise KeyError("Unknown sigproc header key: %s"%key)
-            warnings.warn("Unknown sigproc header key: '%s'" % key, RuntimeWarning)
+            #raise KeyError(f"Unknown sigproc header key: {key}")
+            warnings.warn(f"Unknown sigproc header key: '{key}'", RuntimeWarning)
     _header_write_string(f, "HEADER_END")
 
 def _read_header(f):
@@ -211,7 +211,7 @@ def _read_header(f):
             header[expecting] = key
             expecting = None
         else:
-            warnings.warn("Unknown header key: '%s'" % key, RuntimeWarning)
+            warnings.warn(f"Unknown header key: '{key}'", RuntimeWarning)
     if 'nchans' not in header:
         header['nchans'] = 1
     header['header_size'] = f.tell()
@@ -252,7 +252,7 @@ def unpack(data, nbit):
         x = x << 7 # Shift into high bits to induce sign-extension
         return x.view(data.dtype) >> 7
     else:
-        raise ValueError("unpack: unexpected nbit! (%i)" % nbit)
+        raise ValueError(f"unpack: unexpected nbit! ({nbit})")
 
 # TODO: Add support for writing
 #       Add support for data_type != filterbank
@@ -374,11 +374,11 @@ class SigprocFile(object):
     def __str__(self):
         hmod = self.header.copy()
         d = hmod['data_type']
-        hmod['data_type'] = "%i (%s)" % (d, _data_types[d])
+        hmod['data_type'] = f"{d} ({_data_types[d]})"
         t = hmod['telescope_id']
-        hmod['telescope_id'] = "%i (%s)" % (t, _telescopes[t])
+        hmod['telescope_id'] = f"{t} ({_telescopes[t]})"
         m = hmod['machine_id']
-        hmod['machine_id']   = "%i (%s)" % (m, _machines[m])
+        hmod['machine_id']   = f"{m} ({_machines[m]})"
         return '\n'.join(['% 16s: %s' % (key, val)
                           for (key, val) in hmod.items()])
     def __getitem__(self, key):

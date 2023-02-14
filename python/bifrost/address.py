@@ -58,4 +58,4 @@ class Address(BifrostObject):
         _check(_bf.bfAddressGetString(self.obj, buflen, buf))
         return buf.value.decode()
     def __str__(self):
-        return "%s:%i" % (self.address, self.port)
+        return f"{self.address}:{self.port}"

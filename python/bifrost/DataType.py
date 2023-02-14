@@ -149,10 +149,10 @@ class DataType(object):
                 self._veclen = t.shape[0]
                 t = t.base
             else:
-                raise TypeError("Unsupported Numpy dtype: " + str(t))
+                raise TypeError(f"Unsupported Numpy dtype: {t}")
             self._nbit = t.itemsize * 8
             if t.kind not in set(['i', 'u', 'f', 'c', 'V', 'b']):
-                raise TypeError('Unsupported data type: %s' % str(t))
+                raise TypeError(f"Unsupported data type: {t}")
             if is_vector_structure(t): # Field structure representing vector
                 self._veclen = len(t.names)
                 t = t[0]
@@ -167,7 +167,7 @@ class DataType(object):
                 elif t in [cf16]:
                     self._kind = 'cf'
                 else:
-                    raise TypeError('Unsupported data type: %s' % str(t))
+                    raise TypeError(f"Unsupported data type: {t}")
             elif t.kind == 'b':
                 # Note: Represents booleans as uint8 inside Bifrost
                 self._kind = 'u'
@@ -193,9 +193,9 @@ class DataType(object):
             return np.dtype(','.join((str(base),)*self._veclen))
     def __str__(self):
         if self._veclen == 1:
-            return '%s%i' % (self._kind, self._nbit)
+            return f"{self._kind}{self._nbit}"
         else:
-            return '%s%i[%i]' % (self._kind, self._nbit, self._veclen)
+            return f"{self._kind}{self._nbit}[{self._veclen}]"
     @property
     def is_complex(self):
         return self._kind[0] == 'c'

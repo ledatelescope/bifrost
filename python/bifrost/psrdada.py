@@ -56,7 +56,7 @@ class MultiLog(object):
     count = 0
     def __init__(self, name=None):
         if name is None:
-            name = "MultiLog%i" % MultiLog.count
+            name = f"MultiLog{MultiLog.count}"
             MultiLog.count += 1
         self.obj = _dada.multilog_open(name, '\0')
     def __del__(self):
@@ -211,25 +211,25 @@ class Hdu(object):
         self.buffer_key = buffer_key
         _dada.dada_hdu_set_key(self.hdu, self.buffer_key)
         if _dada.dada_hdu_connect(self.hdu) < 0:
-            raise IOError("Could not connect to buffer '%x'" % self.buffer_key)
+            raise IOError(f"Could not connect to buffer '{self.buffer_key:x}'")
     def _disconnect(self):
         if _dada.dada_hdu_disconnect(self.hdu) < 0:
-            raise IOError("Could not disconnect from buffer '%x'" % self.buffer_key)
+            raise IOError(f"Could not disconnect from buffer '{self.buffer_key:x}'")
     def _lock(self, mode):
         self.mode = mode
         if mode == 'read':
             if _dada.dada_hdu_lock_read(self.hdu) < 0:
-                raise IOError("Could not lock buffer '%x' for reading" % self.buffer_key)
+                raise IOError(f"Could not lock buffer '{self.buffer_key:x}' for reading")
         else:
             if _dada.dada_hdu_lock_write(self.hdu) < 0:
-                raise IOError("Could not lock buffer '%x' for writing" % self.buffer_key)
+                raise IOError(f"Could not lock buffer '{self.buffer_key:x}' for writing")
     def _unlock(self):
         if self.mode == 'read':
             if _dada.dada_hdu_unlock_read(self.hdu) < 0:
-                raise IOError("Could not unlock buffer '%x' for reading" % self.buffer_key)
+                raise IOError(f"Could not unlock buffer '{self.buffer_key:x}' for reading")
         else:
             if _dada.dada_hdu_unlock_write(self.hdu) < 0:
-                raise IOError("Could not unlock buffer '%x' for writing" % self.buffer_key)
+                raise IOError(f"Could not unlock buffer '{self.buffer_key:x}' for writing")
     def relock(self):
         self._unlock()
         self._lock(self.mode)

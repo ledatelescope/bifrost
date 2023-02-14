@@ -169,8 +169,8 @@ def _write_header(hdr, file_object):
         elif key == "header_size":
             pass
         else:
-            #raise KeyError("Unknown sigproc header key: %s"%key)
-            warnings.warn("Unknown sigproc header key: '%s'" % key, RuntimeWarning)
+            #raise KeyError(f"Unknown sigproc header key: {key}")
+            warnings.warn(f"Unknown sigproc header key: '{key}'", RuntimeWarning)
     _header_write_string(file_object, "HEADER_END")
 
 def _read_header(file_object):
@@ -199,7 +199,7 @@ def _read_header(file_object):
             header[expecting] = key
             expecting = None
         else:
-            warnings.warn("Unknown header key: '%s'" % key, RuntimeWarning)
+            warnings.warn(f"Unknown header key: '{key}'", RuntimeWarning)
     if 'nchans' not in header:
         header['nchans'] = 1
     header['header_size'] = file_object.tell()
@@ -231,7 +231,7 @@ def seek_to_data(file_object):
             header[expecting] = key
             expecting = None
         else:
-            warnings.warn("Unknown header key: '%s'" % key, RuntimeWarning)
+            warnings.warn(f"Unknown header key: '{key}'", RuntimeWarning)
     return
 
 def pack(data, nbit):

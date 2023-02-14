@@ -89,7 +89,7 @@ def numpy2bifrost(dtype):
     elif dtype == np.complex128: return _bf.BF_DTYPE_CF64
     elif dtype == np.complex256 \
          and BF_FLOAT128_ENABLED: return _bf.BF_DTYPE_CF128
-    else: raise ValueError("Unsupported dtype: " + str(dtype))
+    else: raise ValueError(f"Unsupported dtype: {dtype}")
 
 def name_nbit2numpy(name, nbit):
     if   name == 'i':
@@ -97,19 +97,19 @@ def name_nbit2numpy(name, nbit):
         elif nbit == 16:  return np.int16
         elif nbit == 32:  return np.int32
         elif nbit == 64:  return np.int64
-        else: raise TypeError("Invalid signed integer type size: %i" % nbit)
+        else: raise TypeError(f"Invalid signed integer type size: {nbit}")
     elif name == 'u':
         if   nbit == 8:   return np.uint8
         elif nbit == 16:  return np.uint16
         elif nbit == 32:  return np.uint32
         elif nbit == 64:  return np.uint64
-        else: raise TypeError("Invalid unsigned integer type size: %i" % nbit)
+        else: raise TypeError(f"Invalid unsigned integer type size: {nbit}")
     elif name == 'f':
         if   nbit == 16:  return np.float16
         elif nbit == 32:  return np.float32
         elif nbit == 64:  return np.float64
         elif nbit == 128: return np.float128
-        else: raise TypeError("Invalid floating-point type size: %i" % nbit)
+        else: raise TypeError(f"Invalid floating-point type size: {nbit}")
     elif name == 'ci':
         if   nbit == 8:   return ci8
         elif nbit == 16:  return ci16
@@ -122,10 +122,9 @@ def name_nbit2numpy(name, nbit):
         elif nbit == 32:  return np.complex64
         elif nbit == 64:  return np.complex128
         elif nbit == 128: return np.complex256
-        else: raise TypeError("Invalid complex floating-point type size: %i" %
-                              nbit)
+        else: raise TypeError(f"Invalid complex floating-point type size: {nbit}")
     else:
-        raise TypeError("Invalid type name: " + name)
+        raise TypeError(f"Invalid type name: {name}")
 def string2numpy(dtype_str):
     return name_nbit2numpy(*split_name_nbit(dtype_str))
 
@@ -145,7 +144,7 @@ def numpy2string(dtype):
     elif dtype == np.complex64:  return 'cf32'
     elif dtype == np.complex128: return 'cf64'
     elif dtype == np.complex256: return 'cf128'
-    else: raise TypeError("Unsupported dtype: " + str(dtype))
+    else: raise TypeError(f"Unsupported dtype: {dtype}")
 
 def bifrost2string(dtype):
     """ Convert bifrost BF_DTYPE integer code to ndarray string """

@@ -90,7 +90,7 @@ class BlockScope(object):
                  share_temp_storage=False,
                  fuse=False):
         if name is None:
-            name = 'BlockScope_%i' % BlockScope.instance_count
+            name = f"BlockScope_{BlockScope.instance_count}"
             BlockScope.instance_count += 1
         self._name = name
         self._gulp_nframe   = gulp_nframe
@@ -120,7 +120,7 @@ class BlockScope(object):
     def __getattr__(self, name):
         # Use child's value if set, othersize defer to parent
         if '_'+name not in self.__dict__:
-            raise AttributeError("'%s' object has no attribute '%s'" % (self.__class__, name))
+            raise AttributeError(f"'{self.__class__}' object has no attribute '{name}'")
         self_value = getattr(self, '_' + name)
         if self_value is not None:
             return self_value
@@ -163,9 +163,9 @@ class BlockScope(object):
         #graph_attr = {'label': self._name}
         graph_attr = {}
         if parent_graph is None:
-            g = Digraph('cluster_' + self._name, graph_attr=graph_attr)
+            g = Digraph(f"cluster_{self._name}", graph_attr=graph_attr)
         else:
-            g = parent_graph.subgraph('cluster_' + self._name,
+            g = parent_graph.subgraph(f"cluster_{self.name}",
                                       label=self._name)
         for child in self._children:
             if isinstance(child, Block):
@@ -221,7 +221,7 @@ class Pipeline(BlockScope):
     instance_count = 0
     def __init__(self, name=None, **kwargs):
         if name is None:
-            name = 'Pipeline_%i' % Pipeline.instance_count
+            name = f"Pipeline_{Pipeline.instance_count}"
             Pipeline.instance_count += 1
         super(Pipeline, self).__init__(name=name, **kwargs)
         self.blocks = []
@@ -240,7 +240,7 @@ class Pipeline(BlockScope):
             if not init_succeeded:
                 self.shutdown()
                 raise PipelineInitError(
-                    "The following block failed to initialize: " + block.name)
+                    f"The following block failed to initialize: {block.name}")
         # Tell blocks that they can begin data processing
         self.all_blocks_finished_initializing_event.set()
     def run(self):
@@ -264,7 +264,7 @@ class Pipeline(BlockScope):
         join_all(self.threads, timeout=self.shutdown_timeout)
         for thread in self.threads:
             if thread.is_alive():
-                warnings.warn("Thread %s did not shut down on time and will be killed" % thread.name, RuntimeWarning)
+                warnings.warn(f"Thread {thread.name} did not shut down on time and will be killed", RuntimeWarning)
     def shutdown_on_signals(self, signals=None):
         if signals is None:
             signals = [signal.SIGHUP,
@@ -325,7 +325,7 @@ class Block(BlockScope):
                  type_=None,
                  **kwargs):
         self.type = type_ or self.__class__.__name__
-        self.name = name or '%s_%i' % (self.type, Block.instance_counts[self.type])
+        self.name = name or f"{self.type}_{Block.instance_counts[self.type]}"
         Block.instance_counts[self.type] += 1
         super(Block, self).__init__(**kwargs)
         self.pipeline = get_default_pipeline()
@@ -346,7 +346,7 @@ class Block(BlockScope):
 
         rnames = {'nring': len(self.irings)}
         for i, r in enumerate(self.irings):
-            rnames['ring%i' % i] = r.name
+            rnames[f"ring{i}"] = r.name
         self.in_proclog.update(rnames)
         self.init_trace = ''.join(traceback.format_stack()[:-1])
     def shutdown(self):
@@ -445,7 +445,7 @@ class SourceBlock(Block):
 
         rnames = {'nring': len(self.orings)}
         for i, r in enumerate(self.orings):
-            rnames['ring%i' % i] = r.name
+            rnames[f"ring{i}"] = r.name
         self.out_proclog.update(rnames)
 
     def main(self, orings):
@@ -458,7 +458,7 @@ class SourceBlock(Block):
                     if 'time_tag' not in ohdr:
                         ohdr['time_tag'] = self._seq_count
                     if 'name' not in ohdr:
-                        ohdr['name'] = 'unnamed-sequence-%i' % self._seq_count
+                        ohdr['name'] = f"unnamed-sequence-{self._seq_count}"
                 self._seq_count += 1
                 with ExitStack() as oseq_stack:
                     oseqs, ogulp_overlaps = self.begin_sequences(
@@ -522,13 +522,13 @@ class MultiTransformBlock(Block):
                        for iring in self.irings]
         self._seq_count = 0
         self.perf_proclog = ProcLog(self.name + "/perf")
-        self.sequence_proclogs = [ProcLog(self.name + "/sequence%i" % i)
+        self.sequence_proclogs = [ProcLog(self.name + f"/sequence{i}")
                                   for i in range(len(self.irings))]
         self.out_proclog = ProcLog(self.name + "/out")
 
         rnames = {'nring': len(self.orings)}
         for i, r in enumerate(self.orings):
-            rnames['ring%i' % i] = r.name
+            rnames[f"ring{i}"] = r.name
         self.out_proclog.update(rnames)
 
     def main(self, orings):

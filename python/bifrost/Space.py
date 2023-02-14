@@ -47,7 +47,7 @@ class Space(object):
         if isinstance(s, str):
             if s not in set(['auto', 'system',
                              'cuda', 'cuda_host', 'cuda_managed']):
-                raise ValueError('Invalid space: %s' % s)
+                raise ValueError(f"Invalid space: '{s}'")
             self._space = s
         elif isinstance(s, _bf.BFspace) or isinstance(s, int):
             if s not in SPACEMAP_TO_STR:
@@ -55,7 +55,7 @@ class Space(object):
                                ". Valid spaces: " + str(SPACEMAP_TO_STR.keys()))
             self._space = SPACEMAP_TO_STR[s]
         else:
-            raise ValueError('%s is not a space' % s)
+            raise ValueError(f"'{s}' is not a space")
     def as_BFspace(self):
             return SPACEMAP_FROM_STR[self._space]
     def __str__(self):

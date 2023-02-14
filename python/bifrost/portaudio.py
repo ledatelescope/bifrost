@@ -239,7 +239,7 @@ def get_device_count():
 if __name__ == "__main__":
     import portaudio as audio
     import numpy as np
-    print("Found %i audio devices" % audio.get_device_count())
+    print(f"Found {audio.get_device_count()} audio devices")
     with audio.open(nbits=16) as audio_stream:
         nframe = 20
         print(repr(audio_stream.read(nframe).raw))

@@ -111,7 +111,7 @@ def load_by_pid(pid, include_rings=False):
     # Make sure we have a directory to load from
     baseDir = os.path.join(PROCLOG_DIR, str(pid))
     if not os.path.isdir(baseDir):
-        raise RuntimeError("Cannot find log directory associated with PID %s" % pid)
+        raise RuntimeError(f"Cannot find log directory associated with PID {pid}")
 
     # Load
     contents = {}
