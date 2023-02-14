@@ -79,11 +79,11 @@ def get_transmit_receive():
             except KeyError:
                 good, missing, invalid, late, nvalid = 0, 0, 0, 0, 0
 
-            blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 
-                                          'time':t, 
-                                          'good': good, 'missing': missing, 
-                                          'invalid': invalid, 'late': late, 
-                                          'nvalid': nvalid}
+            blockList[f"{pid}-{block}"] = {'pid': pid, 'name':block, 
+                                           'time':t, 
+                                           'good': good, 'missing': missing, 
+                                           'invalid': invalid, 'late': late, 
+                                           'nvalid': nvalid}
     return blockList
 
 
@@ -97,7 +97,7 @@ def get_command_line(pid):
     cmd = ''
 
     try:
-        with open('/proc/%i/cmdline' % pid, 'r') as fh:
+        with open(f"/proc/{pid}/cmdline", 'r') as fh:
             cmd = fh.read()
             cmd = cmd.replace('\0', ' ')
     except IOError:
@@ -412,4 +412,3 @@ if __name__ == "__main__":
         )
     args = parser.parse_args()
     main(args)
-    

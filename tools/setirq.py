@@ -70,7 +70,7 @@ def main(args):
             mi = procs.index(mv)
             irqs[irq] = {'cpu':mi, 'type':type, 'name':name, 'count':mv}
 
-    print("Interface: %s" % args.interface)
+    print(f"Interface: {args.interface}")
     print("%4s  %16s  %16s  %7s  %7s" % ('IRQ', 'Name', 'Type', 'Old CPU', 'New CPU')  )
     for i,irq in enumerate(sorted(irqs.keys())):
         oCPU = irqs[irq]['cpu']
@@ -93,4 +93,3 @@ if __name__ == "__main__":
                         help='CPU to bind to')
     args = parser.parse_args()
     main(args)
-    

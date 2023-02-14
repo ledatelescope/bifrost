@@ -62,7 +62,7 @@ def get_process_details(pid):
 
     data = {'user':'', 'cpu':0.0, 'mem':0.0, 'etime':'00:00', 'threads':0}
     try:
-        output = subprocess.check_output('ps o user,pcpu,pmem,etime,nlwp %i' % pid, shell=True)
+        output = subprocess.check_output(f"ps o user,pcpu,pmem,etime,nlwp {pid}", shell=True)
         output = output.decode()
         output = output.split('\n')[1]
         fields = output.split(None, 4)
@@ -86,7 +86,7 @@ def get_command_line(pid):
     cmd = ''
 
     try:
-        with open('/proc/%i/cmdline' % pid, 'r') as fh:
+        with open(f"/proc/{pid}/cmdline", 'r') as fh:
             cmd = fh.read()
             cmd = cmd.replace('\0', ' ')
     except IOError:
@@ -198,4 +198,3 @@ if __name__ == "__main__":
         )
     args = parser.parse_args()
     main(args)
-    

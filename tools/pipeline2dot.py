@@ -62,10 +62,8 @@ def get_process_details(pid):
 
     data = {'user':'', 'cpu':0.0, 'mem':0.0, 'etime':'00:00', 'threads':0}
     try:
-        output = subprocess.check_output('ps o user,pcpu,pmem,etime,nlwp %i' % pid, shell=True)
-        if sys.version_info.major > 2 and isinstance(output, bytes):
-            # decode the output to utf-8 in python 3
-            output = output.decode("utf-8")
+        output = subprocess.check_output(f"ps o user,pcpu,pmem,etime,nlwp {pid}", shell=True)
+        output = output.decode()
         output = output.split('\n')[1]
         fields = output.split(None, 4)
         data['user'] = fields[0]
@@ -88,7 +86,7 @@ def get_command_line(pid):
     cmd = ''
 
     try:
-        with open('/proc/%i/cmdline' % pid, 'r') as fh:
+        with open(f"/proc/{pid}/cmdline", 'r') as fh:
             cmd = fh.read()
             cmd = cmd.replace('\0', ' ')
     except IOError:
@@ -166,7 +164,7 @@ def get_data_flows(blocks):
                                 if blocks[other_block][log]['complex']:
                                     bits *= 2
                                 name = 'cplx' if  blocks[other_block][log]['complex'] else 'real'
-                                dtype = '%s%i' % (name, bits)
+                                dtype = f"{name}{bits}"
                             except KeyError:
                                 pass
                         elif log not in ('in', 'out'):
@@ -194,7 +192,7 @@ def get_data_flows(blocks):
         refCores = []
         for i in range(32):
             try:
-                refCores.append( blocks[block]['bind']['core%i' % i] )
+                refCores.append( blocks[block]['bind'][f"core{i}"] )
             except KeyError:
                 break
 
@@ -208,7 +206,7 @@ def get_data_flows(blocks):
             other_cores = []
             for i in range(32):
                 try:
-                    other_cores.append( blocks[other_block]['bind']['core%i' % i] )
+                    other_cores.append( blocks[other_block]['bind'][f"core{i}"] )
                 except KeyError:
                     break
 
@@ -349,4 +347,3 @@ if __name__ == "__main__":
                         help='exclude associated blocks')
     args = parser.parse_args()
     main(args)
-    

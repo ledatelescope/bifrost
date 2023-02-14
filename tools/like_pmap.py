@@ -86,8 +86,8 @@ def main(args):
         
     # Load in the NUMA map page for this process
     try:
-        fh = open('/proc/%i/numa_maps' % args.pid, 'r')
-        numaInfo = fh.read()
+        with open(f"/proc/{pid}/numa_maps", 'r') as fh:
+            numaInfo = fh.read()
     except IOError:
         raise RuntimeError("Cannot find NUMA memory info for PID: %i" % args.pid)
         
@@ -262,4 +262,3 @@ if __name__ == "__main__":
                         help='process ID')
     args = parser.parse_args()
     main(args)
-    

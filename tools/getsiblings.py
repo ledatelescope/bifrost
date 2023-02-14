@@ -76,4 +76,3 @@ if __name__ == '__main__':
                         help='core to query')
     args = parser.parse_args()
     main(args)
-    

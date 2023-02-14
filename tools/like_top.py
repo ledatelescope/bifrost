@@ -216,7 +216,7 @@ def get_command_line(pid):
 
     cmd = ''
     try:
-        with open('/proc/%i/cmdline' % pid, 'r') as fh:
+        with open(f"/proc/{pid}/cmdline", 'r') as fh:
             cmd = fh.read()
             cmd = cmd.replace('\0', ' ')
     except IOError:
@@ -332,7 +332,7 @@ def main(args):
                         except KeyError:
                             ac, pr, re = 0.0, 0.0, 0.0
 
-                        blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re, 'total':ac+pr+re}
+                        blockList[f"{pid}-{block}"] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re, 'total':ac+pr+re}
 
                 ## Sort
                 order = sorted(blockList, key=lambda x: blockList[x][sort_key], reverse=sort_rev)
@@ -438,4 +438,3 @@ if __name__ == "__main__":
         )
     args = parser.parse_args()
     main(args)
-    
