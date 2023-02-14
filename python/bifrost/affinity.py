@@ -35,9 +35,9 @@ telemetry.track_module()
 
 def get_core() -> int:
     return _get(_bf.bfAffinityGetCore)
-def set_core(core: int) -> BFstatusT:
+def set_core(core: int) -> None:
     _check(_bf.bfAffinitySetCore(core))
-def set_openmp_cores(cores: List[int]) -> BFstatusT:
+def set_openmp_cores(cores: List[int]) -> None:
     # PYCLIBRARY ISSUE
     # TODO: Would be really nice to be able to directly pass
     #         a list here instead of needing to specify _array+type.

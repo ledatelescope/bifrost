@@ -34,10 +34,10 @@ from typing import NewType, Optional
 from bifrost import telemetry
 telemetry.track_module()
 
-AFfamily = NewType('AFfamily', int)
+AFfamilyT = NewType('AFfamilyT', int)
 
 class Address(BifrostObject):
-    def __init__(self, address: str, port: int, family: Optional[AFfamily]=None):
+    def __init__(self, address: str, port: int, family: Optional[AFfamilyT]=None):
         address = address.encode()
         assert(isinstance(port, int))
         if family is None:
