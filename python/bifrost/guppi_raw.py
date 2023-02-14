@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -54,9 +54,6 @@ Binary data:
 
 """
 
-# Python2 compatibility
-from __future__ import division
-
 from bifrost import telemetry
 telemetry.track_module()
 
@@ -70,12 +67,8 @@ def read_header(f):
         if len(record) < RECORD_LEN:
             raise IOError("EOF reached in middle of header")
 
-        try:
-            record = record.decode()
-        except AttributeError:
-            # Python2 catch
-            pass
-        if record.startswith(b'END'):
+        record = record.decode()
+        if record.startswith('END'):
             break
         key, val = record.split('=', 1)
         key, val = key.strip(), val.strip()

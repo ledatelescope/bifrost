@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,12 +36,6 @@ TODO: Some calls result in segfault with space=cuda (e.g., __getitem__
 
 """
 
-# Python2 compatibility
-from __future__ import absolute_import
-import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 import ctypes
 import numpy as np
 from bifrost.memory import raw_malloc, raw_free, raw_get_space, space_accessible
@@ -51,11 +45,6 @@ from bifrost.dtype import bifrost2string
 from bifrost.DataType import DataType
 from bifrost.Space import Space
 from bifrost.libbifrost_generated import struct_BFarray_
-
-try:
-    from bifrost._pypy3_compat import PyMemoryView_FromMemory
-except ImportError:
-    pass
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -75,23 +64,11 @@ def _address_as_buffer(address, nbyte, readonly=False):
     # Note: This works as a buffer in regular python and pypy
     # Note: int_asbuffer is undocumented; see here:
     # https://mail.scipy.org/pipermail/numpy-discussion/2008-January/030938.html
-    try:
-        int_asbuffer = ctypes.pythonapi.PyMemoryView_FromMemory
-        int_asbuffer.restype = ctypes.py_object
-        int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
-        return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
-    except AttributeError:
-        try:
-            # Python2 catch
-            return np.core.multiarray.int_asbuffer(address,
-                                                   nbyte,
-                                                   readonly=readonly,
-                                                   check=False)
-        except AttributeError:
-            # PyPy3 catch
-            int_asbuffer = PyMemoryView_FromMemory
-            return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
-
+    int_asbuffer = ctypes.pythonapi.PyMemoryView_FromMemory
+    int_asbuffer.restype = ctypes.py_object
+    int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
+    return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
+        
 def asarray(arr, space=None):
     if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
         return arr

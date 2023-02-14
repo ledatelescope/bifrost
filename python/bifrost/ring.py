@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,9 +26,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import print_function, absolute_import
-
 from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string, EndOfDataStop
 #from GPUArray import GPUArray
 from bifrost.DataType import DataType
@@ -52,16 +49,11 @@ class Ring(BifrostObject):
         if name is None:
             name = str(uuid4())
         name = _slugify(name)
-        try:
-            name = name.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
         space = _string2space(space)
         #self.obj = None
         #self.obj = _get(_bf.bfRingCreate(name=name, space=space), retarg=0)
         BifrostObject.__init__(
-            self, _bf.bfRingCreate, _bf.bfRingDestroy, name, space)
+            self, _bf.bfRingCreate, _bf.bfRingDestroy, name.encode(), space)
         if core is not None:
             try:
                 _check( _bf.bfRingSetAffinity(self.obj, 
@@ -208,24 +200,15 @@ class WriteSequence(SequenceBase):
         if isinstance(header, np.ndarray):
             header = header.ctypes.data
         elif isinstance(header, str):
-            try:
-                header = header.encode()
-            except AttributeError:
-                # Python2 catch
-                pass
+            header = header.encode()
         #print("hdr:", header_size, type(header))
         name = str(name)
         offset_from_head = 0
         self.obj = _bf.BFwsequence()
-        try:
-            name = name.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
         _check(_bf.bfRingSequenceBegin(
             self.obj,
             ring.obj,
-            name,
+            name.encode(),
             time_tag,
             header_size,
             header,

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -51,8 +51,6 @@ refdm:         0.0 [pc/cm^3]
 period:        <delete>
 data:          [time][pol][nbit] (General case: [time][if/pol][chan][nbit])
 """
-
-from __future__ import print_function
 
 import struct
 import warnings
@@ -134,12 +132,7 @@ def _header_write_string(file_object, key):
     """Writes a single key name to the header,
     which will be followed by the value"""
     file_object.write(struct.pack('=i', len(key)))
-    try:
-        key = key.encode()
-    except AttributeError:
-        # Catch for Python2
-        pass
-    file_object.write(key)
+    file_object.write(key.encode())
 
 def _header_write_value(file_object, key, value):
     """Writes a single parameter value to the header"""
@@ -160,12 +153,7 @@ def _header_read_one_parameter(file_object):
     if length <= 0 or length >= 80:
         return None
     s = file_object.read(length)
-    try:
-        s = s.decode()
-    except AttributeError:
-        # Python2 catch
-        pass
-    return s
+    return s.decode()
 
 def _write_header(hdr, file_object):
     """write the entire header to the current position of a file"""

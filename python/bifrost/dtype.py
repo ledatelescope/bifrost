@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -40,9 +40,6 @@ ci4:  4+4-bit complex signed integer
 cf32: 32+32-bit complex floating point
 
 """
-
-# Python2 compatibility
-from __future__ import absolute_import
 
 from bifrost.libbifrost import _bf
 from bifrost.libbifrost_generated import BF_FLOAT128_ENABLED

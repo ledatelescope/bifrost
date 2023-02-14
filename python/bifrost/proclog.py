@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,12 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import print_function, absolute_import
-import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 from bifrost.libbifrost import _bf, _check, BifrostObject
 
 import os
@@ -43,13 +37,8 @@ PROCLOG_DIR = _bf.BF_PROCLOG_DIR
 
 class ProcLog(BifrostObject):
     def __init__(self, name):
-        try:
-            name = name.encode('utf-8')
-        except AttributeError:
-            # Python2 catch
-            pass
         BifrostObject.__init__(
-            self, _bf.bfProcLogCreate, _bf.bfProcLogDestroy, name)
+            self, _bf.bfProcLogCreate, _bf.bfProcLogDestroy, name.encode())
     def update(self, contents):
         """Updates (replaces) the contents of the log
         contents: string or dict containing data to write to the log
@@ -59,12 +48,7 @@ class ProcLog(BifrostObject):
         if isinstance(contents, dict):
             contents = '\n'.join(['%s : %s' % item
                                   for item in contents.items()])
-        try:
-            contents = contents.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
-        _check(_bf.bfProcLogUpdate(self.obj, contents))
+        _check(_bf.bfProcLogUpdate(self.obj, contents.encode()))
 
 def _multi_convert(value):
     """

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -38,8 +38,6 @@ LT_INIT
 lib_LTLIBRARIES = libpsrdada.la
 libtest_la_LDFLAGS = -version-info 0:0:0
 """
-
-from __future__ import absolute_import, print_function
 
 import bifrost.libpsrdada_generated as _dada
 import numpy as np

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,9 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-
 from ctypes import c_ulong, pointer as c_pointer
 from bifrost.libbifrost import _bf, _check, _get
 
@@ -38,12 +35,7 @@ def set_device(device):
     if isinstance(device, int):
         _check(_bf.bfDeviceSet(device))
     else:
-        try:
-            device = device.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
-        _check(_bf.bfDeviceSetById(device))
+        _check(_bf.bfDeviceSetById(device.encode()))
 
 def get_device():
     return _get(_bf.bfDeviceGet)

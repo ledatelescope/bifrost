@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -52,8 +52,6 @@ data:          [time][pol][nbit] (General case: [time][if/pol][chan][nbit])
 
 # See here for details of the different data formats:
 #   https://github.com/SixByNine/sigproc
-
-from __future__ import print_function, division
 
 import struct
 import warnings
@@ -147,12 +145,7 @@ def machine2id(name):
 
 def _header_write_string(f, key):
     f.write(struct.pack('=i', len(key)))
-    try:
-        key = key.encode('ascii')
-    except AttributeError:
-        # Catch for Python2
-        pass
-    f.write(key)
+    f.write(key.encode())
 def _header_write(f, key, value, fmt=None):
     if fmt is not None:
         pass
@@ -172,12 +165,7 @@ def _header_read(f):
     if length < 0 or length >= 80:
         return None
     s = f.read(length)
-    try:
-        s = s.decode()
-    except AttributeError:
-        # Python2 catch
-        pass
-    return s
+    return s.decode()
 
 def write_header(hdr, f):
     _header_write_string(f, "HEADER_START")

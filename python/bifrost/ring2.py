@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,8 +27,6 @@
 
 # TODO: Some of this code has gotten a bit hacky
 #         Also consider merging some of the logic into the backend
-
-from __future__ import print_function, absolute_import
 
 from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space, EndOfDataStop
 from bifrost.DataType import DataType
@@ -91,13 +89,8 @@ class Ring(BifrostObject):
             name = 'ring_%i' % Ring.instance_count
             Ring.instance_count += 1
         name = _slugify(name)
-        try:
-            name = name.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
         BifrostObject.__init__(self, _bf.bfRingCreate, _bf.bfRingDestroy,
-                               name, _string2space(self.space))
+                               name.encode(), _string2space(self.space))
         if core is not None:
             try:
                 _check( _bf.bfRingSetAffinity(self.obj, 
@@ -122,12 +115,7 @@ class Ring(BifrostObject):
     @property
     def name(self):
         n = _get(_bf.bfRingGetName, self.obj)
-        try:
-            n = n.decode()
-        except AttributeError:
-            # Python2 catch
-            pass
-        return n
+        return n.decode()
     @property
     def core(self):
         return _get(_bf.bfRingGetAffinity, self.obj)
@@ -212,11 +200,7 @@ class SequenceBase(object):
         nringlet       = reduce(lambda x, y: x * y, ringlet_shape, 1)
         frame_nelement = reduce(lambda x, y: x * y, frame_shape,   1)
         dtype = header['_tensor']['dtype']
-        try:
-            dtype = dtype.decode()
-        except AttributeError:
-            # Python2 catch
-            pass
+        dtype = dtype.decode()
         nbit = DataType(dtype).itemsize_bits
         assert(nbit % 8 == 0)
         frame_nbyte = frame_nelement * nbit // 8
@@ -260,13 +244,8 @@ class WriteSequence(SequenceBase):
         offset_from_head = 0
         # TODO: How to allow time_tag to be optional? Probably need to plumb support through to backend.
         self.obj = _bf.BFwsequence()
-        try:
-            hname = header['name'].encode()
-            hstr = header_str.encode()
-        except AttributeError:
-            # Python2 catch
-            hname = header['name']
-            hstr = header_str
+        hname = header['name'].encode()
+        hstr = header_str.encode()
         _check(_bf.bfRingSequenceBegin(
             self.obj,
             ring.obj,
