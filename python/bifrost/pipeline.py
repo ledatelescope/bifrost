@@ -25,11 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import sys
 import threading
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+import queue
 import time
 import signal
 import warnings
