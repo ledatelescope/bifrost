@@ -29,12 +29,12 @@ from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
 import ctypes
 from socket import AF_UNSPEC
-from typing import NewVar, Optional
+from typing import NewType, Optional
 
 from bifrost import telemetry
 telemetry.track_module()
 
-AFfamily = NewVar('AFfamily', int)
+AFfamily = NewType('AFfamily', int)
 
 class Address(BifrostObject):
     def __init__(self, address: str, port: int, family: Optional[AFfamily]=None):
