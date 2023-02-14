@@ -173,11 +173,7 @@ class SequenceBase(object):
     @property
     def name(self):
         n = _get(_bf.bfRingSequenceGetName, self._base_obj)
-        try:
-            n = n.decode()
-        except AttributeError:
-            pass
-        return n
+        return n.decode()
     @property
     def time_tag(self):
         return _get(_bf.bfRingSequenceGetTimeTag, self._base_obj)
@@ -200,7 +196,6 @@ class SequenceBase(object):
         nringlet       = reduce(lambda x, y: x * y, ringlet_shape, 1)
         frame_nelement = reduce(lambda x, y: x * y, frame_shape,   1)
         dtype = header['_tensor']['dtype']
-        dtype = dtype.decode()
         nbit = DataType(dtype).itemsize_bits
         assert(nbit % 8 == 0)
         frame_nbyte = frame_nelement * nbit // 8
@@ -239,7 +234,7 @@ class WriteSequence(SequenceBase):
         tensor = self.tensor
         # **TODO: Consider moving this into bfRingSequenceBegin
         self.ring.resize(gulp_nframe * tensor['frame_nbyte'],
-                          buf_nframe * tensor['frame_nbyte'],
+                         buf_nframe * tensor['frame_nbyte'],
                          tensor['nringlet'])
         offset_from_head = 0
         # TODO: How to allow time_tag to be optional? Probably need to plumb support through to backend.
