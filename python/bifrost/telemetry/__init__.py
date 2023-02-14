@@ -33,12 +33,8 @@ import atexit
 import socket
 import inspect
 import warnings
-try:
-    from urllib2 import urlopen
-    from urllib import urlencode
-except ImportError:
-    from urllib.request import urlopen
-    from urllib.parse import urlencode
+from urllib.request import urlopen
+from urllib.parse import urlencode
 from threading import RLock
 from functools import wraps
 
@@ -153,11 +149,7 @@ class _TelemetryClient(object):
                                          'version'     : self.version,
                                          'session_time': "%.6f" % ((tNow-self._session_start) if final else 0.0,),
                                          'payload'     : payload})
-                    try:
-                        payload = payload.encode()
-                    except AttributeError:
-                        pass
-                    uh = urlopen('https://fornax.phys.unm.edu/telemetry/bifrost.php', payload, 
+                    uh = urlopen('https://fornax.phys.unm.edu/telemetry/bifrost.php', payload.encode(), 
                                  timeout=TELEMETRY_TIMEOUT)
                     status = uh.read()
                     if status == '':
