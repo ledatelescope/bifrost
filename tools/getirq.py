@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2017-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,9 +26,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import print_function
-
 import argparse
 
 from bifrost import telemetry
@@ -36,9 +33,8 @@ telemetry.track_script()
 
 
 def main(args):
-    fh = open('/proc/interrupts', 'r')
-    lines = fh.read()
-    fh.close()
+    with open('/proc/interrupts', 'r') as fh:
+        lines = fh.read()
 
     irqs = {}
     for line in lines.split('\n'):
