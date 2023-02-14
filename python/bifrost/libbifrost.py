@@ -45,13 +45,13 @@ telemetry.track_module()
 # Typing helpers
 
 #: Type for Bifrost return codes
-BFstatusT = NewType('BFstatusT', int)
+BFstatus_enum = NewType('BFstatus_enum', int)
 
 #: Type for Bifrost memory spaces
-BFspaceT = NewType('BFspaceT', int)
+BFspace_enum = NewType('BFspace_enum', int)
 
 #: Type for Bifrost data types
-BFdtypeT = NewType('BFdtypeT', int)
+BFdtype_enum = NewType('BFdtype_enum', int)
 
 # Internal helpers below
 
