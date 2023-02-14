@@ -282,7 +282,7 @@ BFstatus BFfft_impl::execute_impl(BFarray const* in,
 	
 	// Set callback data needed for applying fftshift
 	h_callback_data->inverse = _real_out || (!_real_in && inverse);
-	h_callback_data->do_fftshift = _do_fftshift;
+	h_callback_data->do_fftshift = _do_fftshift ^ _real_out;
 	h_callback_data->ndim = _axes.size();
 	for( int d=0; d<h_callback_data->ndim; ++d ) {
 		h_callback_data->shape[d]    = in->shape[_axes[d]];

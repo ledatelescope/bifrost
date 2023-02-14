@@ -45,10 +45,12 @@ if sys.version_info < (3,):
 import ctypes
 import numpy as np
 from bifrost.memory import raw_malloc, raw_free, raw_get_space, space_accessible
-from bifrost.libbifrost import _bf, _check
+from bifrost.libbifrost import _bf, _check, _space2string
 from bifrost import device
+from bifrost.dtype import bifrost2string
 from bifrost.DataType import DataType
 from bifrost.Space import Space
+from bifrost.libbifrost_generated import struct_BFarray_
 
 try:
     from bifrost._pypy3_compat import PyMemoryView_FromMemory
@@ -185,6 +187,22 @@ class ndarray(np.ndarray):
                                            dtype=base.dtype,
                                            strides=base.strides,
                                            native=np.dtype(base.dtype).isnative)
+            # Check if a BFarray ctypes struct is passed
+            if isinstance(base, struct_BFarray_):
+                ndim = base.ndim
+                shape = list(base.shape)[:ndim]
+                strides = list(base.strides)[:ndim]
+                space = _space2string(base.space)
+                dtype = bifrost2string(base.dtype)
+
+                return ndarray.__new__(cls,
+                    space=space,
+                    buffer=int(base.data),
+                    shape=shape,
+                    dtype=dtype,
+                    strides=strides
+                    )
+                
             if dtype is not None:
                 dtype = DataType(dtype)
             if space is None and dtype is None:

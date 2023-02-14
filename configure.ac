@@ -348,13 +348,6 @@ AC_OUTPUT
 # User warnings
 #
 
-AS_IF([test x$HAVE_CUDA = x1],
-      [cufft_c2r_modifies=$( echo $CUDA_VERSION | ${GREP} -e "10\.[[1-2]]" -e "11\.[[0-7]]" )
-       if test "$cufft_c2r_modifies" != ""; then
-         echo ""
-         AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)
-       fi])
-
 #
 # User notes
 #
