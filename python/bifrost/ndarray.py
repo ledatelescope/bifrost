@@ -36,6 +36,7 @@ TODO: Some calls result in segfault with space=cuda (e.g., __getitem__
 
 """
 
+import sys
 import ctypes
 import numpy as np
 from bifrost.memory import raw_malloc, raw_free, raw_get_space, space_accessible
