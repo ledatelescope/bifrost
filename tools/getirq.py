@@ -50,7 +50,7 @@ def main(args):
             irqs[irq] = {'cpu':mi, 'type':type, 'name':name, 'count':mv}
     total = sum([irqs[irq]['count'] for irq in irqs])
 
-    print("Interface: %s" % args.interface)
+    print(f"Interface: {args.interface}")
     print("%4s  %16s  %16s  %4s  %6s" % ('IRQ', 'Name', 'Type', 'CPU', 'Usage'))
     for irq in sorted(irqs.keys()):
         print("%4i  %16s  %16s  %4i  %5.1f%%" % (irq, irqs[irq]['name'], irqs[irq]['type'], irqs[irq]['cpu'], 100.0*irqs[irq]['count']/total))
