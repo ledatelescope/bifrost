@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -38,14 +38,6 @@ ci4:  4+4-bit complex signed integer
 cf32: 32+32-bit complex floating point
 """
 
-# Python2 compatibility
-from __future__ import division, absolute_import
-import sys
-string_types = (str,)
-if sys.version_info < (3,):
-    range = xrange
-    string_types = (basestring,)
-    
 from bifrost.libbifrost import _bf
 from bifrost.libbifrost_generated import BF_FLOAT128_ENABLED
 import numpy as np
@@ -126,7 +118,7 @@ def is_vector_structure(dtype):
 class DataType(object):
     # Note: Default of None results in default Numpy type (np.float)
     def __init__(self, t=None):
-        if isinstance(t, string_types):
+        if isinstance(t, str):
             for i, char in enumerate(t):
                 if char.isdigit():
                     break
