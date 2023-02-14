@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,10 +30,7 @@ import ctypes
 import unittest
 import numpy as np
 import bifrost as bf
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
     
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 

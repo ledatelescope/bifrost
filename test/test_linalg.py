@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,9 +26,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # **TODO: Add tests with beta != 0
-
-# Python2 compatibility
-from __future__ import print_function
 
 import ctypes
 import unittest
