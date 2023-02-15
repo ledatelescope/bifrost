@@ -2,6 +2,7 @@ doc
 version.py
 /python/bifrost/version/__init__.py
 *_generated.py
+*_typehints.py
 .log*.txt
 test/data/
 *.bin
