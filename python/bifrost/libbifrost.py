@@ -136,7 +136,7 @@ def _check(status):
             raise EndOfDataStop('BF_STATUS_END_OF_DATA')
         elif status == _bf.BF_STATUS_WOULD_BLOCK:
             raise IOError('BF_STATUS_WOULD_BLOCK')
-    return _th.BFStatus_enum(status)
+    return _th.BFstatus_enum(status)
 
 DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
                                         ctypes.c_char,
@@ -173,21 +173,14 @@ def _get(func, *args):
     _check(func(*args))
     return ret.value
 
-STRING2SPACE = {'auto':         _bf.BF_SPACE_AUTO,
-                'system':       _bf.BF_SPACE_SYSTEM,
-                'cuda':         _bf.BF_SPACE_CUDA,
-                'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
-                'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
 def _string2space(s):
-    if s not in STRING2SPACE:
+    try:
+        space = getattr(_th.BFspace_enum, f"BF_SPACE_{s.upper()}")
+    except AttributeError:
         raise KeyError("Invalid space '" + str(s) +
-                       "'.\nValid spaces: " + str(list(STRING2SPACE.keys())))
-    return STRING2SPACE[s]
+                       "'.\nValid spaces: " + str(list(_th.BFspace_enum)))
+    return space
 
-SPACE2STRING = {_bf.BF_SPACE_AUTO:         'auto',
-                _bf.BF_SPACE_SYSTEM:       'system',
-                _bf.BF_SPACE_CUDA:         'cuda',
-                _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
-                _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
 def _space2string(i):
-    return SPACE2STRING[i]
+    name = _th.BFspace_enum(i).name
+    return name.replace('BF_SPACE_', '').lower()
