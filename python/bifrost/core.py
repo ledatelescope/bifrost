@@ -26,14 +26,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from bifrost.libbifrost import _bf
+from bifrost.libbifrost import _bf, _th
 
 from bifrost import telemetry
 telemetry.track_module()
 
-def status_string(status):
-    return _bf.bfGetStatusString(status)
-def debug_enabled():
+def status_string(status: _th.BFstatus_enum) -> str:
+    return _bf.bfGetStatusString(status.value)
+def debug_enabled() -> bool:
     return bool(_bf.bfGetDebugEnabled())
-def cuda_enabled():
+def cuda_enabled() -> bool:
     return bool(_bf.bfGetCudaEnabled())

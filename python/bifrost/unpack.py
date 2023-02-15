@@ -27,11 +27,12 @@
 
 from bifrost.libbifrost import _bf, _check
 from bifrost.ndarray import asarray
+from bifrost.ndarray import ndarray
 
 from bifrost import telemetry
 telemetry.track_module()
 
-def unpack(src, dst, align_msb=False):
+def unpack(src: ndarray, dst: ndarray, align_msb: bool=False) -> ndarray:
     src_bf = asarray(src).as_BFarray()
     dst_bf = asarray(dst).as_BFarray()
     _check(_bf.bfUnpack(src_bf, dst_bf, align_msb))

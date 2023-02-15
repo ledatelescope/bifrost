@@ -36,6 +36,8 @@ import atexit
 from threading import Lock
 import os
 
+from typing import Union
+
 from bifrost import telemetry
 telemetry.track_module()
 
@@ -110,7 +112,7 @@ _lib.Pa_WriteStream.argtypes = [PaStream_ptr,
                                 ctypes.c_ulong]
 
 class PortAudioError(RuntimeError):
-    def __init__(self, msg):
+    def __init__(self, msg: str):
         super(PortAudioError, self).__init__(msg)
 
 def _check(err):
@@ -118,7 +120,7 @@ def _check(err):
         raise PortAudioError(_lib.Pa_GetErrorText(err))
 
 class suppress_fd(object):
-    def __init__(self, fd):
+    def __init__(self, fd: Union[str,int]):
         if   fd.lower() == 'stdout': fd = 1
         elif fd.lower() == 'stderr': fd = 2
         else: assert(isinstance(fd, int))
@@ -138,13 +140,13 @@ atexit.register(_lib.Pa_Terminate)
 
 class Stream(object):
     def __init__(self,
-                 mode='r',
-                 rate=44100,
-                 channels=2,
-                 nbits=16,
-                 frames_per_buffer=1024,
-                 input_device=None,
-                 output_device=None):
+                 mode: str='r',
+                 rate: int=44100,
+                 channels: int=2,
+                 nbits: int=16,
+                 frames_per_buffer: int=1024,
+                 input_device: Optional[str]=None,
+                 output_device: Optional[str]=None):
         self.mode     = mode
         self.rate     = rate
         self.channels = channels
@@ -186,7 +188,7 @@ class Stream(object):
                                   None,
                                   None))
         self.start()
-    def close(self):
+    def close(self) -> None:
         self.stop()
         with self.lock:
             _check(_lib.Pa_CloseStream(self.stream))
@@ -194,20 +196,20 @@ class Stream(object):
         return self
     def __exit__(self, type, value, tb):
         self.close()
-    def start(self):
+    def start(self) -> None:
         with self.lock:
             _check(_lib.Pa_StartStream(self.stream))
             self.running = True
-    def stop(self):
+    def stop(self) -> None:
         with self.lock:
             if self.running:
                 _check(_lib.Pa_StopStream(self.stream))
                 self.running = False
-    def read(self, nframe):
+    def read(self, nframe: int) -> memoryview:
         nbyte = nframe * self.frame_nbyte
         buf = ctypes.create_string_buffer("UNINITIALIZED"[:nbyte], nbyte)
         return self.readinto(buf)
-    def readinto(self, buf):
+    def readinto(self, buf: memoryview) -> memoryview:
         with self.lock:
             assert(len(buf) % self.frame_nbyte == 0)
             nframe = len(buf) // self.frame_nbyte
@@ -219,21 +221,21 @@ class Stream(object):
             #         packets).
             _check(_lib.Pa_ReadStream(self.stream, buf_view, nframe))
             return buf
-    def write(self, buf):
+    def write(self, buf: memoryview) -> memoryview:
         with self.lock:
             assert(len(buf) % self.frame_nbyte == 0)
             nframe = len(buf) // self.frame_nbyte
             buf_view = (ctypes.c_byte * len(buf)).from_buffer(buf)
             _check(_lib.Pa_WriteStream(self.stream, buf_view, nframe))
             return buf
-    def time(self):
+    def time(self) -> int:
         with self.lock:
             return _lib.Pa_GetStreamTime(self.stream)
 
-def open(*args, **kwargs):
+def open(*args: Any, **kwargs: Any) -> Stream:
     return Stream(*args, **kwargs)
 
-def get_device_count():
+def get_device_count() -> int:
     return _lib.Pa_GetDeviceCount()
 
 if __name__ == "__main__":

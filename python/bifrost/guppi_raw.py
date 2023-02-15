@@ -54,10 +54,12 @@ Binary data:
 
 """
 
+from typing import Any, Dict, IO
+
 from bifrost import telemetry
 telemetry.track_module()
 
-def read_header(f):
+def read_header(f: IO[str]) -> Dict[str,Any]:
     RECORD_LEN = 80
     DIRECTIO_ALIGN_NBYTE = 512
     buf = bytearray(RECORD_LEN)

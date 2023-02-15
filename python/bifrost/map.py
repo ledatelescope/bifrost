@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,27 +25,23 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-import sys
-if sys.version_info > (3,):
-    long = int
-
 from bifrost.libbifrost import _bf, _check, _array
 from bifrost.ndarray import asarray
+from bifrost.ndarray import ndarray
 import numpy as np
 import ctypes
 import glob
 import os
+from typing import Any, Dict, List, Optional
 from bifrost.libbifrost_generated import BF_MAP_KERNEL_DISK_CACHE
 
 from bifrost import telemetry
 telemetry.track_module()
 
-def _is_literal(x):
+def _is_literal(x: Any) -> bool:
     return isinstance(x, (int, long, float, complex))
 
-def _convert_to_array(arg):
+def _convert_to_array(arg: Any) -> ndarray:
     if _is_literal(arg):
         arr = np.array(arg)
         if isinstance(arg, (int, long)) and -(1 << 31) <= arg < (1 << 31):
@@ -59,9 +55,13 @@ def _convert_to_array(arg):
         arg = arr
     return asarray(arg)
 
-def map(func_string, data, axis_names=None, shape=None,
-        func_name=None, extra_code=None,
-        block_shape=None, block_axes=None):
+def map(func_string: str, data: Dict[str,Any],
+        axis_names: Optional[List[str]]=None,
+        shape: Optional[List[int]]=None,
+        func_name: Optional[str]=None,
+        extra_code: Optional[str]=None,
+        block_shape: Optional[List[int]]=None,
+        block_axes: Optional[List[int]]=None) -> ndarray:
     """Apply a function to a set of ndarrays.
 
     Args:
@@ -146,7 +146,7 @@ def map(func_string, data, axis_names=None, shape=None,
                      func_name, func_string, extra_code,
                      _array(block_shape), _array(block_axes)))
 
-def list_map_cache():
+def list_map_cache() -> None:
     output = "Cache enabled: %s" % ('yes' if BF_MAP_KERNEL_DISK_CACHE else 'no')
     if BF_MAP_KERNEL_DISK_CACHE:
         cache_path = os.path.join(os.path.expanduser('~'), '.bifrost',
@@ -172,5 +172,5 @@ def list_map_cache():
     print(output)
 
 
-def clear_map_cache():
+def clear_map_cache() -> None:
     _check(_bf.bfMapClearCache())

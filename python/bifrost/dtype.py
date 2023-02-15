@@ -41,14 +41,15 @@ cf32: 32+32-bit complex floating point
 
 """
 
-from bifrost.libbifrost import _bf
+from bifrost.libbifrost import _bf, _th
 from bifrost.libbifrost_generated import BF_FLOAT128_ENABLED
 import numpy as np
+from typing import Tuple
 
 from bifrost import telemetry
 telemetry.track_module()
 
-def split_name_nbit(dtype_str):
+def split_name_nbit(dtype_str: str) -> Tuple[str,int]:
     """Splits a dtype string into (name, nbit)"""
     for i, char in enumerate(dtype_str):
         if char.isdigit():
@@ -65,11 +66,11 @@ cf16 = np.dtype([('re', np.float16), ('im', np.float16)])
 def to_complex64(q):
     real_type = q.dtype['re']
     return q.view(real_type).astype(np.float32).view(np.complex64)
-def from_complex64(f, dtype):
+def from_complex64(f, dtype: np.dtype):
     real_type = dtype['re']
     return f.view(np.float32).astype(real_type).view(dtype)
 
-def numpy2bifrost(dtype):
+def numpy2bifrost(dtype: np.dtype) -> _th.BFdtype_enum:
     if   dtype == np.int8:       return _bf.BF_DTYPE_I8
     elif dtype == np.int16:      return _bf.BF_DTYPE_I16
     elif dtype == np.int32:      return _bf.BF_DTYPE_I32
@@ -91,7 +92,7 @@ def numpy2bifrost(dtype):
          and BF_FLOAT128_ENABLED: return _bf.BF_DTYPE_CF128
     else: raise ValueError(f"Unsupported dtype: {dtype}")
 
-def name_nbit2numpy(name, nbit):
+def name_nbit2numpy(name: str, nbit: int) -> np.dtype:
     if   name == 'i':
         if   nbit == 8:   return np.int8
         elif nbit == 16:  return np.int16
@@ -125,10 +126,11 @@ def name_nbit2numpy(name, nbit):
         else: raise TypeError(f"Invalid complex floating-point type size: {nbit}")
     else:
         raise TypeError(f"Invalid type name: {name}")
-def string2numpy(dtype_str):
+
+def string2numpy(dtype_str: str) -> np.dtype:
     return name_nbit2numpy(*split_name_nbit(dtype_str))
 
-def numpy2string(dtype):
+def numpy2string(dtype: np.dtype) -> str:
     if   dtype == np.int8:       return 'i8'
     elif dtype == np.int16:      return 'i16'
     elif dtype == np.int32:      return 'i32'
@@ -146,7 +148,7 @@ def numpy2string(dtype):
     elif dtype == np.complex256: return 'cf128'
     else: raise TypeError(f"Unsupported dtype: {dtype}")
 
-def bifrost2string(dtype):
+def bifrost2string(dtype: _th.BFdtype_enum) -> str:
     """ Convert bifrost BF_DTYPE integer code to ndarray string """
     typedict = {
         _bf.BF_DTYPE_I8:  'i8',

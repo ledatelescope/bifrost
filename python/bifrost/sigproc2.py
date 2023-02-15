@@ -58,6 +58,8 @@ import warnings
 import numpy as np
 from collections import defaultdict
 
+from typing import Any, Dict, IO, Optional
+
 from bifrost import telemetry
 telemetry.track_module()
 
@@ -132,14 +134,14 @@ _machines   = defaultdict(lambda: 'unknown',
                            52: 'LWA-DP',
                            53: 'LWA-ADP'})
 
-def id2telescope(id_):
+def id2telescope(id_: int) -> str:
     return _telescopes[id_]
-def telescope2id(name):
+def telescope2id(name: str) -> int:
     # TODO: Would be better to use a pre-made reverse lookup dict
     return list(_telescopes.keys())[list(_telescopes.values()).index(name)]
-def id2machine(id_):
+def id2machine(id_: int) -> str:
     return _machines[id_]
-def machine2id(name):
+def machine2id(name: str) -> int:
     # TODO: Would be better to use a pre-made reverse lookup dict
     return list(_machines.keys())[list(_machines.values()).index(name)]
 
@@ -167,7 +169,7 @@ def _header_read(f):
     s = f.read(length)
     return s.decode()
 
-def write_header(hdr, f):
+def write_header(hdr: Dict[str,Any], f: IO[bytes]):
     _header_write_string(f, "HEADER_START")
     for key, val in hdr.items():
         if val is None:
@@ -223,7 +225,7 @@ def _read_header(f):
     return header
 
 # TODO: Move this elsewhere?
-def unpack(data, nbit):
+def unpack(data: np.ndarray, nbit: int) -> np.ndarray:
     if nbit > 8:
         raise ValueError("unpack: nbit must be <= 8")
     if 8 % nbit != 0:
@@ -257,10 +259,10 @@ def unpack(data, nbit):
 # TODO: Add support for writing
 #       Add support for data_type != filterbank
 class SigprocFile(object):
-    def __init__(self, filename=None):
+    def __init__(self, filename: Optional[str]=None):
         if filename is not None:
             self.open(filename)
-    def open(self, filename):
+    def open(self, filename: str) -> "SigprocFile":
         # Note: If nbit < 8, pack_factor = 8 // nbit and the last dimension
         #         is divided by pack_factor, with dtype set to uint8.
         self.f = open(filename, 'rb')
@@ -303,7 +305,7 @@ class SigprocFile(object):
         self.frame_nbit  = self.frame_size * self.nbit
         self.frame_nbyte = self.frame_nbit // 8
         return self
-    def close(self):
+    def close(self) -> None:
         self.f.close()
     def __enter__(self):
         return self
@@ -313,14 +315,14 @@ class SigprocFile(object):
         if whence == 0:
             offset += self.header_size
         self.f.seek(offset, whence)
-    def bandwidth(self):
+    def bandwidth(self) -> float:
         return self.header['nchans'] * self.header['foff']
-    def cfreq(self):
+    def cfreq(self) -> float:
         return (self.header['fch1'] +
                 0.5 * (self.header['nchans'] - 1) * self.header['foff'])
-    def duration(self):
+    def duration(self) -> float:
         return self.header['tsamp'] * self.nframe()
-    def nframe(self):
+    def nframe(self) -> int:
         if 'nsamples' not in self.header or self.header['nsamples'] == 0:
             curpos = self.f.tell()
             self.f.seek(0, 2) # Seek to end of file
@@ -330,7 +332,7 @@ class SigprocFile(object):
             self.header['nsamples'] = nframe
             self.f.seek(curpos, 0) # Seek back to where we were
         return self.header['nsamples']
-    def read(self, nframe_or_start, end=None):
+    def read(self, nframe_or_start: int, end: Optional[int]=None) -> np.ndarray:
         if end is not None:
             start = nframe_or_start or 0
             if start * self.frame_size * self.nbit % 8 != 0:
@@ -368,7 +370,7 @@ class SigprocFile(object):
             nframe = data.size // self.frame_size
         data = data.reshape((nframe,) + self.frame_shape)
         return data
-    def readinto(self, buf):
+    def readinto(self, buf: Any) -> int:
         """Fills buf with raw bytes straight from the file"""
         return self.f.readinto(buf)
     def __str__(self):

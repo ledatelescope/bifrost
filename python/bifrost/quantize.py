@@ -27,11 +27,12 @@
 
 from bifrost.libbifrost import _bf, _check
 from bifrost.ndarray import asarray
+from bifrost.ndarray import ndarray
 
 from bifrost import telemetry
 telemetry.track_module()
 
-def quantize(src, dst, scale=1.):
+def quantize(src: ndarray, dst: ndarray, scale: float=1.) -> ndarray:
     src_bf = asarray(src).as_BFarray()
     dst_bf = asarray(dst).as_BFarray()
     _check(_bf.bfQuantize(src_bf, dst_bf, scale))

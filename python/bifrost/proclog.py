@@ -30,16 +30,18 @@ from bifrost.libbifrost import _bf, _check, BifrostObject
 import os
 import time
 
+from typing import Any, Dict, Union
+
 from bifrost import telemetry
 telemetry.track_module()
 
 PROCLOG_DIR = _bf.BF_PROCLOG_DIR
 
 class ProcLog(BifrostObject):
-    def __init__(self, name):
+    def __init__(self, name: str):
         BifrostObject.__init__(
             self, _bf.bfProcLogCreate, _bf.bfProcLogDestroy, name.encode())
-    def update(self, contents):
+    def update(self, contents: Union[Dict[str,Any],str]):
         """Updates (replaces) the contents of the log
         contents: string or dict containing data to write to the log
         """
@@ -64,7 +66,7 @@ def _multi_convert(value):
             pass
     return value
 
-def load_by_filename(filename):
+def load_by_filename(filename: str) -> Dict[str,Any]:
     """
     Function to read in a ProcLog file and return the contents as a 
     dictionary.
@@ -97,7 +99,7 @@ def load_by_filename(filename):
     # Done
     return contents
 
-def load_by_pid(pid, include_rings=False):
+def load_by_pid(pid: int, include_rings: bool=False) -> Dict[str,Any]:
     """
     Function to read in and parse all ProcLog files associated with a given 
     process ID.  The contents of these files are returned as a collection of

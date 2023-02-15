@@ -26,8 +26,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from bifrost.libbifrost import _bf, _check, BifrostObject, _string2space
+from bifrost.libbifrost import _bf, _th, _check, BifrostObject, _string2space
 from bifrost.ndarray import asarray
+from bifrost.ndarray import ndarray
+from bifrost.Space import Space
+
+from typing import Union
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -35,16 +39,17 @@ telemetry.track_module()
 class Fir(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfFirCreate, _bf.bfFirDestroy)
-    def init(self, coeffs, decim=1, space='cuda'):
-        space = _string2space(space)
+    def init(self, coeffs: ndarray, decim: int=1,
+             space: Union[str,_th.BFspace_enum,_bf.BFspace]='cuda'):
+        space = Space(space)
         psize = None
-        _check( _bf.bfFirInit(self.obj, asarray(coeffs).as_BFarray(), decim, space, 0, psize) )
-    def set_coeffs(self, coeffs):
+        _check( _bf.bfFirInit(self.obj, asarray(coeffs).as_BFarray(), decim, space.as_BFspace(), 0, psize) )
+    def set_coeffs(self, coeffs: ndarray) -> None:
         _check( _bf.bfFirSetCoeffs(self.obj, 
                                    asarray(coeffs).as_BFarray()) )
-    def reset_state(self):
+    def reset_state(self) -> None:
         _check( _bf.bfFirResetState(self.obj) )
-    def execute(self, idata, odata):
+    def execute(self, idata: ndarray, odata: ndarray) -> ndarray:
         # TODO: Work out how to integrate CUDA stream
         _check( _bf.bfFirExecute(self.obj,
                                  asarray(idata).as_BFarray(),
