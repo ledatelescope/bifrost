@@ -23,6 +23,10 @@ def build_typehinting(filename):
                         if tag == 'space':
                             name = name.replace('BF_SPACE_', '')
                             enums[tag][name.lower()] = value
+                        elif tag == 'reduce':
+                            name = name.replace('BF_SPACE_', '')
+                            name = name.replace('POWER_', 'pwr')
+                            enums[tag][name.lower()] = value
                         break
                         
     outname = filename.replace('generated', 'typehints')
