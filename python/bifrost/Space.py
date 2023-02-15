@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from bifrost.libbifrost import _bf, _th, _string2space, _space2string
+from bifrost.libbifrost import _bf, _th
 
 from typing import Union
 
@@ -33,14 +33,14 @@ from bifrost import telemetry
 telemetry.track_module()
 
 class Space(object):
-    def __init__(self, s: Union[str,_th.BFspace_enum,_bf.BFspace,int]):
+    def __init__(self, s: Union[str,_th.BFspace_enum,_bf.BFspace]):
         if isinstance(s, str):
-            self._space = _string2space(s)
+            self._space = getattr(_th.BFspace_enum, s)
         elif isinstance(s, (_th.BFspace_enum, _bf.BFspace, int)):
             self._space = _th.BFspace_enum(s)
         else:
             raise ValueError(f"'{s}' is not a space")
-    def as_BFspace(self) -> _th.BFspace_enum:
-            return self._space
+    def as_BFspace(self) -> _bf.BFspace:
+        return _bf.BFspace(self._space.value)
     def __str__(self):
-        return _space2string(self._space)
+        return self._space.name

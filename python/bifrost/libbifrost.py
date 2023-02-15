@@ -36,8 +36,11 @@
 
 import ctypes
 import bifrost.libbifrost_generated as _bf
-bf = _bf # Public access to library
 import bifrost.libbifrost_typehints as _th
+bf = _bf # Public access to library
+th = _th # Public access to type hints
+
+from typing import Any, Callable
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -55,7 +58,7 @@ class EndOfDataStop(RuntimeError):
 
 class BifrostObject(object):
     """Base class for simple objects with create/destroy functions"""
-    def __init__(self, constructor, destructor, *args):
+    def __init__(self, constructor: Callable, destructor: Callable, *args: Any):
         self._obj_basename = constructor.__name__.replace('Create','')
         self.obj = destructor.argtypes[0]()
         _check(constructor(ctypes.byref(self.obj), *args))
@@ -70,14 +73,14 @@ class BifrostObject(object):
         return self
     def __exit__(self, type, value, tb):
         self._destroy()
-    def set_stream(self, stream):
+    def set_stream(self, stream: int):
         set_fnc = getattr(_bf, self._obj_basename+"SetStream", None)
         if set_fnc is None:
             raise AttributeError("set_stream() is not supported by %s objects" % self._obj_basename)
             
         _check( set_fnc(self.obj,
                         ctypes.pointer(stream)) )
-    def get_stream(self):
+    def get_stream(self) -> int:
         get_fnc = getattr(_bf, self._obj_basename+"GetStream", None)
         if get_fnc is None:
             raise AttributeError("get_stream() is not supported by %s objects" % self._obj_basename)
@@ -119,7 +122,7 @@ def _array(size_or_vals, dtype=None):
                 raise TypeError("Cannot deduce C type from ", type(vals[0]))
         return (dtype * len(vals))(*vals)
 
-def _check(status):
+def _check(status: _bf.BFstatus) -> _th.BFstatus_enum:
     if __debug__:
         if status != _bf.BF_STATUS_SUCCESS:
             if status is None:
@@ -165,7 +168,7 @@ DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
                                         ctypes.c_void_p,
                                         ctypes.c_wchar,
                                         ctypes.c_wchar_p]}
-def _get(func, *args):
+def _get(func: Callable, *args: Any) -> Any:
     retarg = -1
     dtype = DEREF[func.argtypes[retarg]]
     ret = dtype()
@@ -173,14 +176,14 @@ def _get(func, *args):
     _check(func(*args))
     return ret.value
 
-def _string2space(s):
+def _string2space(s: str) -> _bf.BFspace:
     try:
-        space = getattr(_th.BFspace_enum, f"BF_SPACE_{s.upper()}")
+        space = getattr(_th.BFspace_enum, s)
     except AttributeError:
         raise KeyError("Invalid space '" + str(s) +
                        "'.\nValid spaces: " + str(list(_th.BFspace_enum)))
-    return space
+    return _bf.BFspace(space.value)
 
-def _space2string(i):
+def _space2string(i: _bf.BFspace) -> str:
     name = _th.BFspace_enum(i).name
     return name.replace('BF_SPACE_', '').lower()
