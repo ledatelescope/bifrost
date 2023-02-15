@@ -39,12 +39,12 @@ from bifrost import telemetry
 telemetry.track_module()
 
 def _is_literal(x: Any) -> bool:
-    return isinstance(x, (int, long, float, complex))
+    return isinstance(x, (int, float, complex))
 
 def _convert_to_array(arg: Any) -> ndarray:
     if _is_literal(arg):
         arr = np.array(arg)
-        if isinstance(arg, (int, long)) and -(1 << 31) <= arg < (1 << 31):
+        if isinstance(arg, int) and -(1 << 31) <= arg < (1 << 31):
             arr = arr.astype(np.int32)
         # TODO: Any way to decide when these should be double-precision?
         elif isinstance(arg, float):
