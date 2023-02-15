@@ -28,22 +28,26 @@
 from bifrost.unpack import unpack as bf_unpack
 from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
+from bifrost.Ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 
 from copy import deepcopy
+import numpy as np
+
+from typing import Any, Dict, Tuple, Union
 
 from bifrost import telemetry
 telemetry.track_module()
 
 class UnpackBlock(TransformBlock):
-    def __init__(self, iring, dtype, align_msb=False,
-                 *args, **kwargs):
+    def __init__(self, iring: Ring, dtype: Union[str,np.dtype], align_msb: bool=False,
+                 *args: Any, **kwargs: Any):
         super(UnpackBlock, self).__init__(iring, *args, **kwargs)
         self.dtype     = dtype
         self.align_msb = align_msb
-    def define_valid_input_spaces(self):
+    def define_valid_input_spaces(self) -> Tuple[str]:
         """Return set of valid spaces (or 'any') for each input"""
         return ('system',)
-    def on_sequence(self, iseq):
+    def on_sequence(self, iseq: ReadSequence) -> Dict[str,Any]:
         ihdr = iseq.header
         ohdr = deepcopy(ihdr)
         itype = DataType(ihdr['_tensor']['dtype'])
@@ -56,12 +60,12 @@ class UnpackBlock(TransformBlock):
             otype = self.dtype
         ohdr['_tensor']['dtype'] = otype
         return ohdr
-    def on_data(self, ispan, ospan):
+    def on_data(self, ispan: ReadSpan, ospan: WriteSpan) -> None:
         idata = ispan.data
         odata = ospan.data
         bf_unpack(idata, odata, self.align_msb)
 
-def unpack(iring, dtype, *args, **kwargs):
+def unpack(iring: Ring, dtype: Union[str,np.dtype], *args: Any, **kwargs: Any) -> UnpackBlock:
     """Unpack data to a larger data type.
 
     Args:

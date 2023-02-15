@@ -25,27 +25,31 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from bifrost.pipeline import block_view
+from bifrost.libbifrost import _bf, _th
+from bifrost.pipeline import Block, block_view
 from bifrost.DataType import DataType
 from bifrost.units import convert_units
-from numpy import isclose
+from numpy import dtype as np_dtype, isclose
+
+from typing import Callable, Optional, Union
 
 from bifrost import telemetry
 telemetry.track_module()
 
-def custom(block, hdr_transform):
+def custom(block: Block, hdr_transform: Callable) -> Block:
     """An alias to `bifrost.pipeline.block_view`
     """
     return block_view(block, hdr_transform)
 
-def rename_axis(block, old, new):
+def rename_axis(block: Block, old: str, new: str) -> Block:
     def header_transform(hdr, old=old, new=new):
         axis = hdr['_tensor']['labels'].index(old)
         hdr['_tensor']['labels'][axis] = new
         return hdr
     return block_view(block, header_transform)
 
-def reinterpret_axis(block, axis, label, scale=None, units=None):
+def reinterpret_axis(block: Block, axis: int, label: str,
+                     scale: Optional[Union[int,float]]=None, units: Optional[str]=None) -> Block:
     """ Manually reinterpret the scale and/or units on an axis """
     def header_transform(hdr, axis=axis, label=label, scale=scale, units=units):
         tensor = hdr['_tensor']
@@ -60,7 +64,7 @@ def reinterpret_axis(block, axis, label, scale=None, units=None):
         return hdr
     return block_view(block, header_transform)
 
-def reverse_scale(block, axis):
+def reverse_scale(block: Block, axis: int) -> Block:
     """ Manually reverse the scale factor on a given axis"""
     def header_transform(hdr, axis=axis):
         tensor = hdr['_tensor']
@@ -70,7 +74,8 @@ def reverse_scale(block, axis):
         return hdr
     return block_view(block, header_transform)
 
-def add_axis(block, axis, label=None, scale=None, units=None):
+def add_axis(block: Block, axis: int, label: Optional[str]=None,
+             scale: Optional[Union[int,float]]=None, units: Optional[str]=None) -> Block:
     """Add an extra dimension to the frame at position 'axis'
 
     E.g., if the shape is [-1, 3, 2], then
@@ -96,7 +101,7 @@ def add_axis(block, axis, label=None, scale=None, units=None):
         return hdr
     return block_view(block, header_transform)
 
-def delete_axis(block, axis):
+def delete_axis(block: Block, axis: int) -> Block:
     """Remove a unitary dimension from the frame
 
     E.g., if the shape is [-1, 1, 3, 2], then
@@ -126,7 +131,7 @@ def delete_axis(block, axis):
         return hdr
     return block_view(block, header_transform)
 
-def astype(block, dtype):
+def astype(block: Block, dtype: Union[str,_th.BFdtype_enum,_bf.BFdtype,np_dtype]) -> Block:
     def header_transform(hdr, new_dtype=dtype):
         tensor = hdr['_tensor']
         old_dtype = tensor['dtype']
@@ -140,7 +145,7 @@ def astype(block, dtype):
         return hdr
     return block_view(block, header_transform)
 
-def split_axis(block, axis, n, label=None):
+def split_axis(block: Block, axis: int, n: int, label: Optional[str]=None) -> Block:
     # Set function attributes to enable capture in nested function (closure)
     def header_transform(hdr, axis=axis, n=n, label=label):
         tensor = hdr['_tensor']
@@ -171,7 +176,7 @@ def split_axis(block, axis, n, label=None):
         return hdr
     return block_view(block, header_transform)
 
-def merge_axes(block, axis1, axis2, label=None):
+def merge_axes(block: Block, axis1: int, axis2: int, label: Optional[str]=None) -> Block:
     def header_transform(hdr, axis1=axis1, axis2=axis2, label=label):
         tensor = hdr['_tensor']
         if isinstance(axis1, str):

@@ -28,19 +28,22 @@
 from bifrost.transpose import transpose as bf_transpose
 from bifrost.memory import space_accessible
 from bifrost.pipeline import TransformBlock
+from bifrost.ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 
 from copy import deepcopy
 import numpy as np
+
+from typing import Any, Dict, List, Tuple, Union
 
 from bifrost import telemetry
 telemetry.track_module()
 
 class TransposeBlock(TransformBlock):
-    def __init__(self, iring, axes, *args, **kwargs):
+    def __init__(self, iring: Ring, axes: Union[List[int],Tuple[int]], *args: Any, **kwargs: Any):
         super(TransposeBlock, self).__init__(iring, *args, **kwargs)
         self.specified_axes = axes
         self.space = self.orings[0].space
-    def on_sequence(self, iseq):
+    def on_sequence(self, iseq: ReadSequence) -> Dict[str,Any]:
         ihdr = iseq.header
         itensor = ihdr['_tensor']
         # TODO: Is this a good idea?
@@ -69,14 +72,15 @@ class TransposeBlock(TransformBlock):
                 otensor[item] = [itensor[item][axis]
                                  for axis in self.axes]
         return ohdr
-    def on_data(self, ispan, ospan):
+    def on_data(self, ispan: ReadSpan, ospan: WriteSpan) -> None:
         # TODO: bf.memory.transpose should support system space too
         if space_accessible(self.space, ['cuda']):
             bf_transpose(ospan.data, ispan.data, self.axes)
         else:
             ospan.data[...] = np.transpose(ispan.data, self.axes)
 
-def transpose(iring, axes, *args, **kwargs):
+def transpose(iring: Ring, axes: Union[List[int],Tuple[int]],
+              *args: Any, **kwargs: Any) -> TransposeBlock:
     """Transpose (permute) axes of the data.
 
     Args:
