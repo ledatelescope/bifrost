@@ -35,23 +35,12 @@
 #  E.g., _bf.bfRingSequenceGetName(<BFspan>) [should be <BFsequence>]
 
 import ctypes
-from typing import NewType
 import bifrost.libbifrost_generated as _bf
 bf = _bf # Public access to library
+import bifrost.libbifrost_typehints as _th
 
 from bifrost import telemetry
 telemetry.track_module()
-
-# Typing helpers
-
-#: Type for Bifrost return codes
-BFstatus_enum = NewType('BFstatus_enum', int)
-
-#: Type for Bifrost memory spaces
-BFspace_enum = NewType('BFspace_enum', int)
-
-#: Type for Bifrost data types
-BFdtype_enum = NewType('BFdtype_enum', int)
 
 # Internal helpers below
 
@@ -147,7 +136,7 @@ def _check(status):
             raise EndOfDataStop('BF_STATUS_END_OF_DATA')
         elif status == _bf.BF_STATUS_WOULD_BLOCK:
             raise IOError('BF_STATUS_WOULD_BLOCK')
-    return status
+    return _th.BFStatus_enum(status)
 
 DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
                                         ctypes.c_char,

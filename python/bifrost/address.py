@@ -28,16 +28,14 @@
 from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
 import ctypes
-from socket import AF_UNSPEC
-from typing import NewType, Optional
+from socket import AddressFamily, AF_UNSPEC
+from typing import Optional
 
 from bifrost import telemetry
 telemetry.track_module()
 
-AFfamily_enum = NewType('AFfamily_enum', int)
-
 class Address(BifrostObject):
-    def __init__(self, address: str, port: int, family: Optional[AFfamily_enum]=None):
+    def __init__(self, address: str, port: int, family: Optional[AddressFamily]=None):
         address = address.encode()
         assert(isinstance(port, int))
         if family is None:
