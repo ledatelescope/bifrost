@@ -27,7 +27,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space, _space2string, EndOfDataStop
-#from GPUArray import GPUArray
 from bifrost.DataType import DataType
 from bifrost.ndarray import ndarray, _address_as_buffer
 
