@@ -326,7 +326,7 @@ class ReadSequence(SequenceBase):
                 raise ValueError("Header transform returned None")
         return hdr
 
-def accumulate(vals: Iterable[Any], op: str='+', init: Optional[Any]=None, reverse: bool=False) -> List[Any]:
+def accumulate(vals: Iterable, op: str='+', init: Optional=None, reverse: bool=False) -> List:
     if   op == '+':   op = lambda a, b: a + b
     elif op == '*':   op = lambda a, b: a * b
     elif op == 'min': op = lambda a, b: min(a, b)

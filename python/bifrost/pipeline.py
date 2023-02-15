@@ -59,7 +59,7 @@ telemetry.track_module()
 #          module import time to make things easy.
 device.set_devices_no_spin_cpu()
 
-def izip(*iterables: Iterable[Any]) -> List[Any]:
+def izip(*iterables: Iterable) -> List:
     while True:
         try:
             yield [next(it) for it in iterables]
