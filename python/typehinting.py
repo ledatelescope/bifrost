@@ -24,7 +24,7 @@ def build_typehinting(filename):
                             name = name.replace('BF_SPACE_', '')
                             enums[tag][name.lower()] = value
                         elif tag == 'reduce':
-                            name = name.replace('BF_SPACE_', '')
+                            name = name.replace('BF_REDUCE_', '')
                             name = name.replace('POWER_', 'pwr')
                             enums[tag][name.lower()] = value
                         break
