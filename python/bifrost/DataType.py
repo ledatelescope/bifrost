@@ -42,6 +42,8 @@ from bifrost.libbifrost import _bf, _th
 from bifrost.libbifrost_generated import BF_FLOAT128_ENABLED
 import numpy as np
 
+from typing import Optional, Union
+
 from bifrost import telemetry
 telemetry.track_module()
 
