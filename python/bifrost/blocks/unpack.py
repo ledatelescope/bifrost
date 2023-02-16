@@ -28,7 +28,7 @@
 from bifrost.unpack import unpack as bf_unpack
 from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
-from bifrost.Ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
+from bifrost.ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 
 from copy import deepcopy
 import numpy as np
