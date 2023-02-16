@@ -28,12 +28,12 @@
 from bifrost.pipeline import SourceBlock, SinkBlock
 from bifrost.DataType import DataType
 from bifrost.units import convert_units
-from bifrost.ring2 import Ring, ReadSequence, WriteSpan
+from bifrost.ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 
 import struct
 import os
 
-from typing import Any, Dict, IO, List, Tuple
+from typing import Any, Dict, IO, List, Optional, Tuple
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -41,7 +41,7 @@ telemetry.track_module()
 def wav_read_chunk_desc(f: IO[bytes]) -> Tuple[str,int,str]:
     id_, size, fmt = struct.unpack('<4sI4s', f.read(12))
     return id_.decode(), size, fmt.decode()
-def wav_read_subchunk_desc(f: IO[bytes]) -> Tuple[str,size]:
+def wav_read_subchunk_desc(f: IO[bytes]) -> Tuple[str,int]:
     id_, size = struct.unpack('<4sI', f.read(8))
     return id_.decode(), size
 def wav_read_subchunk_fmt(f: IO[bytes], size: int) -> Dict[str,int]:
@@ -112,7 +112,7 @@ class WavSourceBlock(SourceBlock):
         nframe = nbyte // ospan.frame_nbyte
         return [nframe]
 
-def read_wav(sourcefiles: List[str], gulp_nframe: int
+def read_wav(sourcefiles: List[str], gulp_nframe: int,
              *args, **kwargs) -> WavSourceBlock:
     """Read Wave files (.wav).
 
