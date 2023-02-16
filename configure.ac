@@ -92,6 +92,84 @@ AS_IF([test x$HAVE_HAVE_LONG_DOUBLE_WIDER = x1],
       [AC_SUBST([HAVE_FLOAT128], [0])])
 
 #
+# SSE
+#
+
+AC_DEFUN([AC_CHECK_SSE], [
+  AC_MSG_CHECKING([for SSE support])
+
+  AC_COMPILE_IFELSE([
+    AC_LANG_SOURCE([[
+      #include <xmmintrin.h>
+      int main() {
+        __m128 x = _mm_set1_ps(1.0f);
+        x = _mm_add_ps(x, x);
+        return _mm_cvtss_f32(x) != 2.0f;
+      }
+    ]])
+  ], [
+    AC_SUBST([HAVE_SSE], [1])
+    AC_MSG_RESULT([yes])
+  ], [
+    AC_MSG_RESULT([no])
+  ])
+])
+AC_SUBST([HAVE_SSE], [0])
+AC_CHECK_SSE
+
+#
+# AVX
+#
+
+AC_DEFUN([AC_CHECK_AVX], [
+  AC_MSG_CHECKING([for AVX support])
+
+  AC_COMPILE_IFELSE([
+    AC_LANG_SOURCE([[
+      #include <immintrin.h>
+      int main() {
+        __m256d x = _mm256_set1_pd(1.0);
+        x = _mm256_add_pd(x, x);
+        return _mm256_cvtsd_f64(x) != 2.0;
+      }
+    ]])
+  ], [
+    AC_SUBST([HAVE_AVX], [1])
+    AC_MSG_RESULT([yes])
+  ], [
+    AC_MSG_RESULT([no])
+  ])
+])
+AC_SUBST([HAVE_AVX], [0])
+AC_CHECK_AVX
+
+#
+# AVX512
+#
+
+AC_DEFUN([AC_CHECK_AVX512], [
+  AC_MSG_CHECKING([for AVX-512 support])
+
+  AC_COMPILE_IFELSE([
+    AC_LANG_SOURCE([[
+      #include <immintrin.h>
+      int main() {
+        __m512d x = _mm512_set1_pd(1.0);
+        x = _mm512_add_pd(x, x);
+        return _mm512_cvtsd_f64(x) != 2.0;
+      }
+    ]])
+  ], [
+    AC_SUBST([HAVE_AVX512], [1])
+    AC_MSG_RESULT([yes])
+  ], [
+    AC_MSG_RESULT([no])
+  ])
+])
+AC_SUBST([HAVE_AVX512], [1])
+AC_CHECK_AVX512
+
+#
 # HWLOC
 #
 
