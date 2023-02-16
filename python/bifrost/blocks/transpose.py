@@ -39,7 +39,7 @@ from bifrost import telemetry
 telemetry.track_module()
 
 class TransposeBlock(TransformBlock):
-    def __init__(self, iring: Ring, axes: Union[List[int],Tuple[int]], *args: Any, **kwargs: Any):
+    def __init__(self, iring: Ring, axes: Union[List[int],Tuple[int]], *args, **kwargs):
         super(TransposeBlock, self).__init__(iring, *args, **kwargs)
         self.specified_axes = axes
         self.space = self.orings[0].space
@@ -80,7 +80,7 @@ class TransposeBlock(TransformBlock):
             ospan.data[...] = np.transpose(ispan.data, self.axes)
 
 def transpose(iring: Ring, axes: Union[List[int],Tuple[int]],
-              *args: Any, **kwargs: Any) -> TransposeBlock:
+              *args, **kwargs) -> TransposeBlock:
     """Transpose (permute) axes of the data.
 
     Args:

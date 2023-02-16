@@ -78,7 +78,7 @@ def get_current_block_scope() -> "BlockScope":
     else:
         return None
 
-def block_scope(*args: Any, **kwargs: Any) -> "BlockScope":
+def block_scope(*args, **kwargs) -> "BlockScope":
     return BlockScope(*args, **kwargs)
 
 class BlockScope(object):
@@ -220,7 +220,7 @@ class PipelineInitError(Exception):
 
 class Pipeline(BlockScope):
     instance_count = 0
-    def __init__(self, name: str=None, **kwargs: Any):
+    def __init__(self, name: str=None, **kwargs):
         if name is None:
             name = f"Pipeline_{Pipeline.instance_count}"
             Pipeline.instance_count += 1
@@ -324,7 +324,7 @@ class Block(BlockScope):
     def __init__(self, irings: List[Union["Block",Ring]],
                  name: Optional[str]=None,
                  type_: Optional[str]=None,
-                 **kwargs: Any):
+                 **kwargs):
         self.type = type_ or self.__class__.__name__
         self.name = name or f"{self.type}_{Block.instance_counts[self.type]}"
         Block.instance_counts[self.type] += 1
@@ -352,7 +352,7 @@ class Block(BlockScope):
         self.init_trace = ''.join(traceback.format_stack()[:-1])
     def shutdown(self) -> None:
         self.shutdown_event.set()
-    def create_ring(self, *args: Any, **kwargs: Any) -> Ring:
+    def create_ring(self, *args, **kwargs) -> Ring:
         return Ring(*args, owner=self, **kwargs)
     def run(self) -> None:
         #affinity.set_openmp_cores(cpus) # TODO

@@ -40,7 +40,7 @@ telemetry.track_module()
 
 class UnpackBlock(TransformBlock):
     def __init__(self, iring: Ring, dtype: Union[str,np.dtype], align_msb: bool=False,
-                 *args: Any, **kwargs: Any):
+                 *args, **kwargs):
         super(UnpackBlock, self).__init__(iring, *args, **kwargs)
         self.dtype     = dtype
         self.align_msb = align_msb
@@ -65,7 +65,7 @@ class UnpackBlock(TransformBlock):
         odata = ospan.data
         bf_unpack(idata, odata, self.align_msb)
 
-def unpack(iring: Ring, dtype: Union[str,np.dtype], *args: Any, **kwargs: Any) -> UnpackBlock:
+def unpack(iring: Ring, dtype: Union[str,np.dtype], *args, **kwargs) -> UnpackBlock:
     """Unpack data to a larger data type.
 
     Args:

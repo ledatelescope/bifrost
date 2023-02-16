@@ -113,7 +113,7 @@ class WavSourceBlock(SourceBlock):
         return [nframe]
 
 def read_wav(sourcefiles: List[str], gulp_nframe: int
-             *args: Any, **kwargs: Any) -> WavSourceBlock:
+             *args, **kwargs) -> WavSourceBlock:
     """Read Wave files (.wav).
 
     Args:
@@ -133,7 +133,7 @@ def read_wav(sourcefiles: List[str], gulp_nframe: int
     return WavSourceBlock(sourcefiles, gulp_nframe, *args, **kwargs)
 
 class WavSinkBlock(SinkBlock):
-    def __init__(self, iring: Ring, path: Optional[str]=None, *args: Any, **kwargs: Any):
+    def __init__(self, iring: Ring, path: Optional[str]=None, *args, **kwargs):
         super(WavSinkBlock, self).__init__(iring, *args, **kwargs)
         if path is None:
             path = ''
@@ -193,7 +193,7 @@ class WavSinkBlock(SinkBlock):
             raise ValueError("Internal error: Unknown data format!")
 
 def write_wav(iring: Ring, path: Optional[str]=None,
-              *args: Any, **kwargs: Any) -> WavSinkBlock:
+              *args, **kwargs) -> WavSinkBlock:
     """Write data as Wave files (.wav).
 
     Args:

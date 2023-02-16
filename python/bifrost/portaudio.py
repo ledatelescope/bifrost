@@ -232,7 +232,7 @@ class Stream(object):
         with self.lock:
             return _lib.Pa_GetStreamTime(self.stream)
 
-def open(*args: Any, **kwargs: Any) -> Stream:
+def open(*args, **kwargs) -> Stream:
     return Stream(*args, **kwargs)
 
 def get_device_count() -> int:
