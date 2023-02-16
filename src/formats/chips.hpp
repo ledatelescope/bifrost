@@ -107,47 +107,29 @@ public:
 	    otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
 	
 	    int chan = 0;
-	    //cout << pkt->src << ", " << pkt->nsrc << endl;
-	    //cout << pkt->nchan << endl;
-	    /*
-	      // HACK TESTING disabled
-	    for( ; chan<pkt->nchan/4*4; chan+=4 ) {
-		    __m128i tmp0 = ((__m128i*)&in[chan])[0];
-		    __m128i tmp1 = ((__m128i*)&in[chan])[1];
-		    __m128i tmp2 = ((__m128i*)&in[chan+1])[0];
-		    __m128i tmp3 = ((__m128i*)&in[chan+1])[1];
-		    __m128i tmp4 = ((__m128i*)&in[chan+2])[0];
-		    __m128i tmp5 = ((__m128i*)&in[chan+2])[1];
-		    __m128i tmp6 = ((__m128i*)&in[chan+3])[0];
-		    __m128i tmp7 = ((__m128i*)&in[chan+3])[1];
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*chan])[0], tmp0);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*chan])[1], tmp1);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+1)])[0], tmp2);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+1)])[1], tmp3);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+2)])[0], tmp4);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+2)])[1], tmp5);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+3)])[0], tmp6);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+3)])[1], tmp7);
-	    }
-	    */
-	    //for( ; chan<pkt->nchan; ++chan ) {
-	    /*
-	    for( ; chan<10; ++chan ) { // HACK TESTING
-		    __m128i tmp0 = ((__m128i*)&in[chan])[0];
-		    __m128i tmp1 = ((__m128i*)&in[chan])[1];
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*chan])[0], tmp0);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*chan])[1], tmp1);
-	    }
-	    */
-	    //if( pkt->src < 8 ) { // HACK TESTING
-	    //for( ; chan<32; ++chan ) { // HACK TESTING
-	    for( ; chan<pkt->nchan; ++chan ) { // HACK TESTING
-		    ::memcpy(&out[pkt->src + pkt->nsrc*chan], 
-		             &in[chan], sizeof(otype));
-		    //out[pkt->src + pkt->nsrc*chan] = in[chan];
-		    //::memset(
-	    }
-	    //}
+			//cout << pkt->src << ", " << pkt->nsrc << endl;
+		  //cout << pkt->nchan << endl;
+			for( ; chan<pkt->nchan; ++chan ) {
+#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
+           __m256i data = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&in[chan]));
+           _mm256_store_si256(reinterpret_cast<__m256i*>(&out[pkt->src + pkt->nsrc*chan]),
+					                    data);
+#else
+#if defined BF_SSE_ENABLED && BF_SSE_ENABLED
+           const unaligned128_type* dsrc = (const unaligned128_type*) &in[chan];
+           aligned128_type* ddst = (aligned128_type*) &out[pkt->src + pkt->nsrc*chan];
+           
+           __m128i lo = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc));
+           __m128i hi = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1));
+           
+           _mm_store_si128(reinterpret_cast<__m128i*>(ddst),   lo);
+           _mm_store_si128(reinterpret_cast<__m128i*>(ddst+1), hi);
+#else
+						::memcpy(&out[pkt->src + pkt->nsrc*chan],
+						      	 &in[chan], sizeof(otype));
+#endif
+#endif
+      }
     }
 
     inline void blank_out_source(uint8_t* data,

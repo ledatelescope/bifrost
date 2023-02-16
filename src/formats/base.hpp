@@ -34,6 +34,24 @@
 
 #include <arpa/inet.h>  // For ntohs
 
+#if defined BF_SSE_ENABLED && BF_SSE_ENABLED
+
+#include <xmmintrin.h>
+
+#endif
+
+#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
+
+#include <immintrin.h>
+
+#endif
+
+#if defined BF_AVX512_ENABLED && BF_AVX512_ENABLED
+
+#include <immintrin.h>
+
+#endif
+
 #if defined __APPLE__ && __APPLE__
 
 #include <libkern/OSByteOrder.h>
