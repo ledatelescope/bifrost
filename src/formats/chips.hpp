@@ -147,7 +147,7 @@ public:
 					_mm_store_si128(reinterpret_cast<__m128i*>(ddst),
 					                _mm_setzero_si128());
 					_mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
-					                _mm_setzero_si128();
+					                _mm_setzero_si128());
 #else
 			    ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
 			             0, sizeof(otype));
