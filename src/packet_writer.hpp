@@ -189,19 +189,13 @@ public:
 #if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
 #include "ib_verbs.hpp"
 
-struct __attribute__((packed)) bf_udp_header {
-  bf_ethernet_hdr ethernet;
-  bf_ipv4_hdr     ipv4;
-  bf_udp_hdr      udp;
-};
-
 class UDPVerbsSender : public PacketWriterMethod {
-    Verbs         _ibv;
-    bf_udp_header _udp_header
-    int           _last_size;
-    int           _last_count;
-    mmsghdr*      _mmsg;
-    iovec*        _iovs;
+    Verbs           _ibv;
+    bf_comb_udp_hdr _udp_hdr;
+    int             _last_size;
+    int             _last_count;
+    mmsghdr*        _mmsg;
+    iovec*          _iovs;
 public:
     UDPVerbsSender(int fd)
         : PacketWriterMethod(fd), _ibv(fd, JUMBO_FRAME_SIZE), _last_size(0),
@@ -238,16 +232,16 @@ public:
         
         if( (hdr_size + data_size) != _last_size ) {
             _last_size = hdr_size + data_size;
-            _ibv.get_ethernet_header(&(_udp_header.ethernet));
-            _ibv.get_ipv4_header(&(_udp_header.ipv4), _last_size);
-            _ibv.get_udp_header(&(_udp_header.udp), _last_size);
+            _ibv.get_ethernet_header(&(_udp_hdr.ethernet));
+            _ibv.get_ipv4_header(&(_udp_hdr.ipv4), _last_size);
+            _ibv.get_udp_header(&(_udp_hdr.udp), _last_size);
         }
         
         for(int i=0; i<npackets; i++) {
             _mmsg[i].msg_hdr.msg_iov = &_iovs[3*i];
             _mmsg[i].msg_hdr.msg_iovlen = 3;
-            _iovs[3*i+0].iov_base = &_udp_header;
-            _iovs[3*i+0].iov_len = sizeof(bf_udp_header);
+            _iovs[3*i+0].iov_base = &_udp_hdr;
+            _iovs[3*i+0].iov_len = sizeof(bf_comb_udp_hdr);
             _iovs[3*i+1].iov_base = (hdrs + i*hdr_size);
             _iovs[3*i+1].iov_len = hdr_size;
             _iovs[3*i+2].iov_base = (data + i*data_size);
@@ -345,7 +339,7 @@ protected:
     ProcLog             _stat_log;
     pid_t               _pid;
     
-    char*               _hdrs;
+    char*               _pkt_hdrs;
     int                 _last_size;
     int                 _last_count;
     BFoffset            _framecount;
@@ -370,14 +364,14 @@ public:
           _nsamples(nsamples), _dtype(dtype),
           _bind_log(_name+"/bind"),
           _stat_log(_name+"/stats"),
-          _hdrs(NULL), _last_size(0), _last_count(0),
+          _pkt_hdrs(NULL), _last_size(0), _last_count(0),
           _framecount(0) {
         _bind_log.update() << "ncore : " << 1 << "\n"
                            << "core0 : " << _writer->get_core() << "\n";
     }
     inline ~BFpacketwriter_impl() {
-      if( _hdrs ) {
-        free(_hdrs);
+      if(_pkt_hdrs) {
+        free(_pkt_hdrs);
       }
     }
     inline void set_rate_limit(uint32_t rate_limit) { _writer->set_rate_limit(rate_limit); }
