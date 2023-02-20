@@ -30,8 +30,6 @@
 
 #include "base.hpp"
 
-//#include <immintrin.h> // SSE
-
 struct __attribute__((packed)) chips_hdr_type {
 	uint8_t  roach;    // Note: 1-based
 	uint8_t  gbe;      // (AKA tuning)
@@ -111,19 +109,17 @@ public:
 		  //cout << pkt->nchan << endl;
 			for( ; chan<pkt->nchan; ++chan ) {
 #if defined BF_AVX_ENABLED && BF_AVX_ENABLED
-           __m256i data = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&in[chan]));
            _mm256_store_si256(reinterpret_cast<__m256i*>(&out[pkt->src + pkt->nsrc*chan]),
-					                    data);
+					                    _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&in[chan])));
 #else
 #if defined BF_SSE_ENABLED && BF_SSE_ENABLED
            const unaligned128_type* dsrc = (const unaligned128_type*) &in[chan];
            aligned128_type* ddst = (aligned128_type*) &out[pkt->src + pkt->nsrc*chan];
            
-           __m128i lo = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc));
-           __m128i hi = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1));
-           
-           _mm_store_si128(reinterpret_cast<__m128i*>(ddst),   lo);
-           _mm_store_si128(reinterpret_cast<__m128i*>(ddst+1), hi);
+           _mm_store_si128(reinterpret_cast<__m128i*>(ddst),
+					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc)));
+           _mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
+					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1)));
 #else
 						::memcpy(&out[pkt->src + pkt->nsrc*chan],
 						      	 &in[chan], sizeof(otype));
@@ -141,8 +137,22 @@ public:
 	    otype* __restrict__ aligned_data = (otype*)data;
 	    for( int t=0; t<nseq; ++t ) {
 		    for( int c=0; c<nchan; ++c ) {
+#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
+			    _mm256_store_si256(reinterpret_cast<__m256i*>(&aligned_data[src + nsrc*(c + nchan*t)]),
+					                   _mm256_setzero_si256());
+#else
+#if defined BF_SSE_ENABLED && BF_SSE_ENABLED
+			    aligned128_type* ddst = (aligned128_type*) &aligned_data[src + nsrc*(c + nchan*t)];
+					
+					_mm_store_si128(reinterpret_cast<__m128i*>(ddst),
+					                _mm_setzero_si128());
+					_mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
+					                _mm_setzero_si128();
+#else
 			    ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
 			             0, sizeof(otype));
+#endif
+#endif
 		    }
 	    }
     }
