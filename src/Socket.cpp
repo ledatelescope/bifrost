@@ -671,7 +671,7 @@ void Socket::close() {
     try {
       this->set_promiscuous(false);
     }
-    catch( Socket::Error ) {}
+    catch( Socket::Error const& ) {}
     ::close(_fd);
     _fd     = -1;
     _family = AF_UNSPEC;
