@@ -49,26 +49,33 @@
 using std::cout;
 using std::endl;
 
-template<typename InType, typename OutType>
+__device__
+inline double fetch_f64(cudaTextureObject_t tex,
+                        int                 idx) {
+    uint2 p = tex1Dfetch<uint2>(tex, idx);
+    return __hiloint2double(p.y, p.x);
+}
+
+template<typename InType, typename OutType, bool IsComplex>
 __global__ void fir_kernel(unsigned int               ncoeff,
                            unsigned int               decim, 
                            unsigned int               ntime, 
                            unsigned int               nantpol,
-                           const double* __restrict__ coeffs,
-                           Complex64*                 state0,
-                           Complex64*                 state1,
+                           uint8_t                    dfactor,
+                           cudaTextureObject_t coeffs,
+                           double*                    state0,
+                           double*                    state1,
                            const InType* __restrict__ d_in,
                            OutType* __restrict__      d_out) {
 	int a = threadIdx.x + blockIdx.x*blockDim.x;
 	
 	int c, t, t0;
-	Complex64 tempI(0.,0.);
-	Complex64 tempO(0.,0.);
+	double tempI, tempO;
 	if( a < nantpol ) {
 		t0 = threadIdx.y + (blockIdx.y + blockIdx.z*gridDim.y)*blockDim.y;
 		t0 *= decim;
 		if( t0 < ntime ) {
-			tempO *= 0.0;
+			tempO = 0.0;
 			for(c=0; c<ncoeff; c++) {
 				t = t0 - ncoeff + c + 1;
 				if( t < 0 ) {
@@ -76,36 +83,37 @@ __global__ void fir_kernel(unsigned int               ncoeff,
 					tempI = state0[(ncoeff+t)*nantpol + a];
 				} else {
 					// Fully inside the data
-					tempI = Complex64(d_in[t*nantpol*2 + a*2 + 0], \
-					                  d_in[t*nantpol*2 + a*2 + 1]);
+          tempI = (double) d_in[t*nantpol + a];
 				}
-				tempO += tempI*coeffs[nantpol*c + a];
+				tempO += tempI*fetch_f64(coeffs, nantpol/dfactor*c + a/dfactor);
 			}
-			d_out[t0/decim*nantpol + a] = OutType(tempO.real, tempO.imag);
+      d_out[t0/decim*nantpol + a] = OutType(tempO);
 			
 			for(t=t0; t<t0+decim; t++) {
 				c = ncoeff - (ntime - t);
 				if( c >= 0 && c < ncoeff && t < ntime) {
 					// Seed the initial state of the next call
-					state1[c*nantpol + a] = Complex64(d_in[t*nantpol*2 + a*2 + 0], \
-					                                  d_in[t*nantpol*2 + a*2 + 1]);
+          state1[c*nantpol + a] = (double) d_in[t*nantpol + a];
 				}
 			}
 		}
 	}
 }
 
-template<typename InType, typename OutType>
+template<typename InType, typename OutType, bool IsComplex>
 inline void launch_fir_kernel(unsigned int ncoeff,
                               unsigned int decim, 
                               unsigned int ntime, 
                               unsigned int nantpol,
                               double*      coeffs,
-                              Complex64*   state0,
-                              Complex64*   state1,
+                              double*      state0,
+                              double*      state1,
                               InType*      d_in,
                               OutType*     d_out,
                               cudaStream_t stream=0) {
+  uint8_t dfactor = 1+IsComplex;
+  nantpol *= dfactor;
+  
 	//cout << "LAUNCH for " << nelement << endl;
 	dim3 block(std::min(256u, nantpol), 256u/std::min(256u, nantpol));
 	int first = std::min((nantpol-1)/block.x+1, 65535u);
@@ -125,19 +133,43 @@ inline void launch_fir_kernel(unsigned int ncoeff,
 	}
 	*/
 	
+  // Create texture object
+  cudaResourceDesc resDesc;
+  memset(&resDesc, 0, sizeof(resDesc));
+  resDesc.resType = cudaResourceTypeLinear;
+  resDesc.res.linear.devPtr = coeffs;
+  resDesc.res.linear.desc.f = cudaChannelFormatKindUnsigned;
+  resDesc.res.linear.desc.x = 32;
+  resDesc.res.linear.desc.y = 32;
+  resDesc.res.linear.desc.z = 0;
+  resDesc.res.linear.desc.w = 0;
+  resDesc.res.linear.sizeInBytes = nantpol/dfactor*ncoeff*sizeof(double);
+  
+  cudaTextureDesc texDesc;
+  memset(&texDesc, 0, sizeof(texDesc));
+  texDesc.readMode = cudaReadModeElementType;
+  
+  cudaTextureObject_t coeffs_tex;
+  BF_CHECK_CUDA_EXCEPTION(cudaCreateTextureObject(&coeffs_tex, &resDesc, &texDesc, NULL),
+                          BF_STATUS_INTERNAL_ERROR);
+
 	void* args[] = {&ncoeff,
 	                &decim,
 	                &ntime, 
 	                &nantpol,
-	                &coeffs,
+                  &dfactor,
+	                &coeffs_tex,
 	                &state0,
 	                &state1,
 	                &d_in,
 	                &d_out};
-	BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)fir_kernel<InType,OutType>,
+	BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)fir_kernel<InType,OutType,IsComplex>,
 	                                         grid, block,
 	                                         &args[0], 0, stream),
 	                        BF_STATUS_INTERNAL_ERROR);
+  
+  BF_CHECK_CUDA_EXCEPTION(cudaDestroyTextureObject(coeffs_tex),
+                            BF_STATUS_INTERNAL_ERROR);
 }
 
 class BFfir_impl {
@@ -151,8 +183,8 @@ private:
 	UType        _decim;
 	UType        _nantpol;
 	double*      _coeffs = NULL;
-	Complex64*   _state0 = NULL;
-	Complex64*   _state1 = NULL;
+	double*      _state0 = NULL;
+	double*      _state1 = NULL;
 	IType        _plan_stride;
 	Workspace    _plan_storage;
 	// TODO: Use something other than Thrust
@@ -179,12 +211,12 @@ public:
 		BF_TRACE_STREAM(_stream);
 		enum {
 			ALIGNMENT_BYTES = 512,
-			ALIGNMENT_ELMTS = ALIGNMENT_BYTES / sizeof(Complex64)
+			ALIGNMENT_ELMTS = ALIGNMENT_BYTES / sizeof(double)
 		};
 		Workspace workspace(ALIGNMENT_BYTES);
 		_plan_stride = round_up(_nantpol, ALIGNMENT_ELMTS);
-		workspace.reserve(_ncoeff*_nantpol+1, &_state0);
-		workspace.reserve(_ncoeff*_nantpol+1, &_state1);
+		workspace.reserve(2*_ncoeff*_nantpol+1, &_state0);
+		workspace.reserve(2*_ncoeff*_nantpol+1, &_state1);
 		if( storage_size ) {
 			if( !storage_ptr ) {
 				// Return required storage size
@@ -242,57 +274,101 @@ public:
 		BF_ASSERT_EXCEPTION(_coeffs != NULL, BF_STATUS_INVALID_STATE);
 		BF_ASSERT_EXCEPTION(_state0 != NULL, BF_STATUS_INVALID_STATE);
 		BF_ASSERT_EXCEPTION(_state1 != NULL, BF_STATUS_INVALID_STATE);
-		BF_ASSERT_EXCEPTION(out->dtype == BF_DTYPE_CF32 || \
+		BF_ASSERT_EXCEPTION(out->dtype == BF_DTYPE_F32 || \
+                        out->dtype == BF_DTYPE_F64 || \
+                        out->dtype == BF_DTYPE_CF32 || \
 		                    out->dtype == BF_DTYPE_CF64,     BF_STATUS_UNSUPPORTED_DTYPE);
 		
 		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
 		
-#define LAUNCH_FIR_KERNEL(IterType,OterType) \
-		launch_fir_kernel(_ncoeff, _decim, in->shape[0], _nantpol, \
-		                  _coeffs, _state0, _state1, \
-		                  (IterType)in->data, (OterType)out->data, \
-		                  _stream)
+#define LAUNCH_FIR_KERNEL(IterType,OterType,IsComplex) \
+		launch_fir_kernel<IterType,OterType,IsComplex>(_ncoeff, _decim, in->shape[0], _nantpol, \
+                              		                 _coeffs, _state0, _state1, \
+                              		                 (IterType*)in->data, (OterType*)out->data, \
+                              		                 _stream)
 		
 		switch( in->dtype ) {
+      case BF_DTYPE_I8:
+        switch( out->dtype ) {
+          case BF_DTYPE_F32: LAUNCH_FIR_KERNEL(int8_t, float, false);  break;
+          case BF_DTYPE_F64: LAUNCH_FIR_KERNEL(int8_t, double, false);  break;
+          default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
+        };
+        break;
 			case BF_DTYPE_CI8:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int8_t*, Complex32*);  break;
-					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int8_t*, Complex64*);  break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int8_t, float, true);  break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int8_t, double, true);  break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				};
 				break;
+      case BF_DTYPE_I16:
+        switch( out->dtype ) {
+          case BF_DTYPE_F32: LAUNCH_FIR_KERNEL(int16_t, float, false);  break;
+          case BF_DTYPE_F64: LAUNCH_FIR_KERNEL(int16_t, double, false);  break;
+          default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
+        };
+        break;
 			case BF_DTYPE_CI16:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int16_t*, Complex32*); break;
-					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int16_t*, Complex64*); break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int16_t, float, true); break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int16_t, double, true); break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				}
 				break;
+      case BF_DTYPE_I32:
+        switch( out->dtype ) {
+          case BF_DTYPE_F32: LAUNCH_FIR_KERNEL(int32_t, float, false);  break;
+          case BF_DTYPE_F64: LAUNCH_FIR_KERNEL(int32_t, double, false);  break;
+          default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
+        };
+        break;
 			case BF_DTYPE_CI32:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int32_t*, Complex32*); break;
-					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int32_t*, Complex64*); break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int32_t, float, true); break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int32_t, double, true); break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				}
 				break;
+      case BF_DTYPE_I64:
+        switch( out->dtype ) {
+          case BF_DTYPE_F32: LAUNCH_FIR_KERNEL(int64_t, float, false);  break;
+          case BF_DTYPE_F64: LAUNCH_FIR_KERNEL(int64_t, double, false);  break;
+          default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
+        };
+        break;
 			case BF_DTYPE_CI64:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int64_t*, Complex32*); break;
-					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int64_t*, Complex64*); break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(int64_t, float, true); break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(int64_t, double, true); break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				}
 				break;
+      case BF_DTYPE_F32:
+        switch( out->dtype ) {
+          case BF_DTYPE_F32: LAUNCH_FIR_KERNEL(float, float, false);  break;
+          case BF_DTYPE_F64: LAUNCH_FIR_KERNEL(float, double, false);  break;
+          default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
+        };
+        break;
 			case BF_DTYPE_CF32:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(float*, Complex32*);   break;
-					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(float*, Complex64*);   break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(float, float, true);   break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(float, double, true);   break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				}
 				break;
+      case BF_DTYPE_F64:
+        switch( out->dtype ) {
+          case BF_DTYPE_F32: LAUNCH_FIR_KERNEL(double, float, false);  break;
+          case BF_DTYPE_F64: LAUNCH_FIR_KERNEL(double, double, false);  break;
+          default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
+        };
+        break;
 			case BF_DTYPE_CF64:
 				switch( out->dtype ) {
-					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(double*, Complex32*);  break;
-					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(double*, Complex64*);  break;
+					case BF_DTYPE_CF32: LAUNCH_FIR_KERNEL(double, float, true);  break;
+					case BF_DTYPE_CF64: LAUNCH_FIR_KERNEL(double, double, true);  break;
 					default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 				}
 				break;
