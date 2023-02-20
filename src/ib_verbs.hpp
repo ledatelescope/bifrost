@@ -1063,11 +1063,17 @@ public:
       uint64_t offset;
       for(i=0; i<npackets; i++) {
           offset = 0;
-          for(j=0; j<mmsg[i].msg_hdr.msg_iovlen; j++) {
-              ::memcpy(_verbs.send_mr_buf + i * _pkt_size_max + offset,
-                       mmsg[i].msg_hdr.msg_iov[j].iov_base,
-                       mmsg[i].msg_hdr.msg_iov[j].iov_len);
-              offset += mmsg[i].msg_hdr.msg_iov[j].iov_len;
+          ::memcpy(_verbs.send_mr_buf + i * _pkt_size_max + offset,
+                   mmsg[i].msg_hdr.msg_iov[0].iov_base,
+                   mmsg[i].msg_hdr.msg_iov[0].iov_len);
+          offset += mmsg[i].msg_hdr.msg_iov[0].iov_len;
+          ::memcpy(_verbs.send_mr_buf + i * _pkt_size_max + offset,
+                   mmsg[i].msg_hdr.msg_iov[1].iov_base,
+                   mmsg[i].msg_hdr.msg_iov[1].iov_len);
+          offset += mmsg[i].msg_hdr.msg_iov[1].iov_len;
+          ::memcpy(_verbs.send_mr_buf + i * _pkt_size_max + offset,
+                   mmsg[i].msg_hdr.msg_iov[2].iov_base,
+                   mmsg[i].msg_hdr.msg_iov[2].iov_len);
           }
           _verbs.send_pkt_buf[i].sg.length = offset;
       }

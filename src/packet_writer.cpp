@@ -59,21 +59,29 @@ BFstatus BFpacketwriter_impl::send(BFheaderinfo   info,
     int data_size = (BF_DTYPE_NBIT(in->dtype)/8) * _nsamples;
     int npackets = in->shape[0]*in->shape[1];
     
-    char* hdrs;
-    hdrs = (char*) malloc(npackets*hdr_size*sizeof(char));
+    if( hdr_size != _last_size || npackets != _last_count ) {
+      if( _hdrs ) {
+        free(_hdrs)
+      }
+      
+      _last_size = hdr_size;
+      _last_count = npackets;
+      _hdr = (char*) malloc(npackets*hdr_size*sizeof(char));
+      ::mlock(_hdr, npackets*hdr_size*sizeof(char));
+    }
+    
     for(i=0; i<in->shape[0]; i++) {
         hdr_base->seq = seq + i*seq_increment;
         for(j=0; j<in->shape[1]; j++) {
             hdr_base->src = src + j*src_increment;
-            (*_filler)(hdr_base, _framecount, hdrs+hdr_size*(i*in->shape[1]+j));
+            (*_filler)(hdr_base, _framecount, _hdrs+hdr_size*(i*in->shape[1]+j));
         }
         _framecount++;
     }
     
-    _writer->send(hdrs, hdr_size, (char*) in->data, data_size, npackets);
+    _writer->send(_hdrs, hdr_size, (char*) in->data, data_size, npackets);
     this->update_stats_log();
     
-    free(hdrs);
     return BF_STATUS_SUCCESS;
 }
 

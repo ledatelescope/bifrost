@@ -189,15 +189,19 @@ public:
 #if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
 #include "ib_verbs.hpp"
 
+struct __attribute__((packed)) bf_udp_header {
+  bf_ethernet_hdr ethernet;
+  bf_ipv4_hdr     ipv4;
+  bf_udp_hdr      udp;
+};
+
 class UDPVerbsSender : public PacketWriterMethod {
-    Verbs           _ibv;
-    bf_ethernet_hdr _ethernet;
-    bf_ipv4_hdr     _ipv4;
-    bf_udp_hdr      _udp;
-    int             _last_size;
-    int             _last_count;
-    mmsghdr*        _mmsg;
-    iovec*          _iovs;
+    Verbs         _ibv;
+    bf_udp_header _udp_header
+    int           _last_size;
+    int           _last_count;
+    mmsghdr*      _mmsg;
+    iovec*        _iovs;
 public:
     UDPVerbsSender(int fd)
         : PacketWriterMethod(fd), _ibv(fd, JUMBO_FRAME_SIZE), _last_size(0),
@@ -226,32 +230,28 @@ public:
           
           _last_count = npackets;
           _mmsg = (struct mmsghdr *) malloc(sizeof(struct mmsghdr)*npackets);
-          _iovs = (struct iovec *) malloc(sizeof(struct iovec)*5*npackets);
+          _iovs = (struct iovec *) malloc(sizeof(struct iovec)*3*npackets);
           ::mlock(_mmsg, sizeof(struct mmsghdr)*npackets);
-          ::mlock(_iovs, sizeof(struct iovec)*5*npackets);
+          ::mlock(_iovs, sizeof(struct iovec)*3*npackets);
         }
         memset(_mmsg, 0, sizeof(struct mmsghdr)*npackets);
         
         if( (hdr_size + data_size) != _last_size ) {
             _last_size = hdr_size + data_size;
-            _ibv.get_ethernet_header(&_ethernet);
-            _ibv.get_ipv4_header(&_ipv4, _last_size);
-            _ibv.get_udp_header(&_udp, _last_size);
+            _ibv.get_ethernet_header(&(_udp_header.ethernet));
+            _ibv.get_ipv4_header(&(_udp_header.ipv4), _last_size);
+            _ibv.get_udp_header(&(_udp_header.udp), _last_size);
         }
         
         for(int i=0; i<npackets; i++) {
-            _mmsg[i].msg_hdr.msg_iov = &_iovs[5*i];
-            _mmsg[i].msg_hdr.msg_iovlen = 5;
-            _iovs[5*i+0].iov_base = &_ethernet;
-            _iovs[5*i+0].iov_len = sizeof(bf_ethernet_hdr);
-            _iovs[5*i+1].iov_base = &_ipv4;
-            _iovs[5*i+1].iov_len = sizeof(bf_ipv4_hdr);
-            _iovs[5*i+2].iov_base = &_udp;
-            _iovs[5*i+2].iov_len = sizeof(bf_udp_hdr);
-            _iovs[5*i+3].iov_base = (hdrs + i*hdr_size);
-            _iovs[5*i+3].iov_len = hdr_size;
-            _iovs[5*i+4].iov_base = (data + i*data_size);
-            _iovs[5*i+4].iov_len = data_size;
+            _mmsg[i].msg_hdr.msg_iov = &_iovs[3*i];
+            _mmsg[i].msg_hdr.msg_iovlen = 3;
+            _iovs[3*i+0].iov_base = &_udp_header;
+            _iovs[3*i+0].iov_len = sizeof(bf_udp_header);
+            _iovs[3*i+1].iov_base = (hdrs + i*hdr_size);
+            _iovs[3*i+1].iov_len = hdr_size;
+            _iovs[3*i+2].iov_base = (data + i*data_size);
+            _iovs[3*i+2].iov_len = data_size;
         }
         
         ssize_t nsent = _ibv.sendmmsg(_mmsg, npackets, flags);
@@ -345,6 +345,9 @@ protected:
     ProcLog             _stat_log;
     pid_t               _pid;
     
+    char*               _hdrs;
+    int                 _last_size;
+    int                 _last_count;
     BFoffset            _framecount;
 private:
     void update_stats_log() {
@@ -367,11 +370,16 @@ public:
           _nsamples(nsamples), _dtype(dtype),
           _bind_log(_name+"/bind"),
           _stat_log(_name+"/stats"),
+          _hdrs(NULL), _last_size(0), _last_count(0),
           _framecount(0) {
         _bind_log.update() << "ncore : " << 1 << "\n"
                            << "core0 : " << _writer->get_core() << "\n";
     }
-    virtual ~BFpacketwriter_impl() {}
+    inline ~BFpacketwriter_impl() {
+      if( _hdrs ) {
+        free(hdrs);
+      }
+    }
     inline void set_rate_limit(uint32_t rate_limit) { _writer->set_rate_limit(rate_limit); }
     inline void reset_rate_limit() { _writer->reset_rate_limit(); }
     inline void reset_counter() { _framecount = 0; }
