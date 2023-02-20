@@ -114,13 +114,10 @@ public:
 	    uint8_t const* __restrict__ in  = (uint8_t const*)pkt->payload_ptr;
 	    uint8_t*       __restrict__ out = (uint8_t*      )&obufs[obuf_idx][obuf_offset];
 	
-	    int samp = 0;
-			uint8_t const* in_ptr = in;
-			uint8_t* out_ptr = out + pkt->src;
-			for (int samp = 0; samp < 4096; ++samp) {
-			    *out_ptr = *in_ptr;
-			    in_ptr++;
-			    out_ptr += pkt->nsrc;
+	    for (int samp=0; samp<4096; ++samp) {
+			    *(out + pkt->src) = *in;
+			    in++;
+			    out += pkt->nsrc;
 			}
     }
 
@@ -132,8 +129,9 @@ public:
 	    uint8_t* __restrict__ aligned_data = (uint8_t*) data;
 	    for( int t=0; t<nseq; ++t ) {
 				uint8_t* ptr = aligned_data + t*4096*nsrc + src;
-				for (int c = 0; c < 4096; ++c, ptr += nsrc) {
+				for (int c=0; c<4096; ++c) {
 			      *ptr = 0;
+						ptr += nsrc;
 			  }
     }
 };
