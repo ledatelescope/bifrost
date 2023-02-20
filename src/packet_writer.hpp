@@ -377,7 +377,7 @@ public:
     }
     inline ~BFpacketwriter_impl() {
       if( _hdrs ) {
-        free(hdrs);
+        free(_hdrs);
       }
     }
     inline void set_rate_limit(uint32_t rate_limit) { _writer->set_rate_limit(rate_limit); }

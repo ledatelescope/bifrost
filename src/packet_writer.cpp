@@ -66,8 +66,8 @@ BFstatus BFpacketwriter_impl::send(BFheaderinfo   info,
       
       _last_size = hdr_size;
       _last_count = npackets;
-      _hdr = (char*) malloc(npackets*hdr_size*sizeof(char));
-      ::mlock(_hdr, npackets*hdr_size*sizeof(char));
+      _hdrs = (char*) malloc(npackets*hdr_size*sizeof(char));
+      ::mlock(_hdrs, npackets*hdr_size*sizeof(char));
     }
     
     for(i=0; i<in->shape[0]; i++) {
