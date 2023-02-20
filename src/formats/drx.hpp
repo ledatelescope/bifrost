@@ -111,15 +111,17 @@ public:
 	
 	    size_t obuf_offset = (pkt->seq-obuf_seq0)*pkt->nsrc*payload_size;
 	
-	    // Note: Using these SSE types allows the compiler to use SSE instructions
-	    //         However, they require aligned memory (otherwise segfault)
 	    uint8_t const* __restrict__ in  = (uint8_t const*)pkt->payload_ptr;
 	    uint8_t*       __restrict__ out = (uint8_t*      )&obufs[obuf_idx][obuf_offset];
 	
 	    int samp = 0;
-	    for( ; samp<4096; ++samp ) { // HACK TESTING
-		    out[samp*pkt->nsrc + pkt->src] = in[samp];
-	    }
+			uint8_t const* in_ptr = in;
+			uint8_t* out_ptr = out + pkt->src;
+			for (int samp = 0; samp < 4096; ++samp) {
+			    *out_ptr = *in_ptr;
+			    in_ptr++;
+			    out_ptr += pkt->nsrc;
+			}
     }
 
     inline void blank_out_source(uint8_t* data,
@@ -127,13 +129,12 @@ public:
                                  int      nsrc,
                                  int      nchan,
                                  int      nseq) {
-	    uint8_t* __restrict__ aligned_data = (uint8_t*)data;
+	    uint8_t* __restrict__ aligned_data = (uint8_t*) data;
 	    for( int t=0; t<nseq; ++t ) {
-		    for( int c=0; c<4096; ++c ) {
-			    aligned_data[t*4096*nsrc + c*nsrc + src] = 0;
-			    aligned_data[t*4096*nsrc + c*nsrc + src] = 0;
-		    }
-	    }
+				uint8_t* ptr = aligned_data + t*4096*nsrc + src;
+				for (int c = 0; c < 4096; ++c, ptr += nsrc) {
+			      *ptr = 0;
+			  }
     }
 };
 
