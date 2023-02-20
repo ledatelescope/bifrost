@@ -157,6 +157,12 @@ struct __attribute__((packed)) bf_udp_hdr {
    uint16_t checksum;
 };
 
+struct __attribute__((packed)) bf_comb_udp_hdr {
+   bf_ethernet_hdr ethernet;
+   bf_ipv4_hdr     ipv4;
+   bf_udp_hdr      udp;
+};
+
 
 class Verbs {
     int    _fd;
@@ -1059,7 +1065,6 @@ public:
       ibv_send_wr *s;
       
       int i;
-      uint32_t j;
       uint64_t offset;
       for(i=0; i<npackets; i++) {
           offset = 0;
@@ -1074,7 +1079,7 @@ public:
           ::memcpy(_verbs.send_mr_buf + i * _pkt_size_max + offset,
                    mmsg[i].msg_hdr.msg_iov[2].iov_base,
                    mmsg[i].msg_hdr.msg_iov[2].iov_len);
-          }
+          offset += mmsg[i].msg_hdr.msg_iov[2].iov_len;
           _verbs.send_pkt_buf[i].sg.length = offset;
       }
       
