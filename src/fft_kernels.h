@@ -95,7 +95,7 @@ inline BFstatus bifrost_status(cufftResult status) {
 		          bifrost_status(cufft_ret)); \
 	} while(0)
 
-struct CallbackData {
+struct __attribute__((packed,aligned(4))) CallbackData {
 	int ptr_offset;
 	int ndim;
 	// Note: These array sizes must be at least the max supported FFT rank

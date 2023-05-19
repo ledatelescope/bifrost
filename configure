@@ -717,6 +717,7 @@ HAVE_DEBUG
 HAVE_TMPFS
 ALIGNMENT
 GPU_SHAREDMEM
+GPU_EXP_PINNED_ALLOC
 GPU_PASCAL_MANAGEDMEM
 GPU_ARCHS
 NVCCFLAGS
@@ -21730,8 +21731,63 @@ printf "%s\n" "yes" >&6; }
       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
     fi
+
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for thrust pinned allocated support" >&5
+printf %s "checking for thrust pinned allocated support... " >&6; }
+    CXXFLAGS_save="$CXXFLAGS"
+    LDFLAGS_save="$LDFLAGS"
+    LIBS_save="$LIBS"
+
+    LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+    LIBS="-lcuda -lcudart"
+    ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS conftest.$ac_ext>&5'
+    if test "$cross_compiling" = yes
+then :
+  { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+printf "%s\n" "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else $as_nop
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+          #include <cuda.h>
+          #include <cuda_runtime.h>
+          #include <thrust/system/cuda/memory.h>
+int
+main (void)
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_run "$LINENO"
+then :
+  GPU_EXP_PINNED_ALLOC=0
+
+           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: full" >&5
+printf "%s\n" "full" >&6; }
+else $as_nop
+  GPU_EXP_PINNED_ALLOC=1
+
+           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: experimental" >&5
+printf "%s\n" "experimental" >&6; }
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+    CXXFLAGS="$CXXFLAGS_save"
+    LDFLAGS="$LDFLAGS_save"
+    LIBS="$LIBS_save"
+
   else
      GPU_PASCAL_MANAGEDMEM=0
+
+     GPU_EXP_PINNED_ALLOC=1
 
   fi
 
@@ -24514,7 +24570,7 @@ PACKAGE_VERSION_MICRO=`echo $PACKAGE_VERSION | $AWK -F. '{print $3}'`
 
 
 #
-# C++17/C++14/C++11 toggling
+# C++20/C++17/C++14/C++11 toggling
 #
 
 MAP_KERNEL_STDCXX=c++11
@@ -24554,19 +24610,26 @@ then :
   STDCXX_IS_SET=1
 
        CXXFLAGS="-std=c++17 $CXXFLAGS"
-       if test x$CUDA_HAVE_CXX17 = x1
+       if test x$CUDA_HAVE_CXX20 = x1
 then :
   NVCCFLAGS="-std=c++17 $NVCCFLAGS"
               MAP_KERNEL_STDCXX=c++17
 
 else $as_nop
+  if test x$CUDA_HAVE_CXX17 = x1
+then :
+  NVCCFLAGS="-std=c++17 $NVCCFLAGS"
+                     MAP_KERNEL_STDCXX=c++17
+
+else $as_nop
   if test x$CUDA_HAVE_CXX14 = x1
 then :
   NVCCFLAGS="-std=c++14 $NVCCFLAGS"
-                     MAP_KERNEL_STDCXX=c++14
+                            MAP_KERNEL_STDCXX=c++14
 
 else $as_nop
   NVCCFLAGS="-std=c++11 $NVCCFLAGS"
+fi
 fi
 fi
 fi
@@ -24575,13 +24638,27 @@ then :
   STDCXX_IS_SET=1
 
        CXXFLAGS="-std=c++14 $CXXFLAGS"
-       if test x$CUDA_HAVE_CXX14 = x1
+       if test x$CUDA_HAVE_CXX20 = x1
 then :
   NVCCFLAGS="-std=c++14 $NVCCFLAGS"
               MAP_KERNEL_STDCXX=c++14
 
 else $as_nop
+  if test x$CUDA_HAVE_CXX17 = x1
+then :
+  NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                     MAP_KERNEL_STDCXX=c++14
+
+else $as_nop
+  if test x$CUDA_HAVE_CXX14 = x1
+then :
+  NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                            MAP_KERNEL_STDCXX=c++14
+
+else $as_nop
   NVCCFLAGS="-std=c++11 $NVCCFLAGS"
+fi
+fi
 fi
 fi
 if test x$STDCXX_IS_SET != x1
@@ -26972,3 +27049,4 @@ printf "%s\n" "$as_me: options:$OPTIONS" >&6;}
 echo ""
 echo "Bifrost is now ready to be compiled.  Please run 'make'"
 echo ""
+
