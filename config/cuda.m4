@@ -253,10 +253,10 @@ AC_DEFUN([AX_CHECK_CUDA],
           #include <cuda_runtime.h>
           #include <thrust/system/cuda/memory.h>]],
           [[]])],
-          [AC_SUBST([GPU_EXP_PINNED_ALLOC], [1])
-           AC_MSG_RESULT([experimental])],
           [AC_SUBST([GPU_EXP_PINNED_ALLOC], [0])
-           AC_MSG_RESULT([full])])
+           AC_MSG_RESULT([full])],
+          [AC_SUBST([GPU_EXP_PINNED_ALLOC], [1])
+           AC_MSG_RESULT([experimental])])
 
     CXXFLAGS="$CXXFLAGS_save"
     LDFLAGS="$LDFLAGS_save"
