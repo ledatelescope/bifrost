@@ -26,10 +26,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import unittest
-import os
+import os, sys
 import bifrost as bf
 
 from bifrost.blocks import *
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 class CallbackBlock(CopyBlock):
     """Testing-only block which calls user-defined
@@ -58,20 +63,6 @@ def identity_block(block, *args, **kwargs):
 def rename_sequence(hdr, name):
     hdr['name'] = name
     return hdr
-
-class suppress_fd(object):
-    def __init__(self, fd):
-        if   fd.lower() == 'stdout': fd = 1
-        elif fd.lower() == 'stderr': fd = 2
-        else: assert(isinstance(fd, int))
-        self.fd = fd
-        self.devnull = os.open(os.devnull, os.O_RDWR)
-        self.stderr = os.dup(self.fd) # Save original
-    def __enter__(self):
-        os.dup2(self.devnull, self.fd) # Set stderr to devnull
-    def __exit__(self, type, value, tb):
-        os.dup2(self.stderr, self.fd) # Restore original
-        os.close(self.devnull)
 
 class PipelineTestCPU(unittest.TestCase):
     def setUp(self):
@@ -174,5 +165,13 @@ class PipelineTestCPU(unittest.TestCase):
             data = CallbackBlock(data, check_sequence, check_data)
             data = copy(data)
             data = copy(data)
-            with suppress_fd('stderr'):
+            # TODO: would be nicer as a context manager, something like
+            #       contextlib.redirect_stdout
+            orig_stderr = sys.stderr
+            new_stderr = StringIO()
+            sys.stderr = new_stderr
+            try:
                 self.assertRaises(bf.pipeline.PipelineInitError, pipeline.run)
+            finally:
+                sys.stderr = orig_stderr
+                new_stderr.close()

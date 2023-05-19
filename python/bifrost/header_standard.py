@@ -53,13 +53,13 @@ telemetry.track_module()
 # Format:
 # 'parameter name':(type, minimum)
 STANDARD_HEADER = {
-    'nchans': ((int, np.int32, np.int64), 1),
-    'nifs': ((int, np.int32, np.int64), 1, ),
-    'nbits': ((int, np.int32, np.int64), 1),
-    'fch1': ((float, np.float64), 0),
-    'foff': ((float, np.float64), None),
+    'nchans': ((int, np.int64),     1),
+    'nifs':   ((int, np.int64),     1),
+    'nbits':  ((int, np.int64),     1),
+    'fch1':   ((float, np.float64), 0),
+    'foff':   ((float, np.float64), None),
     'tstart': ((float, np.float64), 0),
-    'tsamp': ((float, np.float64), 0)}
+    'tsamp':  ((float, np.float64), 0)}
 
 def enforce_header_standard(header_dict):
     """Raise an error if the header dictionary passed

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,7 +39,7 @@ BFstatus bfStreamGet(void* stream) {
 #if BF_CUDA_ENABLED
 	*(cudaStream_t*)stream = g_cuda_stream;
 #else
-	BF_FAIL("Built with CUDA support (bfStreamGet)", BF_STATUS_INVALID_STATE);
+	BF_FAIL("Built without CUDA support (bfStreamGet)", BF_STATUS_INVALID_STATE);
 #endif
 	return BF_STATUS_SUCCESS;
 }
