@@ -74,7 +74,6 @@ template<typename T>
 inline __device__
 T shfl_warp_sync(T var, int srcLane, int width=warpSize) {
 return __shfl_sync(0xFFFFFFFF, var, srcLane, width);
-#endif
 }
 
 inline __host__ __device__
