@@ -238,7 +238,32 @@ AC_DEFUN([AX_CHECK_CUDA],
       AC_SUBST([GPU_PASCAL_MANAGEDMEM], [0])
       AC_MSG_RESULT([no])
     fi
+    
+    AC_MSG_CHECKING([for thrust pinned allocated support])
+    CXXFLAGS_save="$CXXFLAGS"
+    LDFLAGS_save="$LDFLAGS"
+    LIBS_save="$LIBS"
+    
+    LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+    LIBS="-lcuda -lcudart"
+    ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS conftest.$ac_ext>&5'
+    AC_RUN_IFELSE([
+      AC_LANG_PROGRAM([[
+          #include <cuda.h>
+          #include <cuda_runtime.h>
+          #include <thrust/system/cuda/memory.h>]],
+          [[]])],
+          [AC_SUBST([GPU_EXP_PINNED_ALLOC], [1])
+           AC_MSG_RESULT([experimental])],
+          [AC_SUBST([GPU_EXP_PINNED_ALLOC], [0])
+           AC_MSG_RESULT([full])])
+
+    CXXFLAGS="$CXXFLAGS_save"
+    LDFLAGS="$LDFLAGS_save"
+    LIBS="$LIBS_save"
+    
   else
      AC_SUBST([GPU_PASCAL_MANAGEDMEM], [0])
+     AC_SUBST([GPU_EXP_PINNED_ALLOC], [1])
   fi
 ])
