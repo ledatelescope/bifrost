@@ -24514,7 +24514,7 @@ PACKAGE_VERSION_MICRO=`echo $PACKAGE_VERSION | $AWK -F. '{print $3}'`
 
 
 #
-# C++17/C++14/C++11 toggling
+# C++20/C++17/C++14/C++11 toggling
 #
 
 MAP_KERNEL_STDCXX=c++11
@@ -24554,19 +24554,26 @@ then :
   STDCXX_IS_SET=1
 
        CXXFLAGS="-std=c++17 $CXXFLAGS"
-       if test x$CUDA_HAVE_CXX17 = x1
+       if test x$CUDA_HAVE_CXX20 = x1
 then :
   NVCCFLAGS="-std=c++17 $NVCCFLAGS"
               MAP_KERNEL_STDCXX=c++17
 
 else $as_nop
+  if test x$CUDA_HAVE_CXX17 = x1
+then :
+  NVCCFLAGS="-std=c++17 $NVCCFLAGS"
+                     MAP_KERNEL_STDCXX=c++17
+
+else $as_nop
   if test x$CUDA_HAVE_CXX14 = x1
 then :
   NVCCFLAGS="-std=c++14 $NVCCFLAGS"
-                     MAP_KERNEL_STDCXX=c++14
+                            MAP_KERNEL_STDCXX=c++14
 
 else $as_nop
   NVCCFLAGS="-std=c++11 $NVCCFLAGS"
+fi
 fi
 fi
 fi
@@ -24575,13 +24582,27 @@ then :
   STDCXX_IS_SET=1
 
        CXXFLAGS="-std=c++14 $CXXFLAGS"
-       if test x$CUDA_HAVE_CXX14 = x1
+       if test x$CUDA_HAVE_CXX20 = x1
 then :
   NVCCFLAGS="-std=c++14 $NVCCFLAGS"
               MAP_KERNEL_STDCXX=c++14
 
 else $as_nop
+  if test x$CUDA_HAVE_CXX17 = x1
+then :
+  NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                     MAP_KERNEL_STDCXX=c++14
+
+else $as_nop
+  if test x$CUDA_HAVE_CXX14 = x1
+then :
+  NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                            MAP_KERNEL_STDCXX=c++14
+
+else $as_nop
   NVCCFLAGS="-std=c++11 $NVCCFLAGS"
+fi
+fi
 fi
 fi
 if test x$STDCXX_IS_SET != x1
@@ -26972,3 +26993,4 @@ printf "%s\n" "$as_me: options:$OPTIONS" >&6;}
 echo ""
 echo "Bifrost is now ready to be compiled.  Please run 'make'"
 echo ""
+
