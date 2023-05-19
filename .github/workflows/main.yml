@@ -76,7 +76,7 @@ jobs:
           CPLUS_INCLUDE_PATH: "${{ env.pythonLocation }}/include/python\
             ${{ matrix.python-version }}"
         run: python -m pip install \
-               cupy-cuda112 \
+               cupy-cuda120 \
                pycuda \
                numba \
                jupyterlab \
