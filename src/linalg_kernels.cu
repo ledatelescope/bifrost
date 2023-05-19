@@ -73,10 +73,7 @@ public:
 template<typename T>
 inline __device__
 T shfl_warp_sync(T var, int srcLane, int width=warpSize) {
-#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
-	return __shfl_sync(0xFFFFFFFF, var, srcLane, width);
-#else
-	return __shfl(var, srcLane, width);
+return __shfl_sync(0xFFFFFFFF, var, srcLane, width);
 #endif
 }
 
@@ -653,11 +650,7 @@ inline __device__ T warp_all_sum(T x) {
 	typedef typename shflable_type<sizeof(T)>::type shfl_type;
 #pragma unroll
 	for( int k=WIDTH>>1; k>=1; k>>=1 ) {
-#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
 		x += type_pun<T>(__shfl_xor_sync(0xFFFFFFFF, type_pun<shfl_type>(x), k, WIDTH));
-#else
-		x += type_pun<T>(__shfl_xor(type_pun<shfl_type>(x), k, WIDTH));
-#endif
 	}
 	return x;
 }
@@ -867,13 +860,11 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
 				JonesVec<FourBit>, JonesVec<int16_t>, Complex<float>);
 			break;
 		}
-#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
 		//case BF_DTYPE_CF16: {
 		//	LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
 		//		JonesVec<FourBit>, JonesVec<half>, Complex<float>);
 		//	break;
 		//}
-#endif
 		case BF_DTYPE_CF32: {
 			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
 				JonesVec<FourBit>, JonesVec<float>, Complex<float>);
@@ -892,13 +883,11 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
 				JonesVec<int8_t>, JonesVec<int16_t>, Complex<float>);
 			break;
 		}
-#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
 		//case BF_DTYPE_CF16: {
 		//	LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
 		//		JonesVec<int8_t>, JonesVec<half>, Complex<float>);
 		//	break;
 		//}
-#endif
 		case BF_DTYPE_CF32: {
 			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
 				JonesVec<int8_t>, JonesVec<float>, Complex<float>);

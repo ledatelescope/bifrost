@@ -31,7 +31,7 @@ AC_DEFUN([AX_CHECK_CUDA],
   fi
 
   if test "$HAVE_CUDA" = "1"; then
-    AC_MSG_CHECKING([for a working CUDA installation])
+    AC_MSG_CHECKING([for a working CUDA 10+ installation])
     
     CXXFLAGS_save="$CXXFLAGS"
     LDFLAGS_save="$LDFLAGS"
@@ -42,7 +42,9 @@ AC_DEFUN([AX_CHECK_CUDA],
       AC_LANG_PROGRAM([[
           #include <cuda.h>
           #include <cuda_runtime.h>]],
-          [[cudaMalloc(0, 0);]])],
+          [[#if __CUDACC_VER_MAJOR__ < 10
+             asdfdsfd
+            #endif]])],
         [],
         [AC_SUBST([HAVE_CUDA], [0])])
     

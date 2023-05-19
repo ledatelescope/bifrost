@@ -21422,8 +21422,8 @@ fi
   fi
 
   if test "$HAVE_CUDA" = "1"; then
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for a working CUDA installation" >&5
-printf %s "checking for a working CUDA installation... " >&6; }
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for a working CUDA 10+ installation" >&5
+printf %s "checking for a working CUDA 10+ installation... " >&6; }
 
     CXXFLAGS_save="$CXXFLAGS"
     LDFLAGS_save="$LDFLAGS"
@@ -21439,7 +21439,9 @@ printf %s "checking for a working CUDA installation... " >&6; }
 int
 main (void)
 {
-cudaMalloc(0, 0);
+#if __CUDACC_VER_MAJOR__ < 10
+             asdfdsfd
+            #endif
   ;
   return 0;
 }
