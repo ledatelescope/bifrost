@@ -40,6 +40,7 @@ jobs:
             gfortran \
             git \
             libopenblas-dev \
+            libtool \
             pkg-config \
             software-properties-common
       - name: "Software Install - MacOS"
