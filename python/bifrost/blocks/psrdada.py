@@ -190,8 +190,12 @@ def generate_dada_header(hdr_dict, hdrlen=4096):
         print(hdr_dict['_tensor'])
         dtype = hdr_dict['_tensor']['dtype']
         dtype_vals = {
+            'cf64': { 'NBIT': '64', 'NDIM': '2' },
+            'f64': { 'NBIT': '64', 'NDIM': '1' },
             'cf32': { 'NBIT': '32', 'NDIM': '2' },
             'f32': { 'NBIT': '32', 'NDIM': '1' },
+            'ci16': { 'NBIT': '16', 'NDIM': '2' },
+            'i16': { 'NBIT': '16', 'NDIM': '1' }
             'ci8': { 'NBIT': '8', 'NDIM': '2' },
             'i8': { 'NBIT': '8', 'NDIM': '1' } }
         if dtype in dtype_vals.keys():
