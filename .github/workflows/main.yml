@@ -49,16 +49,16 @@ jobs:
             gawk \
             gnu-sed \
             pkg-config
-      -name: "Software Install - PSRDADA"
-       if: ${{ matrix.os == 'ubuntu-20.04' || matrix.os == 'self-hosted' }}
-       run: |
-         git clone git://git.code.sf.net/p/psrdada/code psrdada
-         cd psrdada
-         ./bootstrap
-         ./configure
-         make -j all
-         sudo make install
-         cd ..
+      - name: "Software Install - PSRDADA"
+        if: ${{ matrix.os == 'ubuntu-20.04' || matrix.os == 'self-hosted' }}
+        run: |
+          git clone git://git.code.sf.net/p/psrdada/code psrdada
+          cd psrdada
+          ./bootstrap
+          ./configure
+          make -j all
+          sudo make install
+          cd ..
       - uses: actions/setup-python@v4.3.0
         with:
           python-version: ${{ matrix.python-version }}
