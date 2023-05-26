@@ -126,7 +126,7 @@ class IpcBaseBuf(object):
         else:
             del block
             self.reset()
-            raise StopIteration()
+            raise EndOfDataStop('IpcBufBlock empty')
     def next(self):
         return self.__next__()
     def open(self):
