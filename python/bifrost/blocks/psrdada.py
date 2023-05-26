@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -37,6 +37,9 @@ import numpy as np
 from datetime import datetime
 from copy import deepcopy
 import os
+
+from bifrost import telemetry
+telemetry.track_module()
 
 # TODO: Move to memory.py?
 def _get_space(arr):
@@ -358,4 +361,3 @@ def write_psrdada_buffer(iring, buffer_key, gulp_nframe, *args, **kwargs):
         Initial version, currently only supports system space (not CUDA)
     """
     return PsrDadaSinkBlock(iring, buffer_key, gulp_nframe)
-

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -46,6 +46,9 @@ import numpy as np
 from bifrost.ndarray import _address_as_buffer
 
 import ctypes
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def get_pointer_value(ptr):
     return ctypes.c_void_p.from_buffer(ptr).value

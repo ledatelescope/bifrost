@@ -1,4 +1,4 @@
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -38,6 +38,9 @@ from bifrost.dtype import string2numpy
 from astropy.time import Time
 import glob
 import os
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def _angle_str_to_sigproc(ang):
     aparts = ang.split(':')
@@ -202,4 +205,3 @@ def read_dada_file(filename, header_callback, gulp_nframe, *args, **kwargs):
         dtype (bifrost dtype string): dtype, e.g. f32, cf32
     """
     return DadaFileReadBlock(filename, header_callback, gulp_nframe, *args, **kwargs)
-
