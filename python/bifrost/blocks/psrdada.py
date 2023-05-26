@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 from bifrost.pipeline import SourceBlock, SinkBlock
 from bifrost.Space import Space
@@ -239,7 +239,7 @@ def generate_dada_header(hdr_dict, hdrlen=4096):
         resolution = (bits_per_sample * fine_time) / 8
         hdr_dict['RESOLUTION'] = resolution
    
-        bytes_per_second = int((bits_per_sample / 8) / tsamp)
+        bytes_per_second = int((bits_per_sample // 8) / tsamp)
         hdr_dict['BYTES_PER_SECOND'] = bytes_per_second
 
         hdr_dict['FILE_SIZE'] = bytes_per_second * 8
