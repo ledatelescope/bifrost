@@ -27,72 +27,76 @@
  */
 
 #pragma once
+#include <hip/hip_runtime.h>
+
+#include <hip/hip_runtime.h>
+
 
 #include <bifrost/common.h>
 #include <bifrost/array.h>
 #include "int_fastdiv.h"
 
-#include <cufft.h>
-#include <cufftXt.h>
+#include <hipfft.h>
+#include <hipfftXt.h>
 
-inline const char* _cufftGetErrorString(cufftResult status) {
+inline const char* _hipfftGetErrorString(hipfftResult status) {
 #define DEFINE_CUFFT_RESULT_CASE(x) case x: return #x
 	switch( status ) {
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_SUCCESS);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_INVALID_PLAN);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_ALLOC_FAILED);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_INVALID_TYPE);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_INVALID_VALUE);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_INTERNAL_ERROR);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_EXEC_FAILED);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_SETUP_FAILED);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_INVALID_SIZE);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_UNALIGNED_DATA);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_INCOMPLETE_PARAMETER_LIST);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_INVALID_DEVICE);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_PARSE_ERROR);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_NO_WORKSPACE);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_NOT_IMPLEMENTED);
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_LICENSE_ERROR);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_SUCCESS);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_INVALID_PLAN);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_ALLOC_FAILED);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_INVALID_TYPE);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_INVALID_VALUE);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_INTERNAL_ERROR);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_EXEC_FAILED);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_SETUP_FAILED);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_INVALID_SIZE);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_UNALIGNED_DATA);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_INCOMPLETE_PARAMETER_LIST);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_INVALID_DEVICE);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_PARSE_ERROR);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_NO_WORKSPACE);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_NOT_IMPLEMENTED);
+	// DEFINE_CUFFT_RESULT_CASE(CUFFT_LICENSE_ERROR);
 #if CUDA_VERSION >= 7500
-	DEFINE_CUFFT_RESULT_CASE(CUFFT_NOT_SUPPORTED);
+	DEFINE_CUFFT_RESULT_CASE(HIPFFT_NOT_SUPPORTED);
 #endif
 	default: return "Unknown CUBLAS error";
 	}
 #undef DEFINE_CUFFT_RESULT_CASE
 }
 
-inline BFstatus bifrost_status(cufftResult status) {
+inline BFstatus bifrost_status(hipfftResult status) {
 	switch(status) {
-	case CUFFT_SUCCESS:          return BF_STATUS_SUCCESS;
-	case CUFFT_ALLOC_FAILED:     return BF_STATUS_MEM_ALLOC_FAILED;
-	case CUFFT_EXEC_FAILED:      return BF_STATUS_DEVICE_ERROR;
-	case CUFFT_NOT_IMPLEMENTED:  return BF_STATUS_UNSUPPORTED;
+	case HIPFFT_SUCCESS:          return BF_STATUS_SUCCESS;
+	case HIPFFT_ALLOC_FAILED:     return BF_STATUS_MEM_ALLOC_FAILED;
+	case HIPFFT_EXEC_FAILED:      return BF_STATUS_DEVICE_ERROR;
+	case HIPFFT_NOT_IMPLEMENTED:  return BF_STATUS_UNSUPPORTED;
 #if CUDA_VERSION >= 7500
-	case CUFFT_NOT_SUPPORTED:    return BF_STATUS_UNSUPPORTED;
+	case HIPFFT_NOT_SUPPORTED:    return BF_STATUS_UNSUPPORTED;
 #endif
 	default: return BF_STATUS_INTERNAL_ERROR;
     }
 }
 
-#define BF_CHECK_CUFFT_EXCEPTION(call) \
+#define BF_CHECK_HIPFFT_EXCEPTION(call) \
 	do { \
-		cufftResult cufft_ret = call; \
-		if( cufft_ret != CUFFT_SUCCESS ) { \
-			BF_DEBUG_PRINT(_cufftGetErrorString(cufft_ret)); \
+		hipfftResult hipfft_ret = call; \
+		if( hipfft_ret != HIPFFT_SUCCESS ) { \
+			BF_DEBUG_PRINT(_hipfftGetErrorString(hipfft_ret)); \
 		} \
-		BF_ASSERT_EXCEPTION(cufft_ret == CUFFT_SUCCESS, \
-		                    bifrost_status(cufft_ret)); \
+		BF_ASSERT_EXCEPTION(hipfft_ret == HIPFFT_SUCCESS, \
+		                    bifrost_status(hipfft_ret)); \
 	} while(0)
 
-#define BF_CHECK_CUFFT(call) \
+#define BF_CHECK_HIPFFT(call) \
 	do { \
-		cufftResult cufft_ret = call; \
-		if( cufft_ret != CUFFT_SUCCESS ) { \
-			BF_DEBUG_PRINT(_cufftGetErrorString(cufft_ret)); \
+		hipfftResult hipfft_ret = call; \
+		if( hipfft_ret != HIPFFT_SUCCESS ) { \
+			BF_DEBUG_PRINT(_hipfftGetErrorString(hipfft_ret)); \
 		} \
-		BF_ASSERT(cufft_ret == CUFFT_SUCCESS, \
-		          bifrost_status(cufft_ret)); \
+		BF_ASSERT(hipfft_ret == HIPFFT_SUCCESS, \
+		          bifrost_status(hipfft_ret)); \
 	} while(0)
 
 struct __attribute__((packed,aligned(4))) CallbackData {
@@ -109,7 +113,7 @@ struct __attribute__((packed,aligned(4))) CallbackData {
 
 BFstatus set_fft_load_callback(BFdtype       dtype,
                                int           nbit,
-                               cufftHandle   handle,
+                               hipfftHandle  handle,
                                bool          do_fftshift,
                                CallbackData* callback_data,
                                bool*         using_callback);

@@ -51,7 +51,7 @@
 #include <bifrost/config.h>
 #include <bifrost/memory.h>
 
-#include <bifrost/cuda.h>
+#include <bifrost/bfcuda.h>
 #include "cuda.hpp"
 
 #if BF_NUMA_ENABLED

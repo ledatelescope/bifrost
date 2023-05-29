@@ -26,6 +26,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <hip/hip_runtime.h>
 #include "fft_kernels.h"
 #include "cuda.hpp"
 
@@ -93,7 +94,7 @@ inline Complex post_fftshift(size_t        offset,
 	return value;
 }
 __device__
-cufftComplex callback_load_ci4(void*  dataIn,
+hipfftComplex callback_load_ci4(void*  dataIn,
                                size_t offset,
                                void*  callerInfo,
                                void*  sharedPointer) {
@@ -104,13 +105,13 @@ cufftComplex callback_load_ci4(void*  dataIn,
 	int8_t packed = ((int8_t*)dataIn)[offset];
 	int8_t real = packed & 0xF0;
 	int8_t imag = packed << 4;
-	cufftComplex result = make_float2(real * (1.f/128),
+	hipfftComplex result = make_float2(real * (1.f/128),
 	                                  imag * (1.f/128));
 	result = post_fftshift(offset, result, callback_data);
 	return result;
 }
 __device__
-cufftComplex callback_load_ci8(void*  dataIn,
+hipfftComplex callback_load_ci8(void*  dataIn,
                                size_t offset,
                                void*  callerInfo,
                                void*  sharedPointer) {
@@ -119,14 +120,14 @@ cufftComplex callback_load_ci8(void*  dataIn,
 	*(char**)&dataIn += callback_data->ptr_offset;
 	offset = pre_fftshift(offset, callback_data);
 	char2 val = ((char2*)dataIn)[offset];
-	cufftComplex result = make_float2(val.x * (1.f/128),
+	hipfftComplex result = make_float2(val.x * (1.f/128),
 	                                  val.y * (1.f/128));
 	result = post_fftshift(offset, result, callback_data);
 	return result;
 }
 
 __device__
-cufftComplex callback_load_ci16(void*  dataIn,
+hipfftComplex callback_load_ci16(void*  dataIn,
                                 size_t offset,
                                 void*  callerInfo,
                                 void*  sharedPointer) {
@@ -135,40 +136,40 @@ cufftComplex callback_load_ci16(void*  dataIn,
 	*(char**)&dataIn += callback_data->ptr_offset;
 	offset = pre_fftshift(offset, callback_data);
 	short2 val = ((short2*)dataIn)[offset];
-	cufftComplex result = make_float2(val.x * (1.f/32768),
+	hipfftComplex result = make_float2(val.x * (1.f/32768),
 	                                  val.y * (1.f/32768));
 	result = post_fftshift(offset, result, callback_data);
 	return result;
 }
 __device__
-cufftComplex callback_load_cf32(void*  dataIn,
+hipfftComplex callback_load_cf32(void*  dataIn,
                                 size_t offset,
                                 void*  callerInfo,
                                 void*  sharedPointer) {
 	CallbackData* callback_data = (CallbackData*)callerInfo;
 	// Note: cufftComplex loads must be aligned
 	offset = pre_fftshift(offset, callback_data);
-	cufftComplex result = ((cufftComplex*)dataIn)[offset];
+	hipfftComplex result = ((hipfftComplex*)dataIn)[offset];
 	result = post_fftshift(offset, result, callback_data);
 	return result;
 }
 __device__
-cufftDoubleComplex callback_load_cf64(void*  dataIn,
+hipfftDoubleComplex callback_load_cf64(void*  dataIn,
                                       size_t offset,
                                       void*  callerInfo,
                                       void*  sharedPointer) {
 	CallbackData* callback_data = (CallbackData*)callerInfo;
 	// Note: cufftDoubleComplex loads must be aligned
 	offset = pre_fftshift(offset, callback_data);
-	cufftDoubleComplex result = ((cufftDoubleComplex*)dataIn)[offset];
+	hipfftDoubleComplex result = ((hipfftDoubleComplex*)dataIn)[offset];
 	result = post_fftshift(offset, result, callback_data);
 	return result;
 }
-static __device__ cufftCallbackLoadC callback_load_ci4_dptr  = callback_load_ci4;
-static __device__ cufftCallbackLoadC callback_load_ci8_dptr  = callback_load_ci8;
-static __device__ cufftCallbackLoadC callback_load_ci16_dptr = callback_load_ci16;
-static __device__ cufftCallbackLoadC callback_load_cf32_dptr = callback_load_cf32;
-static __device__ cufftCallbackLoadZ callback_load_cf64_dptr = callback_load_cf64;
+static __device__ hipfftCallbackLoadC callback_load_ci4_dptr  = callback_load_ci4;
+static __device__ hipfftCallbackLoadC callback_load_ci8_dptr  = callback_load_ci8;
+static __device__ hipfftCallbackLoadC callback_load_ci16_dptr = callback_load_ci16;
+static __device__ hipfftCallbackLoadC callback_load_cf32_dptr = callback_load_cf32;
+static __device__ hipfftCallbackLoadZ callback_load_cf64_dptr = callback_load_cf64;
 
 template<typename T>
 struct is_signed { enum { value = (((T)(-1)) < 0) }; };
@@ -179,7 +180,7 @@ inline T maxval(T x=T()) { return (1<<(sizeof(T)*8-is_signed<T>::value)) - 1; }
 
 template<typename T>
 __device__
-cufftReal callback_load_real(void*  dataIn,
+hipfftReal callback_load_real(void*  dataIn,
                              size_t offset,
                              void*  callerInfo,
                              void*  sharedPointer) {
@@ -188,116 +189,116 @@ cufftReal callback_load_real(void*  dataIn,
 	*(char**)&dataIn += callback_data->ptr_offset;
 	
 	T val = ((T*)dataIn)[offset];
-	cufftReal result = val * (1.f/(maxval<T>()+1));
+	hipfftReal result = val * (1.f/(maxval<T>()+1));
 	return result;
 }
-static __device__ cufftCallbackLoadR callback_load_i8_dptr  = callback_load_real<int8_t>;
-static __device__ cufftCallbackLoadR callback_load_i16_dptr = callback_load_real<int16_t>;
-static __device__ cufftCallbackLoadR callback_load_u8_dptr  = callback_load_real<uint8_t>;
-static __device__ cufftCallbackLoadR callback_load_u16_dptr = callback_load_real<uint16_t>;
+static __device__ hipfftCallbackLoadR callback_load_i8_dptr  = callback_load_real<int8_t>;
+static __device__ hipfftCallbackLoadR callback_load_i16_dptr = callback_load_real<int16_t>;
+static __device__ hipfftCallbackLoadR callback_load_u8_dptr  = callback_load_real<uint8_t>;
+static __device__ hipfftCallbackLoadR callback_load_u16_dptr = callback_load_real<uint16_t>;
 
 BFstatus set_fft_load_callback(BFdtype       dtype,
                                int           nbit,
-                               cufftHandle   handle,
+                               hipfftHandle   handle,
                                bool          do_fftshift,
                                CallbackData* callerInfo,
                                bool*         using_callback) {
-	cufftCallbackLoadC callback_load_c_hptr;
-	cufftCallbackLoadR callback_load_r_hptr;
-	cufftCallbackLoadZ callback_load_z_hptr;
+	hipfftCallbackLoadC callback_load_c_hptr;
+	hipfftCallbackLoadR callback_load_r_hptr;
+	hipfftCallbackLoadZ callback_load_z_hptr;
 	*using_callback = true;
 	// TODO: Try to reduce repetition here
 	switch( dtype ) {
 	case BF_DTYPE_CI4: {
-		BF_CHECK_CUDA( cudaMemcpyFromSymbol(&callback_load_c_hptr,
-		                                    callback_load_ci4_dptr,
-		                                    sizeof(cufftCallbackLoadC)),
+		BF_CHECK_HIP( hipMemcpyFromSymbol(&callback_load_c_hptr,
+		                                    HIP_SYMBOL(callback_load_ci4_dptr),
+		                                    sizeof(hipfftCallbackLoadC)),
 		               BF_STATUS_DEVICE_ERROR );
-		BF_CHECK_CUFFT( cufftXtSetCallback(handle,
+		BF_CHECK_HIPFFT( hipfftXtSetCallback(handle,
 		                                   (void**)&callback_load_c_hptr,
-		                                   CUFFT_CB_LD_COMPLEX,
+		                                   HIPFFT_CB_LD_COMPLEX,
 		                                   (void**)&callerInfo) );
 		break;
 	}
 	case BF_DTYPE_CI8: {
-		BF_CHECK_CUDA( cudaMemcpyFromSymbol(&callback_load_c_hptr,
-		                                    callback_load_ci8_dptr,
-		                                    sizeof(cufftCallbackLoadC)),
+		BF_CHECK_HIP( hipMemcpyFromSymbol(&callback_load_c_hptr,
+		                                    HIP_SYMBOL(callback_load_ci8_dptr),
+		                                    sizeof(hipfftCallbackLoadC)),
 		               BF_STATUS_DEVICE_ERROR );
-		BF_CHECK_CUFFT( cufftXtSetCallback(handle,
+		BF_CHECK_HIPFFT( hipfftXtSetCallback(handle,
 		                                   (void**)&callback_load_c_hptr,
-		                                   CUFFT_CB_LD_COMPLEX,
+		                                   HIPFFT_CB_LD_COMPLEX,
 		                                   (void**)&callerInfo) );
 		break;
 	}
 	case BF_DTYPE_CI16: {
-		BF_CHECK_CUDA( cudaMemcpyFromSymbol(&callback_load_c_hptr,
-		                                    callback_load_ci16_dptr,
-		                                    sizeof(cufftCallbackLoadC)),
+		BF_CHECK_HIP( hipMemcpyFromSymbol(&callback_load_c_hptr,
+		                                    HIP_SYMBOL(callback_load_ci16_dptr),
+		                                    sizeof(hipfftCallbackLoadC)),
 		               BF_STATUS_DEVICE_ERROR );
-		BF_CHECK_CUFFT( cufftXtSetCallback(handle,
+		BF_CHECK_HIPFFT( hipfftXtSetCallback(handle,
 		                                   (void**)&callback_load_c_hptr,
-		                                   CUFFT_CB_LD_COMPLEX,
+		                                   HIPFFT_CB_LD_COMPLEX,
 		                                   (void**)&callerInfo) );
 		break;
 	}
 	case BF_DTYPE_I8: {
 		BF_ASSERT(!do_fftshift, BF_STATUS_UNSUPPORTED);
-		BF_CHECK_CUDA( cudaMemcpyFromSymbol(&callback_load_r_hptr,
-		                                    callback_load_i8_dptr,
-		                                    sizeof(cufftCallbackLoadR)),
+		BF_CHECK_HIP( hipMemcpyFromSymbol(&callback_load_r_hptr,
+		                                    HIP_SYMBOL(callback_load_i8_dptr),
+		                                    sizeof(hipfftCallbackLoadR)),
 		               BF_STATUS_DEVICE_ERROR );
-		BF_CHECK_CUFFT( cufftXtSetCallback(handle,
+		BF_CHECK_HIPFFT( hipfftXtSetCallback(handle,
 		                                   (void**)&callback_load_r_hptr,
-		                                   CUFFT_CB_LD_REAL,
+		                                   HIPFFT_CB_LD_REAL,
 		                                   (void**)&callerInfo) );
 		break;
 	}
 	case BF_DTYPE_I16: {
 		BF_ASSERT(!do_fftshift, BF_STATUS_UNSUPPORTED);
-		BF_CHECK_CUDA( cudaMemcpyFromSymbol(&callback_load_r_hptr,
-		                                    callback_load_i16_dptr,
-		                                    sizeof(cufftCallbackLoadR)),
+		BF_CHECK_HIP( hipMemcpyFromSymbol(&callback_load_r_hptr,
+		                                    HIP_SYMBOL(callback_load_i16_dptr),
+		                                    sizeof(hipfftCallbackLoadR)),
 		               BF_STATUS_DEVICE_ERROR );
-		BF_CHECK_CUFFT( cufftXtSetCallback(handle,
+		BF_CHECK_HIPFFT( hipfftXtSetCallback(handle,
 		                                   (void**)&callback_load_r_hptr,
-		                                   CUFFT_CB_LD_REAL,
+		                                   HIPFFT_CB_LD_REAL,
 		                                   (void**)&callerInfo) );
 		break;
 	}
 	case BF_DTYPE_U8: {
 		BF_ASSERT(!do_fftshift, BF_STATUS_UNSUPPORTED);
-		BF_CHECK_CUDA( cudaMemcpyFromSymbol(&callback_load_r_hptr,
-		                                    callback_load_u8_dptr,
-		                                    sizeof(cufftCallbackLoadR)),
+		BF_CHECK_HIP( hipMemcpyFromSymbol(&callback_load_r_hptr,
+		                                    HIP_SYMBOL(callback_load_u8_dptr),
+		                                    sizeof(hipfftCallbackLoadR)),
 		               BF_STATUS_DEVICE_ERROR );
-		BF_CHECK_CUFFT( cufftXtSetCallback(handle,
+		BF_CHECK_HIPFFT( hipfftXtSetCallback(handle,
 		                                   (void**)&callback_load_r_hptr,
-		                                   CUFFT_CB_LD_REAL,
+		                                   HIPFFT_CB_LD_REAL,
 		                                   (void**)&callerInfo) );
 		break;
 	}
 	case BF_DTYPE_U16: {
 		BF_ASSERT(!do_fftshift, BF_STATUS_UNSUPPORTED);
-		BF_CHECK_CUDA( cudaMemcpyFromSymbol(&callback_load_r_hptr,
-		                                    callback_load_u16_dptr,
-		                                    sizeof(cufftCallbackLoadR)),
+		BF_CHECK_HIP( hipMemcpyFromSymbol(&callback_load_r_hptr,
+		                                    HIP_SYMBOL(callback_load_u16_dptr),
+		                                    sizeof(hipfftCallbackLoadR)),
 		               BF_STATUS_DEVICE_ERROR );
-		BF_CHECK_CUFFT( cufftXtSetCallback(handle,
+		BF_CHECK_HIPFFT( hipfftXtSetCallback(handle,
 		                                   (void**)&callback_load_r_hptr,
-		                                   CUFFT_CB_LD_REAL,
+		                                   HIPFFT_CB_LD_REAL,
 		                                   (void**)&callerInfo) );
 		break;
 	}
 	case BF_DTYPE_CF32: {
 		if( do_fftshift ) {
-			BF_CHECK_CUDA( cudaMemcpyFromSymbol(&callback_load_c_hptr,
-			                                    callback_load_cf32_dptr,
-			                                    sizeof(cufftCallbackLoadC)),
+			BF_CHECK_HIP( hipMemcpyFromSymbol(&callback_load_c_hptr,
+			                                    HIP_SYMBOL(callback_load_cf32_dptr),
+			                                    sizeof(hipfftCallbackLoadC)),
 			               BF_STATUS_DEVICE_ERROR );
-			BF_CHECK_CUFFT( cufftXtSetCallback(handle,
+			BF_CHECK_HIPFFT( hipfftXtSetCallback(handle,
 			                                   (void**)&callback_load_c_hptr,
-			                                   CUFFT_CB_LD_COMPLEX,
+			                                   HIPFFT_CB_LD_COMPLEX,
 			                                   (void**)&callerInfo) );
 			break;
 		} else {
@@ -313,13 +314,13 @@ BFstatus set_fft_load_callback(BFdtype       dtype,
 	}
 	case BF_DTYPE_CF64: {
 		if( do_fftshift ) {
-			BF_CHECK_CUDA( cudaMemcpyFromSymbol(&callback_load_z_hptr,
-			                                    callback_load_cf64_dptr,
-			                                    sizeof(cufftCallbackLoadZ)),
+			BF_CHECK_HIP( hipMemcpyFromSymbol(&callback_load_z_hptr,
+			                                    HIP_SYMBOL(callback_load_cf64_dptr),
+			                                    sizeof(hipfftCallbackLoadZ)),
 			               BF_STATUS_DEVICE_ERROR );
-			BF_CHECK_CUFFT( cufftXtSetCallback(handle,
+			BF_CHECK_HIPFFT( hipfftXtSetCallback(handle,
 			                                   (void**)&callback_load_z_hptr,
-			                                   CUFFT_CB_LD_COMPLEX_DOUBLE,
+			                                   HIPFFT_CB_LD_COMPLEX_DOUBLE,
 			                                   (void**)&callerInfo) );
 			break;
 		} else {

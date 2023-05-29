@@ -32,6 +32,7 @@
 //          Consider using the beamformer kernel approach of using looped warp
 //            reductions.
 
+#include <hip/hip_runtime.h>
 #include <bifrost/reduce.h>
 #include "assert.hpp"
 #include "utils.hpp"
@@ -127,7 +128,7 @@ void launch_reduce_vector_kernel(IType const* in,
                                  int4 istrides,
                                  int4 ostrides,
                                  BFreduce_op op,
-                                 cudaStream_t stream) {
+                                 hipStream_t stream) {
 	dim3 block(128); // TODO: Tune this
 	dim3 grid(std::min((shape.x - 1) / block.x + 1, 65535u),
 	          std::min(shape.y, 65535),
@@ -140,8 +141,8 @@ void launch_reduce_vector_kernel(IType const* in,
 		&ostrides,
 		&op
 	};
-	BF_CHECK_CUDA_EXCEPTION(
-		cudaLaunchKernel((void*)reduce_vector_kernel<N, IType, OType>,
+	BF_CHECK_HIP_EXCEPTION(
+		hipLaunchKernel((void*)reduce_vector_kernel<N, IType, OType>,
 		                 grid, block, &args[0], 0, stream),
 		BF_STATUS_INTERNAL_ERROR);
 }
@@ -218,7 +219,7 @@ void launch_reduce_loop_kernel(IType const* in,
                                int4 istrides,
                                int4 ostrides,
                                BFreduce_op op,
-                               cudaStream_t stream) {
+                               hipStream_t stream) {
 	dim3 block(128);
 	if( istrides.w == 1 && shape.w > 16 ) {
 		// This gives better perf when reducing along the fastest-changing axis
@@ -237,8 +238,8 @@ void launch_reduce_loop_kernel(IType const* in,
 		&ostrides,
 		&op
 	};
-	BF_CHECK_CUDA_EXCEPTION(
-		cudaLaunchKernel((void*)reduce_loop_kernel<IType, OType>,
+	BF_CHECK_HIP_EXCEPTION(
+		hipLaunchKernel((void*)reduce_loop_kernel<IType, OType>,
 		                 grid, block, &args[0], 0, stream),
 		BF_STATUS_INTERNAL_ERROR);
 }
@@ -415,7 +416,7 @@ void launch_reduce_complex_standard_vector_kernel(IType const* in,
                                                   int4         istrides,
                                                   int4         ostrides,
                                                   BFreduce_op  op,
-                                                  cudaStream_t stream) {
+                                                  hipStream_t stream) {
 	dim3 block(128); // TODO: Tune this
 	dim3 grid(std::min((shape.x - 1) / block.x + 1, 65535u),
 	          std::min(shape.y, 65535),
@@ -428,8 +429,8 @@ void launch_reduce_complex_standard_vector_kernel(IType const* in,
 		&ostrides,
 		&op
 	};
-	BF_CHECK_CUDA_EXCEPTION(
-		cudaLaunchKernel((void*)reduce_complex_standard_vector_kernel<N, IType>,
+	BF_CHECK_HIP_EXCEPTION(
+		hipLaunchKernel((void*)reduce_complex_standard_vector_kernel<N, IType>,
 		                 grid, block, &args[0], 0, stream),
 		BF_STATUS_INTERNAL_ERROR);
 }
@@ -490,7 +491,7 @@ void launch_reduce_complex_standard_loop_kernel(IType const* in,
                                                 int4         istrides,
                                                 int4         ostrides,
                                                 BFreduce_op  op,
-                                                cudaStream_t stream) {
+                                                hipStream_t stream) {
 	dim3 block(128);
 	if( istrides.w == 1 && shape.w > 16 ) {
 		// This gives better perf when reducing along the fastest-changing axis
@@ -509,8 +510,8 @@ void launch_reduce_complex_standard_loop_kernel(IType const* in,
 		&ostrides,
 		&op
 	};
-	BF_CHECK_CUDA_EXCEPTION(
-		cudaLaunchKernel((void*)reduce_complex_standard_loop_kernel<IType>,
+	BF_CHECK_HIP_EXCEPTION(
+		hipLaunchKernel((void*)reduce_complex_standard_loop_kernel<IType>,
 		                 grid, block, &args[0], 0, stream),
 		BF_STATUS_INTERNAL_ERROR);
 }
@@ -660,7 +661,7 @@ void launch_reduce_complex_power_vector_kernel(IType const* in,
                                          int4         istrides,
                                          int4         ostrides,
                                          BFreduce_op  op,
-                                         cudaStream_t stream) {
+                                         hipStream_t stream) {
     dim3 block(128); // TODO: Tune this
     dim3 grid(std::min((shape.x - 1) / block.x + 1, 65535u),
               std::min(shape.y, 65535),
@@ -673,8 +674,8 @@ void launch_reduce_complex_power_vector_kernel(IType const* in,
         &ostrides,
         &op
     };
-    BF_CHECK_CUDA_EXCEPTION(
-        cudaLaunchKernel((void*)reduce_complex_power_vector_kernel<N, IType>,
+    BF_CHECK_HIP_EXCEPTION(
+        hipLaunchKernel((void*)reduce_complex_power_vector_kernel<N, IType>,
                          grid, block, &args[0], 0, stream),
         BF_STATUS_INTERNAL_ERROR);
 }
@@ -736,7 +737,7 @@ void launch_reduce_complex_power_loop_kernel(IType const* in,
                                        int4         istrides,
                                        int4         ostrides,
                                        BFreduce_op  op,
-                                       cudaStream_t stream) {
+                                       hipStream_t stream) {
     dim3 block(128);
     if( istrides.w == 1 && shape.w > 16 ) {
         // This gives better perf when reducing along the fastest-changing axis
@@ -755,8 +756,8 @@ void launch_reduce_complex_power_loop_kernel(IType const* in,
         &ostrides,
         &op
     };
-    BF_CHECK_CUDA_EXCEPTION(
-        cudaLaunchKernel((void*)reduce_complex_power_loop_kernel<IType>,
+    BF_CHECK_HIP_EXCEPTION(
+        hipLaunchKernel((void*)reduce_complex_power_loop_kernel<IType>,
                          grid, block, &args[0], 0, stream),
         BF_STATUS_INTERNAL_ERROR);
 }

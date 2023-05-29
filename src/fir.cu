@@ -27,6 +27,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
+#include <hip/hip_runtime.h>
 #include <bifrost/fir.h>
 #include "assert.hpp"
 #include "utils.hpp"
@@ -105,7 +107,7 @@ inline void launch_fir_kernel(unsigned int ncoeff,
                               Complex64*   state1,
                               InType*      d_in,
                               OutType*     d_out,
-                              cudaStream_t stream=0) {
+                              hipStream_t stream=0) {
 	//cout << "LAUNCH for " << nelement << endl;
 	dim3 block(std::min(256u, nantpol), 256u/std::min(256u, nantpol));
 	int first = std::min((nantpol-1)/block.x+1, 65535u);
@@ -134,7 +136,7 @@ inline void launch_fir_kernel(unsigned int ncoeff,
 	                &state1,
 	                &d_in,
 	                &d_out};
-	BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)fir_kernel<InType,OutType>,
+	BF_CHECK_HIP_EXCEPTION(hipLaunchKernel((void*)fir_kernel<InType,OutType>,
 	                                         grid, block,
 	                                         &args[0], 0, stream),
 	                        BF_STATUS_INTERNAL_ERROR);
@@ -157,7 +159,7 @@ private:
 	Workspace    _plan_storage;
 	// TODO: Use something other than Thrust
 	thrust::device_vector<char> _dv_plan_storage;
-	cudaStream_t _stream;
+	hipStream_t _stream;
 public:
 	BFfir_impl() : _coeffs(NULL), _decim(1), _stream(g_cuda_stream) {}
 	inline UType ncoeff()   const { return _ncoeff;  }
@@ -217,23 +219,23 @@ public:
 		BF_ASSERT_EXCEPTION(_state0 != NULL,  BF_STATUS_INVALID_STATE);
 		BF_ASSERT_EXCEPTION(_state1 != NULL,  BF_STATUS_INVALID_STATE);
 		
-		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+		BF_CHECK_HIP_EXCEPTION(hipGetLastError(), BF_STATUS_INTERNAL_ERROR);
 		
 		// Reset the state
-		BF_CHECK_CUDA_EXCEPTION( cudaMemsetAsync(_state0,
+		BF_CHECK_HIP_EXCEPTION( hipMemsetAsync(_state0,
 		                                         0,
 		                                         sizeof(Complex64)*_ncoeff*_nantpol,
 		                                         _stream),
 		                         BF_STATUS_MEM_OP_FAILED );
-		BF_CHECK_CUDA_EXCEPTION( cudaMemsetAsync(_state1,
+		BF_CHECK_HIP_EXCEPTION( hipMemsetAsync(_state1,
 		                                         0,
 		                                         sizeof(Complex64)*_ncoeff*_nantpol,
 		                                         _stream),
 		                         BF_STATUS_MEM_OP_FAILED );
-		BF_CHECK_CUDA_EXCEPTION( cudaStreamSynchronize(_stream),
+		BF_CHECK_HIP_EXCEPTION( hipStreamSynchronize(_stream),
 		                         BF_STATUS_DEVICE_ERROR );
 		
-		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+		BF_CHECK_HIP_EXCEPTION(hipGetLastError(), BF_STATUS_INTERNAL_ERROR);
 	}
 	void execute(BFarray const* in,
 	             BFarray const* out) {
@@ -245,7 +247,7 @@ public:
 		BF_ASSERT_EXCEPTION(out->dtype == BF_DTYPE_CF32 || \
 		                    out->dtype == BF_DTYPE_CF64,     BF_STATUS_UNSUPPORTED_DTYPE);
 		
-		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+		BF_CHECK_HIP_EXCEPTION(hipGetLastError(), BF_STATUS_INTERNAL_ERROR);
 		
 #define LAUNCH_FIR_KERNEL(IterType,OterType) \
 		launch_fir_kernel(_ncoeff, _decim, in->shape[0], _nantpol, \
@@ -300,16 +302,16 @@ public:
 		}
 #undef LAUNCH_FIR_KERNEL
 		
-		BF_CHECK_CUDA_EXCEPTION( cudaMemcpyAsync(_state0,
+		BF_CHECK_HIP_EXCEPTION( hipMemcpyAsync(_state0,
 		                                         _state1,
 		                                         sizeof(Complex64)*_ncoeff*_nantpol,
-		                                         cudaMemcpyDeviceToDevice,
+		                                         hipMemcpyDeviceToDevice,
 		                                         _stream),
 		                         BF_STATUS_MEM_OP_FAILED );
 		
-		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+		BF_CHECK_HIP_EXCEPTION(hipGetLastError(), BF_STATUS_INTERNAL_ERROR);
 	}
-	void set_stream(cudaStream_t stream) {
+	void set_stream(hipStream_t stream) {
 		_stream = stream;
 	}
 };
@@ -353,7 +355,7 @@ BFstatus bfFirSetStream(BFfir        plan,
 	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
-	BF_TRY_RETURN(plan->set_stream(*(cudaStream_t*)stream));
+	BF_TRY_RETURN(plan->set_stream(*(hipStream_t*)stream));
 }
 BFstatus bfFirSetCoeffs(BFfir          plan, 
                         BFarray const* coeffs) {

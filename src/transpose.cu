@@ -27,6 +27,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <hip/hip_runtime.h>
 #include <bifrost/config.h>
 #include <bifrost/transpose.h>
 #include <bifrost/map.h>
@@ -38,7 +39,7 @@
   #include "transpose_gpu_kernel.cuh"
   #include "cuda.hpp"
 #else
-  typedef int cudaStream_t; // WAR
+  typedef int hipStream_t; // WAR
 #endif
 
 #include <cstdio>
@@ -71,7 +72,7 @@ BFstatus transpose(int           ndim,
                    long   const* in_strides,  // bytes
                    T           * out,
                    long   const* out_strides, // bytes
-                   cudaStream_t  stream) {
+                   hipStream_t  stream) {
 	enum { ELEMENT_SIZE = sizeof(T) };
 	// TODO: This is currently all tuned for a GTX Titan (sm_35)
 	enum {
@@ -150,10 +151,10 @@ BFstatus transpose(int           ndim,
 	    ELEMENT_SIZE ==  8 ||
 	    ELEMENT_SIZE == 16 ) {
 		// TODO: Doing this here might be a bad idea
-		cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
+		hipDeviceSetSharedMemConfig(hipSharedMemBankSizeEightByte);
 	}
 	else {
-		cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
+		hipDeviceSetSharedMemConfig(hipSharedMemBankSizeFourByte);
 	}
 	if( can_use_int ) {
 		kernel::transpose
@@ -218,11 +219,11 @@ BFstatus transpose(int           ndim,
 			                          //outer_depth_istride,
 			                          //outer_depth_ostride);
 	}
-	cudaError_t error = cudaGetLastError();
-	if( error != cudaSuccess ) {
-		std::printf("CUDA ERROR: %s\n", cudaGetErrorString(error));
+	hipError_t error = hipGetLastError();
+	if( error != hipSuccess ) {
+		std::printf("CUDA ERROR: %s\n", hipGetErrorString(error));
 	}
-	BF_ASSERT(error == cudaSuccess, BF_STATUS_INTERNAL_ERROR);
+	BF_ASSERT(error == hipSuccess, BF_STATUS_INTERNAL_ERROR);
 #endif
 	/*
 	// TODO: Implement CPU version too
@@ -252,7 +253,7 @@ BFstatus transpose(int           ndim,
                    long   const* in_strides,  // bytes
                    T           * out,
                    long   const* out_strides, // bytes
-                   cudaStream_t  stream) {
+                   hipStream_t  stream) {
 	unsigned long out_alignment = (unsigned long)out;
 	for( int d=0; d<ndim; ++d ) {
 		out_alignment = gcd(out_alignment, (unsigned long)out_strides[d]);
@@ -279,7 +280,7 @@ BFstatus transpose(int            ndim,
                    long    const* in_strides,  // bytes
                    T            * out,
                    long    const* out_strides, // bytes
-                   cudaStream_t   stream) {
+                   hipStream_t   stream) {
 	BF_TRACE_STREAM(stream);
 	unsigned long in_alignment = (unsigned long)in;
 	for( int d=0; d<ndim; ++d ) {

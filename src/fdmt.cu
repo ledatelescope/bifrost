@@ -26,6 +26,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+
+#include <hip/hip_runtime.h>
 #include <bifrost/fdmt.h>
 #include "assert.hpp"
 #include "utils.hpp"
@@ -169,7 +171,7 @@ void launch_fdmt_init_kernel(int            ntime,
                              OutType*       d_out,
                              int            ostride,
                              int            obatchstride,
-                             cudaStream_t   stream=0) {
+                             hipStream_t   stream=0) {
 	dim3 block(256, 1); // TODO: Tune this
 	dim3 grid(std::min((ntime-1)/block.x+1, 65535u),
 	          std::min((nchan-1)/block.y+1, 65535u));
@@ -185,8 +187,8 @@ void launch_fdmt_init_kernel(int            ntime,
 	                &d_out,
 	                &ostride,
 	                &obatchstride};
-	BF_CHECK_CUDA_EXCEPTION(
-		cudaLaunchKernel((void*)fdmt_init_kernel<InType,OutType>,
+	BF_CHECK_HIP_EXCEPTION(
+		hipLaunchKernel((void*)fdmt_init_kernel<InType,OutType>,
 		                 grid, block,
 		                 &args[0], 0, stream),
 		BF_STATUS_INTERNAL_ERROR);
@@ -207,7 +209,7 @@ void launch_fdmt_exec_kernel(int          ntime,
                              DType*       d_out,
                              int          ostride,
                              int          obatchstride,
-                             cudaStream_t stream=0) {
+                             hipStream_t stream=0) {
 	//cout << "LAUNCH " << d_in << ", " << d_out << endl;
 	dim3 block(256, 1); // TODO: Tune this
 	dim3 grid(std::min((ntime-1)/block.x+1, 65535u),
@@ -225,8 +227,8 @@ void launch_fdmt_exec_kernel(int          ntime,
 	                &d_out,
 	                &ostride,
 	                &obatchstride};
-	BF_CHECK_CUDA_EXCEPTION(
-		cudaLaunchKernel((void*)fdmt_exec_kernel<DType>,
+	BF_CHECK_HIP_EXCEPTION(
+		hipLaunchKernel((void*)fdmt_exec_kernel<DType>,
 		                 grid, block,
 		                 &args[0], 0, stream),
 		BF_STATUS_INTERNAL_ERROR);
@@ -292,7 +294,7 @@ private:
 	// TODO: Use something other than Thrust
 	thrust::device_vector<char> _dv_plan_storage;
 	thrust::device_vector<char> _dv_exec_storage;
-	cudaStream_t _stream;
+	hipStream_t _stream;
 	bool _reverse_band;
 	
 	FType cfreq(IType chan) {
@@ -563,27 +565,27 @@ public:
 		//std::cout << "storage_ptr = " << storage_ptr << std::endl;
 		workspace.commit(storage_ptr);
 		//std::cout << "_d_offsets = " << _d_offsets << std::endl;
-		BF_CHECK_CUDA_EXCEPTION( cudaMemcpyAsync(_d_offsets,
+		BF_CHECK_HIP_EXCEPTION( hipMemcpyAsync(_d_offsets,
 		                                         &_offsets[0],
 		                                         sizeof(int )*_offsets.size(),
-		                                         cudaMemcpyHostToDevice,
+		                                         hipMemcpyHostToDevice,
 		                                         _stream),
 		                         BF_STATUS_MEM_OP_FAILED );
 		for( int step=0; step<nstep; ++step ) {
-			BF_CHECK_CUDA_EXCEPTION( cudaMemcpyAsync(_d_step_srcrows + step*_plan_stride,
+			BF_CHECK_HIP_EXCEPTION( hipMemcpyAsync(_d_step_srcrows + step*_plan_stride,
 			                                         &_step_srcrows[step][0],
 			                                         sizeof(int2)*_step_srcrows[step].size(),
-			                                         cudaMemcpyHostToDevice,
+			                                         hipMemcpyHostToDevice,
 			                                         _stream),
 			               BF_STATUS_MEM_OP_FAILED );
-			BF_CHECK_CUDA_EXCEPTION( cudaMemcpyAsync(_d_step_delays  + step*_plan_stride,
+			BF_CHECK_HIP_EXCEPTION( hipMemcpyAsync(_d_step_delays  + step*_plan_stride,
 			                                         &_step_delays[step][0],
 			                                         sizeof(int)*_step_delays[step].size(),
-			                                         cudaMemcpyHostToDevice,
+			                                         hipMemcpyHostToDevice,
 			                                         _stream),
 			               BF_STATUS_MEM_OP_FAILED );
 		}
-		BF_CHECK_CUDA_EXCEPTION( cudaStreamSynchronize(_stream),
+		BF_CHECK_HIP_EXCEPTION( hipStreamSynchronize(_stream),
 		                         BF_STATUS_DEVICE_ERROR );
 		return true;
 	}
@@ -664,7 +666,7 @@ public:
 		//bool reverse_time = (in->strides[in->ndim-1] < 0);
 		bool reverse_time = negative_delays;
 		
-		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+		BF_CHECK_HIP_EXCEPTION(hipGetLastError(), BF_STATUS_INTERNAL_ERROR);
 #define LAUNCH_FDMT_INIT_KERNEL(IterType) \
 		launch_fdmt_init_kernel(ntime, _nchan, nbatch, \
 		                        _reverse_band, reverse_time, \
@@ -689,7 +691,7 @@ public:
 		default: BF_ASSERT_EXCEPTION(false, BF_STATUS_UNSUPPORTED_DTYPE);
 		}
 #undef LAUNCH_FDMT_INIT_KERNEL
-		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+		BF_CHECK_HIP_EXCEPTION(hipGetLastError(), BF_STATUS_INTERNAL_ERROR);
 		std::swap(d_ibuf, d_obuf);
 		
 		size_t ostride_cur      = _buffer_stride;
@@ -714,9 +716,9 @@ public:
 			                        _stream);
 			std::swap(d_ibuf, d_obuf);
 		}
-		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+		BF_CHECK_HIP_EXCEPTION(hipGetLastError(), BF_STATUS_INTERNAL_ERROR);
 	}
-	void set_stream(cudaStream_t stream) {
+	void set_stream(hipStream_t stream) {
 		_stream = stream;
 	}
 };
@@ -754,7 +756,7 @@ BFstatus bfFdmtSetStream(BFfdmt      plan,
 	BF_TRACE();
 	BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
 	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
-	BF_TRY_RETURN(plan->set_stream(*(cudaStream_t*)stream));
+	BF_TRY_RETURN(plan->set_stream(*(hipStream_t*)stream));
 }
 BFstatus bfFdmtExecute(BFfdmt         plan,
                        BFarray const* in,

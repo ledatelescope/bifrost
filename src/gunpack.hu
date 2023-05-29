@@ -45,7 +45,7 @@ void launch_foreach_simple_gpu(T const*     in,
                                U*           out,
                                Size         nelement,
                                Func         func,
-                               cudaStream_t stream=0);
+                               hipStream_t stream=0);
 
 template<typename T, typename U, typename V, typename Func, typename Size>
 void launch_foreach_promote_gpu(T const*     in,
@@ -53,7 +53,7 @@ void launch_foreach_promote_gpu(T const*     in,
                                 V*           out,
                                 Size         nelement,
                                 Func         func,
-                                cudaStream_t stream=0);
+                                hipStream_t stream=0);
 
 #endif // BF_GUNPACK_HU_INCLUDE_GUARD_
 

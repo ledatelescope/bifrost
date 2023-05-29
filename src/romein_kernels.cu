@@ -1,16 +1,25 @@
+#include <hip/hip_runtime.h>
+#include <hip/hip_complex.h>
 #include "romein_kernels.cuh"
+
+// Temporary fix: HIP has misnamed this function,
+// but this should be fixed in a later release.
+// https://github.com/ROCm-Developer-Tools/HIP/issues/3230
+#ifndef make_hipComplex
+#define make_hipComplex make_Complex
+#endif
 
 /*****************************
         Device Functions
  *****************************/
 
 //From Kyrills implementation in SKA/RC
-__device__ void scatter_grid_add(cuComplex *uvgrid,
+__device__ void scatter_grid_add(hipComplex *uvgrid,
 				 int grid_size,
 				 int grid_pitch,
 				 int grid_point_u,
 				 int grid_point_v,
-				 cuComplex sum){
+				 hipComplex sum){
 
     if (grid_point_u < 0 || grid_point_u >= grid_size ||
       grid_point_v < 0 || grid_point_v >= grid_size)
@@ -22,9 +31,9 @@ __device__ void scatter_grid_add(cuComplex *uvgrid,
 }
 
 #ifdef __COUNT_VIS__
-__device__ void scatter_grid_point(cuComplex* fdata,
-				   cuComplex* uvgrid, // Our main UV Grid
-				   cuComplex* illum, //Our W-Kernel
+__device__ void scatter_grid_point(hipComplex* fdata,
+				   hipComplex* uvgrid, // Our main UV Grid
+				   hipComplex* illum, //Our W-Kernel
 				   int* x,
 				   int* y,
 				   int* z,
@@ -36,9 +45,9 @@ __device__ void scatter_grid_point(cuComplex* fdata,
 				   int batch_no,
 				   unsigned long long int *visc_reg){ 
 #else
-__device__ void scatter_grid_point(cuComplex* fdata, //Our fourier data
-				   cuComplex* uvgrid, // Our main UV Grid
-				   cuComplex* illum, //Our W-Kernel
+__device__ void scatter_grid_point(hipComplex* fdata, //Our fourier data
+				   hipComplex* uvgrid, // Our main UV Grid
+				   hipComplex* illum, //Our W-Kernel
 				   int* x, // Ant x location data
 				   int* y, // Ant y location data
 				   int* z, // Ant z location data
@@ -51,7 +60,7 @@ __device__ void scatter_grid_point(cuComplex* fdata, //Our fourier data
 #endif
   
   int grid_point_u = myU, grid_point_v = myV;
-  cuComplex sum  = make_cuComplex(0.0,0.0);
+  hipComplex sum  = make_hipComplex(0.0,0.0);
   short supp = max_supp;
   int vi_s = batch_no * data_size;
   int grid_s = grid_size * grid_size * batch_no;
@@ -81,17 +90,17 @@ __device__ void scatter_grid_point(cuComplex* fdata, //Our fourier data
       // Atomically add to grid. This is the bottleneck of this kernel.
       scatter_grid_add(uvgrid+grid_s, grid_size, grid_size, grid_point_u, grid_point_v, sum);
       // Switch to new point
-      sum = make_cuComplex(0.0, 0.0);
+      sum = make_hipComplex(0.0, 0.0);
       grid_point_u = myGridU;
       grid_point_v = myGridV;
     }
     //TODO: Re-do the w-kernel/gcf for our data.
     //	cuDoubleComplex px;
-    cuComplex px = illum[myConvV * supp + myConvU];// ??
+    hipComplex px = illum[myConvV * supp + myConvU];// ??
     //cuComplex px = *(cuComplex*)&wkern->kern_by_w[w_plane].data[sub_offset + myConvV * supp + myConvU];	
     // Sum up
-    cuComplex vi_v = fdata[vi];
-    sum = cuCfmaf(cuConjf(px), vi_v, sum);
+    hipComplex vi_v = fdata[vi];
+    sum = hipCfmaf(hipConjf(px), vi_v, sum);
 
   }
   // Add remaining sum to grid
@@ -107,9 +116,9 @@ __device__ void scatter_grid_point(cuComplex* fdata, //Our fourier data
  ******************/
  
 #ifdef __COUNT_VIS__
- __global__ void scatter_grid_kernel(cuComplex* fdata, //Our fourier data
-				     cuComplex* uvgrid, // Our main UV Grid
-				     cuComplex* illum, //Our W-Kernel
+ __global__ void scatter_grid_kernel(hipComplex* fdata, //Our fourier data
+				     hipComplex* uvgrid, // Our main UV Grid
+				     hipComplex* illum, //Our W-Kernel
 				     int* x, // Ant x location data
 				     int* y, // Ant y location data
 				     int* z, // Ant z location data
@@ -118,9 +127,9 @@ __device__ void scatter_grid_point(cuComplex* fdata, //Our fourier data
 				     int data_size,
 				     unsigned long long int* visc_reg){
 #else
-__global__ void scatter_grid_kernel(cuComplex* fdata, //Our fourier data
-				    cuComplex* uvgrid, // Our main UV Grid
-				    cuComplex* illum, //Our W-Kernel
+__global__ void scatter_grid_kernel(hipComplex* fdata, //Our fourier data
+				    hipComplex* uvgrid, // Our main UV Grid
+				    hipComplex* illum, //Our W-Kernel
 				    int* x, // Ant x location data
 				    int* y, // Ant y location data
 				    int* z, // Ant z location data
@@ -143,4 +152,3 @@ __global__ void scatter_grid_kernel(cuComplex* fdata, //Our fourier data
 #endif		       
   }
 }
-

@@ -31,7 +31,10 @@
 #include "IndexArray.cuh"
 
 // TODO: It's annoying that we have to do this; any better way?
-#ifndef __CUDACC__
+// HIP conversion: Normally we would just check for __HIPCC__, but we want to avoid
+// including hip_runtime_api.h (which causes a chain of includes we'd have to handle),
+// so we check for both, either of which would be defined by the respective compiler.
+#if !(defined(__HIPCC__) || defined(__CUDACC__))
 using std::min;
 using std::max;
 #endif

@@ -29,7 +29,7 @@
 #pragma once
 
 #if BF_CUDA_ENABLED
-#include <cuda_fp16.h>
+#include <hip/hip_fp16.h>
 #endif
 
 #ifndef __CUDACC_RTC__
@@ -303,7 +303,7 @@ inline T type_pun(U x) {
 
 }
 
-#ifdef __CUDA_ARCH__
+#ifdef __HIP_DEVICE_COMPILE__
 #if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
 __device__
 inline Complex<float> __shfl_sync(unsigned mask, Complex<float> const& c,
@@ -321,7 +321,7 @@ inline Complex<float> __shfl(Complex<float> const& c,
 		__shfl(detail::type_pun<shfl_type>(c), index, width));
 }
 #endif
-#endif // __CUDA_ARCH__
+#endif // __HIP_DEVICE_COMPILE__
 
 __host__ __device__
 inline Complex<float> rintf(Complex<float> const& c) {

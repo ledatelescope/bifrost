@@ -31,6 +31,8 @@
 Implements the Romein convolutional algorithm onto a GPU using CUDA. 
 
 */
+
+#include <hip/hip_runtime.h>
 #include <iostream>
 #include <bifrost/config.h>
 #include <bifrost/romein.h>
@@ -262,7 +264,7 @@ inline void launch_romein_kernel(int      nbaseline,
                                  OutType* kernels,
                                  InType*  d_in,
                                  OutType* d_out,
-                                 cudaStream_t stream=0) {
+                                 hipStream_t stream=0) {
     //cout << "LAUNCH for " << nelement << endl;
     dim3 block(8,1);
     dim3 grid(nbatch*npol,1);
@@ -290,12 +292,12 @@ inline void launch_romein_kernel(int      nbaseline,
                     &d_out};
     size_t loc_size = 2 * nbaseline * npol * sizeof(int);
     if(loc_size <= BF_GPU_SHAREDMEM) {
-	BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)romein_kernel_sloc<InType,OutType>,
+	BF_CHECK_HIP_EXCEPTION(hipLaunchKernel((void*)romein_kernel_sloc<InType,OutType>,
 						 grid, block,
 						 &args[0], 2*nbaseline*npol*sizeof(int), stream),
 				BF_STATUS_INTERNAL_ERROR);
     } else {
-	BF_CHECK_CUDA_EXCEPTION(cudaLaunchKernel((void*)romein_kernel<InType,OutType>,
+	BF_CHECK_HIP_EXCEPTION(hipLaunchKernel((void*)romein_kernel<InType,OutType>,
 						 grid, block,
 						 &args[0], 0, stream),
 				BF_STATUS_INTERNAL_ERROR);
@@ -321,7 +323,7 @@ private:
     IType        _nkernels = 0;
     BFdtype      _tkernels = BF_DTYPE_INT_TYPE;
     void*        _kernels = NULL;
-    cudaStream_t _stream;
+    hipStream_t _stream;
 public:
     BFromein_impl() : _nbaseline(1), _npol(1), _polmajor(true), \
                       _maxsupport(1), _stream(g_cuda_stream) {}
@@ -388,7 +390,7 @@ public:
         BF_ASSERT_EXCEPTION(out->dtype == BF_DTYPE_CF32 \
                                           || out->dtype == BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
         
-        BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+        BF_CHECK_HIP_EXCEPTION(hipGetLastError(), BF_STATUS_INTERNAL_ERROR);
         
         int nbatch = in->shape[0];
         
@@ -460,9 +462,9 @@ public:
         }
 #undef LAUNCH_ROMEIN_KERNEL
         
-        BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+        BF_CHECK_HIP_EXCEPTION(hipGetLastError(), BF_STATUS_INTERNAL_ERROR);
     }
-    void set_stream(cudaStream_t stream) {
+    void set_stream(hipStream_t stream) {
         _stream = stream;
     }
 };
@@ -528,7 +530,7 @@ BFstatus bfRomeinSetStream(BFromein    plan,
     BF_TRACE();
     BF_ASSERT(plan, BF_STATUS_INVALID_HANDLE);
     BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
-    BF_TRY_RETURN(plan->set_stream(*(cudaStream_t*)stream));
+    BF_TRY_RETURN(plan->set_stream(*(hipStream_t*)stream));
 }
 BFstatus bfRomeinSetPositions(BFromein       plan,
                               BFarray const* positions) {

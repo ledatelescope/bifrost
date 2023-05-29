@@ -29,6 +29,7 @@
 
 #pragma once
 
+#include <hip/hip_runtime.h>
 #include "int_fastdiv.h"
 
 enum { MAX_NDIM = 8 };

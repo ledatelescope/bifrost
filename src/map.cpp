@@ -49,8 +49,8 @@ bfMap(3, c.shape, {"dm", "t"},
 #include "ObjectCache.hpp"
 #include "EnvVars.hpp"
 
-#include <cuda.h>
-#include <nvrtc.h>
+#include <hip/hip_runtime.h>
+#include <hip/hiprtc.h>
 
 #include "IndexArray.cuh.jit"
 #include "ArrayIndexer.cuh"
@@ -82,26 +82,26 @@ using std::endl;
 
 #define BF_CHECK_NVRTC(call) \
 	do { \
-		nvrtcResult ret = call; \
-		if( ret != NVRTC_SUCCESS ) { \
-			BF_DEBUG_PRINT(nvrtcGetErrorString(ret)); \
+		hiprtcResult ret = call; \
+		if( ret != HIPRTC_SUCCESS ) { \
+			BF_DEBUG_PRINT(hiprtcGetErrorString(ret)); \
 		} \
-		BF_ASSERT(ret == NVRTC_SUCCESS, \
+		BF_ASSERT(ret == HIPRTC_SUCCESS, \
 		          bifrost_status(ret)); \
 	} while(0)
 
-BFstatus bifrost_status(nvrtcResult status) {
+BFstatus bifrost_status(hiprtcResult status) {
 	switch(status) {
-	case NVRTC_SUCCESS:                         return BF_STATUS_SUCCESS;
-	case NVRTC_ERROR_OUT_OF_MEMORY:             return BF_STATUS_MEM_ALLOC_FAILED;
-	case NVRTC_ERROR_PROGRAM_CREATION_FAILURE:  return BF_STATUS_INTERNAL_ERROR;
-	case NVRTC_ERROR_INVALID_INPUT:             return BF_STATUS_INTERNAL_ERROR;
-	case NVRTC_ERROR_INVALID_PROGRAM:           return BF_STATUS_INTERNAL_ERROR;
-	case NVRTC_ERROR_INVALID_OPTION:            return BF_STATUS_INTERNAL_ERROR;
-	case NVRTC_ERROR_COMPILATION:               return BF_STATUS_INTERNAL_ERROR;
-	case NVRTC_ERROR_BUILTIN_OPERATION_FAILURE: return BF_STATUS_INTERNAL_ERROR;
+	case HIPRTC_SUCCESS:                         return BF_STATUS_SUCCESS;
+	case HIPRTC_ERROR_OUT_OF_MEMORY:             return BF_STATUS_MEM_ALLOC_FAILED;
+	case HIPRTC_ERROR_PROGRAM_CREATION_FAILURE:  return BF_STATUS_INTERNAL_ERROR;
+	case HIPRTC_ERROR_INVALID_INPUT:             return BF_STATUS_INTERNAL_ERROR;
+	case HIPRTC_ERROR_INVALID_PROGRAM:           return BF_STATUS_INTERNAL_ERROR;
+	case HIPRTC_ERROR_INVALID_OPTION:            return BF_STATUS_INTERNAL_ERROR;
+	case HIPRTC_ERROR_COMPILATION:               return BF_STATUS_INTERNAL_ERROR;
+	case HIPRTC_ERROR_BUILTIN_OPERATION_FAILURE: return BF_STATUS_INTERNAL_ERROR;
 #if CUDA_VERSION >= 7500
-	case NVRTC_ERROR_INTERNAL_ERROR:            return BF_STATUS_DEVICE_ERROR;
+	case HIPRTC_ERROR_INTERNAL_ERROR:            return BF_STATUS_DEVICE_ERROR;
 #endif
 	default: return BF_STATUS_INTERNAL_ERROR;
     }
@@ -329,8 +329,8 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	};
 	size_t nheader = sizeof(header_codes) / sizeof(const char*);
 	
-	nvrtcProgram program;
-	BF_CHECK_NVRTC( nvrtcCreateProgram(&program,
+	hiprtcProgram program;
+	BF_CHECK_NVRTC( hiprtcCreateProgram(&program,
 	                                   code.str().c_str(),
 	                                   program_name,
 	                                   nheader, header_codes, header_names) );
@@ -356,17 +356,17 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	for( int i=0; i<(int)options.size(); ++i ) {
 		options_c.push_back(options[i].c_str());
 	}
-	nvrtcResult ret = nvrtcCompileProgram(program,
+	hiprtcResult ret = hiprtcCompileProgram(program,
 	                                      options_c.size(),
 	                                      &options_c[0]);
 #if BF_DEBUG_ENABLED
 	size_t logsize;
 	// Note: Includes the trailing NULL
-	BF_CHECK_NVRTC( nvrtcGetProgramLogSize(program, &logsize) );
+	BF_CHECK_NVRTC( hiprtcGetProgramLogSize(program, &logsize) );
 	if( (logsize > 1 || EnvVars::get("BF_PRINT_MAP_KERNELS", "0") != "0") &&
 	     !basic_indexing_only ) {
 		std::vector<char> log(logsize, 0);
-		BF_CHECK_NVRTC( nvrtcGetProgramLog(program, &log[0]) );
+		BF_CHECK_NVRTC( hiprtcGetProgramLog(program, &log[0]) );
 		int i = 1;
 		for( std::string line; std::getline(code, line); ++i ) {
 			std::cout << std::setfill(' ') << std::setw(3) << i << " " << line << endl;
@@ -378,17 +378,17 @@ BFstatus build_map_kernel(int*                 external_ndim,
 		std::cout << "---------------------------------------------------" << std::endl;
 	}
 #endif // BIFROST_DEBUG
-	if( ret != NVRTC_SUCCESS ) {
+	if( ret != HIPRTC_SUCCESS ) {
 		// Note: Don't print debug msg here, failure may not be expected
 		return BF_STATUS_INVALID_ARGUMENT;
 	}
 	
 	size_t ptxsize;
-	BF_CHECK_NVRTC( nvrtcGetPTXSize(program, &ptxsize) );
+	BF_CHECK_NVRTC( hiprtcGetCodeSize(program, &ptxsize) );
 	std::vector<char> vptx(ptxsize);
 	char* ptx = &vptx[0];
-	BF_CHECK_NVRTC( nvrtcGetPTX(program, &ptx[0]) );
-	BF_CHECK_NVRTC( nvrtcDestroyProgram(&program) );
+	BF_CHECK_NVRTC( hiprtcGetCode(program, &ptx[0]) );
+	BF_CHECK_NVRTC( hiprtcDestroyProgram(&program) );
 #if BF_DEBUG_ENABLED
 	if( EnvVars::get("BF_PRINT_MAP_KERNELS_PTX", "0") != "0" ) {
 		std::cout << ptx << std::endl;
@@ -418,8 +418,8 @@ class DiskCacheMgr {
 	void tag_cache(void) {
 		// NOTE:  Must be called from within a LockFile lock
 		int rt, drv;
-		cudaRuntimeGetVersion(&rt);
-		cudaDriverGetVersion(&drv);
+		hipRuntimeGetVersion(&rt);
+		hipDriverGetVersion(&drv);
 
 		std::ofstream info;
 		
@@ -436,8 +436,8 @@ class DiskCacheMgr {
 		// NOTE:  Must be called from within a LockFile lock
 		bool status = true;
 		int rt, drv, cached_mc, cached_rt, cached_drv;
-		cudaRuntimeGetVersion(&rt);
-		cudaDriverGetVersion(&drv);
+		hipRuntimeGetVersion(&rt);
+		hipDriverGetVersion(&drv);
 		
 		std::ifstream info;
 		try {
@@ -790,7 +790,7 @@ BFstatus bfMap(int                  ndim,
 	
 	BF_ASSERT(kernel.launch(grid, block,
 	                        0, g_cuda_stream,
-	                        kernel_args) == CUDA_SUCCESS,
+	                        kernel_args) == hipSuccess,
 	          BF_STATUS_DEVICE_ERROR);
 	
 	return BF_STATUS_SUCCESS;

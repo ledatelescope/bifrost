@@ -28,6 +28,7 @@
 
 #pragma once
 
+#include <assert.hpp>
 #include <bifrost/common.h>
 
 #include <stdexcept>

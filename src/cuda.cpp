@@ -26,18 +26,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <bifrost/cuda.h>
+
+#include <hip/hip_runtime.h>
+#include <bifrost/bfcuda.h>
 #include "cuda.hpp"
 #include "assert.hpp"
 
 #if BF_CUDA_ENABLED
-thread_local cudaStream_t g_cuda_stream = cudaStreamPerThread;
+thread_local hipStream_t g_cuda_stream = hipStreamPerThread;
 #endif
 
 BFstatus bfStreamGet(void* stream) {
 	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
 #if BF_CUDA_ENABLED
-	*(cudaStream_t*)stream = g_cuda_stream;
+	*(hipStream_t*)stream = g_cuda_stream;
 #else
 	BF_FAIL("Built without CUDA support (bfStreamGet)", BF_STATUS_INVALID_STATE);
 #endif
@@ -46,14 +48,14 @@ BFstatus bfStreamGet(void* stream) {
 BFstatus bfStreamSet(void const* stream) {
 	BF_ASSERT(stream, BF_STATUS_INVALID_POINTER);
 #if BF_CUDA_ENABLED
-	g_cuda_stream = *(cudaStream_t*)stream;
+	g_cuda_stream = *(hipStream_t*)stream;
 #endif
 	return BF_STATUS_SUCCESS;
 }
 BFstatus bfDeviceGet(int* device) {
 	BF_ASSERT(device, BF_STATUS_INVALID_POINTER);
 #if BF_CUDA_ENABLED
-	BF_CHECK_CUDA(cudaGetDevice(device), BF_STATUS_DEVICE_ERROR);
+	BF_CHECK_HIP(hipGetDevice(device), BF_STATUS_DEVICE_ERROR);
 #else
 	*device = -1;
 #endif
@@ -61,14 +63,14 @@ BFstatus bfDeviceGet(int* device) {
 }
 BFstatus bfDeviceSet(int device) {
 #if BF_CUDA_ENABLED
-	BF_CHECK_CUDA(cudaSetDevice(device), BF_STATUS_DEVICE_ERROR);
+	BF_CHECK_HIP(hipSetDevice(device), BF_STATUS_DEVICE_ERROR);
 #endif
 	return BF_STATUS_SUCCESS;
 }
 BFstatus bfDeviceSetById(const char* pci_bus_id) {
 #if BF_CUDA_ENABLED
 	int device;
-	BF_CHECK_CUDA(cudaDeviceGetByPCIBusId(&device, pci_bus_id),
+	BF_CHECK_HIP(hipDeviceGetByPCIBusId(&device, pci_bus_id),
 	              BF_STATUS_DEVICE_ERROR);
 	return bfDeviceSet(device);
 #else
@@ -77,7 +79,7 @@ BFstatus bfDeviceSetById(const char* pci_bus_id) {
 }
 BFstatus bfStreamSynchronize() {
 #if BF_CUDA_ENABLED
-	BF_CHECK_CUDA(cudaStreamSynchronize(g_cuda_stream),
+	BF_CHECK_HIP(hipStreamSynchronize(g_cuda_stream),
 	              BF_STATUS_DEVICE_ERROR);
 #endif
 	return BF_STATUS_SUCCESS;
@@ -85,15 +87,15 @@ BFstatus bfStreamSynchronize() {
 BFstatus bfDevicesSetNoSpinCPU() {
 #if BF_CUDA_ENABLED
 	int old_device;
-	BF_CHECK_CUDA(cudaGetDevice(&old_device), BF_STATUS_DEVICE_ERROR);
+	BF_CHECK_HIP(hipGetDevice(&old_device), BF_STATUS_DEVICE_ERROR);
 	int ndevices;
-	BF_CHECK_CUDA(cudaGetDeviceCount(&ndevices), BF_STATUS_DEVICE_ERROR);
+	BF_CHECK_HIP(hipGetDeviceCount(&ndevices), BF_STATUS_DEVICE_ERROR);
 	for( int d=0; d<ndevices; ++d ) {
-		BF_CHECK_CUDA(cudaSetDevice(d), BF_STATUS_DEVICE_ERROR);
-		BF_CHECK_CUDA(cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync),
+		BF_CHECK_HIP(hipSetDevice(d), BF_STATUS_DEVICE_ERROR);
+		BF_CHECK_HIP(hipSetDeviceFlags(hipDeviceScheduleBlockingSync),
 		              BF_STATUS_DEVICE_ERROR);
 	}
-	BF_CHECK_CUDA(cudaSetDevice(old_device), BF_STATUS_DEVICE_ERROR);
+	BF_CHECK_HIP(hipSetDevice(old_device), BF_STATUS_DEVICE_ERROR);
 #endif
 	return BF_STATUS_SUCCESS;
 }

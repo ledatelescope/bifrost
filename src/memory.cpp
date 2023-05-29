@@ -27,6 +27,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <hip/hip_runtime.h>
 #include <bifrost/config.h>
 #include <bifrost/memory.h>
 #include "utils.hpp"
@@ -47,11 +48,11 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 #if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
 	*space = BF_SPACE_SYSTEM;
 #else
-	cudaPointerAttributes ptr_attrs;
-	cudaError_t ret = cudaPointerGetAttributes(&ptr_attrs, ptr);
-	BF_ASSERT(ret == cudaSuccess || ret == cudaErrorInvalidValue,
+	hipPointerAttribute_t ptr_attrs;
+	hipError_t ret = hipPointerGetAttributes(&ptr_attrs, ptr);
+	BF_ASSERT(ret == hipSuccess || ret == hipErrorInvalidValue,
 	          BF_STATUS_DEVICE_ERROR);
-	if( ret == cudaErrorInvalidValue ) {
+	if( ret == hipErrorInvalidValue ) {
 		// TODO: Is there a better way to find out how a pointer was allocated?
 		//         Alternatively, is there a way to prevent this from showing
 		//           up in cuda-memcheck?
@@ -59,13 +60,13 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 		//         CUDA API functions, so if it fails we just assume sysmem.
 		*space = BF_SPACE_SYSTEM;
 		// WAR to avoid the ignored failure showing up later
-		cudaGetLastError();
+		hipGetLastError();
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 10000
     } else {
         switch( ptr_attrs.type ) {
-		case cudaMemoryTypeHost:    *space = BF_SPACE_SYSTEM;       break;
-		case cudaMemoryTypeDevice:  *space = BF_SPACE_CUDA;         break;
-		case cudaMemoryTypeManaged: *space = BF_SPACE_CUDA_MANAGED; break;
+		case hipMemoryTypeHost:    *space = BF_SPACE_SYSTEM;       break;
+		case hipMemoryTypeDevice:  *space = BF_SPACE_CUDA;         break;
+		case hipMemoryTypeManaged: *space = BF_SPACE_CUDA_MANAGED; break;
 		default: {
 			// This should never be reached
 			BF_FAIL("Valid memoryType", BF_STATUS_INTERNAL_ERROR);
@@ -120,19 +121,19 @@ BFstatus bfMalloc(void** ptr, BFsize size, BFspace space) {
 	}
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
 	case BF_SPACE_CUDA: {
-		BF_CHECK_CUDA(cudaMalloc((void**)&data, size),
+		BF_CHECK_HIP(hipMalloc((void**)&data, size),
 		              BF_STATUS_MEM_ALLOC_FAILED);
 		break;
 	}
 	case BF_SPACE_CUDA_HOST: {
-		unsigned flags = cudaHostAllocDefault;
-		BF_CHECK_CUDA(cudaHostAlloc((void**)&data, size, flags),
+		unsigned flags = hipHostMallocDefault;
+		BF_CHECK_HIP(hipHostAlloc((void**)&data, size, flags),
 		              BF_STATUS_MEM_ALLOC_FAILED);
 		break;
 	}
 	case BF_SPACE_CUDA_MANAGED: {
-		unsigned flags = cudaMemAttachGlobal;
-		BF_CHECK_CUDA(cudaMallocManaged((void**)&data, size, flags),
+		unsigned flags = hipMemAttachGlobal;
+		BF_CHECK_HIP(hipMallocManaged((void**)&data, size, flags),
 		              BF_STATUS_MEM_ALLOC_FAILED);
 		break;
 	}
@@ -151,9 +152,9 @@ BFstatus bfFree(void* ptr, BFspace space) {
 	switch( space ) {
 	case BF_SPACE_SYSTEM:       ::free(ptr); break;
 #if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
-	case BF_SPACE_CUDA:         cudaFree(ptr); break;
-	case BF_SPACE_CUDA_HOST:    cudaFreeHost(ptr); break;
-	case BF_SPACE_CUDA_MANAGED: cudaFree(ptr); break;
+	case BF_SPACE_CUDA:         hipFree(ptr); break;
+	case BF_SPACE_CUDA_HOST:    hipHostFree(ptr); break;
+	case BF_SPACE_CUDA_MANAGED: hipFree(ptr); break;
 #endif
 	default: BF_FAIL("Valid bfFree() space", BF_STATUS_INVALID_ARGUMENT);
 	}
@@ -174,16 +175,16 @@ BFstatus bfMemcpy(void*       dst,
 		//         than using cudaMemcpyDefault.
 		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
-		cudaMemcpyKind kind = cudaMemcpyDefault;
+		hipMemcpyKind kind = hipMemcpyDefault;
 		switch( src_space ) {
 		case BF_SPACE_CUDA_HOST: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
 			case BF_SPACE_SYSTEM: ::memcpy(dst, src, count); return BF_STATUS_SUCCESS;
-			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
+			case BF_SPACE_CUDA: kind = hipMemcpyHostToDevice; break;
 			// Is this the right thing to do?
-			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+			case BF_SPACE_CUDA_MANAGED: kind = hipMemcpyDefault; break;
 			default: BF_FAIL("Valid bfMemcpy dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
@@ -191,19 +192,19 @@ BFstatus bfMemcpy(void*       dst,
 		case BF_SPACE_CUDA: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
-			case BF_SPACE_SYSTEM: kind = cudaMemcpyDeviceToHost; break;
-			case BF_SPACE_CUDA: kind = cudaMemcpyDeviceToDevice; break;
-			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+			case BF_SPACE_SYSTEM: kind = hipMemcpyDeviceToHost; break;
+			case BF_SPACE_CUDA: kind = hipMemcpyDeviceToDevice; break;
+			case BF_SPACE_CUDA_MANAGED: kind = hipMemcpyDefault; break;
 			default: BF_FAIL("Valid bfMemcpy dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
 		}
 		// Is this the right thing to do?
-		case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+		case BF_SPACE_CUDA_MANAGED: kind = hipMemcpyDefault; break;
 		default: BF_FAIL("Valid bfMemcpy src space", BF_STATUS_INVALID_ARGUMENT);
 		}
 		BF_TRACE_STREAM(g_cuda_stream);
-		BF_CHECK_CUDA(cudaMemcpyAsync(dst, src, count, kind, g_cuda_stream),
+		BF_CHECK_HIP(hipMemcpyAsync(dst, src, count, kind, g_cuda_stream),
 		              BF_STATUS_MEM_OP_FAILED);
 #endif
 	}
@@ -242,16 +243,16 @@ BFstatus bfMemcpy2D(void*       dst,
 		//         than using cudaMemcpyDefault.
 		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
-		cudaMemcpyKind kind = cudaMemcpyDefault;
+		hipMemcpyKind kind = hipMemcpyDefault;
 		switch( src_space ) {
 		case BF_SPACE_CUDA_HOST: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
 			case BF_SPACE_SYSTEM: memcpy2D(dst, dst_stride, src, src_stride, width, height); return BF_STATUS_SUCCESS;
-			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
+			case BF_SPACE_CUDA: kind = hipMemcpyHostToDevice; break;
 			// TODO: Is this the right thing to do?
-			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+			case BF_SPACE_CUDA_MANAGED: kind = hipMemcpyDefault; break;
 			default: BF_FAIL("Valid bfMemcpy2D dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
@@ -259,20 +260,20 @@ BFstatus bfMemcpy2D(void*       dst,
 		case BF_SPACE_CUDA: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
-			case BF_SPACE_SYSTEM: kind = cudaMemcpyDeviceToHost; break;
-			case BF_SPACE_CUDA:   kind = cudaMemcpyDeviceToDevice; break;
+			case BF_SPACE_SYSTEM: kind = hipMemcpyDeviceToHost; break;
+			case BF_SPACE_CUDA:   kind = hipMemcpyDeviceToDevice; break;
 			// TODO: Is this the right thing to do?
-			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+			case BF_SPACE_CUDA_MANAGED: kind = hipMemcpyDefault; break;
 			default: BF_FAIL("Valid bfMemcpy2D dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
 		}
 		// Is this the right thing to do?
-		case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+		case BF_SPACE_CUDA_MANAGED: kind = hipMemcpyDefault; break;
 		default: BF_FAIL("Valid bfMemcpy2D src space", BF_STATUS_INVALID_ARGUMENT);
 		}
 		BF_TRACE_STREAM(g_cuda_stream);
-		BF_CHECK_CUDA(cudaMemcpy2DAsync(dst, dst_stride,
+		BF_CHECK_HIP(hipMemcpy2DAsync(dst, dst_stride,
 		                                src, src_stride,
 		                                width, height,
 		                                kind, g_cuda_stream),
@@ -298,7 +299,7 @@ BFstatus bfMemset(void*   ptr,
 		case BF_SPACE_CUDA: // Fall-through
 		case BF_SPACE_CUDA_MANAGED: {
 			BF_TRACE_STREAM(g_cuda_stream);
-			BF_CHECK_CUDA(cudaMemsetAsync(ptr, value, count, g_cuda_stream),
+			BF_CHECK_HIP(hipMemsetAsync(ptr, value, count, g_cuda_stream),
 			              BF_STATUS_MEM_OP_FAILED);
 			break;
 		}
@@ -335,7 +336,7 @@ BFstatus bfMemset2D(void*   ptr,
 		case BF_SPACE_CUDA: // Fall-through
 		case BF_SPACE_CUDA_MANAGED: {
 			BF_TRACE_STREAM(g_cuda_stream);
-			BF_CHECK_CUDA(cudaMemset2DAsync(ptr, stride, value, width, height, g_cuda_stream),
+			BF_CHECK_HIP(hipMemset2DAsync(ptr, stride, value, width, height, g_cuda_stream),
 			              BF_STATUS_MEM_OP_FAILED);
 			break;
 		}

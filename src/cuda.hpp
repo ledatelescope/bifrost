@@ -40,12 +40,11 @@
 #if BF_CUDA_ENABLED
 
 //#define CUDA_API_PER_THREAD_DEFAULT_STREAM
-#include <cuda_runtime_api.h>
-#include <cuda.h>
+#include <hip/hip_runtime_api.h>
 
 #include <type_traits>
 
-extern thread_local cudaStream_t g_cuda_stream;
+extern thread_local hipStream_t g_cuda_stream;
 // TODO: BFstatus bfSetStream(void const* stream) { cuda_stream = *(cudaStream_t*)stream; }
 
 #if THRUST_VERSION >= 100800 // WAR for old Thrust version (e.g., on TK1)
@@ -58,11 +57,11 @@ extern thread_local cudaStream_t g_cuda_stream;
 
 inline int get_cuda_device_cc() {
 	int device, cc;
-	cudaGetDevice(&device);
+	hipGetDevice(&device);
 	int cc_major;
-	cudaDeviceGetAttribute(&cc_major, cudaDevAttrComputeCapabilityMajor, device);
+	hipDeviceGetAttribute(&cc_major, hipDeviceAttributeComputeCapabilityMajor, device);
 	int cc_minor;
-	cudaDeviceGetAttribute(&cc_minor, cudaDevAttrComputeCapabilityMinor, device);
+	hipDeviceGetAttribute(&cc_minor, hipDeviceAttributeComputeCapabilityMinor, device);
 	cc = cc_major*10 + cc_minor;
   if( cc > BF_GPU_MAX_ARCH ) {
     cc = BF_GPU_MAX_ARCH;
@@ -89,29 +88,49 @@ inline int get_cuda_device_cc() {
 		BF_ASSERT(cuda_ret == cudaSuccess, err); \
 	} while(0)
 
+#define BF_CHECK_HIP_EXCEPTION(call, err) \
+	do { \
+		hipError_t hip_ret = call; \
+		if( hip_ret != hipSuccess ) { \
+			BF_DEBUG_PRINT(hipGetErrorString(hip_ret)); \
+		} \
+		/*BF_ASSERT(hip_ret == hipSuccess, err);*/ \
+		BF_ASSERT_EXCEPTION(hip_ret == hipSuccess, err); \
+	} while(0)
+
+#define BF_CHECK_HIP(call, err) \
+	do { \
+		hipError_t hip_ret = call; \
+		if( hip_ret != hipSuccess ) { \
+			BF_DEBUG_PRINT(hipGetErrorString(hip_ret)); \
+		} \
+		BF_ASSERT(hip_ret == hipSuccess, err); \
+	} while(0)
+
+
 class CUDAKernel {
-	CUmodule                  _module;
-	CUfunction                _kernel;
+	hipModule_t               _module;
+	hipFunction_t             _kernel;
 	std::string               _func_name;
 	std::string               _ptx;
-	std::vector<CUjit_option> _opts;
+	std::vector<hipJitOption> _opts;
 	
-	inline void cuda_safe_call(CUresult res) {
-		if( res != CUDA_SUCCESS ) {
+	inline void cuda_safe_call(hipError_t res) {
+		if( res != hipSuccess ) {
 			const char* msg;
-			cuGetErrorName(res, &msg);
+			hipDrvGetErrorName(res, &msg);
 			throw std::runtime_error(msg);
 		}
 	}
 	inline void create_module(void** optvals=0) {
-		cuda_safe_call(cuModuleLoadDataEx(&_module, _ptx.c_str(),
+		cuda_safe_call(hipModuleLoadDataEx(&_module, _ptx.c_str(),
 		                                  _opts.size(), &_opts[0], optvals));
-		cuda_safe_call(cuModuleGetFunction(&_kernel, _module,
+		cuda_safe_call(hipModuleGetFunction(&_kernel, _module,
 		                                   _func_name.c_str()));
 	}
 	inline void destroy_module() {
 		if( _module ) {
-			cuModuleUnload(_module);
+			hipModuleUnload(_module);
 		}
 	}
 public:
@@ -127,7 +146,7 @@ public:
 	inline CUDAKernel(const char*   func_name,
 	                  const char*   ptx,
 	                  unsigned int  nopts=0,
-	                  CUjit_option* opts=0,
+	                  hipJitOption* opts=0,
 	                  void**        optvals=0) {
 		_func_name = func_name;
 		_ptx = ptx;
@@ -137,7 +156,7 @@ public:
 	inline CUDAKernel& set(const char*   func_name,
 	                       const char*   ptx,
 	                       unsigned int  nopts=0,
-	                       CUjit_option* opts=0,
+	                       hipJitOption* opts=0,
 	                       void**        optvals=0) {
 		this->destroy_module();
 		_func_name = func_name;
@@ -161,23 +180,23 @@ public:
 	inline ~CUDAKernel() {
 		this->destroy_module();
 	}
-	inline operator CUfunction() const { return _kernel; }
+	inline operator hipFunction_t() const { return _kernel; }
 	
-	inline CUresult launch(dim3 grid, dim3 block,
-	                       unsigned int smem, CUstream stream,
+	inline hipError_t launch(dim3 grid, dim3 block,
+	                       unsigned int smem, hipStream_t stream,
 	                       std::vector<void*> arg_ptrs) {
 	                       //void* arg_ptrs[]) {
 		// Note: This returns "INVALID_ARGUMENT" if 'args' do not match what is
 		//         expected (e.g., too few args, wrong types)
-		return cuLaunchKernel(_kernel,
+		return hipModuleLaunchKernel(_kernel,
 		                      grid.x, grid.y, grid.z,
 		                      block.x, block.y, block.z,
 		                      smem, stream,
 		                      &arg_ptrs[0], NULL);
 	}
 	template<typename... Args>
-	inline CUresult launch(dim3 grid, dim3 block,
-	                   unsigned int smem, CUstream stream,
+	inline hipError_t launch(dim3 grid, dim3 block,
+	                   unsigned int smem, hipStream_t stream,
 	                   Args... args) {
 		return this->launch(grid, block, smem, stream, {(void*)&args...});
 	}

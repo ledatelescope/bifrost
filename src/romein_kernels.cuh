@@ -1,9 +1,8 @@
 //CUDA Includes
-#include <cuComplex.h>
-#include "cuda.h"
-#include "cuda_runtime_api.h"
+#include <hip/hip_complex.h>
+#include "hip/hip_runtime.h"
+#include "hip/hip_runtime_api.h"
 #include "math.h"
-#include <thrust/random.h>
 
 //Romein Include
 #include "bifrost/romein.h"    
@@ -31,9 +30,9 @@ __device__ inline double atomicAdd(double* address, double val)
 
 #endif
 
-__global__ void scatter_grid_kernel(cuComplex* fdata,
-				    cuComplex* uvgrid, //Our UV-Grid
-				    cuComplex* illum, // Illumination Pattern
+__global__ void scatter_grid_kernel(hipComplex* fdata,
+				    hipComplex* uvgrid, //Our UV-Grid
+				    hipComplex* illum, // Illumination Pattern
 				    int* x,
 				    int* y,
 				    int* z,

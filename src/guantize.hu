@@ -31,6 +31,8 @@
 #ifndef BF_GUANTIZE_HU_INCLUDE_GUARD_
 #define BF_GUANTIZE_HU_INCLUDE_GUARD_
 
+#include <hip/hip_runtime.h>
+
 template<typename IType, typename SType, typename OType>
 struct GuantizeFunctor {
 	SType scale;
@@ -45,28 +47,27 @@ void launch_foreach_simple_gpu(T const*     in,
                                U*           out,
                                Size         nelement,
                                Func         func,
-                               cudaStream_t stream=0);
+                               hipStream_t stream=0);
 
 template<typename T, typename Func, typename Size>
 void launch_foreach_simple_gpu_4bit(T const*     in,
                                     int8_t*      out,
                                     Size         nelement,
                                     Func         func,
-                                    cudaStream_t stream=0);
+                                    hipStream_t stream=0);
 
 template<typename T, typename Func, typename Size>
 void launch_foreach_simple_gpu_2bit(T const*     in,
                                     int8_t*      out,
                                     Size         nelement,
                                     Func         func,
-                                    cudaStream_t stream=0);
+                                    hipStream_t stream=0);
 
 template<typename T, typename Func, typename Size>
 void launch_foreach_simple_gpu_1bit(T const*     in,
                                     int8_t*      out,
                                     Size         nelement,
                                     Func         func,
-                                    cudaStream_t stream=0);
+                                    hipStream_t stream=0);
 
 #endif // BF_GUANTIZE_HU_INCLUDE_GUARD_
-

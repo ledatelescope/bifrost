@@ -27,6 +27,7 @@
  */
 
 #pragma once
+#include <hip/hip_runtime.h>
 
 #include "Complex.hpp"
 
@@ -69,7 +70,7 @@ struct __attribute__((aligned(sizeof(R)*4))) JonesVec_<R,true> : public JonesVec
 	typedef Complex<real_type> complex_type;
 	inline __host__ __device__ JonesVec_() : JonesVecBase<R,true>() {}
 	inline __host__ __device__ JonesVec_(complex_type x_, complex_type y_) : JonesVecBase<R,true>(x_, y_) {}
-#ifdef __CUDACC__
+#ifdef __HIPCC__
 	// Note: Use float4 to ensure vectorized load/store
 	inline __host__ __device__ JonesVec_(float4 v) : JonesVecBase<R,true>(complex_type(v.x,v.y), complex_type(v.z,v.w)) {}
 	inline __host__ __device__ operator float4() const { return make_float4(this->x.x,this->x.y,this->y.x,this->y.y); }
@@ -96,7 +97,7 @@ struct __attribute__((aligned(sizeof(R)*4))) JonesVec_<R,false> : public JonesVe
 	typedef Complex<real_type> complex_type;
 	inline __host__ __device__ JonesVec_() : JonesVecBase<R,false>() {}
 	inline __host__ __device__ JonesVec_(complex_type x_, complex_type y_) : JonesVecBase<R,false>(x_, y_) {}
-#ifdef __CUDACC__
+#ifdef __HIPCC__
 	// Note: Use float4 to ensure vectorized load/store
 	inline __host__ __device__ JonesVec_(float4 v) : JonesVecBase<R,false>(complex_type(v.x,v.y), complex_type(v.z,v.w)) {}
 	inline __host__ __device__ operator float4() const { return make_float4(this->x.x,this->x.y,this->y.x,this->y.y); }
@@ -122,7 +123,7 @@ struct __attribute__((packed,aligned(2))) JonesVec_<FourBit,true> : public Jones
 	typedef signed char real_type;
 	typedef FourBit     complex_type;
 	inline __host__ __device__ JonesVec_() : JonesVecBase<FourBit,true>() {}
-#ifdef __CUDACC__
+#ifdef __HIPCC__
 	// Note: Use float4 to ensure vectorized load/store
 	// Note: This assumes that the real component is stored in the high 4 bits (big endian)
 	inline __host__ __device__ operator float4() const { return make_float4(this->x.real_imag>>4,(this->x.real_imag<<4)>>4,
@@ -134,7 +135,7 @@ struct __attribute__((packed,aligned(2))) JonesVec_<FourBit,false> : public Jone
 	typedef signed char real_type;
 	typedef FourBit     complex_type;
 	inline __host__ __device__ JonesVec_() : JonesVecBase<FourBit,false>() {}
-#ifdef __CUDACC__
+#ifdef __HIPCC__
 	// Note: Use float4 to ensure vectorized load/store
 	// Note: This assumes that the real component is stored in the high 4 bits (big endian)
 	inline __host__ __device__ operator float4() const { return make_float4(this->x.real_imag>>4,(this->x.real_imag<<4)>>4,

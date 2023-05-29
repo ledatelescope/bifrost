@@ -43,6 +43,7 @@
 #include "fft_kernels.h"
 #include "ShapeIndexer.cuh"
 #include "ArrayIndexer.cuh"
+#include <hip/hip_runtime.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #if defined(BF_GPU_EXP_PINNED_ALLOC) && BF_GPU_EXP_PINNED_ALLOC
@@ -51,11 +52,11 @@
 #include <thrust/system/cuda/memory.h>
 #endif
 
-#include <cufft.h>
-#include <cufftXt.h>
+#include <hipfft.h>
+#include <hipfftXt.h>
 
 class BFfft_impl {
-	cufftHandle      _handle;
+	hipfftHandle      _handle;
 	bool             _real_in;
 	bool             _real_out;
 	int              _nbit;
@@ -74,6 +75,7 @@ class BFfft_impl {
 	using pinned_allocator_type = thrust::mr::stateless_resource_allocator<CallbackData, thrust::universal_host_pinned_memory_resource>;
 #endif
 	thrust::host_vector<CallbackData, pinned_allocator_type> _hv_callback_data;
+
 	
 	BFstatus execute_impl(BFarray const* in,
 	                      BFarray const* out,
@@ -100,10 +102,10 @@ public:
 };
 
 BFfft_impl::BFfft_impl() {
-	BF_CHECK_CUFFT_EXCEPTION( cufftCreate(&_handle) );
+	BF_CHECK_HIPFFT_EXCEPTION( hipfftCreate(&_handle) );
 }
 BFfft_impl::~BFfft_impl() {
-	cufftDestroy(_handle);
+	hipfftDestroy(_handle);
 }
 
 BFstatus BFfft_impl::init(BFarray const* in,
@@ -211,17 +213,17 @@ BFstatus BFfft_impl::init(BFarray const* in,
 	_nbit = fp64 ? 64 : 32;
 	_itype =  in->dtype;
 	_otype = out->dtype;
-	cufftType type;
-	if(      !_real_in && !_real_out ) { type = fp64 ? CUFFT_Z2Z : CUFFT_C2C; }
-	else if(  _real_in && !_real_out ) { type = fp64 ? CUFFT_D2Z : CUFFT_R2C; }
-	else if( !_real_in &&  _real_out ) { type = fp64 ? CUFFT_Z2D : CUFFT_C2R; }
+	hipfftType type;
+	if(      !_real_in && !_real_out ) { type = fp64 ? HIPFFT_Z2Z : HIPFFT_C2C; }
+	else if(  _real_in && !_real_out ) { type = fp64 ? HIPFFT_D2Z : HIPFFT_R2C; }
+	else if( !_real_in &&  _real_out ) { type = fp64 ? HIPFFT_Z2D : HIPFFT_C2R; }
 	else {
 		BF_FAIL("Complex input and/or output",
 		        BF_STATUS_INVALID_DTYPE);
 	}
-	BF_CHECK_CUFFT( cufftSetAutoAllocation(_handle, false) );
+	BF_CHECK_HIPFFT( hipfftSetAutoAllocation(_handle, false) );
 #if CUDA_VERSION >= 7500
-	BF_CHECK_CUFFT( cufftMakePlanMany64(_handle,
+	BF_CHECK_HIPFFT( hipfftMakePlanMany64(_handle,
 	                                    rank, shape,
 	                                    inembed, istride, idist,
 	                                    onembed, ostride, odist,
@@ -229,7 +231,7 @@ BFstatus BFfft_impl::init(BFarray const* in,
 	                                    batch,
 	                                    &_workspace_size) );
 #else
-	BF_CHECK_CUFFT( cufftMakePlanMany  (_handle,
+	BF_CHECK_HIPFFT( hipfftMakePlanMany  (_handle,
 	                                    rank, shape,
 	                                    inembed, istride, idist,
 	                                    onembed, ostride, odist,
@@ -266,7 +268,7 @@ BFstatus BFfft_impl::execute_impl(BFarray const* in,
 		BF_ASSERT(tmp_storage_size >= _workspace_size,
 		          BF_STATUS_INSUFFICIENT_STORAGE);
 	}
-	BF_CHECK_CUFFT( cufftSetWorkArea(_handle, tmp_storage) );
+	BF_CHECK_HIPFFT( hipfftSetWorkArea(_handle, tmp_storage) );
 	void* idata = in->data;
 	void* odata = out->data;
 	
@@ -274,18 +276,18 @@ BFstatus BFfft_impl::execute_impl(BFarray const* in,
 	//         h_callback_data has finished before we overwrite it.
 	//         We could potentially use a CUDA event as a lighter-weight
 	//           solution.
-	cudaStreamSynchronize(g_cuda_stream);
+	hipStreamSynchronize(g_cuda_stream);
 	CallbackData* h_callback_data = &_hv_callback_data[0];
 	// WAR for CUFFT insisting that pointer be aligned to sizeof(cufftComplex)
 	int alignment = (_nbit == 32 ?
-	                 sizeof(cufftComplex) :
-	                 sizeof(cufftDoubleComplex));
+	                 sizeof(hipfftComplex) :
+	                 sizeof(hipfftDoubleComplex));
 	// TODO: To support f32 input that is not aligned to 8 bytes, we need to
 	//         use a load callback. However, we don't know this during init,
 	//         so we really need to set the callback here instead. Not sure
 	//         how expensive it is to set the callback.
 	if( _using_load_callback ) {
-		h_callback_data->ptr_offset = (uintptr_t)idata % sizeof(cufftComplex);
+		h_callback_data->ptr_offset = (uintptr_t)idata % sizeof(hipfftComplex);
 		*(char**)&idata -= h_callback_data->ptr_offset;
 	}
 	
@@ -304,34 +306,34 @@ BFstatus BFfft_impl::execute_impl(BFarray const* in,
 	}
 	
 	CallbackData* d_callback_data = thrust::raw_pointer_cast(&_dv_callback_data[0]);
-	cudaMemcpyAsync(d_callback_data, h_callback_data, sizeof(CallbackData),
-	                cudaMemcpyHostToDevice, g_cuda_stream);
+	hipMemcpyAsync(d_callback_data, h_callback_data, sizeof(CallbackData),
+	                hipMemcpyHostToDevice, g_cuda_stream);
 	
 	BF_ASSERT((uintptr_t)idata % alignment == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 	BF_ASSERT((uintptr_t)odata % alignment == 0, BF_STATUS_UNSUPPORTED_STRIDE);
 	
 	if( !_real_in && !_real_out ) {
-		int direction = inverse ? CUFFT_INVERSE : CUFFT_FORWARD;
+		int direction = inverse ? HIPFFT_BACKWARD : HIPFFT_FORWARD;
 		if( _nbit == 32 ) {
-			BF_CHECK_CUFFT( cufftExecC2C(_handle, (cufftComplex*)idata, (cufftComplex*)odata, direction) );
+			BF_CHECK_HIPFFT( hipfftExecC2C(_handle, (hipfftComplex*)idata, (hipfftComplex*)odata, direction) );
 		} else if( _nbit == 64 ) {
-			BF_CHECK_CUFFT( cufftExecZ2Z(_handle, (cufftDoubleComplex*)idata, (cufftDoubleComplex*)odata, direction) );
+			BF_CHECK_HIPFFT( hipfftExecZ2Z(_handle, (hipfftDoubleComplex*)idata, (hipfftDoubleComplex*)odata, direction) );
 		} else {
 			BF_FAIL("Supported data types", BF_STATUS_UNSUPPORTED_DTYPE);
 		}
 	} else if( _real_in && !_real_out ) {
 		if( _nbit == 32 ) {
-			BF_CHECK_CUFFT( cufftExecR2C(_handle, (cufftReal*)idata, (cufftComplex*)odata) );
+			BF_CHECK_HIPFFT( hipfftExecR2C(_handle, (hipfftReal*)idata, (hipfftComplex*)odata) );
 		} else if( _nbit == 64 ) {
-			BF_CHECK_CUFFT( cufftExecD2Z(_handle, (cufftDoubleReal*)idata, (cufftDoubleComplex*)odata) );
+			BF_CHECK_HIPFFT( hipfftExecD2Z(_handle, (hipfftDoubleReal*)idata, (hipfftDoubleComplex*)odata) );
 		} else {
 			BF_FAIL("Supported data types", BF_STATUS_UNSUPPORTED_DTYPE);
 		}
 	} else if( !_real_in && _real_out ) {
 		if( _nbit == 32 ) {
-			BF_CHECK_CUFFT( cufftExecC2R(_handle, (cufftComplex*)idata, (cufftReal*)odata) );
+			BF_CHECK_HIPFFT( hipfftExecC2R(_handle, (hipfftComplex*)idata, (hipfftReal*)odata) );
 		} else if( _nbit == 64 ) {
-			BF_CHECK_CUFFT( cufftExecZ2D(_handle, (cufftDoubleComplex*)idata, (cufftDoubleReal*)odata) );
+			BF_CHECK_HIPFFT( hipfftExecZ2D(_handle, (hipfftDoubleComplex*)idata, (hipfftDoubleReal*)odata) );
 		} else {
 			BF_FAIL("Supported data types", BF_STATUS_UNSUPPORTED_DTYPE);
 		}
@@ -352,10 +354,10 @@ BFstatus BFfft_impl::execute(BFarray const* in,
 	BF_ASSERT(space_accessible_from(out->space, BF_SPACE_CUDA), BF_STATUS_UNSUPPORTED_SPACE);
 	// TODO: More assertions
 	
-	cudaStream_t stream = g_cuda_stream;
+	hipStream_t stream = g_cuda_stream;
 	// Note: It appears that all transforms from the same plan must be executed
 	//         on the same stream to avoid race conditions (use of workspace?).
-	BF_CHECK_CUFFT( cufftSetStream(_handle, stream) );
+	BF_CHECK_HIPFFT( hipfftSetStream(_handle, stream) );
 	ShapeIndexer<BF_MAX_DIMS> shape_indexer(_batch_shape, in->ndim);
 	for( long i=0; i<shape_indexer.size(); ++i ) {
 		auto inds = shape_indexer.at(i);

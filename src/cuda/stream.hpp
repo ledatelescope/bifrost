@@ -74,20 +74,19 @@ int main() {
  */
 
 #pragma once
-
-#include <cuda_runtime_api.h>
+#include <hip/hip_runtime_api.h>
 #include <stdexcept>
 
 namespace cuda {
 
-inline void check_error(cudaError_t ret) {
-	if( ret != cudaSuccess ) {
-		throw ::std::runtime_error(cudaGetErrorString(ret));
+inline void check_error(hipError_t ret) {
+	if( ret != hipSuccess ) {
+		throw ::std::runtime_error(hipGetErrorString(ret));
 	}
 }
 
 class stream {
-	cudaStream_t _obj;
+	hipStream_t _obj;
 	// Not copy-assignable
 #if __cplusplus >= 201103L
 	stream(const cuda::stream& other) = delete;
@@ -96,7 +95,7 @@ class stream {
 	stream(const cuda::stream& other);
 	stream& operator=(const cuda::stream& other);
 #endif
-	void destroy() { if( _obj ) { cudaStreamDestroy(_obj); _obj = 0; } }
+	void destroy() { if( _obj ) { hipStreamDestroy(_obj); _obj = 0; } }
 public:
 #if __cplusplus >= 201103L
 	// Move semantics
@@ -108,35 +107,35 @@ public:
 	}
 #endif
 	inline explicit stream(int      priority=0,
-	                       unsigned flags=cudaStreamDefault) : _obj(0) {
+	                       unsigned flags=hipStreamDefault) : _obj(0) {
 		if( priority > 0 ) {
 			int least_priority;
 			int greatest_priority;
-			cudaDeviceGetStreamPriorityRange(&least_priority,
+			hipDeviceGetStreamPriorityRange(&least_priority,
 			                                 &greatest_priority);
-			check_error( cudaStreamCreateWithPriority(&_obj,
+			check_error( hipStreamCreateWithPriority(&_obj,
 			                                          flags,
 			                                          greatest_priority) );
 		}
 		else {
-			check_error( cudaStreamCreateWithFlags(&_obj, flags) );
+			check_error( hipStreamCreateWithFlags(&_obj, flags) );
 		}
 	}
 	inline ~stream() { this->destroy(); }
 	inline void swap(cuda::stream& other) { std::swap(_obj, other._obj); }
 	inline int priority() const {
 		int val;
-		check_error( cudaStreamGetPriority(_obj, &val) );
+		check_error( hipStreamGetPriority(_obj, &val) );
 		return val;
 	}
 	inline unsigned flags() const {
 		unsigned val;
-		check_error( cudaStreamGetFlags(_obj, &val) );
+		check_error( hipStreamGetFlags(_obj, &val) );
 		return val;
 	}
 	inline bool query() const {
-		cudaError_t ret = cudaStreamQuery(_obj);
-		if( ret == cudaErrorNotReady ) {
+		hipError_t ret = hipStreamQuery(_obj);
+		if( ret == hipErrorNotReady ) {
 			return false;
 		}
 		else {
@@ -145,46 +144,46 @@ public:
 		}
 	}
 	inline void synchronize() const {
-		cudaStreamSynchronize(_obj);
-		check_error( cudaGetLastError() );
+		hipStreamSynchronize(_obj);
+		check_error( hipGetLastError() );
 	}
-	inline void wait(cudaEvent_t event, unsigned flags=0) const {
-		check_error( cudaStreamWaitEvent(_obj, event, flags) );
+	inline void wait(hipEvent_t event, unsigned flags=0) const {
+		check_error( hipStreamWaitEvent(_obj, event, flags) );
 	}
-	inline void addCallback(cudaStreamCallback_t callback,
+	inline void addCallback(hipStreamCallback_t callback,
 	                 void* userData=0, unsigned flags=0) {
-		check_error( cudaStreamAddCallback(_obj, callback, userData, flags) );
+		check_error( hipStreamAddCallback(_obj, callback, userData, flags) );
 	}
-	inline void attachMemAsync(void* devPtr, size_t length, unsigned flags) {
-		check_error( cudaStreamAttachMemAsync(_obj, devPtr, length, flags) );
+	inline void attachMemAsync(hipDeviceptr_t* devPtr, size_t length, unsigned flags) {
+		check_error( hipStreamAttachMemAsync(_obj, devPtr, length, flags) );
 	}
-	inline operator const cudaStream_t&() const { return _obj; }
+	inline operator const hipStream_t&() const { return _obj; }
 };
 // This version automatically calls synchronize() before destruction
 class scoped_stream : public cuda::stream {
 	typedef cuda::stream super_type;
 public:
 	inline explicit scoped_stream(int      priority=0,
-	                              unsigned flags=cudaStreamNonBlocking)
+	                              unsigned flags=hipStreamNonBlocking)
 		: super_type(priority, flags) {}
 	inline ~scoped_stream() { this->synchronize(); }
 };
 // This version automatically syncs with a parent stream on construct/destruct
 class child_stream : public cuda::stream {
 	typedef cuda::stream super_type;
-	cudaStream_t _parent;
-	void sync_streams(cudaStream_t dependent, cudaStream_t dependee) {
+	hipStream_t _parent;
+	void sync_streams(hipStream_t dependent, hipStream_t dependee) {
 		// Record event in dependee and make dependent wait for it
-		cudaEvent_t event;
-		check_error(cudaEventCreateWithFlags(&event, cudaEventDisableTiming));
-		check_error(cudaEventRecord(event, dependee));
-		check_error(cudaStreamWaitEvent(dependent, event, 0));
-		check_error(cudaEventDestroy(event));
+		hipEvent_t event;
+		check_error(hipEventCreateWithFlags(&event, hipEventDisableTiming));
+		check_error(hipEventRecord(event, dependee));
+		check_error(hipStreamWaitEvent(dependent, event, 0));
+		check_error(hipEventDestroy(event));
 	}
 public:
-	inline explicit child_stream(cudaStream_t parent,
+	inline explicit child_stream(hipStream_t parent,
 	                             int          priority=0,
-	                             unsigned     flags=cudaStreamNonBlocking)
+	                             unsigned     flags=hipStreamNonBlocking)
 		: super_type(priority, flags), _parent(parent) {
 		sync_streams(*this, _parent);
 	}
