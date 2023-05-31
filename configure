@@ -21049,6 +21049,8 @@ printf "%s\n" "yes" >&6; }
 
 else $as_nop
 
+    HAVE_SSE=0
+
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
@@ -21090,6 +21092,8 @@ printf "%s\n" "yes" >&6; }
 
 else $as_nop
 
+    HAVE_AVX=0
+
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
 
@@ -21130,6 +21134,8 @@ then :
 printf "%s\n" "yes" >&6; }
 
 else $as_nop
+
+    HAVE_AVX512=0
 
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }

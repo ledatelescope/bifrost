@@ -111,6 +111,7 @@ AC_DEFUN([AC_CHECK_SSE], [
     AC_SUBST([HAVE_SSE], [1])
     AC_MSG_RESULT([yes])
   ], [
+    AC_SUBST([HAVE_SSE], [0])
     AC_MSG_RESULT([no])
   ])
 ])
@@ -137,6 +138,7 @@ AC_DEFUN([AC_CHECK_AVX], [
     AC_SUBST([HAVE_AVX], [1])
     AC_MSG_RESULT([yes])
   ], [
+    AC_SUBST([HAVE_AVX], [0])
     AC_MSG_RESULT([no])
   ])
 ])
@@ -163,6 +165,7 @@ AC_DEFUN([AC_CHECK_AVX512], [
     AC_SUBST([HAVE_AVX512], [1])
     AC_MSG_RESULT([yes])
   ], [
+    AC_SUBST([HAVE_AVX512], [0])
     AC_MSG_RESULT([no])
   ])
 ])
