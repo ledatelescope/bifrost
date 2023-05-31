@@ -129,6 +129,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	::memcpy(shape, external_shape, ndim*sizeof(*shape));
 	long y_size = 1;
 	long x_size = 1;
+	
 	std::vector<BFarray>  mutable_arrays;
 	std::vector<BFarray*> mutable_array_ptrs;
 	if( basic_indexing_only ) {
@@ -362,8 +363,8 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	size_t logsize;
 	// Note: Includes the trailing NULL
 	BF_CHECK_NVRTC( nvrtcGetProgramLogSize(program, &logsize) );
- 	if( (logsize > 1 || EnvVars::get("BF_PRINT_MAP_KERNELS", "0") != "0") &&
- 	     !basic_indexing_only ) {
+	if( (logsize > 1 || EnvVars::get("BF_PRINT_MAP_KERNELS", "0") != "0") &&
+	     !basic_indexing_only ) {
 		std::vector<char> log(logsize, 0);
 		BF_CHECK_NVRTC( nvrtcGetProgramLog(program, &log[0]) );
 		int i = 1;
@@ -375,7 +376,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 		std::cout << "---------------------------------------------------" << std::endl;
 		std::cout << &log[0] << std::endl;
 		std::cout << "---------------------------------------------------" << std::endl;
- 	}
+	}
 #endif // BIFROST_DEBUG
 	if( ret != NVRTC_SUCCESS ) {
 		// Note: Don't print debug msg here, failure may not be expected
