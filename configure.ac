@@ -166,7 +166,7 @@ AC_DEFUN([AC_CHECK_AVX512], [
     AC_MSG_RESULT([no])
   ])
 ])
-AC_SUBST([HAVE_AVX512], [1])
+AC_SUBST([HAVE_AVX512], [0])
 AC_CHECK_AVX512
 
 #
@@ -502,6 +502,12 @@ AS_IF([test x$enable_cuda_debug != xno],
       [AC_SUBST([OPTIONS], ["$OPTIONS cuda_debug"])])
 AS_IF([test x$enable_native_arch != xno],
       [AC_SUBST([OPTIONS], ["$OPTIONS native"])])
+AS_IF([test x$HAVE_SSE != x0],
+      [AC_SUBST([OPTIONS], ["$OPTIONS sse"])])
+AS_IF([test x$HAVE_AVX != x0],
+      [AC_SUBST([OPTIONS], ["$OPTIONS avx"])])
+AS_IF([test x$HAVE_AVX512 != x0],
+      [AC_SUBST([OPTIONS], ["$OPTIONS avx512"])])
 AS_IF([test x$HAVE_FLOAT128 != x0],
       [AC_SUBST([OPTIONS], ["$OPTIONS float128"])])
 AS_IF([test x$enable_map_cache != xno],
