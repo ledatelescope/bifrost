@@ -341,11 +341,10 @@ def main(args):
                             ac = max([0.0, log['acquire_time']])
                             pr = max([0.0, log['process_time']])
                             re = max([0.0, log['reserve_time']])
-                            gb = max([0.0, log.get('gbps', 0.0)])
                         except KeyError:
-                            ac, pr, re, gb = 0.0, 0.0, 0.0, 0.0
+                            ac, pr, re = 0.0, 0.0, 0.0
 
-                        blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re, 'total':ac+pr+re, 'gbps':gb}
+                        blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re, 'total':ac+pr+re}
 
                 ## Sort
                 order = sorted(blockList, key=lambda x: blockList[x][sort_key], reverse=sort_rev)
@@ -383,7 +382,7 @@ def main(args):
                 k = _add_line(scr, k, 0, output, std)
             ### Header
             k = _add_line(scr, k, 0, ' ', std)
-            output = '%6s  %15s  %4s  %5s  %7s  %7s  %7s  %7s  %7s  Cmd' % ('PID', 'Block', 'Core', '%CPU', 'Total', 'Acquire', 'Process', 'Reserve', 'Gbits/s')
+            output = '%6s  %15s  %4s  %5s  %7s  %7s  %7s  %7s  Cmd' % ('PID', 'Block', 'Core', '%CPU', 'Total', 'Acquire', 'Process', 'Reserve')
             csize = size[1]-len(output)
             if csize < 0:
                 csize = 0
@@ -398,7 +397,7 @@ def main(args):
                     c = '%5.1f' % c
                 except KeyError:
                     c = '%5s' % ' '
-                output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %7.3f %s' % (d['pid'], d['name'][:15], d['core'], c, d['total'], d['acquire'], d['process'], d['reserve'], d['gbps'], d['cmd'][:csize+3])
+                output = '%6i  %15s  %4i  %5s  %7.3f  %7.3f  %7.3f  %7.3f  %s' % (d['pid'], d['name'][:15], d['core'], c, d['total'], d['acquire'], d['process'], d['reserve'], d['cmd'][:csize+3])
                 k = _add_line(scr, k, 0, output, std)
                 if k >= size[0] - 1:
                     break
@@ -413,8 +412,7 @@ def main(args):
     except KeyboardInterrupt:
         pass
 
-    except Exception as err:
-        error = err
+    except Exception as error:
         exc_type, exc_value, exc_traceback = sys.exc_info()
         fileObject = StringIO()
         traceback.print_tb(exc_traceback, file=fileObject)
