@@ -106,6 +106,7 @@ jobs:
         env:
           LD_LIBRARY_PATH: /usr/local/lib:${{ env.LD_LIBRARY_PATH }}
         run: |
+          cd testbench
           python generate_test_data.py
           coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_file_read_write.py
           coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_fft.py
