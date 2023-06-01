@@ -102,6 +102,7 @@ jobs:
             -m unittest discover
           coverage xml
       - name: "Test, part 2"
+        if: ${{ matrix.os == 'self-hosted' }}
         env:
           LD_LIBRARY_PATH: /usr/local/lib:${{ env.LD_LIBRARY_PATH }}
         run: |
