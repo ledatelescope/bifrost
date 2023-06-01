@@ -31,11 +31,14 @@ import sys
 if sys.version_info < (3,):
     range = xrange
     
-import bifrost as bf
+from bifrost.map import map as bf_map
 from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
 
 from copy import deepcopy
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class DetectBlock(TransformBlock):
     def __init__(self, iring, mode, axis=None,
@@ -84,7 +87,7 @@ class DetectBlock(TransformBlock):
         idata = ispan.data
         odata = ospan.data
         if self.npol == 1:
-            bf.map("b = Complex<b_type>(a).mag2()", {'a': idata, 'b': odata})
+            bf_map("b = Complex<b_type>(a).mag2()", {'a': idata, 'b': odata})
         else:
             shape = idata.shape[:self.axis] + idata.shape[self.axis + 1:]
             inds = ['i%i' % i for i in range(idata.ndim)]
@@ -112,7 +115,7 @@ class DetectBlock(TransformBlock):
                 b(%s) = -2*xy.imag;
                 """ % (inds_[0], inds_[1],
                        inds_[0], inds_[1], inds_[2], inds_[3])
-            bf.map(func, shape=shape, axis_names=inds,
+            bf_map(func, shape=shape, axis_names=inds,
                    data={'a': ispan.data, 'b': ospan.data})
 
 def detect(iring, mode, axis=None, *args, **kwargs):

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -62,7 +62,14 @@ BFstatus bfUdpTransmitCreate(BFpacketwriter* obj,
                              const char*     format,
                              int             fd,
                              int             core);
+BFstatus bfUdpVerbsTransmitCreate(BFpacketwriter* obj,
+                                  const char*     format,
+                                  int             fd,
+                                  int             core);
 BFstatus bfPacketWriterDestroy(BFpacketwriter obj);
+BFstatus bfPacketWriterSetRateLimit(BFpacketwriter obj,
+                                    unsigned int rate_limit);
+BFstatus bfPacketWriterResetRateLimit(BFpacketwriter obj);
 BFstatus bfPacketWriterResetCounter(BFpacketwriter obj);
 BFstatus bfPacketWriterSend(BFpacketwriter obj, 
                             BFheaderinfo   info,

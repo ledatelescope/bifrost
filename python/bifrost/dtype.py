@@ -45,7 +45,11 @@ cf32: 32+32-bit complex floating point
 from __future__ import absolute_import
 
 from bifrost.libbifrost import _bf
+from bifrost.libbifrost_generated import BF_FLOAT128_ENABLED
 import numpy as np
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def split_name_nbit(dtype_str):
     """Splits a dtype string into (name, nbit)"""
@@ -78,14 +82,16 @@ def numpy2bifrost(dtype):
     elif dtype == np.float16:    return _bf.BF_DTYPE_F16
     elif dtype == np.float32:    return _bf.BF_DTYPE_F32
     elif dtype == np.float64:    return _bf.BF_DTYPE_F64
-    elif dtype == np.float128:   return _bf.BF_DTYPE_F128
+    elif dtype == np.float128 \
+         and BF_FLOAT128_ENABLED: return _bf.BF_DTYPE_F128
     elif dtype == ci8:           return _bf.BF_DTYPE_CI8
     elif dtype == ci16:          return _bf.BF_DTYPE_CI16
     elif dtype == ci32:          return _bf.BF_DTYPE_CI32
     elif dtype == cf16:          return _bf.BF_DTYPE_CF16
     elif dtype == np.complex64:  return _bf.BF_DTYPE_CF32
     elif dtype == np.complex128: return _bf.BF_DTYPE_CF64
-    elif dtype == np.complex256: return _bf.BF_DTYPE_CF128
+    elif dtype == np.complex256 \
+         and BF_FLOAT128_ENABLED: return _bf.BF_DTYPE_CF128
     else: raise ValueError("Unsupported dtype: " + str(dtype))
 
 def name_nbit2numpy(name, nbit):
@@ -143,3 +149,34 @@ def numpy2string(dtype):
     elif dtype == np.complex128: return 'cf64'
     elif dtype == np.complex256: return 'cf128'
     else: raise TypeError("Unsupported dtype: " + str(dtype))
+
+def bifrost2string(dtype):
+    """ Convert bifrost BF_DTYPE integer code to ndarray string """
+    typedict = {
+        _bf.BF_DTYPE_I8:  'i8',
+        _bf.BF_DTYPE_I16: 'i16',
+        _bf.BF_DTYPE_I32: 'i32',
+        _bf.BF_DTYPE_I64: 'i64',
+        _bf.BF_DTYPE_U8:  'u8',
+        _bf.BF_DTYPE_U16: 'u16',
+        _bf.BF_DTYPE_U32: 'u32',
+        _bf.BF_DTYPE_U64: 'u64',
+        _bf.BF_DTYPE_F16: 'f16',
+        _bf.BF_DTYPE_F32: 'f32',
+        _bf.BF_DTYPE_F64: 'f64',
+        _bf.BF_DTYPE_CI8: 'ci8',
+        _bf.BF_DTYPE_CI16: 'ci16',
+        _bf.BF_DTYPE_CI32: 'ci32',
+        _bf.BF_DTYPE_CF16: 'cf16',
+        _bf.BF_DTYPE_CF32: 'cf32',
+        _bf.BF_DTYPE_CF64: 'cf64',
+    }
+    if BF_FLOAT128_ENABLED:
+        typedict[_bf.BF_DTYPE_CF128] = 'cf128'
+        typedict[_bf.BF_DTYPE_F128] = 'f128'
+        
+    dtype_str = typedict.get(dtype)
+    if dtype_str is None:
+        raise ValueError("Could not convert dtype integer to string. Value not understood.")
+    else:
+        return dtype_str

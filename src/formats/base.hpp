@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,36 @@
 #include <cstdint>
 
 #include <arpa/inet.h>  // For ntohs
+
+#if defined BF_SSE_ENABLED && BF_SSE_ENABLED
+
+#include <xmmintrin.h>
+
+#endif
+
+#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
+
+#include <immintrin.h>
+
+#endif
+
+#if defined BF_AVX512_ENABLED && BF_AVX512_ENABLED
+
+#include <immintrin.h>
+
+#endif
+
+#if defined __APPLE__ && __APPLE__
+
+#include <libkern/OSByteOrder.h>
+#define htobe16(x) OSSwapHostToBigInt16(x)
+#define be16toh(x) OSSwapBigToHostInt16(x)
+#define htobe32(x) OSSwapHostToBigInt32(x)
+#define be32toh(x) OSSwapBigToHostInt32(x)
+#define htobe64(x) OSSwapHostToBigInt64(x)
+#define be64toh(x) OSSwapBigToHostInt64(x)
+
+#endif
 
 #define BF_UNPACK_FACTOR 1
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2020-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,8 +42,17 @@
 #include <linux/if_ether.h>
 #include <netinet/if_ether.h>
 #include <sys/mman.h>
+#include <errno.h>
 
 #include <infiniband/verbs.h>
+
+// Catch for older InfiniBand verbs installs that do not have the
+// IBV_RAW_PACKET_CAP_IP_CSUM feature check.
+#ifndef IBV_RAW_PACKET_CAP_IP_CSUM
+#define BF_ENABLE_VERBS_OFFLOAD 0
+#else
+#define BF_ENABLE_VERBS_OFFLOAD 1
+#endif
 
 #ifndef BF_VERBS_NQP
 #define BF_VERBS_NQP 1
@@ -63,6 +72,11 @@ struct bf_ibv_recv_pkt{
     ibv_recv_wr wr;
     ibv_sge     sg;
     uint32_t    length;
+};
+
+struct bf_ibv_send_pkt{
+    ibv_send_wr wr;
+    ibv_sge     sg;
 };
 
 struct bf_ibv_flow {
@@ -88,7 +102,67 @@ struct bf_ibv {
     bf_ibv_recv_pkt*  pkt_buf;
     bf_ibv_recv_pkt*  pkt;
     bf_ibv_recv_pkt*  pkt_batch;
+    
+    // Send
+    ibv_cq**          send_cq;
+    
+    uint8_t*          send_mr_buf;
+    size_t            send_mr_size;
+    ibv_mr*           send_mr;
+    
+    bf_ibv_send_pkt*  send_pkt_buf;
+    bf_ibv_send_pkt*  send_pkt_head;
+    
+    uint8_t           offload_csum;
+    uint8_t           hardware_pacing;
 };
+
+struct __attribute__((packed)) bf_ethernet_hdr {
+    uint8_t dst_mac[6];
+    uint8_t src_mac[6];
+    uint16_t type;
+};
+
+struct __attribute__((packed)) bf_ipv4_hdr {
+    uint8_t version_ihl;
+    uint8_t tos;
+    uint16_t length;
+    uint16_t id;
+    uint16_t flags_frag;
+    uint8_t ttl;
+    uint8_t proto;
+    uint16_t checksum;
+    uint32_t src_addr;
+    uint32_t dst_addr;
+};
+
+inline void bf_ipv4_update_checksum(bf_ipv4_hdr* hdr) {
+  hdr->checksum = 0;
+  uint16_t *block = reinterpret_cast<uint16_t*>(hdr);
+  
+  uint32_t checksum = 0;
+  for(uint32_t i=0; i<sizeof(bf_ipv4_hdr)/2; i++) {
+      checksum += ntohs(*(block + i));
+  }
+  while( checksum > 0xFFFF ) {
+      checksum = (checksum & 0xFFFF) + (checksum >> 16);
+  }
+  hdr->checksum = ~htons((uint16_t) checksum);
+}
+
+struct __attribute__((packed)) bf_udp_hdr {
+   uint16_t src_port;
+   uint16_t dst_port;
+   uint16_t length;
+   uint16_t checksum;
+};
+
+struct __attribute__((packed)) bf_comb_udp_hdr {
+   bf_ethernet_hdr ethernet;
+   bf_ipv4_hdr     ipv4;
+   bf_udp_hdr      udp;
+};
+
 
 class Verbs {
     int    _fd;
@@ -117,7 +191,10 @@ class Verbs {
             if( strncmp(&(line[0]), "lo", 2) == 0 ) {
                 is_lo = 1;
             }
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wstringop-truncation"
             strncpy(name, &(line[0]), IFNAMSIZ);
+            #pragma GCC diagnostic pop
         }
         pclose(fp);
         
@@ -129,7 +206,10 @@ class Verbs {
                 if( line[strlen(line)-1] == '\n' ) {
                     line[strlen(line)-1] = '\0';
                 } 
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wstringop-truncation"
                 strncpy(name, &(line[0]), IFNAMSIZ);
+                #pragma GCC diagnostic pop
             }
             pclose(fp);
         }
@@ -142,11 +222,52 @@ class Verbs {
         
         ::memcpy(mac, (uint8_t*) ethreq.ifr_hwaddr.sa_data, 6);
     }
+    void get_remote_mac_address(uint8_t* mac) {
+        uint32_t ip;
+        char ip_str[INET_ADDRSTRLEN];
+        this->get_remote_ip_address(&(ip_str[0]));
+        inet_pton(AF_INET, &(ip_str[0]), &ip);
+        
+        if( ((ip & 0xFF) >= 224) && ((ip & 0xFF) < 240) ) {
+            ETHER_MAP_IP_MULTICAST(&ip, mac);
+        } else {
+            int ret = -1;
+            char cmd[256] = {'\0'};
+            char line[256] = {'\0'};
+            char* end;
+            sprintf(cmd, "ping -c 1 %s", ip_str);
+            FILE* fp = popen(cmd, "r");
+            sprintf(cmd, "ip neigh | grep %s | awk '{print $5}'", ip_str);
+            fp = popen(cmd, "r");
+            if( fgets(line, sizeof(line), fp) != NULL) {
+                if( line[strlen(line)-1] == '\n' ) {
+                    line[strlen(line)-1] = '\0';
+                }
+                if( strncmp(&(line[2]), ":", 1) == 0 ) {
+                    ret = 0;
+                    mac[0] = (uint8_t) strtol(&line[0], &end, 16);
+                    mac[1] = (uint8_t) strtol(&line[3], &end, 16);
+                    mac[2] = (uint8_t) strtol(&line[6], &end, 16);
+                    mac[3] = (uint8_t) strtol(&line[9], &end, 16);
+                    mac[4] = (uint8_t) strtol(&line[12], &end, 16);
+                    mac[5] = (uint8_t) strtol(&line[15], &end, 16);
+                }
+            }
+            check_error(ret, "determine remote hardware address");    
+        }
+    }
     void get_ip_address(char* ip) {
         sockaddr_in sin;
         socklen_t len = sizeof(sin);
         check_error(::getsockname(_fd, (sockaddr *)&sin, &len),
                     "query socket name");
+        inet_ntop(AF_INET, &(sin.sin_addr), ip, INET_ADDRSTRLEN);
+    }
+    void get_remote_ip_address(char* ip) {
+        sockaddr_in sin;
+        socklen_t len = sizeof(sin);
+        check_error(::getpeername(_fd, (sockaddr *)&sin, &len),
+                    "query peer name");
         inet_ntop(AF_INET, &(sin.sin_addr), ip, INET_ADDRSTRLEN);
     }
     uint16_t get_port() {
@@ -155,6 +276,20 @@ class Verbs {
         check_error(::getsockname(_fd, (sockaddr *)&sin, &len),
                     "query socket name");
         return ntohs(sin.sin_port);
+    }
+    uint16_t get_remote_port() {
+        sockaddr_in sin;
+        socklen_t len = sizeof(sin);
+        check_error(::getpeername(_fd, (sockaddr *)&sin, &len),
+                    "query peer name");
+        return ntohs(sin.sin_port);
+    }
+    uint8_t get_ttl() {
+      uint8_t ttl;
+      socklen_t len = sizeof(ttl);
+      check_error(::getsockopt(_fd, IPPROTO_IP, IP_TTL, &ttl, &len),
+                  "determine TTL");
+      return ttl;
     }
     int get_timeout_ms() {
         timeval value;
@@ -182,7 +317,7 @@ class Verbs {
         int ndev, found;
         ibv_device** ibv_dev_list = NULL;
         ibv_context* ibv_ctx = NULL;
-        ibv_device_attr ibv_dev_attr;
+        ibv_device_attr_ex ibv_dev_attr;
         ibv_port_attr ibv_port_attr;
         union  ibv_gid ibv_gid;
         
@@ -191,13 +326,6 @@ class Verbs {
         uint8_t mac[6] = {0};
         this->get_mac_address(&(mac[0]));
         uint64_t gid = this->get_interface_gid();
-        
-        /*
-        std::cout << "MAC: " << std::hex << int(mac[0]) << ":" << int(mac[1]) << ":" << int(mac[2]) 
-                                  << ":" << int(mac[3]) << ":" << int(mac[4]) << ":" << int(mac[5]) << std::dec << std::endl;
-        std::cout << "GID: " << std::hex << int(htons( gid        & 0xFFFF)) << ":" << int(htons((gid >> 16) & 0xFFFF))
-                                  << ":" << int(htons((gid >> 32) & 0xFFFF)) << ":" << int(htons((gid >> 48) & 0xFFFF)) << std::dec << std::endl;
-        */
         
         // Find the right device
         /* Query all devices */
@@ -211,11 +339,11 @@ class Verbs {
             check_null(ibv_ctx,
                        "open device");
             
-            check_error(ibv_query_device(ibv_ctx, &ibv_dev_attr),
+            check_error(ibv_query_device_ex(ibv_ctx, NULL, &ibv_dev_attr),
                         "query device");
             
             /* Loop through the ports on the device */
-            for(p=1; p<=ibv_dev_attr.phys_port_cnt; p++) {
+            for(p=1; p<=ibv_dev_attr.orig_attr.phys_port_cnt; p++) {
                 check_error(ibv_query_port(ibv_ctx, p, &ibv_port_attr),
                             "query port");
                 
@@ -227,8 +355,18 @@ class Verbs {
                     /* Did we find a match? */
                     if( (ibv_gid.global.subnet_prefix == 0x80feUL) \
                        && (ibv_gid.global.interface_id  == gid) ) {
-                       found = 1;
-                       break;
+                        found = 1;
+                        #if defined BF_ENABLE_VERBS_OFFLOAD && BF_ENABLE_VERBS_OFFLOAD
+                        if( ibv_dev_attr.raw_packet_caps & IBV_RAW_PACKET_CAP_IP_CSUM ) {
+                          _verbs.offload_csum = 1;
+                        } else {
+                          _verbs.offload_csum = 0;
+                        }
+                        #else
+                        _verbs.offload_csum = 0;
+                        #endif
+                        std::cout << "_verbs.offload_csum: " << (int) _verbs.offload_csum << std::endl;
+                        break;
                     }
                 }
                 
@@ -284,6 +422,25 @@ class Verbs {
         _verbs.mr = ibv_reg_mr(_verbs.pd, _verbs.mr_buf, _verbs.mr_size, IBV_ACCESS_LOCAL_WRITE);
         check_null(_verbs.mr,
                    "register memory region");
+                   
+        // Start Send
+        
+        _verbs.send_pkt_buf = (bf_ibv_send_pkt*) ::malloc(BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct bf_ibv_send_pkt));
+        check_null(_verbs.send_pkt_buf, 
+                   "allocate send packet buffer");
+        ::memset(_verbs.send_pkt_buf, 0, BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct bf_ibv_send_pkt));
+        _verbs.send_mr_size = (size_t) BF_VERBS_NPKTBUF*BF_VERBS_NQP * _pkt_size_max;
+        _verbs.send_mr_buf = (uint8_t *) ::mmap(NULL, _verbs.send_mr_size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_LOCKED, -1, 0);
+
+        check_error(_verbs.send_mr_buf == MAP_FAILED,
+                    "allocate memory region buffer");
+        check_error(::mlock(_verbs.send_mr_buf, _verbs.send_mr_size),
+                    "lock memory region buffer");
+        _verbs.send_mr = ibv_reg_mr(_verbs.pd, _verbs.send_mr_buf, _verbs.send_mr_size, IBV_ACCESS_LOCAL_WRITE);
+        check_null(_verbs.send_mr,
+                   "register memory region");
+        
+        // End Send
     }
     void destroy_buffers() {
         int failures = 0;
@@ -302,6 +459,26 @@ class Verbs {
         if( _verbs.pkt_buf ) {
             free(_verbs.pkt_buf);
         }
+        
+        // Start Send
+        
+        if( _verbs.send_mr ) {
+            if( ibv_dereg_mr(_verbs.send_mr) ) {
+                failures += 1;
+            }
+        }
+        
+        if( _verbs.send_mr_buf ) {
+            if( ::munmap(_verbs.send_mr_buf, _verbs.send_mr_size) ) {
+                failures += 1;
+            }
+        }
+        
+        if( _verbs.send_pkt_buf ) {
+            free(_verbs.send_pkt_buf);
+        }
+        
+        // End Send
         
         if( _verbs.pd ) {
             if( ibv_dealloc_pd(_verbs.pd) ) {
@@ -323,7 +500,7 @@ class Verbs {
         check_error(::fcntl(_verbs.cc->fd, F_SETFD, flags | O_CLOEXEC),
                     "set completion channel to non-blocking");
         ::madvise(_verbs.cc, sizeof(ibv_pd), MADV_DONTFORK);
-                    
+        
         // Setup the completion queues
         _verbs.cq = (ibv_cq**) ::malloc(BF_VERBS_NQP * sizeof(ibv_cq*));
         check_null(_verbs.cq,
@@ -340,14 +517,29 @@ class Verbs {
                         "change completion queue request notifications");
         }
         
+        // Start Send
+        
+        // Setup the completion queues
+        _verbs.send_cq = (ibv_cq**) ::malloc(BF_VERBS_NQP * sizeof(ibv_cq*));
+        check_null(_verbs.send_cq,
+                   "allocate send completion queues");
+        ::memset(_verbs.send_cq, 0, BF_VERBS_NQP * sizeof(ibv_cq*));
+        for(i=0; i<BF_VERBS_NQP; i++) {
+            _verbs.send_cq[i] = ibv_create_cq(_verbs.ctx, BF_VERBS_NPKTBUF, NULL, NULL, 0);
+            check_null(_verbs.cq[i],
+                       "create send completion queue");
+        }
+        
+        // End Send
+        
         // Setup the queue pairs
         ibv_qp_init_attr qp_init;
         ::memset(&qp_init, 0, sizeof(ibv_qp_init_attr));
         qp_init.qp_context = NULL;
         qp_init.srq = NULL;
-        qp_init.cap.max_send_wr = 0;
+        qp_init.cap.max_send_wr = BF_VERBS_NPKTBUF;
         qp_init.cap.max_recv_wr = BF_VERBS_NPKTBUF;
-        qp_init.cap.max_send_sge = 0;
+        qp_init.cap.max_send_sge = 1;
         qp_init.cap.max_recv_sge = 1;
         qp_init.cap.max_inline_data = 0;
         qp_init.qp_type = IBV_QPT_RAW_PACKET;
@@ -358,7 +550,7 @@ class Verbs {
                    "allocate queue pairs");
         ::memset(_verbs.qp, 0, BF_VERBS_NQP*sizeof(ibv_qp*));
         for(i=0; i<BF_VERBS_NQP; i++) {
-            qp_init.send_cq = _verbs.cq[i];
+            qp_init.send_cq = _verbs.send_cq[i];
             qp_init.recv_cq = _verbs.cq[i];
             _verbs.qp[i] = ibv_create_qp(_verbs.pd, &qp_init);
             check_null(_verbs.qp[i],
@@ -404,6 +596,21 @@ class Verbs {
                 failures += 1;
             }
         }
+        
+        // Start Send
+      
+        if( _verbs.send_cq ) {
+            for(int i=0; i<BF_VERBS_NQP; i++) {
+                if( _verbs.send_cq[i] ) {
+                    if( ibv_destroy_cq(_verbs.send_cq[i]) ) {
+                        failures += 1;
+                    }
+                }
+            }
+            free(_verbs.send_cq);
+        }
+        
+        // End Send
     }
     void link_work_requests() {
         // Make sure we are ready to go
@@ -440,6 +647,44 @@ class Verbs {
             check_error(ibv_post_recv(_verbs.qp[i], &_verbs.pkt_buf[k].wr, &recv_wr_bad),
                         "post work request to receive queue");
         }
+        
+        // Start Send
+        
+        
+        for(i=0; i<BF_VERBS_NPKTBUF*BF_VERBS_NQP; i++) {
+            _verbs.send_pkt_buf[i].wr.wr_id = i;
+            _verbs.send_pkt_buf[i].wr.num_sge = 1;
+            _verbs.send_pkt_buf[i].sg.addr = (uint64_t) _verbs.send_mr_buf + i * _pkt_size_max;
+            _verbs.send_pkt_buf[i].sg.length = _pkt_size_max;
+            
+            _verbs.send_pkt_buf[i].wr.sg_list = &(_verbs.send_pkt_buf[i].sg);
+            for(j=0; j<_verbs.send_pkt_buf[i].wr.num_sge; j++) {
+                _verbs.send_pkt_buf[i].wr.sg_list[j].lkey = _verbs.send_mr->lkey;
+            }
+        }
+        
+        // Link the work requests to send queue
+        uint32_t send_flags = 0;
+        #if defined BF_ENABLE_VERBS_OFFLOAD && BF_ENABLE_VERBS_OFFLOAD
+        if( _verbs.offload_csum ) {
+          send_flags =  IBV_SEND_IP_CSUM;
+        }
+        #endif
+        
+        for(i=0; i<BF_VERBS_NQP; i++) {
+            k = i*BF_VERBS_NPKTBUF;
+            for(j=0; j<BF_VERBS_NPKTBUF-1; j++) {
+                _verbs.send_pkt_buf[k+j].wr.next = &(_verbs.send_pkt_buf[k+j+1].wr);
+                _verbs.send_pkt_buf[k+j].wr.opcode = IBV_WR_SEND;
+                _verbs.send_pkt_buf[k+j].wr.send_flags = send_flags;
+            }
+            _verbs.send_pkt_buf[k+BF_VERBS_NPKTBUF-1].wr.next = NULL;
+            _verbs.send_pkt_buf[k+BF_VERBS_NPKTBUF-1].wr.opcode = IBV_WR_SEND;
+            _verbs.send_pkt_buf[k+BF_VERBS_NPKTBUF-1].wr.send_flags = send_flags;
+        }
+        _verbs.send_pkt_head = _verbs.send_pkt_buf;
+        
+        // End Send
     }
     void create_flows() {
         // Setup the flows
@@ -471,7 +716,6 @@ class Verbs {
         char ip_str[INET_ADDRSTRLEN];
         this->get_ip_address(&(ip_str[0]));
         inet_pton(AF_INET, &(ip_str[0]), &ip);
-        std::cout << "IP is: " << ip << " (" << ip_str << ")" << std::endl;
         ::memcpy(&(flow.ipv4.val.dst_ip), &ip, 4);
         ::memset(&(flow.ipv4.mask.dst_ip), 0xff, 4);
         
@@ -480,46 +724,9 @@ class Verbs {
         this->get_mac_address(&(mac[0]));
         if( ((ip & 0xFF) >= 224) && ((ip & 0xFF) < 240) ) {
             ETHER_MAP_IP_MULTICAST(&ip, mac);
-            /*
-            std::cout << "Multicast MAC: " << std::hex << int(mac[0]) << ":" << int(mac[1]) << ":" << int(mac[2])
-                                                << ":" << int(mac[3]) << ":" << int(mac[4]) << ":" << int(mac[5]) << std::dec << std::endl;
-            */
         }
         ::memcpy(&flow.eth.val.dst_mac, &mac, 6);
         ::memset(&flow.eth.mask.dst_mac, 0xff, 6);
-        
-        /*
-        printf("size: %i\n", flow.attr.size);
-        printf("  attr: %i vs %lu\n", flow.attr.size, sizeof(ibv_flow_attr));
-        printf("  eth:  %i vs %lu\n", flow.eth.size, sizeof(ibv_flow_spec_eth));
-        printf("  ipv4: %i vs %lu\n", flow.ipv4.size, sizeof(ibv_flow_spec_ipv4));
-        printf("  udp:  %i vs %lu\n", flow.udp.size, sizeof(ibv_flow_spec_tcp_udp));
-        printf("specs: %i\n", flow.attr.num_of_specs);
-
-        printf("type: %i (%i)\n", flow.udp.type, IBV_FLOW_SPEC_UDP);
-        printf("dst_port: %u\n", flow.udp.val.dst_port);
-        printf("dst_port: %u\n", flow.udp.mask.dst_port);
-        printf("src_port: %u\n", flow.udp.val.src_port);
-        printf("src_port: %u\n", flow.udp.mask.src_port);
-
-        printf("dst_ip: %u\n", flow.ipv4.val.dst_ip);
-        printf("dst_ip: %u\n", flow.ipv4.mask.dst_ip);
-        printf("src_ip: %u\n", flow.ipv4.val.src_ip);
-        printf("src_ip: %u\n", flow.ipv4.mask.src_ip);
-      
-        ::memcpy(&(mac[0]), &(flow.eth.val.dst_mac[0]), 6);
-        printf("dst_mac: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        ::memcpy(&(mac[0]), &(flow.eth.mask.dst_mac[0]), 6);
-        printf("dst_mac: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        ::memcpy(&(mac[0]), &(flow.eth.val.src_mac[0]), 6);
-        printf("src_mac: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        ::memcpy(&(mac[0]), &(flow.eth.mask.src_mac[0]), 6);
-        printf("src_mac: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        printf("ether_type: %u\n", flow.eth.val.ether_type);
-        printf("ether_type: %u\n", flow.eth.mask.ether_type);
-        printf("vlan_tag: %u\n", flow.eth.val.vlan_tag);
-        printf("vlan_tag: %u\n", flow.eth.mask.vlan_tag);
-        */
         
         // Create the flows
         _verbs.flows = (ibv_flow**) ::malloc(BF_VERBS_NQP * sizeof(ibv_flow*));
@@ -568,8 +775,8 @@ class Verbs {
         ibv_cq *ev_cq;
         intptr_t ev_cq_ctx;
         ibv_wc wc[BF_VERBS_WCBATCH];
-        bf_ibv_recv_pkt * recv_head = NULL;
-        ibv_recv_wr * recv_tail = NULL;
+        bf_ibv_recv_pkt *recv_head = NULL;
+        ibv_recv_wr *recv_tail = NULL;
         
         // Ensure the queue pairs are in a state suitable for receiving
         for(i=0; i<BF_VERBS_NQP; i++) {
@@ -660,6 +867,74 @@ class Verbs {
         
         return recv_head;
     }
+    inline bf_ibv_send_pkt* queue(int npackets) {
+        int i, j;
+        int num_wce;
+        ibv_qp_attr qp_attr;
+        ibv_wc wc[BF_VERBS_WCBATCH];
+        bf_ibv_send_pkt *send_pkt = NULL;
+        bf_ibv_send_pkt *send_head = NULL;
+        bf_ibv_send_pkt *send_tail = NULL;
+        
+        // Ensure the queue pairs are in a state suitable for receiving
+        for(i=0; i<BF_VERBS_NQP; i++) {
+            switch(_verbs.qp[i]->state) {
+                case IBV_QPS_RESET: // Unexpected, but maybe user reset it
+                    qp_attr.qp_state = IBV_QPS_INIT;
+                    qp_attr.port_num = _verbs.port_num;
+                    if( ibv_modify_qp(_verbs.qp[i], &qp_attr, IBV_QP_STATE|IBV_QP_PORT) ) {
+                        return NULL;
+                    }
+                case IBV_QPS_INIT:
+                    qp_attr.qp_state = IBV_QPS_RTR;
+                    qp_attr.port_num = _verbs.port_num;
+                    if( ibv_modify_qp(_verbs.qp[i], &qp_attr, IBV_QP_STATE) ) {
+                        return NULL;
+                    }
+                case IBV_QPS_RTR:
+                    qp_attr.qp_state = IBV_QPS_RTS;
+                    if(ibv_modify_qp(_verbs.qp[i], &qp_attr, IBV_QP_STATE)) {
+                        return NULL;
+                    }
+                    break;
+                case IBV_QPS_RTS:
+                    break;
+                default:
+                    return NULL;
+            }
+        }
+        
+        for(i=0; i<BF_VERBS_NQP; i++) {
+            do {
+              num_wce = ibv_poll_cq(_verbs.send_cq[i], BF_VERBS_WCBATCH, wc);
+              if(num_wce < 0) {
+                 return NULL;
+              }
+              
+              // Loop through all work completions
+              for(j=0; j<num_wce; j++) {
+                  send_pkt = &(_verbs.send_pkt_buf[wc[j].wr_id]);
+                  send_pkt->wr.next = &(_verbs.send_pkt_head->wr);
+                  _verbs.send_pkt_head = send_pkt;
+              } // for each work completion
+            } while(num_wce);
+        }
+        
+        if( npackets == 0 || !_verbs.send_pkt_head ) {
+            return NULL;
+        }
+        
+        send_head = _verbs.send_pkt_head;
+        send_tail = _verbs.send_pkt_head;
+        for(i=0; i<npackets-1 && send_tail->wr.next; i++) {
+          send_tail = (bf_ibv_send_pkt*) send_tail->wr.next;
+        }
+        
+        _verbs.send_pkt_head = (bf_ibv_send_pkt*) send_tail->wr.next;
+        send_tail->wr.next = NULL;
+        
+        return send_head;
+    }
     inline void check_error(int retval, std::string what) {
         if( retval < 0 ) {
             destroy_flows();
@@ -731,7 +1006,7 @@ public:
       while( _verbs.pkt_batch == NULL ) {
           try {
               _verbs.pkt_batch = this->receive();
-          } catch(Verbs::Error) {
+          } catch(Verbs::Error const&) {
               _verbs.pkt = NULL;
               errno = EAGAIN;
               return -1;
@@ -742,5 +1017,79 @@ public:
       // IBV returns Eth/UDP/IP headers. Strip them off here
       *pkt_ptr = (uint8_t *) _verbs.pkt->wr.sg_list->addr + BF_VERBS_PAYLOAD_OFFSET;
       return _verbs.pkt->length - BF_VERBS_PAYLOAD_OFFSET;
+    }
+    inline void get_ethernet_header(bf_ethernet_hdr* hdr) {
+        uint8_t src_mac[6], dst_mac[6];
+        this->get_mac_address(&(src_mac[0]));
+        this->get_remote_mac_address(&(dst_mac[0]));
+        
+        ::memset(hdr, 0, sizeof(bf_ethernet_hdr));
+        ::memcpy(hdr->dst_mac, dst_mac, 6);
+        ::memcpy(hdr->src_mac, src_mac, 6);
+        hdr->type = htons(0x0800);  // IPv4
+    }
+    inline void get_ipv4_header(bf_ipv4_hdr* hdr, size_t udp_length=0) {
+        uint8_t ttl = this->get_ttl();
+        uint32_t src_ip, dst_ip;
+        char src_ip_str[INET_ADDRSTRLEN], dst_ip_str[INET_ADDRSTRLEN];
+        this->get_ip_address(&(src_ip_str[0]));
+        inet_pton(AF_INET, &(src_ip_str[0]), &src_ip);
+        this->get_remote_ip_address(&(dst_ip_str[0]));
+        inet_pton(AF_INET, &(dst_ip_str[0]), &dst_ip);
+        
+        ::memset(hdr, 0, sizeof(bf_ipv4_hdr));
+        hdr->version_ihl = htons(0x4500);   // v4 + 20-byte header
+        hdr->length = htons((uint16_t) (20 + 8 + udp_length));
+        hdr->flags_frag = htons(1<<14);     // don't fragment
+        hdr->ttl = ttl;
+        hdr->proto = 0x11;                  // UDP
+        hdr->src_addr = src_ip;
+        hdr->dst_addr = dst_ip;
+        if( !_verbs.offload_csum ) {
+          bf_ipv4_update_checksum(hdr);
+        }
+    }
+    inline void get_udp_header(bf_udp_hdr* hdr, size_t udp_length=0) {
+       uint16_t src_port, dst_port;
+       src_port = this->get_port();
+       dst_port = this->get_remote_port();
+       
+       ::memset(hdr, 0, sizeof(bf_udp_hdr));
+       hdr->src_port = htons(src_port);
+       hdr->dst_port = htons(dst_port);
+       hdr->length = htons((uint16_t) (8 + udp_length));
+    }
+    inline int sendmmsg(mmsghdr *mmsg, int npackets, int flags=0) {
+      int ret;
+      bf_ibv_send_pkt* head;
+      ibv_send_wr *s;
+      
+      int i;
+      uint64_t offset;
+      for(i=0; i<npackets; i++) {
+          offset = 0;
+          ::memcpy(_verbs.send_mr_buf + i * _pkt_size_max + offset,
+                   mmsg[i].msg_hdr.msg_iov[0].iov_base,
+                   mmsg[i].msg_hdr.msg_iov[0].iov_len);
+          offset += mmsg[i].msg_hdr.msg_iov[0].iov_len;
+          ::memcpy(_verbs.send_mr_buf + i * _pkt_size_max + offset,
+                   mmsg[i].msg_hdr.msg_iov[1].iov_base,
+                   mmsg[i].msg_hdr.msg_iov[1].iov_len);
+          offset += mmsg[i].msg_hdr.msg_iov[1].iov_len;
+          ::memcpy(_verbs.send_mr_buf + i * _pkt_size_max + offset,
+                   mmsg[i].msg_hdr.msg_iov[2].iov_base,
+                   mmsg[i].msg_hdr.msg_iov[2].iov_len);
+          offset += mmsg[i].msg_hdr.msg_iov[2].iov_len;
+          _verbs.send_pkt_buf[i].sg.length = offset;
+      }
+      
+      head = this->queue(npackets);
+      ret = ibv_post_send(_verbs.qp[0], &(head->wr), &s);
+      if( ret ) {
+        ret = -1;
+      } else {
+        ret = npackets;
+      }
+      return ret;
     }
 };

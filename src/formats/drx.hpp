@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -115,10 +115,11 @@ public:
 	    //         However, they require aligned memory (otherwise segfault)
 	    uint8_t const* __restrict__ in  = (uint8_t const*)pkt->payload_ptr;
 	    uint8_t*       __restrict__ out = (uint8_t*      )&obufs[obuf_idx][obuf_offset];
-	
-	    int samp = 0;
-	    for( ; samp<4096; ++samp ) { // HACK TESTING
-		    out[samp*pkt->nsrc + pkt->src] = in[samp];
+	    
+	    for( int samp=0; samp<4096; ++samp ) { // HACK TESTING
+		    *(out + pkt->src) = *in;
+		    in++;
+		    out += pkt->nsrc;
 	    }
     }
 
@@ -127,12 +128,13 @@ public:
                                  int      nsrc,
                                  int      nchan,
                                  int      nseq) {
-	    uint8_t* __restrict__ aligned_data = (uint8_t*)data;
+	    uint8_t* __restrict__ aligned_data = (uint8_t*) data;
 	    for( int t=0; t<nseq; ++t ) {
 		    for( int c=0; c<4096; ++c ) {
-			    aligned_data[t*4096*nsrc + c*nsrc + src] = 0;
-			    aligned_data[t*4096*nsrc + c*nsrc + src] = 0;
+			    *(aligned_data + src) = 0;
+			    aligned_data += nsrc;
 		    }
+		    aligned_data += t*4096*nsrc;
 	    }
     }
 };

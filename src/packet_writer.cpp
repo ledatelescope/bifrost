@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,21 +59,29 @@ BFstatus BFpacketwriter_impl::send(BFheaderinfo   info,
     int data_size = (BF_DTYPE_NBIT(in->dtype)/8) * _nsamples;
     int npackets = in->shape[0]*in->shape[1];
     
-    char* hdrs;
-    hdrs = (char*) malloc(npackets*hdr_size*sizeof(char));
+    if( hdr_size != _last_size || npackets != _last_count ) {
+      if( _pkt_hdrs ) {
+        free(_pkt_hdrs);
+      }
+      
+      _last_size = hdr_size;
+      _last_count = npackets;
+      _pkt_hdrs = (char*) malloc(npackets*hdr_size*sizeof(char));
+      ::mlock(_pkt_hdrs, npackets*hdr_size*sizeof(char));
+    }
+    
     for(i=0; i<in->shape[0]; i++) {
         hdr_base->seq = seq + i*seq_increment;
         for(j=0; j<in->shape[1]; j++) {
             hdr_base->src = src + j*src_increment;
-            (*_filler)(hdr_base, _framecount, hdrs+hdr_size*(i*in->shape[1]+j));
+            (*_filler)(hdr_base, _framecount, _pkt_hdrs+hdr_size*(i*in->shape[1]+j));
         }
         _framecount++;
     }
     
-    _writer->send(hdrs, hdr_size, (char*) in->data, data_size, npackets);
+    _writer->send(_pkt_hdrs, hdr_size, (char*) in->data, data_size, npackets);
     this->update_stats_log();
     
-    free(hdrs);
     return BF_STATUS_SUCCESS;
 }
 
@@ -145,10 +153,28 @@ BFstatus bfUdpTransmitCreate(BFpacketwriter* obj,
     return BFpacketwriter_create(obj, format, fd, core, BF_IO_UDP);
 }
 
+BFstatus bfUdpVerbsTransmitCreate(BFpacketwriter* obj,
+                                  const char*     format,
+                                  int             fd,
+                                  int             core) {
+    return BFpacketwriter_create(obj, format, fd, core, BF_IO_VERBS);
+}
+
 BFstatus bfPacketWriterDestroy(BFpacketwriter obj) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     delete obj;
     return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketWriterSetRateLimit(BFpacketwriter obj,
+                                    uint32_t       rate_limit) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    BF_TRY_RETURN(obj->set_rate_limit(rate_limit));
+}
+
+BFstatus bfPacketWriterResetRateLimit(BFpacketwriter obj) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    BF_TRY_RETURN(obj->reset_rate_limit());
 }
 
 BFstatus bfPacketWriterResetCounter(BFpacketwriter obj) {

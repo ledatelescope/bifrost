@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,13 +26,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import absolute_import
-
+from bifrost.transpose import transpose as bf_transpose
+from bifrost.memory import space_accessible
 from bifrost.pipeline import TransformBlock
-import bifrost as bf
-import bifrost.transpose
 
 from copy import deepcopy
 import numpy as np
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class TransposeBlock(TransformBlock):
     def __init__(self, iring, axes, *args, **kwargs):
@@ -70,8 +72,8 @@ class TransposeBlock(TransformBlock):
         return ohdr
     def on_data(self, ispan, ospan):
         # TODO: bf.memory.transpose should support system space too
-        if bf.memory.space_accessible(self.space, ['cuda']):
-            bf.transpose.transpose(ospan.data, ispan.data, self.axes)
+        if space_accessible(self.space, ['cuda']):
+            bf_transpose(ospan.data, ispan.data, self.axes)
         else:
             ospan.data[...] = np.transpose(ispan.data, self.axes)
 

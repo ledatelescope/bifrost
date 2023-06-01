@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -57,7 +57,11 @@ class TBNReader(object):
                'complex':  True,
                'nbit':     8}
         #print "******** CFREQ:", hdr['cfreq']
-        hdr_str = json.dumps(hdr)
+        try:
+            hdr_str = json.dumps(hdr).encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         # TODO: Can't pad with NULL because returned as C-string
         #hdr_str = json.dumps(hdr).ljust(4096, '\0')
         #hdr_str = json.dumps(hdr).ljust(4096, ' ')
@@ -97,7 +101,11 @@ class DRXReader(object):
                'complex':  True,
                'nbit':     4}
         #print "******** CFREQ:", hdr['cfreq']
-        hdr_str = json.dumps(hdr)
+        try:
+            hdr_str = json.dumps(hdr).encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         # TODO: Can't pad with NULL because returned as C-string
         #hdr_str = json.dumps(hdr).ljust(4096, '\0')
         #hdr_str = json.dumps(hdr).ljust(4096, ' ')
@@ -135,8 +143,12 @@ class PBeamReader(object):
                'npol':     4,
                'complex':  False,
                'nbit':     32}
-        print("******** HDR:", hdr)
-        hdr_str = json.dumps(hdr)
+        #print("******** HDR:", hdr)
+        try:
+            hdr_str = json.dumps(hdr).encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         # TODO: Can't pad with NULL because returned as C-string
         #hdr_str = json.dumps(hdr).ljust(4096, '\0')
         #hdr_str = json.dumps(hdr).ljust(4096, ' ')
@@ -239,22 +251,22 @@ class UDPIOTest(unittest.TestCase):
         desc, data = self._get_tbn_data()
         for p in range(data.shape[0]):
             oop.send(desc, p*1960*512, 1960*512, 0, 1, data[p,...].reshape(1,32,512))
-            time.sleep(1e-3)
+            time.sleep(0.001)
         reader.join()
         accumu.join()
         
         # Compare
         ## Reorder to match what we sent out
         final = np.array(final, dtype=np.uint8)
-        print('tbn_final:', final.shape)
         final = final.reshape(-1,512,32,2)
         final = final.transpose(0,2,1,3).copy()
         final = bf.ndarray(shape=(final.shape[0],32,512), dtype='ci8', buffer=final.ctypes.data)
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
-        for i in range(1, data.shape[0]):
-            np.testing.assert_equal(final[i,...], data[i,...])
-            
+        for i in range(2, data.shape[0]):
+            for j in range(data.shape[1]):
+                np.testing.assert_equal(final[i,j,...], data[i,j,...])
+                
         # Clean up
         del oop
         isock.close()
@@ -318,7 +330,7 @@ class UDPIOTest(unittest.TestCase):
         for p in range(data.shape[0]):
             oop.send(desc, p*10*4096, 10*4096, (1<<3), 128, data[p,[0,1],...].reshape(1,2,4096))
             oop.send(desc, p*10*4096, 10*4096, (2<<3), 128, data[p,[2,3],...].reshape(1,2,4096))
-            time.sleep(1e-3)
+            time.sleep(0.001)
         reader.join()
         accumu.join()
         
@@ -330,9 +342,10 @@ class UDPIOTest(unittest.TestCase):
         final = bf.ndarray(shape=(final.shape[0],4,4096), dtype='ci4', buffer=final.ctypes.data)
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
-        for i in range(1, data.shape[0]):
-            np.testing.assert_equal(final[i,...], data[i,...])
-            
+        for i in range(2, data.shape[0]):
+            for j in range(data.shape[1]):
+                np.testing.assert_equal(final[i,j,...], data[i,j,...])
+                
         # Clean up
         del oop
         isock.close()
@@ -380,7 +393,7 @@ class UDPIOTest(unittest.TestCase):
         desc.set_nsrc(2)
         for p in range(data.shape[0]):
             oop.send(desc, p*10*4096, 10*4096, (1<<3), 128, data[p,[0,1],:].reshape(1,2,4096))
-            time.sleep(1e-3)
+            time.sleep(0.001)
         reader.join()
         accumu.join()
         
@@ -392,10 +405,10 @@ class UDPIOTest(unittest.TestCase):
         final = bf.ndarray(shape=(final.shape[0],2,4096), dtype='ci4', buffer=final.ctypes.data)
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
-        data = data[:,[0,1],:]
         for i in range(1, data.shape[0]):
-            np.testing.assert_equal(final[i,...], data[i,...])
-            
+            for j in range(2):
+                np.testing.assert_equal(final[i,j,...], data[i,j,...])
+                
         # Clean up
         del oop
         isock.close()
@@ -458,19 +471,18 @@ class UDPIOTest(unittest.TestCase):
         desc, data = self._get_pbeam_data()
         for p in range(data.shape[0]):
             oop.send(desc, p*24, 24, 0, 1, data[p,...].reshape(1,1,128*4))
-            time.sleep(1e-3)
+            time.sleep(0.001)
         reader.join()
         accumu.join()
         
         # Compare
         ## Reorder to match what we sent out
         final = np.array(final, dtype=np.float32)
-        print("final:", final.shape)
         final = final.reshape(-1,128*4,1)
         final = final.transpose(0,2,1).copy()
         ## Reduce to match the capture block size
         data = data[:(final.shape[0]//240-1)*240,...]
-        for i in range(1, data.shape[0]):
+        for i in range(2, data.shape[0]):
             np.testing.assert_equal(final[i,...], data[i,...])
             
         # Clean up
@@ -479,7 +491,7 @@ class UDPIOTest(unittest.TestCase):
         osock.close()
         
     def test_write_multicast(self):
-        addr = Address('224.0.0.101', 7147)
+        addr = Address('224.0.0.251', 7147)
         sock = UDPSocket()
         sock.connect(addr)
         op = UDPTransmit('tbn', sock)
@@ -495,7 +507,7 @@ class UDPIOTest(unittest.TestCase):
         ring = Ring(name="capture_multi")
         
         # Setup the blocks
-        addr = Address('224.0.0.101', 7147)
+        addr = Address('224.0.0.251', 7147)
         ## Output via UDPTransmit
         osock = UDPSocket()
         osock.connect(addr)
@@ -519,7 +531,7 @@ class UDPIOTest(unittest.TestCase):
         desc, data = self._get_tbn_data()
         for p in range(data.shape[0]):
             oop.send(desc, p*1960*512, 1960*512, 0, 1, data[p,...].reshape(1,32,512))
-            time.sleep(1e-3)
+            time.sleep(0.001)
         reader.join()
         accumu.join()
         
@@ -531,9 +543,10 @@ class UDPIOTest(unittest.TestCase):
         final = bf.ndarray(shape=(final.shape[0],32,512), dtype='ci8', buffer=final.ctypes.data)
         ## Reduce to match the capture block size
         data = data[:final.shape[0],...]
-        for i in range(1, data.shape[0]):
-            np.testing.assert_equal(final[i,...], data[i,...])
-            
+        for i in range(2, data.shape[0]):
+            for j in range(data.shape[1]):
+                np.testing.assert_equal(final[i,j,...], data[i,j,...])
+                
         # Clean up
         del oop
         isock.close()

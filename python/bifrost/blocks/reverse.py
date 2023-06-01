@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,11 +31,13 @@ import sys
 if sys.version_info < (3,):
     range = xrange
     
-import bifrost as bf
+from bifrost.map import map as bf_map
 from bifrost.pipeline import TransformBlock
-from bifrost.DataType import DataType
 
 from copy import deepcopy
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class ReverseBlock(TransformBlock):
     def __init__(self, iring, axes, *args, **kwargs):
@@ -74,7 +76,7 @@ class ReverseBlock(TransformBlock):
         for ax in self.axes:
             inds[ax] = '-' + inds[ax]
         inds = ','.join(inds)
-        bf.map("b = a(%s)" % inds, shape=shape, axis_names=ind_names,
+        bf_map("b = a(%s)" % inds, shape=shape, axis_names=ind_names,
                data={'a': idata, 'b': odata})
 
 def reverse(iring, axes, *args, **kwargs):

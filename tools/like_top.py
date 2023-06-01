@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2021, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -48,10 +48,13 @@ except ImportError:
     from io import StringIO
 
 os.environ['VMA_TRACELEVEL'] = '0'
-from bifrost.proclog import load_by_pid
+from bifrost.proclog import PROCLOG_DIR, load_by_pid
+
+from bifrost import telemetry
+telemetry.track_script()
 
 
-BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
+BIFROST_STATS_BASE_DIR = PROCLOG_DIR
 
 
 def get_load_average():
@@ -78,7 +81,7 @@ def get_load_average():
         data['lastPID'] = fields[4]
     return data
 
-global _CPU_STATE
+_CPU_STATE
 _CPU_STATE = {}
 def get_processor_usage():
     """
@@ -92,7 +95,9 @@ def get_processor_usage():
     NOTE::  Many of these details could be avoided by using something like the
           Python 'psutil' module.
     """
-
+    
+    global _CPU_STATE
+    
     data = {'avg': {'user':0.0, 'nice':0.0, 'sys':0.0, 'idle':0.0, 'wait':0.0, 'irq':0.0, 'sirq':0.0, 'steal':0.0, 'total':0.0}}
 
     with open('/proc/stat', 'r') as fh:
@@ -380,6 +385,8 @@ def main(args):
             k = _add_line(scr, k, 0, ' ', std)
             output = '%6s  %15s  %4s  %5s  %7s  %7s  %7s  %7s  %7s  Cmd' % ('PID', 'Block', 'Core', '%CPU', 'Total', 'Acquire', 'Process', 'Reserve', 'Gbits/s')
             csize = size[1]-len(output)
+            if csize < 0:
+                csize = 0
             output += ' '*csize
             output += '\n'
             k = _add_line(scr, k, 0, output, rev)
@@ -421,7 +428,6 @@ def main(args):
         for j in range(x):
             d = scr.inch(i,j)
             c = d&0xFF
-            a = (d>>8)&0xFF
             contents += chr(c)
 
     # Tear down curses

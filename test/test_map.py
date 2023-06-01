@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,14 +25,29 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import sys
 import ctypes
 import unittest
 import numpy as np
 import bifrost as bf
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+    
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
+_FIRST_TEST = True
+
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestMap(unittest.TestCase):
+    # TODO: @classmethod; def setUpClass(kls)
     def setUp(self):
         np.random.seed(1234)
+        global _FIRST_TEST
+        if _FIRST_TEST:
+            bf.clear_map_cache()
+            _FIRST_TEST = False
     def run_simple_test(self, x, funcstr, func):
         x_orig = x
         x = bf.asarray(x, 'cuda')
@@ -128,7 +143,7 @@ class TestMap(unittest.TestCase):
         a = a.copy('system')
         b = b.copy('system')
         np.testing.assert_equal(b, np.fft.fftshift(a))
-    def test_complex(self):
+    def test_complex_float(self):
         n = 89
         real = np.random.randint(-127, 128, size=(n,n)).astype(np.float32)
         imag = np.random.randint(-127, 128, size=(n,n)).astype(np.float32)
@@ -138,6 +153,39 @@ class TestMap(unittest.TestCase):
         self.run_simple_test(x, "y = x*x.conj()", lambda x: x * x.conj())
         self.run_simple_test(x, "y = x.mag2()",   lambda x: x * x.conj())
         self.run_simple_test(x, "y = 3*x", lambda x: 3 * x)
+    def test_complex_integer(self):
+        n = 7919
+        for in_dtype in ('ci4', 'ci8', 'ci16', 'ci32'):
+            a_orig = bf.ndarray(shape=(n,), dtype=in_dtype, space='system')
+            try:
+                a_orig['re'] = np.random.randint(256, size=n)
+                a_orig['im'] = np.random.randint(256, size=n)
+            except ValueError:
+                # ci4 is different
+                a_orig['re_im'] = np.random.randint(256, size=n)
+            for out_dtype in (in_dtype, 'cf32'):
+                a = a_orig.copy(space='cuda')
+                b = bf.ndarray(shape=(n,), dtype=out_dtype, space='cuda')
+                bf.map('b(i) = a(i)', {'a': a, 'b': b}, shape=a.shape, axis_names=('i',))
+                a = a.copy(space='system')
+                try:
+                    a = a['re'] + 1j*a['im']
+                except ValueError:
+                    # ci4 is different
+                    a = np.int8(a['re_im'] & 0xF0) + 1j*np.int8((a['re_im'] & 0x0F) << 4)
+                    a /= 16
+                b = b.copy(space='system')
+                try:
+                    b = b['re'] + 1j*b['im']
+                except ValueError:
+                    # ci4 is different
+                    b = np.int8(b['re_im'] & 0xF0) + 1j*np.int8((b['re_im'] & 0x0F) << 4)
+                    b /= 16
+                except IndexError:
+                    # pass through cf32
+                    pass
+                np.testing.assert_equal(a, b)
+
     def test_polarisation_products(self):
         n = 89
         real = np.random.randint(-127, 128, size=(n,2)).astype(np.float32)
@@ -184,3 +232,15 @@ class TestMap(unittest.TestCase):
         a = a.copy('system')
         b = b.copy('system')
         np.testing.assert_equal(b, a[:,j,:])
+    def test_list_cache(self):
+        # TODO: would be nicer as a context manager, something like
+        #       contextlib.redirect_stdout
+        orig_stdout = sys.stdout
+        new_stdout = StringIO()
+        sys.stdout = new_stdout
+        
+        try:
+            bf.list_map_cache()
+        finally:
+            sys.stdout = orig_stdout
+            new_stdout.close()

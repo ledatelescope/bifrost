@@ -1,9 +1,21 @@
 doc
 version.py
+/python/bifrost/version/__init__.py
 *_generated.py
 .log*.txt
 test/data/
 *.bin
+
+# Local configuration
+aclocal.m4
+autom4te.cache
+config.status
+config.mk
+Makefile
+src/Makefile
+python/Makefile
+share/bifrost.pc
+src/bifrost/config.h
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

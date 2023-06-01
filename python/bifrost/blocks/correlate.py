@@ -36,6 +36,9 @@ from bifrost.linalg import LinAlg
 
 from copy import deepcopy
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class CorrelateBlock(TransformBlock):
     def __init__(self, iring, nframe_per_integration,
                  *args, **kwargs):

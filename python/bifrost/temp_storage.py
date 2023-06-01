@@ -29,6 +29,9 @@ import bifrost as bf
 
 import threading
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class TempStorage(object):
     def __init__(self, space):
         self.space = space

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,11 +26,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import ctypes
 import numpy as np
 from bifrost.memory import raw_malloc, raw_free, memset, memcpy, memcpy2D
-from bifrost.libbifrost import _bf, _check, _string2space
 from bifrost.array import _array2bifrost # This doesn't exist!
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class GPUArray(object):
     def __init__(self, shape, dtype, buffer=None, offset=0, strides=None):

@@ -1,10 +1,13 @@
 
 include config.mk
-include user.mk
 
 LIB_DIR = lib
 INC_DIR = src
+DAT_DIR = share
 SRC_DIR = src
+
+HAVE_PYTHON = @HAVE_PYTHON@
+HAVE_DOCKER = @HAVE_DOCKER@
 
 BIFROST_PYTHON_DIR = python
 
@@ -17,71 +20,101 @@ libbifrost:
 
 test:
 	#$(MAKE) -C $(SRC_DIR) test
-	cd test && ./download_test_data.sh ; python -m unittest discover
+ifeq ($(HAVE_PYTHON),1)
+	cd test && ./download_test_data.sh ; python -m unittest discover -v
+endif
 .PHONY: test
 clean:
+ifeq ($(HAVE_PYTHON),1)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) clean || true
+endif
 	$(MAKE) -C $(SRC_DIR) clean
 .PHONY: clean
-install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME)
+install: $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_INC_DIR)/$(BIFROST_NAME) $(INSTALL_DAT_DIR)/$(BIFROST_NAME) $(INSTALL_LIB_DIR)/pkgconfig
+ifeq ($(HAVE_PYTHON),1)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) install
+endif
+	@echo "Libraries have been installed in:"
+	@echo "  $(INSTALL_LIB_DIR)"
+	@echo ""
+	@echo "If you ever happen to want to link against installed libraries"
+	@echo "in a given directory, LIBDIR, you must either use libtool, and"
+	@echo "specify the full pathname of the library, or use the '-LLIBDIR'"
+	@echo "flag during linking and do at least one of the following:"
+	@echo "  - add LIBDIR to the 'LD_LIBRARY_PATH' environment variable"
+	@echo "    during execution"
+	@echo "  - add LIBDIR to the 'LD_RUN_PATH' environment variable"
+	@echo "    during linking"
+	@echo "  - use the '-Wl,-rpath -Wl,LIBDIR' linker flag"
+	@echo "  - have your system administrator add LIBDIR to '/etc/ld.so.conf'"
+	@echo ""
+	@echo "See any operating system documentation about shared libraries for"
+	@echo "more information, such as the ld(1) and ld.so(8) manual pages."
 .PHONY: install
 uninstall:
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO)
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ)
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN)
 	rm -rf $(INSTALL_INC_DIR)/bifrost/
+	rm -rf $(INSTALL_DAT_DIR)/bifrost/
+	rm -f $(INSTALL_LIB_DIR)/pkgconfig/bifrost.pc
+ifeq ($(HAVE_PYTHON),1)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) uninstall
+endif
 .PHONY: uninstall
 
 doc: $(INC_DIR)/bifrost/*.h Doxyfile
-	$(DOXYGEN) Doxyfile
+	@DX_DOXYGEN@ Doxyfile
 .PHONY: doc
 
 python: libbifrost
+ifeq ($(HAVE_PYTHON),1)
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) build
+endif
 .PHONY: python
 
 #GPU Docker build
 IMAGE_NAME ?= ledatelescope/bifrost
 docker:
+ifeq ($(HAVE_DOCKER),1)
 	docker build --pull -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile.gpu -t $(IMAGE_NAME) .
+endif
 .PHONY: docker
 
 #GPU Docker prereq build
 # (To be used for testing new builds rapidly)
 IMAGE_NAME ?= ledatelescope/bifrost
 docker_prereq:
+ifeq ($(HAVE_DOCKER),1)
 	docker build --pull -t $(IMAGE_NAME)_prereq:$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile_prereq.gpu -t $(IMAGE_NAME)_prereq .
+endif
 .PHONY: docker_prereq
 
 #CPU-only Docker build
 IMAGE_NAME ?= ledatelescope/bifrost
 docker-cpu:
+ifeq ($(HAVE_DOCKER),1)
 	docker build --pull -t $(IMAGE_NAME):$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) -f Dockerfile.cpu -t $(IMAGE_NAME) .
+endif
 .PHONY: docker
 
 # TODO: Consider adding a mode 'develop=1' that makes symlinks instead of copying
 #         the library and headers.
 
-DRY_RUN ?= 0
-
 $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN): $(LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN)
-ifeq ($(DRY_RUN),0)
+	mkdir -p $(INSTALL_LIB_DIR)
 	cp $< $@
 	ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO).$(LIBBIFROST_MAJOR)
 	ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO)
-else
-	@echo "cp $< $@"
-	@echo "ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO).$(LIBBIFROST_MAJOR)"
-	@echo "ln -f -s $(LIBBIFROST_SO_MAJ_MIN) $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO)"
-endif
 
 $(INSTALL_INC_DIR)/bifrost: $(INC_DIR)/bifrost/*.h #$(INC_DIR)/bifrost/*.hpp
-ifeq ($(DRY_RUN),0)
 	mkdir -p $@
 	cp $? $@/
-else
-	@echo "mkdir -p $@"
-	@echo "cp $? $@/"
-endif
+
+$(INSTALL_DAT_DIR)/bifrost: $(DAT_DIR)/*.m4
+	mkdir -p $@
+	cp $? $@/
+
+$(INSTALL_LIB_DIR)/pkgconfig: $(DAT_DIR)/*.pc
+	mkdir -p $@
+	cp $? $@/

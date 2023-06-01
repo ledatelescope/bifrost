@@ -2,25 +2,58 @@
 .SILENT:
 
 include ../config.mk
-include ../user.mk
+
+CXX            ?= @CXX@
+NVCC           ?= @NVCC@
+LINKER         ?= @CXX@
+CPPFLAGS       ?= @CPPFLAGS@
+CXXFLAGS       ?= @CXXFLAGS@
+NVCCFLAGS      ?= @NVCCFLAGS@
+LDFLAGS        ?= @LDFLAGS@ @LIBS@
+DOXYGEN        ?= @DX_DOXYGEN@
+PYBUILDFLAGS   ?= @PYBUILDFLAGS@
+PYINSTALLFLAGS ?= @PYINSTALLFLAGS@
+
+HAVE_RECVMSG  ?= @HAVE_RECVMSG@
+HAVE_RDMA     ?= @HAVE_RDMA@
+
+HAVE_CUDA     ?= @HAVE_CUDA@
+
+GPU_ARCHS     ?= @GPU_ARCHS@
+
+CUDA_HOME     ?= @CUDA_HOME@
+CUDA_LIBDIR   ?= $(CUDA_HOME)/lib
+CUDA_LIBDIR64 ?= $(CUDA_HOME)/lib64
+CUDA_INCDIR   ?= $(CUDA_HOME)/include
 
 LIBBIFROST_OBJS = \
   common.o \
   memory.o \
   affinity.o \
+  hw_locality.o \
   cuda.o \
+  fileutils.o \
+  testsuite.o \
   ring.o \
   ring_impl.o \
+  Socket.o \
   array.o \
-  address.o \
-  udp_socket.o \
-  hw_locality.o \
-  packet_capture.o \
-  packet_writer.o \
   unpack.o \
   quantize.o \
   proclog.o
-ifndef NOCUDA
+ifeq ($(HAVE_RECVMSG),1)
+  # These files require recvmsg to compile
+  LIBBIFROST_OBJS += \
+  address.o \
+  udp_socket.o \
+  packet_capture.o \
+  packet_writer.o
+endif
+ifeq ($(HAVE_RDMA),1)
+  LIBBIFROST_OBJS += \
+  rdma.o
+endif
+ifeq ($(HAVE_CUDA),1)
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
   transpose.o \
@@ -53,9 +86,9 @@ JIT_SOURCES ?= \
   ShapeIndexer.cuh.jit \
   int_fastdiv.h.jit
 
-MAKEFILES = ../config.mk ../user.mk Makefile
+MAKEFILES = ../config.mk Makefile
 
-ifndef NOCUDA
+ifeq ($(HAVE_CUDA),1)
 # All CUDA archs supported by this version of nvcc
 GPU_ARCHS_SUPPORTED := $(shell $(NVCC) -h | grep -Po "compute_[0-9]{2}" | cut -d_ -f2 | sort | uniq)
 # Intersection of user-specified archs and supported archs
@@ -69,12 +102,12 @@ NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS_VALID), \
   -gencode arch=compute_$(GPU_ARCH_LATEST),\"code=compute_$(GPU_ARCH_LATEST)\"
 endif
 
-CXXFLAGS  += -std=c++11 -fPIC -fopenmp
-NVCCFLAGS += -std=c++11 -Xcompiler "-fPIC" $(NVCC_GENCODE) -DBF_GPU_SHAREDMEM=$(GPU_SHAREDMEM)
+NVCCFLAGS += $(NVCC_GENCODE)
 
 #NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
 #NVCCFLAGS += --expt-relaxed-constexpr
 
+<<<<<<< HEAD:src/Makefile
 ifndef NODEBUG
   CPPFLAGS  += -DBF_DEBUG=1
   CXXFLAGS  += -g
@@ -133,6 +166,8 @@ ifndef ANY_ARCH
   NVCCFLAGS += -Xcompiler "-march=native"
 endif
 
+=======
+>>>>>>> 9a628e76e865e895c9a54df63d1793d9d10d57c6:src/Makefile.in
 LIB_DIR = ../lib
 INC_DIR = .
 CPPFLAGS += -I. -I$(INC_DIR) -I$(CUDA_INCDIR)
@@ -146,25 +181,19 @@ all: $(LIBBIFROST_SO)
 .PHONY: all
 
 $(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
-	$(CLEAR_LINE)
-	@echo -n "Generating $(LIBBIFROST_VERSION_FILE)\r"
-	ctags --version | grep -q "Exuberant" || {\
-	  echo "*************************************" && \
-	  echo "ERROR: Please install exuberant-ctags" && \
-	  echo "*************************************" && \
-	  false; }
+	@echo "Generating $(LIBBIFROST_VERSION_FILE)"
 	echo "VERS_$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR) {" > $@
 	echo "  global:" >> $@
-	ctags -x --c-kinds=p $^ | awk '{print "    " $$1 ";"}' >> $@
+	@CTAGS@ -x --c-kinds=p $^ | @AWK@ '{print "    " $$1 ";"}' >> $@
 	echo "  local:"  >> $@
 	echo "    *;"    >> $@
 	echo "};"        >> $@
 
-ifndef NOCUDA
+ifeq ($(HAVE_CUDA),1)
 # TODO: Need to deal with 32/64 detection here
 LIBCUFFT_STATIC = $(CUDA_LIBDIR64)/libcufft_static.a
 # All PTX archs included in the lib (typically only one)
-CUFFT_PTX_ARCHS := $(shell cuobjdump --list-ptx $(LIBCUFFT_STATIC) | grep -Po "sm_[0-9]{2}" | cut -d_ -f2 | sort | uniq)
+CUFFT_PTX_ARCHS := $(shell @CUOBJDUMP@ --list-ptx $(LIBCUFFT_STATIC) | grep -Po "sm_[0-9]{2}" | cut -d_ -f2 | sort | uniq)
 # Latest PTX arch included in the lib
 CUFFT_PTX_LATEST_ARCH := $(shell echo $(CUFFT_PTX_ARCHS) | rev | cut -d' ' -f1 | rev)
 CUFFT_STATIC_GENCODE = -gencode arch=compute_$(CUFFT_PTX_LATEST_ARCH),\"code=compute_$(CUFFT_PTX_LATEST_ARCH)\"
@@ -174,13 +203,12 @@ libcufft_static_pruned.a: $(LIBCUFFT_STATIC) Makefile
 	#   E.g., We may have GPU_ARCHS="35 61" but libcufft_static might only
 	#     include sm_60 and compute_60, so we need to keep compute_60 in order
 	#     to support sm_61.
-	nvprune -o $@ $(NVCC_GENCODE) $(CUFFT_STATIC_GENCODE) $<
+	@NVPRUNE@ -o $@ $(NVCC_GENCODE) $(CUFFT_STATIC_GENCODE) $<
 fft_kernels.o: fft_kernels.cu fft_kernels.h Makefile
 	# Note: This needs to be compiled with "-dc" to make CUFFT callbacks work
 	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" -dc $(OUTPUT_OPTION) $<
 _cuda_device_link.o: Makefile fft_kernels.o libcufft_static_pruned.a
-	$(CLEAR_LINE)
-	@echo -n "Linking _cuda_device_link.o\r"
+	@echo "Linking _cuda_device_link.o"
 	# TODO: "nvcc -dlink ..." does not error or warn when a -lblah is not found
 	@ls ./libcufft_static_pruned.a > /dev/null
 	$(NVCC) -dlink -o $@ $(NVCCFLAGS) fft_kernels.o -L. -lcufft_static_pruned
@@ -189,15 +217,18 @@ else
 CUDA_DEVICE_LINK_OBJ =
 endif
 
+WLFLAGS ?= $(SONAME_FLAG),$(LIBBIFROST_NAME)$(SO_EXT).$(LIBBIFROST_MAJOR)
+ifeq ($(OS),Linux)
+	WLFLAGS := --version-script=$(LIBBIFROST_VERSION_FILE),$(WLFLAGS)
+endif
+
 # Note: $(LIB) must go at after OBJS
 $(LIBBIFROST_SO): $(LIBBIFROST_OBJS) $(LIBBIFROST_VERSION_FILE) $(CUDA_DEVICE_LINK_OBJ)
-	$(CLEAR_LINE)
-	@echo -n "Linking $(LIBBIFROST_SO_NAME)\r"
+	@echo "Linking $(LIBBIFROST_SO_NAME)"
 	mkdir -p $(LIB_DIR)
-	$(LINKER) $(SHARED_FLAG) -Wl,--version-script=$(LIBBIFROST_VERSION_FILE),$(SONAME_FLAG),$(LIBBIFROST_NAME)$(SO_EXT).$(LIBBIFROST_MAJOR) -o $@ $(LIBBIFROST_OBJS) $(CUDA_DEVICE_LINK_OBJ) $(LIB) $(LDFLAGS)
+	$(LINKER) $(SHARED_FLAG) -Wl,$(WLFLAGS) -o $@ $(LIBBIFROST_OBJS) $(CUDA_DEVICE_LINK_OBJ) $(LIB) $(LDFLAGS)
 	ln -s -f $(LIBBIFROST_SO_NAME) $(LIBBIFROST_SO_STEM).$(LIBBIFROST_MAJOR)
 	ln -s -f $(LIBBIFROST_SO_NAME) $(LIBBIFROST_SO_STEM)
-	$(CLEAR_LINE)
 	@echo "Successfully built $(LIBBIFROST_SO_NAME)"
 
 *.o: $(MAKEFILES)
@@ -205,10 +236,9 @@ $(LIBBIFROST_SO): $(LIBBIFROST_OBJS) $(LIBBIFROST_VERSION_FILE) $(CUDA_DEVICE_LI
 map.o: $(JIT_SOURCES)
 
 stringify: stringify.cpp
-	g++ -o stringify -Wall -O3 stringify.cpp
+	$(CXX) -o stringify -Wall -O3 stringify.cpp
 %.jit: % stringify
-	@$(CLEAR_LINE)
-	@echo -n "Building JIT version of $<\r"
+	@echo "Building JIT version of $<"
 	./stringify $< > $@
 
 clean:

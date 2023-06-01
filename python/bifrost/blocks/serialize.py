@@ -33,13 +33,17 @@ if sys.version_info < (3,):
     
 from bifrost.pipeline import SinkBlock, SourceBlock
 import os
+import warnings
 try:
     import simplejson as json
 except ImportError:
-    print("WARNING: Install simplejson for better performance")
+    warnings.warn("Install simplejson for better performance", RuntimeWarning)
     import json
 import glob
 from functools import reduce
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def _parse_bifrost_filename(fname):
     inds = fname[fname.find('.bf.') + 4:].split('.')[:-1]
@@ -102,7 +106,7 @@ class BifrostReader(object):
         if nbyte_read % frame_nbyte != 0:
             raise IOError("Unexpected end of file")
         nframe_read += nbyte_read // frame_nbyte
-        while nbyte_read < buf.nbytes:
+        while nbyte_read < buf[0].nbytes:
             self.cur_file += 1
             if self.cur_file == self.nfile:
                 break
@@ -123,7 +127,6 @@ class DeserializeBlock(SourceBlock):
     def create_reader(self, sourcename):
         return BifrostReader(sourcename)
     def on_sequence(self, ireader, sourcename):
-        hdr = ireader.header
         return [ireader.header]
     def on_data(self, reader, ospans):
         ospan = ospans[0]
@@ -275,4 +278,3 @@ def serialize(iring, path=None, max_file_size=None, *args, **kwargs):
         SerializeBlock: A new block instance.
     """
     return SerializeBlock(iring, path, max_file_size, *args, **kwargs)
-

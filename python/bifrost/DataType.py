@@ -47,7 +47,11 @@ if sys.version_info < (3,):
     string_types = (basestring,)
     
 from bifrost.libbifrost import _bf
+from bifrost.libbifrost_generated import BF_FLOAT128_ENABLED
 import numpy as np
+
+from bifrost import telemetry
+telemetry.track_module()
 
 # Custom dtypes to represent additional complex types
 # Note: These can be constructed using tuples
@@ -71,14 +75,17 @@ TYPEMAP = {
            16: _bf.BF_DTYPE_U16, 32: _bf.BF_DTYPE_U32,
            64: _bf.BF_DTYPE_U64},
     'f':  {16: _bf.BF_DTYPE_F16,  32: _bf.BF_DTYPE_F32,
-           64: _bf.BF_DTYPE_F64, 128: _bf.BF_DTYPE_F128},
+           64: _bf.BF_DTYPE_F64},
     'ci': { 1: _bf.BF_DTYPE_CI1,   2: _bf.BF_DTYPE_CI2,
             4: _bf.BF_DTYPE_CI4,   8: _bf.BF_DTYPE_CI8,
            16: _bf.BF_DTYPE_CI16, 32: _bf.BF_DTYPE_CI32,
            64: _bf.BF_DTYPE_CI64},
     'cf': {16: _bf.BF_DTYPE_CF16,  32: _bf.BF_DTYPE_CF32,
-           64: _bf.BF_DTYPE_CF64, 128: _bf.BF_DTYPE_CF128}
+           64: _bf.BF_DTYPE_CF64}
 }
+if BF_FLOAT128_ENABLED:
+    TYPENAME['f'][128] = _bf.BF_DTYPE_F128
+    TYPENAME['cf'][128] = _bf.BF_DTYPE_CF128
 KINDMAP = {
     _bf.BF_DTYPE_INT_TYPE:   'i',
     _bf.BF_DTYPE_UINT_TYPE:  'u',
@@ -90,7 +97,7 @@ NUMPY_TYPEMAP = {
     'u':  {  8: np.uint8,  16: np.uint16,
              32: np.uint32, 64: np.uint64},
     'f':  {16: np.float16,  32: np.float32,
-           64: np.float64, 128: np.float128},
+           64: np.float64},
     # HACK: These are just types that match the storage size;
     #         they should not be used for computation.
     # HACK TESTING to support 'packed' arrays
@@ -101,8 +108,11 @@ NUMPY_TYPEMAP = {
             64: ci64},
     # HACK: cf16 used as WAR for missing np.complex32
     'cf': {16: cf16,           32: np.complex64,
-           64: np.complex128, 128: np.complex256}
+           64: np.complex128}
 }
+if BF_FLOAT128_ENABLED:
+    NUMPY_TYPEMAP['f'][128] = np.float128
+    NUMPY_TYPEMAP['cf'][128] = np.complex256
 
 def is_vector_structure(dtype):
     if dtype.names is None:

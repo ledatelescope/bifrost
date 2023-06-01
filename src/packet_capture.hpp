@@ -37,6 +37,7 @@ using bifrost::ring::RingWriter;
 using bifrost::ring::WriteSpan;
 using bifrost::ring::WriteSequence;
 #include "proclog.hpp"
+#include "Socket.hpp"
 #include "formats/formats.hpp"
 #include "hw_locality.hpp"
 
@@ -54,6 +55,12 @@ using bifrost::ring::WriteSequence;
 #include <unistd.h>
 #include <fstream>
 #include <chrono>
+
+#if defined __APPLE__ && __APPLE__
+
+#define lseek64 lseek
+
+#endif
 
 #ifndef BF_HWLOC_ENABLED
 #define BF_HWLOC_ENABLED 0
@@ -279,11 +286,7 @@ public:
     inline const char* get_name() { return "udp_sniffer"; }
 };
 
-#ifndef BF_VERBS_ENABLED
-#define BF_VERBS_ENABLED 0
-#endif
-
-#if BF_VERBS_ENABLED
+#if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
 #include "ib_verbs.hpp"
 
 class UDPVerbsReceiver : public PacketCaptureMethod {
@@ -1282,7 +1285,7 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         method = new UDPPacketReceiver(fd, max_payload_size);
     } else if( backend == BF_IO_SNIFFER ) {
         method = new UDPPacketSniffer(fd, max_payload_size);
-#if BF_VERBS_ENABLED
+#if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
     } else if( backend == BF_IO_VERBS ) {
         method = new UDPVerbsReceiver(fd, max_payload_size);
 #endif

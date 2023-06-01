@@ -1,5 +1,5 @@
 
-# Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -52,6 +52,8 @@ class _WriterBase(BifrostObject):
         return self
     def __exit__(self, type, value, tb):
         pass
+    def set_rate_limit(self, rate_limit_Bps):
+        _check(_bf.bfPacketWriterSetRateLimit(self.obj, rate_limit_Bps))
     def reset_counter(self):
         _check(_bf.bfPacketWriterResetCounter(self.obj))
     def send(self, headerinfo, seq, seq_increment, src, src_increment, idata):
@@ -74,6 +76,20 @@ class UDPTransmit(_WriterBase):
             core = -1
         BifrostObject.__init__(
             self, _bf.bfUdpTransmitCreate, _bf.bfPacketWriterDestroy,
+            fmt, sock.fileno(), core)
+
+
+class UDPVerbsTransmit(_WriterBase):
+    def __init__(self, fmt, sock, core=None):
+        try:
+            fmt = fmt.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
+        if core is None:
+            core = -1
+        BifrostObject.__init__(
+            self, _bf.bfUdpVerbsTransmitCreate, _bf.bfPacketWriterDestroy,
             fmt, sock.fileno(), core)
    
 

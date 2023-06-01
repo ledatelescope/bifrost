@@ -31,6 +31,9 @@ from __future__ import absolute_import
 from bifrost.libbifrost import _bf, _check
 from bifrost.ndarray import asarray
 
+from bifrost import telemetry
+telemetry.track_module()
+
 REDUCE_MAP = {
     'sum':       _bf.BF_REDUCE_SUM,
     'mean':      _bf.BF_REDUCE_MEAN,

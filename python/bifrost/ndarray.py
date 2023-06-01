@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -45,11 +45,20 @@ if sys.version_info < (3,):
 import ctypes
 import numpy as np
 from bifrost.memory import raw_malloc, raw_free, raw_get_space, space_accessible
-from bifrost.libbifrost import _bf, _check
+from bifrost.libbifrost import _bf, _check, _space2string
 from bifrost import device
+from bifrost.dtype import bifrost2string
 from bifrost.DataType import DataType
 from bifrost.Space import Space
-import sys
+from bifrost.libbifrost_generated import struct_BFarray_
+
+try:
+    from bifrost._pypy3_compat import PyMemoryView_FromMemory
+except ImportError:
+    pass
+
+from bifrost import telemetry
+telemetry.track_module()
 
 # TODO: The stuff here makes array.py redundant (and outdated)
 
@@ -72,9 +81,16 @@ def _address_as_buffer(address, nbyte, readonly=False):
         int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
         return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
     except AttributeError:
-        # Python2 catch
-        return np.core.multiarray.int_asbuffer(
-                   address, nbyte, readonly=readonly, check=False)
+        try:
+            # Python2 catch
+            return np.core.multiarray.int_asbuffer(address,
+                                                   nbyte,
+                                                   readonly=readonly,
+                                                   check=False)
+        except AttributeError:
+            # PyPy3 catch
+            int_asbuffer = PyMemoryView_FromMemory
+            return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
 
 def asarray(arr, space=None):
     if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
@@ -105,6 +121,10 @@ def copy_array(dst, src):
     src_bf = asarray(src)
     if (space_accessible(dst_bf.bf.space, ['system']) and
         space_accessible(src_bf.bf.space, ['system'])):
+        if (src_bf.bf.space == 'cuda_managed' or
+            dst_bf.bf.space == 'cuda_managed'):
+            # TODO: Decide where/when these need to be called
+            device.stream_synchronize()
         np.copyto(dst_bf, src_bf)
     else:
         _check(_bf.bfArrayCopy(dst_bf.as_BFarray(),
@@ -147,6 +167,16 @@ class ndarray(np.ndarray):
                 native is not None):
                 raise ValueError('Invalid combination of arguments when base '
                                  'is specified')
+            if 'cupy' in sys.modules:
+                from cupy import ndarray as cupy_ndarray
+                if isinstance(base, cupy_ndarray):
+                     return ndarray.__new__(cls,
+                                            space='cuda',
+                                            buffer=int(base.data),
+                                            shape=base.shape,
+                                            dtype=base.dtype,
+                                            strides=base.strides,
+                                            native=np.dtype(base.dtype).isnative)
             if 'pycuda' in sys.modules:
                 from pycuda.gpuarray import GPUArray as pycuda_GPUArray
                 if isinstance(base, pycuda_GPUArray):
@@ -157,6 +187,22 @@ class ndarray(np.ndarray):
                                            dtype=base.dtype,
                                            strides=base.strides,
                                            native=np.dtype(base.dtype).isnative)
+            # Check if a BFarray ctypes struct is passed
+            if isinstance(base, struct_BFarray_):
+                ndim = base.ndim
+                shape = list(base.shape)[:ndim]
+                strides = list(base.strides)[:ndim]
+                space = _space2string(base.space)
+                dtype = bifrost2string(base.dtype)
+
+                return ndarray.__new__(cls,
+                    space=space,
+                    buffer=int(base.data),
+                    shape=shape,
+                    dtype=dtype,
+                    strides=strides
+                    )
+                
             if dtype is not None:
                 dtype = DataType(dtype)
             if space is None and dtype is None:
@@ -194,6 +240,7 @@ class ndarray(np.ndarray):
                                       space=space,
                                       shape=base.shape,
                                       dtype=base.bf.dtype,
+                                      strides=base.strides,
                                       native=base.bf.native,
                                       conjugated=conjugated)
                 copy_array(obj, base)
@@ -359,6 +406,42 @@ class ndarray(np.ndarray):
             raise NotImplementedError('Only order="C" is supported')
         if space is None:
             space = self.bf.space
+        if not self.flags['C_CONTIGUOUS']:
+            # Deal with arrays that need to have their layouts changed
+            # TODO: Is there a better way to handle this?
+            if space_accessible(self.bf.space, ['system']):
+                ## For arrays that can be accessed from the system space, use
+                ## numpy.ndarray.copy() to do the heavy lifting
+                if space == 'cuda_managed':
+                    ## TODO: Decide where/when these need to be called
+                    device.stream_synchronize()
+                ## This actually makes two copies and throws one away
+                temp = ndarray(shape=self.shape, dtype=self.dtype, space=self.bf.space)
+                temp[...] = np.array(self).copy()
+                if self.bf.space != space:
+                    return ndarray(temp, space=space)
+                return temp
+            else:
+                ## For arrays that can be access from CUDA, use bifrost.transpose
+                ## to do the heavy lifting
+                ### Figure out the correct axis order for C
+                permute = np.argsort(self.strides)[::-1]
+                c_shape = [self.shape[p] for p in permute]
+                ### Make a BFarray wrapper for self so we can reset shape/strides
+                ### to what they should be for a C ordered array
+                self_corder = self.as_BFarray()
+                shape_type = ctypes.c_long*_bf.BF_MAX_DIMS
+                self_corder.shape = shape_type(*c_shape)
+                self_corder.strides = shape_type(*[self.strides[p] for p in permute])
+                ### Make a temporary array with the right shape that will be C ordered
+                temp = ndarray(shape=self.shape, dtype=self.dtype, space=self.bf.space)
+                ### Run the transpose using the BFarray wrapper and the temporary array
+                array_type = ctypes.c_int * self.ndim
+                axes_array = array_type(*permute)
+                _check(_bf.bfTranspose(self_corder, temp.as_BFarray(), axes_array))
+                if self.bf.space != space:
+                    return ndarray(temp, space=space)
+                return temp
         # Note: This makes an actual copy as long as space is not None
         return ndarray(self, space=space)
     def _key_returns_scalar(self, key):
@@ -384,6 +467,15 @@ class ndarray(np.ndarray):
             else:
                 key = slice(key, key + 1)
         copy_array(self[key], val)
+    def as_cupy(self, *args, **kwargs):
+        import cupy as cp
+        if space_accessible(self.bf.space, ['cuda']):
+            umem = cp.cuda.UnownedMemory(self.ctypes.data, self.data.nbytes, self)
+            mptr = cp.cuda.MemoryPointer(umem, 0)
+            ca = cp.ndarray(self.shape, dtype=self.dtype, memptr=mptr, strides=self.strides)
+        else:
+            ca = cp.asarray(np.array(self))
+        return ca
     def as_GPUArray(self, *args, **kwargs):
         from pycuda.gpuarray import GPUArray as pycuda_GPUArray
         g  = pycuda_GPUArray(shape=self.shape, dtype=self.dtype, *args, **kwargs)

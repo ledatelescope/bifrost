@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,13 +27,15 @@
 
 from __future__ import absolute_import
 
+from bifrost.map import map as bf_map
 from bifrost.pipeline import TransformBlock
-from bifrost.linalg import LinAlg
 from bifrost.DataType import DataType
-import bifrost as bf
 
 from copy import deepcopy
 from math import sqrt
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class ConvertVisibilitiesBlock(TransformBlock):
     def __init__(self, iring, fmt,
@@ -96,7 +98,7 @@ class ConvertVisibilitiesBlock(TransformBlock):
             del shape_nopols[3]
             idata = idata.view(itype.as_vector(2))
             odata = odata.view(otype.as_vector(2))
-            bf.map(
+            bf_map(
                 '''
                 bool in_lower_triangle = (i > j);
                 if( in_lower_triangle ) {
@@ -123,7 +125,7 @@ class ConvertVisibilitiesBlock(TransformBlock):
             idata = idata.view(itype.as_vector(2))
             odata = odata.view(otype.as_vector(4))
             # TODO: Support L/R as well as X/Y pols
-            bf.map('''
+            bf_map('''
             // TODO: This only works up to 2048 in single-precision
             #define project_triangular(i, j) ((i)*((i)+1)/2 + (j))
             int i = int((sqrt(8.f*(b)+1)-1)/2);
@@ -150,7 +152,7 @@ class ConvertVisibilitiesBlock(TransformBlock):
             del oshape_nopols[3]
             idata = idata.view(itype.as_vector(4))
             odata = odata.view(otype.as_vector(2))
-            bf.map('''
+            bf_map('''
             bool in_upper_triangle = (i < j);
             auto b = in_upper_triangle ? j*(j+1)/2 + i : i*(i+1)/2 + j;
             auto IQUV = idata(t,b,c,0);

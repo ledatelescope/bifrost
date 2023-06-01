@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,19 +27,62 @@
  */
 
 #include "hw_locality.hpp"
+#include  <stdexcept>
 
 #if BF_HWLOC_ENABLED
-int HardwareLocality::bind_memory_to_core(int core) {
+int HardwareLocality::get_numa_node_of_core(int core) {
+    int core_depth = hwloc_get_type_or_below_depth(_topo, HWLOC_OBJ_CORE);
+    int ncore      = hwloc_get_nbobjs_by_depth(_topo, core_depth);
+    int ret = -1;
+    if( 0 <= core && core < ncore ) {
+        hwloc_obj_t obj = hwloc_get_obj_by_type(_topo, HWLOC_OBJ_CORE, core);
+        hwloc_obj_t tmp = NULL;
+        while( (tmp = hwloc_get_next_obj_by_type(_topo, HWLOC_OBJ_NUMANODE, tmp)) != NULL ) {
+            if( hwloc_bitmap_isset(obj->nodeset, tmp->os_index) ) {
+                ret = tmp->os_index;
+            }
+        }
+    }
+    return ret;
+}
+
+int HardwareLocality::bind_thread_memory_to_core(int core) {
     int core_depth = hwloc_get_type_or_below_depth(_topo, HWLOC_OBJ_CORE);
     int ncore      = hwloc_get_nbobjs_by_depth(_topo, core_depth);
     int ret = 0;
     if( 0 <= core && core < ncore ) {
         hwloc_obj_t    obj    = hwloc_get_obj_by_depth(_topo, core_depth, core);
+#if HWLOC_API_VERSION >= 0x00020000
+        hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->cpuset);
+        if( !hwloc_bitmap_intersects(cpuset, hwloc_topology_get_allowed_cpuset(_topo)) ) {
+          throw std::runtime_error("requested core is not in the list of allowed cores");
+        }
+#else
         hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->allowed_cpuset);
+#endif
         hwloc_bitmap_singlify(cpuset); // Avoid hyper-threads
         hwloc_membind_policy_t policy = HWLOC_MEMBIND_BIND;
         hwloc_membind_flags_t  flags  = HWLOC_MEMBIND_THREAD;
         ret = hwloc_set_membind(_topo, cpuset, policy, flags);
+        hwloc_bitmap_free(cpuset);
+    }
+    return ret;
+}
+
+int HardwareLocality::bind_memory_area_to_numa_node(const void* addr, size_t size, int node) {
+    int nnode = hwloc_get_nbobjs_by_type(_topo, HWLOC_OBJ_NUMANODE);
+    int ret = 0;
+    if( 0 <= node && node < nnode ) {
+        hwloc_obj_t obj = hwloc_get_obj_by_type(_topo, HWLOC_OBJ_NUMANODE, node);
+#if HWLOC_API_VERSION >= 0x00020000
+        hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->nodeset);
+#else
+        hwloc_cpuset_t cpuset = hwloc_bitmap_dup(obj->allowed_cpuset);
+#endif
+        hwloc_bitmap_singlify(cpuset); // Avoid hyper-threads
+        hwloc_membind_policy_t policy = HWLOC_MEMBIND_BIND;
+        hwloc_membind_flags_t  flags  = HWLOC_MEMBIND_THREAD;
+        ret = hwloc_set_area_membind(_topo, addr, size, cpuset, policy, flags);
         hwloc_bitmap_free(cpuset);
     }
     return ret;

@@ -32,6 +32,9 @@ from __future__ import absolute_import
 
 from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
+from bifrost import telemetry
+telemetry.track_module()
+
 class UDPSocket(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfUdpSocketCreate, _bf.bfUdpSocketDestroy)

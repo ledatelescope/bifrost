@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -90,6 +90,12 @@ BFstatus bfMap(int                  ndim,
                char const*          extra_code,
                int const*           block_shape, // Must be array of length 2, or NULL
                int const*           block_axes); // Must be array of length 2, or NULL
+
+BFstatus bfMapClearCache();
+
+#define BF_MAP_KERNEL_CACHE_SIZE 128
+#define BF_MAP_KERNEL_DISK_CACHE_SUBDIR "map_cache"
+#define BF_MAP_KERNEL_DISK_CACHE_VERSION_FILE "cache.version"
 
 #ifdef __cplusplus
 } // extern "C"
