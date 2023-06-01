@@ -69,13 +69,7 @@ ifeq ($(HAVE_CUDA),1)
   reduce.o \
   fir.o \
   guantize.o \
-  gunpack.o \
-  beamform.o \
-  cublas_beamform.o
-ifdef XGPU
-  LIBBIFROST_OBJS += \
-  bf_xgpu.o
-endif
+  gunpack.o
 endif
 
 JIT_SOURCES ?= \
