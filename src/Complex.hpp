@@ -32,10 +32,10 @@
 #include <hip/hip_fp16.h>
 #endif
 
-#ifndef __CUDACC_RTC__
+#ifndef __HIPRTC__
 #include <cmath>
 using std::atan2;
-#endif // __CUDACC_RTC__
+#endif // __HIPRTC__
 
 template<typename Real, class Enable=void>
 struct Complex;
@@ -127,7 +127,7 @@ template<> struct is_storage_type<signed int>    { enum { value = true  }; };
 //template<> struct is_storage_type<half>          { enum { value = true  }; };
 #endif
 
-#ifdef __CUDACC_VER_MAJOR__
+#ifdef __HIPCC__
 template<typename Real> struct cuda_vector2_type {};
 template<>              struct cuda_vector2_type<float>  { typedef float2  type; };
 template<>              struct cuda_vector2_type<double> { typedef double2 type; };
@@ -187,7 +187,7 @@ Complex<T, typename Complex_detail::enable_if<Complex_detail::is_floating_point<
 #if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
 	//inline __device__ Complex(Complex<half> c) : x(__half2float(c.x)), y(__half2float(c.y)) {}
 #endif
-#ifdef __CUDACC_VER_MAJOR__
+#ifdef __HIPCC__
 	// Note: Use float2 to ensure vectorized load/store
 	inline __host__ __device__ Complex(typename Complex_detail::cuda_vector2_type<T>::type c) : x(c.x), y(c.y) {}
 	inline __host__ __device__ operator typename Complex_detail::cuda_vector2_type<T>::type() const { return make_float2(x,y); }

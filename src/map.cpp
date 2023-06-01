@@ -168,6 +168,9 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	}
 	kernel_name += "map_kernel";
 	std::stringstream code;
+	code << "#ifndef __HIPRTC__" << endl;
+	code << "#define __HIPRTC__ 1" << endl;
+	code << "#endif" << endl;
 	code << "#include \"Complex.hpp\"" << endl;
 	code << "#include \"Vector.hpp\"" << endl;
 	code << "#include \"ArrayIndexer.cuh\"" << endl;
