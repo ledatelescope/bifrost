@@ -30,9 +30,6 @@
 
 #include "base.hpp"
 
-#include <immintrin.h> // SSE
-#include <emmintrin.h>
-
 // TODO: parameterize somewhere. This isn't
 // related to the packet formatting
 #define PIPELINE_NPOL 704
