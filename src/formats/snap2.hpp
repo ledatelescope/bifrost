@@ -179,7 +179,7 @@ public:
                in64 += 8;
                dest_p += words_per_chan_out;
 #else
-               ::memcpy(&out[pkt->src + pkt->nsrc*chan],
+               ::memcpy(&out[pkt->src + pkt->nsrc*c],
                         &in[c], sizeof(otype));
 #endif
             }
