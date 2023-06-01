@@ -220,6 +220,13 @@ AS_IF([test x$enable_verbs != xno],
                     [AC_SUBST([HAVE_VERBS], [1])
                      LIBS="$LIBS -libverbs"])])
 
+AC_ARG_WITH([verbs_npktbuf],
+           [AS_HELP_STRING([--with-verbs-npktbuf=N],
+                           [default Infiniband verbs buffer size in packets (default=8192)])],
+           [],
+           [with_verbs_npktbuf=8192])
+AC_SUBST([VERBS_NPKTBUF], [$with_verbs_npktbuf])
+
 #
 # RDMA
 #

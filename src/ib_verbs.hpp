@@ -28,6 +28,8 @@
 
 #pragma once
 
+#include <bifrost/config.h>
+
 #include <stdexcept>
 #include <string>
 #include <sstream>
@@ -56,10 +58,6 @@
 
 #ifndef BF_VERBS_NQP
 #define BF_VERBS_NQP 1
-#endif
-
-#ifndef BF_VERBS_NPKTBUF
-#define BF_VERBS_NPKTBUF 32768
 #endif
 
 #ifndef BF_VERBS_WCBATCH
