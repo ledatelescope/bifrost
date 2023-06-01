@@ -163,21 +163,28 @@ public:
             // Output buffer order is chans * npol_total * complexity
             // Spacing with which channel chunks are copied depends
             // on the total number of channels/pols in the system
+            int c=0;
+#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
             __m256i *dest_p;
             __m256i vecbuf[2];
             uint64_t *in64 = (uint64_t *)in;
-            int c;
             dest_p = (__m256i *)(out + (words_per_chan_out * (pkt_chan)) + pol_offset_out);
+#endif
             //if((pol_offset_out == 0) && (pkt_chan==0) && ((pkt->seq % 120)==0) ){
             //   fprintf(stderr, "nsrc: %d seq: %d, dest_p: %p obuf idx %d, obuf offset %lu, nseq_per_obuf %d, seq0 %d, nbuf: %d\n", pkt->nsrc, pkt->seq, dest_p, obuf_idx, obuf_offset, nseq_per_obuf, seq0, nbuf);
             //}
             for(c=0; c<pkt->nchan; c++) {
+#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
                vecbuf[0] = _mm256_set_epi64x(in64[3], in64[2], in64[1], in64[0]);
                vecbuf[1] = _mm256_set_epi64x(in64[7], in64[6], in64[5], in64[4]);
                _mm256_stream_si256(dest_p, vecbuf[0]);
                _mm256_stream_si256(dest_p+1,   vecbuf[1]);
                in64 += 8;
                dest_p += words_per_chan_out;
+#else
+               ::memcpy(&out[pkt->src + pkt->nsrc*chan],
+                        &in[c], sizeof(otype));
+#endif
             }
     }
 
