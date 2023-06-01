@@ -72,7 +72,7 @@ public:
 	    pkt->sync         = pkt_hdr->sync_word;
 	    pkt->time_tag     = be64toh(pkt_hdr->time_tag);
 	    pkt->decimation   = be32toh(pkt_hdr->navg);
-	    pkt->seq          = pkt->time_tag / pkt->decimation;
+	    pkt->seq          = pkt->time_tag / 196000000 / (pkt->decimation / 100);
 	    pkt->nsrc         = _nsrc;
 	    pkt->src          = (stand0*(2*(nstand-1)+1-stand0)/2 + stand1 + 1 - _src0)*nserver \
 	                        + (server - 1);
