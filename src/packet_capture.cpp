@@ -268,12 +268,9 @@ BFpacketcapture_status BFpacketcapture_impl::recv() {
 				ret = BF_CAPTURE_CONTINUED;
 			}
 		}
-	    BF_PRINTD("_bufs.size(): " << _bufs.size());
 		if( _bufs.size() == 2 ) {
-	        BF_PRINTD("Committing buffer");
 			this->commit_buf();
 		}
-	    BF_PRINTD("Rseerving buffer");
 		this->reserve_buf();
 	} else {
 		
