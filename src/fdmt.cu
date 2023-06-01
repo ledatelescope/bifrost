@@ -37,7 +37,7 @@
 
 //#include <limits>
 
-#include <math_constants.h> // For CUDART_NAN_F
+#include <hip/hip_math_constants.h> // For HIP_NAN_F
 #include <thrust/device_vector.h>
 
 #include <vector>
@@ -76,7 +76,7 @@ void fdmt_init_kernel(int                         ntime,
 			OutType tmp(0);
 			for( int d=0; d<ndelay; ++d ) {
 				// Note: This fills the unused elements with NaNs
-				OutType outval(CUDART_NAN_F);//std::numeric_limits<OutType>::quiet_NaN());
+				OutType outval(HIP_NAN_F);//std::numeric_limits<OutType>::quiet_NaN());
 				if( t >= d ) {
 					int c_ = reverse_band ? nchan-1 - c : c;
 					int t_ = reverse_time ? ntime-1 - t : t;
@@ -121,17 +121,17 @@ void fdmt_exec_kernel(int                       ntime,
 			// Avoid elements that go unused due to diagonal reindexing
 			if( is_final_step && t < r ) {
 				//int ostride_ = ostride - reverse_time;
-				//d_out[t + ostride_*r] = CUDART_NAN_F;
+				//d_out[t + ostride_*r] = HIP_NAN_F;
 				continue;
 			}
 			// HACK TESTING
 			////if( ostride < ntime && t >= ntime-1 - r ) {
 			//if( ostride != ntime && t < r ) {
 			//	int ostride_ = ostride - (ostride > ntime);
-			//	d_out[t + ostride_*r] = CUDART_NAN_F;
+			//	d_out[t + ostride_*r] = HIP_NAN_F;
 			//	continue;
 			//}// else if( ostride > ntime && t >= ntime - r ) {
-				//	//d_out[t - (ntime-1) + ostride*r] = CUDART_NAN_F;
+				//	//d_out[t - (ntime-1) + ostride*r] = HIP_NAN_F;
 					//	continue;
 				//}
 			

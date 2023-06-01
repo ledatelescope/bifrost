@@ -39,7 +39,6 @@
 
 //#include <limits>
 
-#include <math_constants.h> // For CUDART_NAN_F
 #include <thrust/device_vector.h>
 
 #include <vector>
