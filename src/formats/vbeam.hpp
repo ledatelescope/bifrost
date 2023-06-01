@@ -30,7 +30,7 @@
 
 #include "base.hpp"
 
-struct __attribute__((packed)) lwa352_vbeam_hdr_type {
+struct __attribute__((packed)) vbeam_hdr_type {
     uint64_t sync_word;
     uint64_t sync_time;
     uint64_t time_tag;
@@ -41,14 +41,14 @@ struct __attribute__((packed)) lwa352_vbeam_hdr_type {
     uint32_t npol;
 };
 
-class LWA352VBeamHeaderFiller : virtual public PacketHeaderFiller {
+class VBeamHeaderFiller : virtual public PacketHeaderFiller {
 public:
-    inline int get_size() { return sizeof(lwa352_vbeam_hdr_type); }
+    inline int get_size() { return sizeof(vbeam_hdr_type); }
     inline void operator()(const PacketDesc* hdr_base,
                            BFoffset          framecount,
                            char*             hdr) {
-        lwa352_vbeam_hdr_type* header = reinterpret_cast<lwa352_vbeam_hdr_type*>(hdr);
-        memset(header, 0, sizeof(lwa352_vbeam_hdr_type));
+        vbeam_hdr_type* header = reinterpret_cast<vbeam_hdr_type*>(hdr);
+        memset(header, 0, sizeof(vbeam_hdr_type));
         
         header->sync_word        = 0xAABBCCDD00000000L;
         header->time_tag         = htobe64(hdr_base->seq);

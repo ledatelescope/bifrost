@@ -37,4 +37,4 @@
 #include "ibeam.hpp"
 #include "snap2.hpp"
 #include "pbeam.hpp"
-#include "lwa352_vbeam.hpp"
+#include "vbeam.hpp"
