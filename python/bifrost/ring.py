@@ -118,11 +118,7 @@ class Ring(BifrostObject):
                 try:
                     yield cur_seq
                     cur_seq.increment()
-<<<<<<< HEAD
-                except StopIteration:
-=======
                 except EndOfDataStop:
->>>>>>> 9a628e76e865e895c9a54df63d1793d9d10d57c6
                     return
     #def _data(self):
     #    data_ptr = _get(self.lib.bfRingLockedGetData, self.obj)
@@ -287,11 +283,7 @@ class ReadSequence(SequenceBase):
                 with self.acquire(offset, span_size) as ispan:
                     yield ispan
                 offset += stride
-<<<<<<< HEAD
-            except StopIteration:
-=======
             except EndOfDataStop:
->>>>>>> 9a628e76e865e895c9a54df63d1793d9d10d57c6
                 return
 
 class SpanBase(object):

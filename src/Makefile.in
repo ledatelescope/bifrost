@@ -107,67 +107,6 @@ NVCCFLAGS += $(NVCC_GENCODE)
 #NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
 #NVCCFLAGS += --expt-relaxed-constexpr
 
-<<<<<<< HEAD:src/Makefile
-ifndef NODEBUG
-  CPPFLAGS  += -DBF_DEBUG=1
-  CXXFLAGS  += -g
-  NVCCFLAGS += -g
-endif
-
-LIB += -lgomp
-
-ifdef TRACE
-  CPPFLAGS   += -DBF_TRACE_ENABLED=1
-endif
-
-ifdef NUMA
-  # Requires libnuma-dev to be installed
-  LIB        += -lnuma
-  CPPFLAGS   += -DBF_NUMA_ENABLED=1
-endif
-
-ifdef HWLOC
-  # Requires libhwloc-dev to be installed
-  LIB        += -lhwloc
-  CPPFLAGS   += -DBF_HWLOC_ENABLED=1
-endif
-
-ifdef VMA
-  # Requires Mellanox libvma to be installed
-  LIB        += -lvma
-  CPPFLAGS   += -DBF_VMA_ENABLED=1
-endif
-
-ifdef VERBS
-  # Requires Mellanox libvma to be installed
-  LIB        += -libverbs
-  CPPFLAGS   += -DBF_VERBS_ENABLED=1
-endif
-
-ifdef ALIGNMENT
-  CPPFLAGS   += -DBF_ALIGNMENT=$(ALIGNMENT)
-endif
-
-ifdef CUDA_DEBUG
-  NVCCFLAGS += -G
-endif
-
-ifndef NOCUDA
-  CPPFLAGS  += -DBF_CUDA_ENABLED=1
-  LIB       += -L$(CUDA_LIBDIR64) -L$(CUDA_LIBDIR) -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt
-ifdef XGPU
-  CPPFLAGS  += -DBF_XGPU_ENABLED=1
-  LIB       += -lxgpu
-endif
-endif
-
-ifndef ANY_ARCH
-  CXXFLAGS  += -march=native
-  NVCCFLAGS += -Xcompiler "-march=native"
-endif
-
-=======
->>>>>>> 9a628e76e865e895c9a54df63d1793d9d10d57c6:src/Makefile.in
 LIB_DIR = ../lib
 INC_DIR = .
 CPPFLAGS += -I. -I$(INC_DIR) -I$(CUDA_INCDIR)
