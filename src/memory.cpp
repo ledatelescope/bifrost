@@ -78,8 +78,8 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 		*space = BF_SPACE_CUDA_MANAGED;
 	} else {
 		switch( ptr_attrs.memoryType ) {
-		case cudaMemoryTypeHost:   *space = BF_SPACE_SYSTEM; break;
-		case cudaMemoryTypeDevice: *space = BF_SPACE_CUDA;   break;
+		case hipMemoryTypeHost:   *space = BF_SPACE_SYSTEM; break;
+		case hipMemoryTypeDevice: *space = BF_SPACE_CUDA;   break;
 		default: {
 			// This should never be reached
 			BF_FAIL("Valid memoryType", BF_STATUS_INTERNAL_ERROR);
