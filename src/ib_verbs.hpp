@@ -430,7 +430,7 @@ class Verbs {
         _verbs.send_mr_size = (size_t) BF_VERBS_NPKTBUF*BF_VERBS_NQP * _pkt_size_max;
         _verbs.send_mr_buf = (uint8_t *) ::mmap(NULL, _verbs.send_mr_size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_LOCKED, -1, 0);
 
-        check_error(_verbs.send_mr_buf == MAP_FAILED,
+        check_error(_verbs.send_mr_buf == MAP_FAILED ? -1 : 0,
                     "allocate memory region buffer");
         check_error(::mlock(_verbs.send_mr_buf, _verbs.send_mr_size),
                     "lock memory region buffer");
