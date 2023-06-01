@@ -2,13 +2,6 @@
 #include <hip/hip_complex.h>
 #include "romein_kernels.cuh"
 
-// Temporary fix: HIP has misnamed this function,
-// but this should be fixed in a later release.
-// https://github.com/ROCm-Developer-Tools/HIP/issues/3230
-#ifndef make_hipComplex
-#define make_hipComplex make_Complex
-#endif
-
 /*****************************
         Device Functions
  *****************************/
