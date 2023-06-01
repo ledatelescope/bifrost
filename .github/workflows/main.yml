@@ -66,6 +66,7 @@ jobs:
                pint \
                graphviz \
                ctypesgen==1.0.2 \
+               pylint \
                coverage
       - name: "Software Install - Python, part 2"
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
