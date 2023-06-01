@@ -49,11 +49,11 @@
 #if defined(BF_GPU_EXP_PINNED_ALLOC) && BF_GPU_EXP_PINNED_ALLOC
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
 #else
-#include <thrust/system/cuda/memory.h>
+#include <thrust/memory.h>
 #endif
 
-#include <hipfft.h>
-#include <hipfftXt.h>
+#include <hipfft/hipfft.h>
+#include <hipfft/hipfftXt.h>
 
 class BFfft_impl {
 	hipfftHandle      _handle;

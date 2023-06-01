@@ -36,8 +36,8 @@
 #include <bifrost/array.h>
 #include "int_fastdiv.h"
 
-#include <hipfft.h>
-#include <hipfftXt.h>
+#include <hipfft/hipfft.h>
+#include <hipfft/hipfftXt.h>
 
 inline const char* _hipfftGetErrorString(hipfftResult status) {
 #define DEFINE_CUFFT_RESULT_CASE(x) case x: return #x
