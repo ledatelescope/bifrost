@@ -60,6 +60,8 @@ public:
 	Complex& mad(
 };
 */
+
+#include <hip/hip_runtime.h>
 #include "utils.hpp"
 #include "Complex.hpp"
 #include "Jones.hpp"
@@ -162,7 +164,7 @@ void bf_cherk_N_diagonal_kernel(int N,
                                 int K,
                                 int nbatch,
                                 float alpha,
-                                cudaTextureObject_t A_tex,
+                                hipTextureObject_t A_tex,
                                 int A_nbit,
                                 int A_stride,
                                 int A_batchstride,
@@ -342,7 +344,7 @@ void bf_cherk_N_offdiagonal_kernel(int N,
                                    int K,
                                    int nbatch,
                                    float alpha,
-                                   cudaTextureObject_t A_tex,
+                                   hipTextureObject_t A_tex,
                                    int A_nbit,
                                    int A_stride,
                                    int A_batchstride,
@@ -485,7 +487,7 @@ void bf_cherk_N(int N, int K, int nbatch,
                 BFdtype C_type,
                 int C_stride,
                 int C_batchstride,
-                cudaStream_t stream) {
+                hipStream_t stream) {
 	// Note: The kernel operates on 2 elements at a time and requires alignment
 	BF_ASSERT_EXCEPTION(N             % 2 == 0, BF_STATUS_UNSUPPORTED_SHAPE);
 	BF_ASSERT_EXCEPTION(A_stride      % 2 == 0, BF_STATUS_UNSUPPORTED_STRIDE);
@@ -512,17 +514,17 @@ void bf_cherk_N(int N, int K, int nbatch,
 	C_stride /= 2;
 	C_batchstride /= 2;
 	
-	cudaChannelFormatKind channel_format;
-	cudaTextureReadMode   tex_read_mode;
+	hipChannelFormatKind channel_format;
+	hipTextureReadMode   tex_read_mode;
 	switch( A_type ) {
 	case BF_DTYPE_CI8: // Fall-through
 	case BF_DTYPE_CI16:
-		channel_format = cudaChannelFormatKindSigned;
-		tex_read_mode  = cudaReadModeNormalizedFloat;
+		channel_format = hipChannelFormatKindSigned;
+		tex_read_mode  = hipReadModeNormalizedFloat;
 		break;
 	case BF_DTYPE_CF32:
-		channel_format = cudaChannelFormatKindFloat;
-		tex_read_mode  = cudaReadModeElementType;
+		channel_format = hipChannelFormatKindFloat;
+		tex_read_mode  = hipReadModeElementType;
 		break;
 	default:
 		BF_FAIL_EXCEPTION("Supported input dtype",
@@ -543,9 +545,9 @@ void bf_cherk_N(int N, int K, int nbatch,
 	                    BF_STATUS_UNSUPPORTED_SHAPE);
 	
 	// Create texture object
-	cudaResourceDesc resDesc;
+	hipResourceDesc resDesc;
 	memset(&resDesc, 0, sizeof(resDesc));
-	resDesc.resType = cudaResourceTypeLinear;
+	resDesc.resType = hipResourceTypeLinear;
 	resDesc.res.linear.devPtr = const_cast<void*>(A_ptr);
 	resDesc.res.linear.desc.f = channel_format;
 	resDesc.res.linear.desc.x = A_nbit;
@@ -554,12 +556,12 @@ void bf_cherk_N(int N, int K, int nbatch,
 	resDesc.res.linear.desc.w = A_nbit;
 	resDesc.res.linear.sizeInBytes = A_nelement_total * 4 * (A_nbit / 8);
 	
-	cudaTextureDesc texDesc;
+	hipTextureDesc texDesc;
 	memset(&texDesc, 0, sizeof(texDesc));
 	texDesc.readMode = tex_read_mode;
-	cudaTextureObject_t A_tex = 0;
-	BF_CHECK_CUDA_EXCEPTION(
-		cudaCreateTextureObject(&A_tex, &resDesc, &texDesc, NULL),
+	hipTextureObject_t A_tex = 0;
+	BF_CHECK_HIP_EXCEPTION(
+		hipCreateTextureObject(&A_tex, &resDesc, &texDesc, NULL),
 		BF_STATUS_INTERNAL_ERROR);
 	
 	enum {
@@ -589,11 +591,11 @@ void bf_cherk_N(int N, int K, int nbatch,
 			 A_tex, A_nbit, A_stride, A_batchstride, A_offset,
 			 beta,
 			 (float4*)C_ptr, C_stride, C_batchstride);
-		BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+		BF_CHECK_HIP_EXCEPTION(hipGetLastError(), BF_STATUS_INTERNAL_ERROR);
 	}
 	
-	BF_CHECK_CUDA_EXCEPTION(
-		cudaDestroyTextureObject(A_tex),
+	BF_CHECK_HIP_EXCEPTION(
+		hipDestroyTextureObject(A_tex),
 		BF_STATUS_INTERNAL_ERROR);
 	
 #if BF_USE_DIAGONAL_KERNEL
@@ -607,9 +609,9 @@ void bf_cherk_N(int N, int K, int nbatch,
 	                    BF_STATUS_UNSUPPORTED_SHAPE);
 	A_offset *= 2;
 	// Create texture object
-	cudaResourceDesc resDesc2;
+	hipResourceDesc resDesc2;
 	memset(&resDesc2, 0, sizeof(resDesc2));
-	resDesc2.resType = cudaResourceTypeLinear;
+	resDesc2.resType = hipResourceTypeLinear;
 	resDesc2.res.linear.devPtr = const_cast<void*>(A_ptr);
 	resDesc2.res.linear.desc.f = channel_format;
 	resDesc2.res.linear.desc.x = A_nbit;
@@ -617,12 +619,12 @@ void bf_cherk_N(int N, int K, int nbatch,
 	resDesc2.res.linear.desc.z = 0;
 	resDesc2.res.linear.desc.w = 0;
 	resDesc2.res.linear.sizeInBytes = (A_nelement_total*2) * 2 * (A_nbit / 8);
-	cudaTextureDesc texDesc2;
+	hipTextureDesc texDesc2;
 	memset(&texDesc2, 0, sizeof(texDesc2));
 	texDesc2.readMode = tex_read_mode;
-	cudaTextureObject_t A_tex2 = 0;
-	BF_CHECK_CUDA_EXCEPTION(
-		cudaCreateTextureObject(&A_tex2, &resDesc2, &texDesc2, NULL),
+	hipTextureObject_t A_tex2 = 0;
+	BF_CHECK_HIP_EXCEPTION(
+		hipCreateTextureObject(&A_tex2, &resDesc2, &texDesc2, NULL),
 		BF_STATUS_INTERNAL_ERROR);
 	
 	// TODO: Clean this up a bit
@@ -636,10 +638,10 @@ void bf_cherk_N(int N, int K, int nbatch,
 		 A_tex2, A_nbit, A_stride, A_batchstride, A_offset,
 		 beta,
 		 (float4*)C_ptr, C_stride, C_batchstride);
-	BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
+	BF_CHECK_HIP_EXCEPTION(hipGetLastError(), BF_STATUS_INTERNAL_ERROR);
 	
-	BF_CHECK_CUDA_EXCEPTION(
-		cudaDestroyTextureObject(A_tex2),
+	BF_CHECK_HIP_EXCEPTION(
+		hipDestroyTextureObject(A_tex2),
 		BF_STATUS_INTERNAL_ERROR);
 #endif // BF_USE_DIAGONAL_KERNEL
 }
@@ -812,7 +814,7 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
                                    BFdtype C_type,
                                    int C_stride,
                                    int C_batchstride,
-                                   cudaStream_t stream) {
+                                   hipStream_t stream) {
 	enum {
 		BLOCK_X = 32, // Must be warpSize (32)
 		BLOCK_Y = 16, // Can be tuned
@@ -935,7 +937,7 @@ void bf_cgemm_TN_smallM(int M,
                         BFdtype C_type,
                         int C_stride,
                         int C_batchstride,
-                        cudaStream_t stream) {
+                        hipStream_t stream) {
 	#define CALL_BF_CGEMM_TN_SMALLM_STATICN(N_MAX) \
 		/*bf_cgemm_TN_smallM_staticN<N_MAX>*/ \
 			bf_cgemm_TN_smallM_staticN_v2<N_MAX> \

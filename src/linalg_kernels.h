@@ -28,63 +28,66 @@
 
 #pragma once
 
+#ifndef ROCM_MATHLIBS_API_USE_HIP_COMPLEX
+#define ROCM_MATHLIBS_API_USE_HIP_COMPLEX 1
+#endif
+
 #include "cuda.hpp"
-
-#include <cublas_v2.h>
-
 #include <bifrost/config.h>
 #include <bifrost/array.h>
+#include <hipblas/hipblas.h>
+#include <hip/hip_runtime.h>
 
-inline const char* _cublasGetErrorString(cublasStatus_t status) {
+inline const char* _hipblasGetErrorString(hipblasStatus_t status) {
 	switch(status) {
-	case CUBLAS_STATUS_SUCCESS:          return "CUBLAS_STATUS_SUCCESS";
-	case CUBLAS_STATUS_NOT_INITIALIZED:  return "CUBLAS_STATUS_NOT_INITIALIZED";
-	case CUBLAS_STATUS_ALLOC_FAILED:     return "CUBLAS_STATUS_ALLOC_FAILED";
-	case CUBLAS_STATUS_INVALID_VALUE:    return "CUBLAS_STATUS_INVALID_VALUE";
-	case CUBLAS_STATUS_ARCH_MISMATCH:    return "CUBLAS_STATUS_ARCH_MISMATCH";
-	case CUBLAS_STATUS_MAPPING_ERROR:    return "CUBLAS_STATUS_MAPPING_ERROR";
-	case CUBLAS_STATUS_EXECUTION_FAILED: return "CUBLAS_STATUS_EXECUTION_FAILED";
-	case CUBLAS_STATUS_INTERNAL_ERROR:   return "CUBLAS_STATUS_INTERNAL_ERROR";
-	case CUBLAS_STATUS_NOT_SUPPORTED:    return "CUBLAS_STATUS_NOT_SUPPORTED";
-	case CUBLAS_STATUS_LICENSE_ERROR:    return "CUBLAS_STATUS_LICENSE_ERROR";
+	case HIPBLAS_STATUS_SUCCESS:          return "HIPBLAS_STATUS_SUCCESS";
+	case HIPBLAS_STATUS_NOT_INITIALIZED:  return "HIPBLAS_STATUS_NOT_INITIALIZED";
+	case HIPBLAS_STATUS_ALLOC_FAILED:     return "HIPBLAS_STATUS_ALLOC_FAILED";
+	case HIPBLAS_STATUS_INVALID_VALUE:    return "HIPBLAS_STATUS_INVALID_VALUE";
+	case HIPBLAS_STATUS_ARCH_MISMATCH:    return "HIPBLAS_STATUS_ARCH_MISMATCH";
+	case HIPBLAS_STATUS_MAPPING_ERROR:    return "HIPBLAS_STATUS_MAPPING_ERROR";
+	case HIPBLAS_STATUS_EXECUTION_FAILED: return "HIPBLAS_STATUS_EXECUTION_FAILED";
+	case HIPBLAS_STATUS_INTERNAL_ERROR:   return "HIPBLAS_STATUS_INTERNAL_ERROR";
+	case HIPBLAS_STATUS_NOT_SUPPORTED:    return "HIPBLAS_STATUS_NOT_SUPPORTED";
+	case HIPBLAS_STATUS_UNKNOWN:    return "HIPBLAS_STATUS_UNKNOWN";
 	default: return "Unknown CUBLAS error";
 	}
 }
 
-inline BFstatus bifrost_status(cublasStatus_t status) {
+inline BFstatus bifrost_status(hipblasStatus_t status) {
 	switch(status) {
-	case CUBLAS_STATUS_SUCCESS:          return BF_STATUS_SUCCESS;
-	case CUBLAS_STATUS_NOT_INITIALIZED:  return BF_STATUS_DEVICE_ERROR;
-	case CUBLAS_STATUS_ALLOC_FAILED:     return BF_STATUS_MEM_ALLOC_FAILED;
-	case CUBLAS_STATUS_INVALID_VALUE:    return BF_STATUS_INTERNAL_ERROR;
-	case CUBLAS_STATUS_ARCH_MISMATCH:    return BF_STATUS_INTERNAL_ERROR;
-	case CUBLAS_STATUS_MAPPING_ERROR:    return BF_STATUS_DEVICE_ERROR;
-	case CUBLAS_STATUS_EXECUTION_FAILED: return BF_STATUS_DEVICE_ERROR;
-	case CUBLAS_STATUS_INTERNAL_ERROR:   return BF_STATUS_DEVICE_ERROR;
-	case CUBLAS_STATUS_NOT_SUPPORTED:    return BF_STATUS_UNSUPPORTED;
-	case CUBLAS_STATUS_LICENSE_ERROR:    return BF_STATUS_DEVICE_ERROR;
+	case HIPBLAS_STATUS_SUCCESS:          return BF_STATUS_SUCCESS;
+	case HIPBLAS_STATUS_NOT_INITIALIZED:  return BF_STATUS_DEVICE_ERROR;
+	case HIPBLAS_STATUS_ALLOC_FAILED:     return BF_STATUS_MEM_ALLOC_FAILED;
+	case HIPBLAS_STATUS_INVALID_VALUE:    return BF_STATUS_INTERNAL_ERROR;
+	case HIPBLAS_STATUS_ARCH_MISMATCH:    return BF_STATUS_INTERNAL_ERROR;
+	case HIPBLAS_STATUS_MAPPING_ERROR:    return BF_STATUS_DEVICE_ERROR;
+	case HIPBLAS_STATUS_EXECUTION_FAILED: return BF_STATUS_DEVICE_ERROR;
+	case HIPBLAS_STATUS_INTERNAL_ERROR:   return BF_STATUS_DEVICE_ERROR;
+	case HIPBLAS_STATUS_NOT_SUPPORTED:    return BF_STATUS_UNSUPPORTED;
+	case HIPBLAS_STATUS_UNKNOWN:    return BF_STATUS_DEVICE_ERROR;
 	default: return BF_STATUS_INTERNAL_ERROR;
     }
 }
 
-#define BF_CHECK_CUBLAS_EXCEPTION(call) \
+#define BF_CHECK_HIPBLAS_EXCEPTION(call) \
 	do { \
-		cublasStatus_t cublas_ret = call; \
-		if( cublas_ret != CUBLAS_STATUS_SUCCESS ) { \
-			BF_DEBUG_PRINT(_cublasGetErrorString(cublas_ret)); \
+		hipblasStatus_t hipblas_ret = call; \
+		if( hipblas_ret != HIPBLAS_STATUS_SUCCESS ) { \
+			BF_DEBUG_PRINT(_hipblasGetErrorString(hipblas_ret)); \
 		} \
-		BF_ASSERT_EXCEPTION(cublas_ret == CUBLAS_STATUS_SUCCESS, \
-		                    bifrost_status(cublas_ret)); \
+		BF_ASSERT_EXCEPTION(hipblas_ret == HIPBLAS_STATUS_SUCCESS, \
+		                    bifrost_status(hipblas_ret)); \
 	} while(0)
 
-#define BF_CHECK_CUBLAS(call) \
+#define BF_CHECK_HIPBLAS(call) \
 	do { \
-		cublasStatus_t cublas_ret = call; \
-		if( cublas_ret != CUBLAS_STATUS_SUCCESS ) { \
-			BF_DEBUG_PRINT(_cublasGetErrorString(cublas_ret)); \
+		hipblasStatus_t hipblas_ret = call; \
+		if( hipblas_ret != HIPBLAS_STATUS_SUCCESS ) { \
+			BF_DEBUG_PRINT(_hipblasGetErrorString(hipblas_ret)); \
 		} \
-		BF_ASSERT(cublas_ret == CUBLAS_STATUS_SUCCESS, \
-		          bifrost_status(cublas_ret)); \
+		BF_ASSERT(hipblas_ret == HIPBLAS_STATUS_SUCCESS, \
+		          bifrost_status(hipblas_ret)); \
 	} while(0)
 
 void bf_cherk_N(int N, int K, int nbatch,
@@ -98,7 +101,7 @@ void bf_cherk_N(int N, int K, int nbatch,
                 BFdtype C_type,
                 int C_stride,
                 int C_batchstride,
-                cudaStream_t stream);
+                hipStream_t stream);
 
 void bf_cgemm_TN_smallM(int M,
                         int N,
@@ -118,4 +121,4 @@ void bf_cgemm_TN_smallM(int M,
                         BFdtype C_type,
                         int C_stride,
                         int C_batchstride,
-                        cudaStream_t stream);
+                        hipStream_t stream);

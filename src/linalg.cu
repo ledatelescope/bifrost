@@ -55,7 +55,11 @@
               Eventually it will probably be worth integrating the xGPU kernel,
                 given the lack of cublasHerkEx (particularly the small-N problem).
 */
+#ifndef ROCM_MATHLIBS_API_USE_HIP_COMPLEX
+#define ROCM_MATHLIBS_API_USE_HIP_COMPLEX 1
+#endif
 
+#include <hip/hip_runtime.h>
 #include <bifrost/linalg.h>
 #include "linalg_kernels.h"
 #include "assert.hpp"
@@ -65,27 +69,28 @@
 #include "ShapeIndexer.cuh"
 #include "trace.hpp"
 #include "Complex.hpp"
+#include <hipblas/hipblas.h>
 
 class BFlinalg_impl {
-	cublasHandle_t _cublas;
+	hipblasHandle_t _cublas;
 	// No copy-assign
 	BFlinalg_impl(BFlinalg_impl const& );
 	BFlinalg_impl& operator=(BFlinalg_impl const& );
 public:
 	BFlinalg_impl() {
-		BF_CHECK_CUBLAS_EXCEPTION(cublasCreate(&_cublas));
+		BF_CHECK_HIPBLAS_EXCEPTION(hipblasCreate(&_cublas));
 	}
 	~BFlinalg_impl() {
 		if( _cublas ) {
-			cublasDestroy(_cublas);
+			hipblasDestroy(_cublas);
 		}
 	}
-	cublasHandle_t cublas() const { return _cublas; }
+	hipblasHandle_t cublas() const { return _cublas; }
 };
 
 BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
-                                  cudaStream_t stream,
-                                  cublasOperation_t trans,
+                                  hipStream_t stream,
+                                  hipblasOperation_t trans,
                                   long        n,
                                   long        k,
                                   double      alpha,
@@ -97,11 +102,11 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
                                   BFdtype     c_type,
                                   long        c_stride) {
 	BF_TRACE_STREAM(stream);
-	BF_CHECK_CUBLAS(cublasSetStream(handle->cublas(), stream));
+	BF_CHECK_HIPBLAS(hipblasSetStream(handle->cublas(), stream));
 	// Note: UPPER here means lower for row-major ordering
-	cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
-	BF_CHECK_CUBLAS(cublasSetPointerMode(handle->cublas(),
-	                                     CUBLAS_POINTER_MODE_HOST));
+	hipblasFillMode_t uplo = HIPBLAS_FILL_MODE_UPPER;
+	BF_CHECK_HIPBLAS(hipblasSetPointerMode(handle->cublas(),
+	                                     HIPBLAS_POINTER_MODE_HOST));
 	BF_ASSERT(a_data, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(c_data, BF_STATUS_INVALID_POINTER);
 	switch( a_type ) {
@@ -109,7 +114,7 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
 		BF_ASSERT(c_type == BF_DTYPE_F32, BF_STATUS_UNSUPPORTED_DTYPE);
 		float alpha_f = (float)alpha;
 		float beta_f  = (float)beta;
-		BF_CHECK_CUBLAS(cublasSsyrk(handle->cublas(), uplo, trans,
+		BF_CHECK_HIPBLAS(hipblasSsyrk(handle->cublas(), uplo, trans,
 		                            n, k,
 		                            &alpha_f,
 		                            (float*)a_data, a_stride,
@@ -119,7 +124,7 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
 	}
 	case BF_DTYPE_F64: {
 		BF_ASSERT(c_type == BF_DTYPE_F64, BF_STATUS_UNSUPPORTED_DTYPE);
-		BF_CHECK_CUBLAS(cublasDsyrk(handle->cublas(), uplo, trans,
+		BF_CHECK_HIPBLAS(hipblasDsyrk(handle->cublas(), uplo, trans,
 		                            n, k,
 		                            &alpha,
 		                            (double*)a_data, a_stride,
@@ -133,17 +138,17 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
 		float alpha_f = (float)alpha;
 		float beta_f  = (float)beta;
 		if( get_cuda_device_cc() >= 50 ) {
-			BF_CHECK_CUBLAS(cublasCherk3mEx(handle->cublas(), uplo, trans,
-			                                n, k,
-			                                &alpha_f,
-			                                (cuComplex*)a_data,
-			                                CUDA_C_8I,
-			                                a_stride,
-			                                &beta_f,
-			                                (cuComplex*)c_data,
-			                                CUDA_C_32F,
-			                                c_stride));
-			break;
+			// BF_CHECK_CUBLAS(cublasCherk3mEx(handle->cublas(), uplo, trans,
+			//                                 n, k,
+			//                                 &alpha_f,
+			//                                 (hipComplex*)a_data,
+			//                                 HIPBLAS_C_8I,
+			//                                 a_stride,
+			//                                 &beta_f,
+			//                                 (hipComplex*)c_data,
+			//                                 HIPBLAS_C_32F,
+			//                                 c_stride));
+			// break;
 		}
 		BF_FAIL("Supported dtype for array a", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
@@ -154,35 +159,35 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
 		float beta_f  = (float)beta;
 #if CUDART_VERSION >= 8000
 		if( get_cuda_device_cc() >= 50 ) {
-			BF_CHECK_CUBLAS(cublasCherk3mEx(handle->cublas(), uplo, trans,
-			                                n, k,
-			                                &alpha_f,
-			                                (cuComplex*)a_data,
-			                                CUDA_C_32F,
-			                                a_stride,
-			                                &beta_f,
-			                                (cuComplex*)c_data,
-			                                CUDA_C_32F,
-			                                c_stride));
-			break;
+			// BF_CHECK_CUBLAS(cublasCherk3mEx(handle->cublas(), uplo, trans,
+			//                                 n, k,
+			//                                 &alpha_f,
+			//                                 (hipComplex*)a_data,
+			//                                 HIPBLAS_C_32F,
+			//                                 a_stride,
+			//                                 &beta_f,
+			//                                 (hipComplex*)c_data,
+			//                                 HIPBLAS_C_32F,
+			//                                 c_stride));
+			// break;
 		}
 #endif
-		BF_CHECK_CUBLAS(cublasCherk(handle->cublas(), uplo, trans,
+		BF_CHECK_HIPBLAS(hipblasCherk(handle->cublas(), uplo, trans,
 		                            n, k,
 		                            &alpha_f,
-		                            (cuComplex*)a_data, a_stride,
+		                            (hipComplex*)a_data, a_stride,
 		                            &beta_f,
-		                            (cuComplex*)c_data, c_stride));
+		                            (hipComplex*)c_data, c_stride));
 		break;
 	}
 	case BF_DTYPE_CF64: {
 		BF_ASSERT(c_type == BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
-		BF_CHECK_CUBLAS(cublasZherk(handle->cublas(), uplo, trans,
+		BF_CHECK_HIPBLAS(hipblasZherk(handle->cublas(), uplo, trans,
 		                            n, k,
 		                            &alpha,
-		                            (cuDoubleComplex*)a_data, a_stride,
+		                            (hipDoubleComplex*)a_data, a_stride,
 		                            &beta,
-		                            (cuDoubleComplex*)c_data, c_stride));
+		                            (hipDoubleComplex*)c_data, c_stride));
 		break;
 	}
 	default:
@@ -192,8 +197,8 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
 }
 
 BFstatus bfMatMul_aa_exec(BFlinalg    handle,
-                          cudaStream_t stream,
-                          cublasOperation_t trans,
+                          hipStream_t stream,
+                          hipblasOperation_t trans,
                           long        n,
                           long        k,
                           long        nbatch,
@@ -213,8 +218,10 @@ BFstatus bfMatMul_aa_exec(BFlinalg    handle,
 	//bool use_bf_cherk = use_bf_cherk_str && atoi(use_bf_cherk_str);
 	enum { BF_CUBLAS_CHERK_THRESHOLD = 896 };
 	if( //use_bf_cherk &&
-	    (CUDART_VERSION < 8000 || n < BF_CUBLAS_CHERK_THRESHOLD) &&
-	    trans == CUBLAS_OP_N &&
+#if !defined(CUDART_VERSION) || CUDART_VERSION >= 8000
+		n < BF_CUBLAS_CHERK_THRESHOLD &&
+#endif
+	    trans == HIPBLAS_OP_N &&
 	    n % 2 == 0 &&
 	    a_stride % 2 == 0 && a_batchstride % 2 == 0 &&
 	    c_stride % 2 == 0 && c_batchstride % 2 == 0 &&
@@ -312,7 +319,7 @@ BFstatus bfMatMul_aa(BFlinalg       handle,
 		cstrides[d] /= BF_DTYPE_NBYTE(c->dtype);
 	}
 	// Determine transposition based on strides, and update strides
-	cublasOperation_t trans;
+	hipblasOperation_t trans;
 	if( astrides[ndim-1] < astrides[ndim-2] ) {
 		// Note: The fastest dim cannot be a batch dim
 		BF_ASSERT(astrides[ndim-1] == 1, BF_STATUS_UNSUPPORTED_STRIDE);
@@ -320,9 +327,9 @@ BFstatus bfMatMul_aa(BFlinalg       handle,
 			// Note: Because BLAS uses col-major ordering, we can only support
 			//         the non-conjugated case here.
 			BF_ASSERT(!a->conjugated, BF_STATUS_UNSUPPORTED);
-			trans = CUBLAS_OP_C;
+			trans = HIPBLAS_OP_C;
 		} else {
-			trans = CUBLAS_OP_T;
+			trans = HIPBLAS_OP_T;
 		}
 	} else if( astrides[ndim-1] > astrides[ndim-2] ) {
 		// Note: The fastest dim cannot be a batch dim
@@ -332,7 +339,7 @@ BFstatus bfMatMul_aa(BFlinalg       handle,
 		if( BF_DTYPE_IS_COMPLEX(a->dtype) ) {
 			BF_ASSERT(a->conjugated, BF_STATUS_UNSUPPORTED);
 		}
-		trans = CUBLAS_OP_N;
+		trans = HIPBLAS_OP_N;
 		std::swap(astrides[ndim-1], astrides[ndim-2]);
 	} else {
 		// TODO: I think this actually occurs legitimately when shape[-1] = 1
@@ -361,9 +368,9 @@ BFstatus bfMatMul_aa(BFlinalg       handle,
 }
 
 BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
-                                  cudaStream_t stream,
-                                  cublasOperation_t trans_a,
-                                  cublasOperation_t trans_b,
+                                  hipStream_t stream,
+                                  hipblasOperation_t trans_a,
+                                  hipblasOperation_t trans_b,
                                   long        m,
                                   long        n,
                                   long        k,
@@ -379,9 +386,9 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
                                   BFdtype     c_type,
                                   long        c_stride) {
 	BF_TRACE_STREAM(stream);
-	BF_CHECK_CUBLAS(cublasSetStream(handle->cublas(), stream));
-	BF_CHECK_CUBLAS(cublasSetPointerMode(handle->cublas(),
-	                                     CUBLAS_POINTER_MODE_HOST));
+	BF_CHECK_HIPBLAS(hipblasSetStream(handle->cublas(), stream));
+	BF_CHECK_HIPBLAS(hipblasSetPointerMode(handle->cublas(),
+	                                     HIPBLAS_POINTER_MODE_HOST));
 	BF_ASSERT(a_data, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(b_data, BF_STATUS_INVALID_POINTER);
 	BF_ASSERT(c_data, BF_STATUS_INVALID_POINTER);
@@ -393,7 +400,7 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
 		BF_ASSERT(c_type == BF_DTYPE_F32, BF_STATUS_UNSUPPORTED_DTYPE);
 		float alpha_f = (float)alpha;
 		float beta_f  = (float)beta;
-		BF_CHECK_CUBLAS(cublasSgemm(handle->cublas(), trans_a, trans_b,
+		BF_CHECK_HIPBLAS(hipblasSgemm(handle->cublas(), trans_a, trans_b,
 		                            m, n, k,
 		                            &alpha_f,
 		                            (float*)a_data, a_stride,
@@ -404,7 +411,7 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
 	}
 	case BF_DTYPE_F64: {
 		BF_ASSERT(c_type == BF_DTYPE_F64, BF_STATUS_UNSUPPORTED_DTYPE);
-		BF_CHECK_CUBLAS(cublasDgemm(handle->cublas(), trans_a, trans_b,
+		BF_CHECK_HIPBLAS(hipblasDgemm(handle->cublas(), trans_a, trans_b,
 		                            m, n, k,
 		                            &alpha,
 		                            (double*)a_data, a_stride,
@@ -416,66 +423,68 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
 #if CUDART_VERSION >= 8000
 	case BF_DTYPE_CI8: {
 		BF_ASSERT(c_type == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
-		cuComplex alpha_cf = make_cuComplex(alpha, 0);
-		cuComplex beta_cf  = make_cuComplex(beta,  0);
-		if( get_cuda_device_cc() >= 50 ) {
-			BF_CHECK_CUBLAS(cublasCgemmEx(handle->cublas(), trans_a, trans_b,
+		hipComplex alpha_cf = make_hipComplex(alpha, 0);
+		hipComplex beta_cf = make_hipComplex(beta,  0);
+		//if( get_cuda_device_cc() >= 50 ) {
+			BF_CHECK_HIPBLAS(hipblasGemmEx(handle->cublas(), trans_a, trans_b,
 			                              m, n, k,
 			                              &alpha_cf,
-			                              (cuComplex*)a_data,
-			                              CUDA_C_8I,
+			                              (hipComplex*)a_data,
+			                              HIPBLAS_C_8I,
 			                              a_stride,
-			                              (cuComplex*)b_data,
-			                              CUDA_C_8I,
+			                              (hipComplex*)b_data,
+			                              HIPBLAS_C_8I,
 			                              b_stride,
 			                              &beta_cf,
-			                              (cuComplex*)c_data,
-			                              CUDA_C_32F,
-			                              c_stride));
+			                              (hipComplex*)c_data,
+			                              HIPBLAS_C_32F,
+			                              c_stride,
+										  HIPBLAS_C_32F,
+										  HIPBLAS_GEMM_DEFAULT));
 			break;
-		}
+		//}
 		BF_FAIL("Supported dtype for input array", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 #endif
 	case BF_DTYPE_CF32: {
 		BF_ASSERT(c_type == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
-		cuComplex alpha_cf = make_cuComplex(alpha, 0);
-		cuComplex beta_cf  = make_cuComplex(beta,  0);
+		hipComplex alpha_cf = make_hipComplex(alpha, 0);
+		hipComplex beta_cf = make_hipComplex(beta,  0);
 #if CUDART_VERSION >= 8000
 		if( get_cuda_device_cc() >= 50 ) {
-			BF_CHECK_CUBLAS(cublasCgemm3m(handle->cublas(), trans_a, trans_b,
-			                              m, n, k,
-			                              &alpha_cf,
-			                              (cuComplex*)a_data,
-			                              a_stride,
-			                              (cuComplex*)b_data,
-			                              b_stride,
-			                              &beta_cf,
-			                              (cuComplex*)c_data,
-			                              c_stride));
-			break;
+			// BF_CHECK_CUBLAS(cublasCgemm3m(handle->cublas(), trans_a, trans_b,
+			//                               m, n, k,
+			//                               &alpha_cf,
+			//                               (hipComplex*)a_data,
+			//                               a_stride,
+			//                               (hipComplex*)b_data,
+			//                               b_stride,
+			//                               &beta_cf,
+			//                               (hipComplex*)c_data,
+			//                               c_stride));
+			// break;
 		}
 #endif
-		BF_CHECK_CUBLAS(cublasCgemm(handle->cublas(), trans_a, trans_b,
+		BF_CHECK_HIPBLAS(hipblasCgemm(handle->cublas(), trans_a, trans_b,
 		                            m, n, k,
 		                            &alpha_cf,
-		                            (cuComplex*)a_data, a_stride,
-		                            (cuComplex*)b_data, b_stride,
+		                            (hipComplex*)a_data, a_stride,
+		                            (hipComplex*)b_data, b_stride,
 		                            &beta_cf,
-		                            (cuComplex*)c_data, c_stride));
+		                            (hipComplex*)c_data, c_stride));
 		break;
 	}
 	case BF_DTYPE_CF64: {
-		cuDoubleComplex alpha_cd = make_cuDoubleComplex(alpha, 0);
-		cuDoubleComplex beta_cd  = make_cuDoubleComplex(beta,  0);
+		hipDoubleComplex alpha_cd = make_hipDoubleComplex(alpha, 0);
+		hipDoubleComplex beta_cd = make_hipDoubleComplex(beta,  0);
 		BF_ASSERT(c_type == BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
-		BF_CHECK_CUBLAS(cublasZgemm(handle->cublas(), trans_a, trans_b,
+		BF_CHECK_HIPBLAS(hipblasZgemm(handle->cublas(), trans_a, trans_b,
 		                            m, n, k,
 		                            &alpha_cd,
-		                            (cuDoubleComplex*)a_data, a_stride,
-		                            (cuDoubleComplex*)b_data, b_stride,
+		                            (hipDoubleComplex*)a_data, a_stride,
+		                            (hipDoubleComplex*)b_data, b_stride,
 		                            &beta_cd,
-		                            (cuDoubleComplex*)c_data, c_stride));
+		                            (hipDoubleComplex*)c_data, c_stride));
 		break;
 	}
 	default:
@@ -485,9 +494,9 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
 }
 
 BFstatus bfMatMul_ab_exec(BFlinalg    handle,
-                          cudaStream_t stream,
-                          cublasOperation_t trans_a,
-                          cublasOperation_t trans_b,
+                          hipStream_t stream,
+                          hipblasOperation_t trans_a,
+                          hipblasOperation_t trans_b,
                           long        m,
                           long        n,
                           long        k,
@@ -512,7 +521,7 @@ BFstatus bfMatMul_ab_exec(BFlinalg    handle,
 	//bool use_bf_cgemm = use_bf_cgemm_str && atoi(use_bf_cgemm_str);
 	if( //use_bf_cgemm &&
 	    n <= 12 &&
-	    trans_a == CUBLAS_OP_T && trans_b == CUBLAS_OP_N &&
+	    trans_a == HIPBLAS_OP_T && trans_b == HIPBLAS_OP_N &&
 	    (a_type == BF_DTYPE_CI4  || a_type == BF_DTYPE_CI8) &&
 	    (b_type == BF_DTYPE_CI16 || b_type == BF_DTYPE_CF16 || b_type == BF_DTYPE_CF32) &&
 	    c_type == BF_DTYPE_CF32 ) {
@@ -615,21 +624,21 @@ BFstatus bfMatMul_ab(BFlinalg       handle,
 		cstrides[d] /= BF_DTYPE_NBYTE(c->dtype);
 	}
 	// Determine transposition based on strides, and update strides
-	cublasOperation_t trans_a;
-	cublasOperation_t trans_b;
+	hipblasOperation_t trans_a;
+	hipblasOperation_t trans_b;
 	if( astrides[ndim-1] < astrides[ndim-2] ) {
 		// Note: The fastest dim cannot be a batch dim
 		BF_ASSERT(astrides[ndim-1] == 1, BF_STATUS_UNSUPPORTED_STRIDE);
 		// TODO: Check behaviour with conjugated arrays
 		BF_ASSERT(!BF_DTYPE_IS_COMPLEX(a->dtype) || !a->conjugated,
 		          BF_STATUS_UNSUPPORTED);
-		trans_a = CUBLAS_OP_N;
+		trans_a = HIPBLAS_OP_N;
 	} else if( astrides[ndim-1] > astrides[ndim-2] ) {
 		// Note: The fastest dim cannot be a batch dim
 		BF_ASSERT(astrides[ndim-2] == 1, BF_STATUS_UNSUPPORTED_STRIDE);
 		trans_a = (BF_DTYPE_IS_COMPLEX(a->dtype) && a->conjugated ?
-		           CUBLAS_OP_C :
-		           CUBLAS_OP_T);
+		           HIPBLAS_OP_C :
+		           HIPBLAS_OP_T);
 		std::swap(astrides[ndim-1], astrides[ndim-2]);
 	} else {
 		// TODO: I think this actually occurs legitimately when shape[-1] = 1
@@ -641,13 +650,13 @@ BFstatus bfMatMul_ab(BFlinalg       handle,
 		// TODO: Check behaviour with conjugated arrays
 		BF_ASSERT(!BF_DTYPE_IS_COMPLEX(b->dtype) || !b->conjugated,
 		          BF_STATUS_UNSUPPORTED);
-		trans_b = CUBLAS_OP_N;
+		trans_b = HIPBLAS_OP_N;
 	} else if( bstrides[ndim-1] > bstrides[ndim-2] ) {
 		// Note: The fastest dim cannot be a batch dim
 		BF_ASSERT(bstrides[ndim-2] == 1, BF_STATUS_UNSUPPORTED_STRIDE);
 		trans_b = (BF_DTYPE_IS_COMPLEX(b->dtype) && b->conjugated ?
-		           CUBLAS_OP_C :
-		           CUBLAS_OP_T);
+		           HIPBLAS_OP_C :
+		           HIPBLAS_OP_T);
 		std::swap(bstrides[ndim-1], bstrides[ndim-2]);
 	} else {
 		BF_ASSERT(false, BF_STATUS_INVALID_STRIDE);
