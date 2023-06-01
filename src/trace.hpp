@@ -31,7 +31,7 @@
 #include <bifrost/config.h>
 #include "cuda.hpp"
 
-#if BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED && BF_TRACE_ENABLED
 #include <nvToolsExt.h>
 #endif
 
@@ -74,7 +74,7 @@ inline uint32_t get_color(unsigned hash) {
 }
 } // namespace profile_detail
 
-#if BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED && BF_TRACE_ENABLED
 
 namespace nvtx {
 
@@ -116,7 +116,7 @@ extern thread_local TracerStreamMap g_nvtx_streams;
 
 } // namespace nvtx
 
-#endif // BF_CUDA_ENABLED
+#endif // BF_CUDA_ENABLED && BF_TRACE_ENABLED
 
 class ScopedTracer {
 	std::string _name;
@@ -128,7 +128,7 @@ class ScopedTracer {
 	// Not copy-assignable
 	ScopedTracer(ScopedTracer const& );
 	ScopedTracer& operator=(ScopedTracer const& );
-#if BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED && BF_TRACE_ENABLED
 	void build_attrs(nvtxEventAttributes_t* attrs) {
 		::memset(attrs, 0, sizeof(*attrs));
 		attrs->version       = NVTX_VERSION;
@@ -141,7 +141,7 @@ class ScopedTracer {
 	}
 #endif
 public:
-#if BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED && BF_TRACE_ENABLED
 	inline ScopedTracer(std::string name, cudaStream_t stream=0)
 		: _name(name),
 		  _color(profile_detail::get_color(profile_detail::simple_hash(name.c_str()))),
