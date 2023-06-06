@@ -127,7 +127,7 @@ BFstatus bfMalloc(void** ptr, BFsize size, BFspace space) {
 	}
 	case BF_SPACE_CUDA_HOST: {
 		unsigned flags = hipHostMallocDefault;
-		BF_CHECK_HIP(hipHostAlloc((void**)&data, size, flags),
+		BF_CHECK_HIP(hipHostMalloc((void**)&data, size, flags),
 		              BF_STATUS_MEM_ALLOC_FAILED);
 		break;
 	}
