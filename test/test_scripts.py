@@ -62,7 +62,11 @@ class ScriptTest(unittest.TestCase):
         
         pylint_output = StringIO()
         reporter = TextReporter(pylint_output)
-        Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter, do_exit=False)
+        try:
+            Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter, do_exit=False)
+        except TypeError:
+            # Python2 catch
+            Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter)
         out = pylint_output.getvalue()
         out_lines = out.split('\n')
         
