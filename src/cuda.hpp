@@ -123,8 +123,7 @@ class CUDAKernel {
 		}
 	}
 	inline void create_module(void** optvals=0) {
-		cuda_safe_call(hipModuleLoadDataEx(&_module, _ptx.c_str(),
-		                                  _opts.size(), &_opts[0], optvals));
+		cuda_safe_call(hipModuleLoadData(&_module, _ptx.c_str()));
 		cuda_safe_call(hipModuleGetFunction(&_kernel, _module,
 		                                   _func_name.c_str()));
 	}
@@ -143,8 +142,8 @@ public:
 			this->create_module();
 		}
 	}
-	inline CUDAKernel(const char*   func_name,
-	                  const char*   ptx,
+	inline CUDAKernel(const std::string   func_name,
+	                  const std::string   ptx,
 	                  unsigned int  nopts=0,
 	                  hipJitOption* opts=0,
 	                  void**        optvals=0) {
@@ -153,8 +152,8 @@ public:
 		_opts.assign(opts, opts + nopts);
 		this->create_module(optvals);
 	}
-	inline CUDAKernel& set(const char*   func_name,
-	                       const char*   ptx,
+	inline CUDAKernel& set(const std::string   func_name,
+	                       const std::string   ptx,
 	                       unsigned int  nopts=0,
 	                       hipJitOption* opts=0,
 	                       void**        optvals=0) {

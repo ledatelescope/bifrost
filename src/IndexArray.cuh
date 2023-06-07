@@ -42,7 +42,7 @@ struct StaticIndexArray {
 	typedef I type;
 	static constexpr int size = sizeof...(VALS);
 	//const I values[sizeof...(VALS...)] = {VALS...};
-	static const I values[sizeof...(VALS)];
+	static constexpr I values[sizeof...(VALS)] = {VALS...};
 	//inline static const I at(int i) { return values[i]; }
 /*
 private:
@@ -53,8 +53,6 @@ public:
 };
 //template<typename I, I... Vals>
 //static constexpr I StaticIndexArray::values[] = {Vals...};
-template<typename I, I... VALS>
-const I StaticIndexArray<I,VALS...>::values[sizeof...(VALS)] = {VALS...};
 
 // TODO: Can only align this when N is a power of 2
 template<typename T, int N>

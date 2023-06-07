@@ -389,16 +389,15 @@ BFstatus build_map_kernel(int*                 external_ndim,
 	size_t ptxsize;
 	BF_CHECK_NVRTC( hiprtcGetCodeSize(program, &ptxsize) );
 	std::vector<char> vptx(ptxsize);
-	char* ptx = &vptx[0];
-	BF_CHECK_NVRTC( hiprtcGetCode(program, &ptx[0]) );
+	BF_CHECK_NVRTC( hiprtcGetCode(program, vptx.data()) );
 	BF_CHECK_NVRTC( hiprtcDestroyProgram(&program) );
 #if BF_DEBUG_ENABLED
 	if( EnvVars::get("BF_PRINT_MAP_KERNELS_PTX", "0") != "0" ) {
-		std::cout << ptx << std::endl;
+		std::cout << vptx.data() << std::endl;
 	}
 #endif
-	*ptx_string = ptx;
-	*kernel_name_ptr = kernel_name;
+	*ptx_string = {vptx.begin(), vptx.end()};
+	*kernel_name_ptr = {kernel_name.begin(), kernel_name.end()};
 	// TODO: Can't do this, because this function may be cached
 	//         **Clean this up!
 	//*external_ndim = ndim;
@@ -731,7 +730,7 @@ BFstatus bfMap(int                  ndim,
 			                          &ptx, &kernel_name));
 		}
 		CUDAKernel kernel;
-		BF_TRY(kernel.set(kernel_name.c_str(), ptx.c_str()));
+		BF_TRY(kernel.set(kernel_name, ptx));
 		kernel_cache.insert(cache_key,
 		                    std::make_pair(kernel, basic_indexing_only));
 #if defined(BF_MAP_KERNEL_DISK_CACHE) && BF_MAP_KERNEL_DISK_CACHE
