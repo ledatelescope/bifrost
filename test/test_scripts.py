@@ -52,6 +52,7 @@ try:
     run_scripts_tests = True
 except ImportError:
     pass
+run_scipts_tests &= (sys.version_info[0] >= 3)
 
 _LINT_RE = re.compile('(?P<module>.*?)\:(?P<line>\d+)\: \[(?P<type>.*?)\] (?P<info>.*)')
 
