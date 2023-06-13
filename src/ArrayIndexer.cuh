@@ -120,10 +120,10 @@ public:
 		(T&)*this = val;
 		return *this;
 	}
-	inline T*       operator->()       { return &(T&)*this; }
-	inline T const* operator->() const { return &(T&)*this; }
-	inline T&       operator*()        { return  (T&)*this; }
-	inline T const& operator*()  const { return  (T&)*this; }
+	__device__ __host__ inline T*       operator->()       { return &(T&)*this; }
+	__device__ __host__ inline T const* operator->() const { return &(T&)*this; }
+	__device__ __host__ inline T&       operator*()        { return  (T&)*this; }
+	__device__ __host__ inline T const& operator*()  const { return  (T&)*this; }
 };
 
 template<typename T, class Shape, class Strides>
@@ -175,6 +175,7 @@ public:
 	}
 	*/
 	template<int IND_NDIM, typename... IndsEnd>
+	__host__ __device__
 	typename ArrayIndexer_detail::enable_if<
 		(sizeof...(IndsEnd) > 0),
 		reference_type>::type

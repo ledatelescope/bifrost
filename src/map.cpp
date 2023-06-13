@@ -342,9 +342,13 @@ BFstatus build_map_kernel(int*                 external_ndim,
 #if defined(BF_MAP_KERNEL_STDCXX)
 	cs_ss << BF_MAP_KERNEL_STDCXX;
 #else
-	cs_ss << "c++11";
+	cs_ss << "c++14";
 #endif
 	options.push_back("--std="+cs_ss.str());
+#ifdef __HIP_PLATFORM_AMD__
+	options.push_back("-ffast-math");
+#endif // __HIP_PLATFORM_NVIDIA__
+#ifdef __HIP_PLATFORM_NVIDIA__
 	options.push_back("--device-as-default-execution-space");
 	options.push_back("--use_fast_math");
 	std::stringstream cc_ss;
@@ -355,6 +359,7 @@ BFstatus build_map_kernel(int*                 external_ndim,
 #endif
 	options.push_back("-arch="+cc_ss.str());
 	options.push_back("--restrict");
+#endif // __HIP_PLATFORM_NVIDIA__
 	std::vector<const char*> options_c;
 	for( int i=0; i<(int)options.size(); ++i ) {
 		options_c.push_back(options[i].c_str());

@@ -91,6 +91,7 @@ public:
 	reference       operator[](int i)       { return vals_[i]; }
 	
 	template<int M>
+	__host__ __device__
 	IndexArray<T,N+M> join(IndexArray<T,M> const& other) {
 		T vals[N+M];
 		for( int i=0; i<N; ++i ) {
