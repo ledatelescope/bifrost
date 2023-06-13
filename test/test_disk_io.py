@@ -32,7 +32,7 @@ import threading
 import bifrost as bf
 from bifrost.ring import Ring
 from bifrost.packet_writer import HeaderInfo, DiskWriter
-from bifrost.packet_capture import PacketCaptureCallback, DiskReader
+from bifrost.packet_capture import DiskReader
 from bifrost.quantize import quantize
 from bifrost.pipeline import SourceBlock, SinkBlock
 import numpy as np
@@ -68,10 +68,8 @@ class TBNReader(object):
         hdr_size_ptr[0] = len(hdr_str)
         return 0
     def main(self):
-        seq_callback = PacketCaptureCallback()
-        seq_callback.set_tbn(self.callback)
-        with DiskReader("tbn", self.sock, self.ring, 32, 0, 49, 196,
-                        sequence_callback=seq_callback) as capture:
+        with DiskReader("tbn", self.sock, self.ring, 32, 0, 49, 196) as capture:
+            capture.set_callback(self.callback)
             while True:
                 status = capture.recv()
                 if status in (1,4,5,6):
@@ -112,10 +110,8 @@ class DRXReader(object):
         hdr_size_ptr[0] = len(hdr_str)
         return 0
     def main(self):
-        seq_callback = PacketCaptureCallback()
-        seq_callback.set_drx(self.callback)
-        with DiskReader("drx", self.sock, self.ring, self.nsrc, 0, 49, 49,
-                        sequence_callback=seq_callback) as capture:
+        with DiskReader("drx", self.sock, self.ring, self.nsrc, 0, 49, 49) as capture:
+            capture.set_callback(self.callback)
             while True:
                 status = capture.recv()
                 if status in (1,4,5,6):
@@ -156,10 +152,8 @@ class PBeamReader(object):
         hdr_size_ptr[0] = len(hdr_str)
         return 0
     def main(self):
-        seq_callback = PacketCaptureCallback()
-        seq_callback.set_pbeam(self.callback)
-        with DiskReader("pbeam_%i" % self.nchan, self.sock, self.ring, self.nsrc, 1, 240, 240,
-                        sequence_callback=seq_callback) as capture:
+        with DiskReader("pbeam_%i" % self.nchan, self.sock, self.ring, self.nsrc, 1, 240, 240) as capture:
+            capture.set_callback(self.callback)
             while True:
                 status = capture.recv()
                 if status in (1,4,5,6):
