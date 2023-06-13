@@ -286,7 +286,7 @@ DEFINE_BINARY_OPERATOR(/)
 namespace detail {
 
 template<typename T, typename U>
-#if BF_CUDA_ENABLED
+#ifdef __HIPCC__
 __host__ __device__
 #endif
 inline T type_pun(U x) {
@@ -303,9 +303,9 @@ inline T type_pun(U x) {
 
 }
 
-#ifdef __HIP_DEVICE_COMPILE__
+#ifdef __HIPCC__
 #if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
-__host__ __device__
+__device__
 inline Complex<float> __shfl_sync(unsigned mask, Complex<float> const& c,
                                   int index, int width=warpSize) {
 	typedef unsigned long long shfl_type;
@@ -313,7 +313,7 @@ inline Complex<float> __shfl_sync(unsigned mask, Complex<float> const& c,
 		__shfl_sync(mask, detail::type_pun<shfl_type>(c), index, width));
 }
 #else
-__host__ __device__
+__device__
 inline Complex<float> __shfl(Complex<float> const c,
                              int index, int width=warpSize) {
 	typedef unsigned long long shfl_type;
@@ -321,7 +321,7 @@ inline Complex<float> __shfl(Complex<float> const c,
 		__shfl(detail::type_pun<shfl_type>(c), index, width));
 }
 #endif
-#endif // __HIP_DEVICE_COMPILE__
+#endif // __HIPCC__
 
 __host__ __device__
 inline Complex<float> rintf(Complex<float> const& c) {
