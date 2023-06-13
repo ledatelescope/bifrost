@@ -122,7 +122,7 @@ class ScopedTracer {
 	std::string _name;
 	uint32_t    _color;
 	uint32_t    _category;
-#if BF_CUDA_ENABLED
+#if BF_CUDA_ENABLED && BF_TRACE_ENABLED
 	cudaStream_t _stream;
 #endif
 	// Not copy-assignable
