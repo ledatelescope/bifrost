@@ -317,7 +317,7 @@ BFstatus bfPacketCaptureSetCallback(BFpacketcapture obj,
                                     BFpacketcapture_base_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_callback(callback);
-    return BF_STATUS_SUCCESS;)
+    return BF_STATUS_SUCCESS;
 }
 
 BFstatus bfPacketCaptureRecv(BFpacketcapture obj,
