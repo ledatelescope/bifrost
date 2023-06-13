@@ -33,40 +33,6 @@ import ctypes
 from functools import reduce
 
 
-class PacketCaptureCallback(BifrostObject):
-    _ref_cache = {}
-    def __init__(self):
-        BifrostObject.__init__(
-            self, _bf.bfPacketCaptureCallbackCreate, _bf.bfPacketCaptureCallbackDestroy)
-    def set_chips(self, fnc):
-        self._ref_cache['chips'] = _bf.BFpacketcapture_chips_sequence_callback(fnc)
-        _check(_bf.bfPacketCaptureCallbackSetCHIPS(
-               self.obj, self._ref_cache['chips']))
-    def set_ibeam(self, fnc):
-        self._ref_cache['ibeam'] = _bf.BFpacketcapture_ibeam_sequence_callback(fnc)
-        _check(_bf.bfPacketCaptureCallbackSetIBeam(
-               self.obj, self._ref_cache['ibeam']))
-    def set_pbeam(self, fnc):
-        self._ref_cache['pbeam'] = _bf.BFpacketcapture_pbeam_sequence_callback(fnc)
-        _check(_bf.bfPacketCaptureCallbackSetPBeam(
-               self.obj, self._ref_cache['pbeam']))
-    def set_cor(self, fnc):
-        self._ref_cache['cor'] = _bf.BFpacketcapture_cor_sequence_callback(fnc)
-        _check(_bf.bfPacketCaptureCallbackSetCOR(
-               self.obj, self._ref_cache['cor']))
-    def set_vdif(self, fnc):
-        self._ref_cache['vdif'] = _bf.BFpacketcapture_vdif_sequence_callback(fnc)
-        _check(_bf.bfPacketCaptureCallbackSetVDIF(
-               self.obj, self._ref_cache['vdif']))
-    def set_tbn(self, fnc):
-        self._ref_cache['tbn'] = _bf.BFpacketcapture_tbn_sequence_callback(fnc)
-        _check(_bf.bfPacketCaptureCallbackSetTBN(
-               self.obj, self._ref_cache['tbn']))
-    def set_drx(self, fnc):
-        self._ref_cache['drx'] = _bf.BFpacketcapture_drx_sequence_callback(fnc)
-        _check(_bf.bfPacketCaptureCallbackSetDRX(
-            self.obj, self._ref_cache['drx']))
-
 class _CaptureBase(BifrostObject):
     @staticmethod
     def _flatten_value(value):
@@ -87,10 +53,14 @@ class _CaptureBase(BifrostObject):
         _check(_bf.bfPacketCaptureFlush(self.obj))
     def end(self):
         _check(_bf.bfPacketCaptureEnd(self.obj))
+    def set_callback(self, fnc):
+        self._seq_callback = _bf.BFpacketcapture_drx_sequence_callback(fnc)
+        _check(_bf.bfPacketCaptureSetCallback(
+               self.obj, self._seq_callback))
 
 class UDPCapture(_CaptureBase):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
-                 buffer_ntime, slot_ntime, sequence_callback, core=None):
+                 buffer_ntime, slot_ntime, core=None):
         try:
             fmt = fmt.encode()
         except AttributeError:
@@ -103,11 +73,11 @@ class UDPCapture(_CaptureBase):
             self, _bf.bfUdpCaptureCreate, _bf.bfPacketCaptureDestroy,
             fmt, sock.fileno(), ring.obj, nsrc, src0,
             max_payload_size, buffer_ntime, slot_ntime,
-            sequence_callback.obj, core)
+            core)
 
 class UDPSniffer(_CaptureBase):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
-                 buffer_ntime, slot_ntime, sequence_callback, core=None):
+                 buffer_ntime, slot_ntime, core=None):
         try:
             fmt = fmt.encode()
         except AttributeError:
@@ -120,11 +90,11 @@ class UDPSniffer(_CaptureBase):
             self, _bf.bfUdpSnifferCreate, _bf.bfPacketCaptureDestroy,
             fmt, sock.fileno(), ring.obj, nsrc, src0,
             max_payload_size, buffer_ntime, slot_ntime,
-            sequence_callback.obj, core)
+            core)
 
 class UDPVerbsCapture(_CaptureBase):
     def __init__(self, fmt, sock, ring, nsrc, src0, max_payload_size,
-                 buffer_ntime, slot_ntime, sequence_callback, core=None):
+                 buffer_ntime, slot_ntime, core=None):
         try:
             fmt = fmt.encode()
         except AttributeError:
@@ -136,11 +106,11 @@ class UDPVerbsCapture(_CaptureBase):
             self, _bf.bfUdpVerbsCaptureCreate, _bf.bfPacketCaptureDestroy,
             fmt, sock.fileno(), ring.obj, nsrc, src0,
             max_payload_size, buffer_ntime, slot_ntime,
-            sequence_callback.obj, core)
+            core)
 
 class DiskReader(_CaptureBase):
     def __init__(self, fmt, fh, ring, nsrc, src0,
-                 buffer_nframe, slot_nframe, sequence_callback, core=None):
+                 buffer_nframe, slot_nframe, core=None):
         try:
             fmt = fmt.encode()
         except AttributeError:
@@ -153,7 +123,7 @@ class DiskReader(_CaptureBase):
             self, _bf.bfDiskReaderCreate, _bf.bfPacketCaptureDestroy,
             fmt, fh.fileno(), ring.obj, nsrc, src0,
             buffer_nframe, slot_nframe,
-            sequence_callback.obj, core)
+            core)
         # Make sure we start in the same place in the file
         self.seek(fh.tell(), _bf.BF_WHENCE_SET)
     def seek(self, offset, whence=_bf.BF_WHENCE_CUR):

@@ -38,39 +38,7 @@ extern "C" {
 
 // Callback setup
 
-typedef int (*BFpacketcapture_chips_sequence_callback)(BFoffset, int, int, int,
-                                                       BFoffset*, void const**, size_t*);
-typedef int (*BFpacketcapture_ibeam_sequence_callback)(BFoffset, int, int, int,
-                                                       BFoffset*, void const**, size_t*);
-typedef int (*BFpacketcapture_pbeam_sequence_callback)(BFoffset, BFoffset, int, int, int,
-                                                       int, void const**, size_t*);
-typedef int (*BFpacketcapture_cor_sequence_callback)(BFoffset, BFoffset, int, int,
-                                                     int, int, void const**, size_t*);
-typedef int (*BFpacketcapture_vdif_sequence_callback)(BFoffset, BFoffset, int, int, int,
-                                                     int, int, int, void const**, size_t*);
-typedef int (*BFpacketcapture_tbn_sequence_callback)(BFoffset, BFoffset, int, int, 
-                                                     int, void const**, size_t*);
-typedef int (*BFpacketcapture_drx_sequence_callback)(BFoffset, BFoffset, int, int, int, 
-                                                     int, void const**, size_t*);
-
-typedef struct BFpacketcapture_callback_impl* BFpacketcapture_callback;
-
-BFstatus bfPacketCaptureCallbackCreate(BFpacketcapture_callback* obj);
-BFstatus bfPacketCaptureCallbackDestroy(BFpacketcapture_callback obj);
-BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
-                                         BFpacketcapture_chips_sequence_callback callback);
-BFstatus bfPacketCaptureCallbackSetIBeam(BFpacketcapture_callback obj,
-                                         BFpacketcapture_ibeam_sequence_callback callback);
-BFstatus bfPacketCaptureCallbackSetPBeam(BFpacketcapture_callback obj,
-                                         BFpacketcapture_pbeam_sequence_callback callback);
-BFstatus bfPacketCaptureCallbackSetCOR(BFpacketcapture_callback obj,
-                                       BFpacketcapture_cor_sequence_callback callback);
-BFstatus bfPacketCaptureCallbackSetVDIF(BFpacketcapture_callback obj,
-                                        BFpacketcapture_vdif_sequence_callback callback);
-BFstatus bfPacketCaptureCallbackSetTBN(BFpacketcapture_callback obj,
-                                       BFpacketcapture_tbn_sequence_callback callback);
-BFstatus bfPacketCaptureCallbackSetDRX(BFpacketcapture_callback obj,
-                                       BFpacketcapture_drx_sequence_callback callback);
+typedef int (*BFpacketcapture_base_sequence_callback)(BFoffset, void const**, size_t*, ...);
 
 // Capture setup
 
@@ -94,7 +62,6 @@ BFstatus bfDiskReaderCreate(BFpacketcapture* obj,
                             BFsize           src0,
                             BFsize           buffer_ntime,
                             BFsize           slot_ntime,
-                            BFpacketcapture_callback sequence_callback,
                             int              core);
 BFstatus bfUdpCaptureCreate(BFpacketcapture* obj,
                             const char*      format,
@@ -105,7 +72,6 @@ BFstatus bfUdpCaptureCreate(BFpacketcapture* obj,
                             BFsize           max_payload_size,
                             BFsize           buffer_ntime,
                             BFsize           slot_ntime,
-                            BFpacketcapture_callback sequence_callback,
                             int              core);
 BFstatus bfUdpSnifferCreate(BFpacketcapture* obj,
                             const char*      format,
@@ -116,7 +82,6 @@ BFstatus bfUdpSnifferCreate(BFpacketcapture* obj,
                             BFsize           max_payload_size,
                             BFsize           buffer_ntime,
                             BFsize           slot_ntime,
-                            BFpacketcapture_callback sequence_callback,
                             int              core);
 BFstatus bfUdpVerbsCaptureCreate(BFpacketcapture* obj,
                                  const char*      format,
@@ -127,9 +92,10 @@ BFstatus bfUdpVerbsCaptureCreate(BFpacketcapture* obj,
                                  BFsize           max_payload_size,
                                  BFsize           buffer_ntime,
                                  BFsize           slot_ntime,
-                                 BFpacketcapture_callback sequence_callback,
                                  int              core);
 BFstatus bfPacketCaptureDestroy(BFpacketcapture obj);
+BFstatus bfPacketCaptureSetCallback(BFpacketcapture obj,
+                                    BFpacketcapture_base_sequence_callback callback);
 BFstatus bfPacketCaptureRecv(BFpacketcapture         obj,
                              BFpacketcapture_status* result);
 BFstatus bfPacketCaptureFlush(BFpacketcapture obj);

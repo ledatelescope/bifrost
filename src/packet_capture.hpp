@@ -371,66 +371,9 @@ inline uint64_t round_nearest(uint64_t val, uint64_t mult) {
 	return (2*val/mult+1)/2*mult;
 }
 
-class BFpacketcapture_callback_impl {
-    BFpacketcapture_chips_sequence_callback _chips_callback;
-    BFpacketcapture_ibeam_sequence_callback _ibeam_callback;
-    BFpacketcapture_pbeam_sequence_callback _pbeam_callback;
-    BFpacketcapture_cor_sequence_callback   _cor_callback;
-    BFpacketcapture_vdif_sequence_callback  _vdif_callback;
-    BFpacketcapture_tbn_sequence_callback   _tbn_callback;
-    BFpacketcapture_drx_sequence_callback   _drx_callback;
-public:
-    BFpacketcapture_callback_impl()
-     : _chips_callback(NULL), _ibeam_callback(NULL), _pbeam_callback(NULL), 
-		    _cor_callback(NULL), _vdif_callback(NULL), _tbn_callback(NULL), 
-				_drx_callback(NULL) {}
-    inline void set_chips(BFpacketcapture_chips_sequence_callback callback) {
-        _chips_callback = callback;
-    }
-    inline BFpacketcapture_chips_sequence_callback get_chips() {
-        return _chips_callback;
-    }
-    inline void set_ibeam(BFpacketcapture_ibeam_sequence_callback callback) {
-        _ibeam_callback = callback;
-    }
-    inline BFpacketcapture_ibeam_sequence_callback get_ibeam() {
-        return _ibeam_callback;
-    }
-    inline void set_pbeam(BFpacketcapture_pbeam_sequence_callback callback) {
-        _pbeam_callback = callback;
-    }
-    inline BFpacketcapture_pbeam_sequence_callback get_pbeam() {
-        return _pbeam_callback;
-    }
-    inline void set_cor(BFpacketcapture_cor_sequence_callback callback) {
-        _cor_callback = callback;
-    }
-    inline BFpacketcapture_cor_sequence_callback get_cor() {
-        return _cor_callback;
-    }
-    inline void set_vdif(BFpacketcapture_vdif_sequence_callback callback) {
-        _vdif_callback = callback;
-    }
-    inline BFpacketcapture_vdif_sequence_callback get_vdif() {
-        return _vdif_callback;
-    }
-    inline void set_tbn(BFpacketcapture_tbn_sequence_callback callback) {
-        _tbn_callback = callback;
-    }
-    inline BFpacketcapture_tbn_sequence_callback get_tbn() {
-        return _tbn_callback;
-    }
-    inline void set_drx(BFpacketcapture_drx_sequence_callback callback) {
-        _drx_callback = callback;
-    }
-    inline BFpacketcapture_drx_sequence_callback get_drx() {
-        return _drx_callback;
-    }
-};
-
 class BFpacketcapture_impl {
 protected:
-    std::string          _name;
+	std::string          _name;
 	PacketCaptureThread* _capture;
 	PacketDecoder*       _decoder;
 	PacketProcessor*     _processor;
@@ -449,6 +392,8 @@ protected:
 	int                  _nchan;
 	int                  _payload_size;
 	bool                 _active;
+	
+	BFpacketcapture_base_sequence_callback _sequence_callback;
 
 private:
 	std::chrono::high_resolution_clock::time_point _t0;
@@ -538,6 +483,7 @@ public:
 		  _perf_log(_name+"/perf"), 
 		  _nsrc(nsrc), _nseq_per_buf(buffer_ntime), _slot_ntime(slot_ntime),
 		  _seq(), _chan0(), _nchan(), _active(false),
+			_sequence_callback(NULL),
 		  _ring(ring), _oring(_ring),
 		  // TODO: Add reset method for stats
 		  _ngood_bytes(0), _nmissing_bytes(0) {
@@ -566,6 +512,9 @@ public:
 			this->end_sequence();
 		}
 	}
+	inline void set_callback(BFpacketcapture_base_sequence_callback seq_callback) {
+		_sequence_callback = seq_callback;
+	}
 	inline BFoffset seek(BFoffset offset, BFiowhence whence=BF_WHENCE_CUR) {
         BF_ASSERT(_capture->get_io_method() == BF_IO_DISK, BF_STATUS_UNSUPPORTED);
         BFoffset moved = _capture->seek(offset, whence);
@@ -586,8 +535,6 @@ public:
 class BFpacketcapture_chips_impl : public BFpacketcapture_impl {
 	ProcLog            _type_log;
 	ProcLog            _chan_log;
-	
-	BFpacketcapture_chips_sequence_callback _sequence_callback;
 	
 	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
         // TODO: Might be safer to round to nearest here, but the current firmware
@@ -617,12 +564,13 @@ class BFpacketcapture_chips_impl : public BFpacketcapture_impl {
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
-			                                   _chan0,
+																			 	 hdr,
+																			 	 hdr_size,
+																				 _chan0,
 			                                   _nchan,
 			                                   _nsrc,
-			                                   time_tag,
-			                                   hdr,
-			                                   hdr_size);
+			                                   time_tag
+			                                   );
 			if( status != 0 ) {
 			    // TODO: What to do here? Needed?
 				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -644,12 +592,10 @@ public:
 	                                  int                  nsrc,
 	                                  int                  src0,
 	                                  int                  buffer_ntime,
-	                                  int                  slot_ntime,
-	                                  BFpacketcapture_callback sequence_callback)
+	                                  int                  slot_ntime)
 		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
 		  _type_log((std::string(capture->get_name())+"/type").c_str()),
-		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
-		  _sequence_callback(sequence_callback->get_chips()) {
+		  _chan_log((std::string(capture->get_name())+"/chans").c_str()) {
 		_decoder = new CHIPSDecoder(nsrc, src0);
 		_processor = new CHIPSProcessor();
 		_type_log.update("type : %s\n", "chips");
@@ -661,8 +607,6 @@ class BFpacketcapture_ibeam_impl : public BFpacketcapture_impl {
     uint8_t            _nbeam = B;
     ProcLog            _type_log;
     ProcLog            _chan_log;
-    
-    BFpacketcapture_ibeam_sequence_callback _sequence_callback;
     
     void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
         // TODO: Might be safer to round to nearest here, but the current firmware
@@ -692,12 +636,12 @@ class BFpacketcapture_ibeam_impl : public BFpacketcapture_impl {
         
         if( _sequence_callback ) {
             int status = (*_sequence_callback)(*seq0,
+																								hdr,
+																								hdr_size,
                                                _chan0,
                                                _nchan*_nsrc,
                                                _nbeam,
-                                               time_tag,
-                                               hdr,
-                                               hdr_size);
+                                               time_tag);
             if( status != 0 ) {
                 // TODO: What to do here? Needed?
                 throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -719,12 +663,10 @@ public:
                                       int                  nsrc,
                                       int                  src0,
                                       int                  buffer_ntime,
-                                      int                  slot_ntime,
-                                      BFpacketcapture_callback sequence_callback)
+                                      int                  slot_ntime)
         : BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
           _type_log((std::string(capture->get_name())+"/type").c_str()),
-          _chan_log((std::string(capture->get_name())+"/chans").c_str()),
-          _sequence_callback(sequence_callback->get_ibeam()) {
+          _chan_log((std::string(capture->get_name())+"/chans").c_str()) {
         _decoder = new IBeamDecoder<B>(nsrc, src0);
         _processor = new IBeamProcessor<B>();
         _type_log.update("type : %s%i\n", "ibeam", _nbeam);
@@ -736,8 +678,6 @@ class BFpacketcapture_pbeam_impl : public BFpacketcapture_impl {
     uint8_t            _navg;
     ProcLog            _type_log;
     ProcLog            _chan_log;
-    
-    BFpacketcapture_pbeam_sequence_callback _sequence_callback;
     
     void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
         // TODO: Might be safer to round to nearest here, but the current firmware
@@ -770,13 +710,13 @@ class BFpacketcapture_pbeam_impl : public BFpacketcapture_impl {
         
         if( _sequence_callback ) {
             int status = (*_sequence_callback)(*seq0,
+							hdr,
+							hdr_size,
                                                *time_tag,
                                                _navg,
                                                _chan0,
                                                _nchan*_nsrc/_nbeam,
-                                               _nbeam,
-                                               hdr,
-                                               hdr_size);
+                                               _nbeam);
             if( status != 0 ) {
                 // TODO: What to do here? Needed?
                 throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -800,12 +740,10 @@ public:
                                       int                  nsrc,
                                       int                  src0,
                                       int                  buffer_ntime,
-                                      int                  slot_ntime,
-                                      BFpacketcapture_callback sequence_callback)
+                                      int                  slot_ntime)
         : BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
           _type_log((std::string(capture->get_name())+"/type").c_str()),
-          _chan_log((std::string(capture->get_name())+"/chans").c_str()),
-          _sequence_callback(sequence_callback->get_pbeam()) {
+          _chan_log((std::string(capture->get_name())+"/chans").c_str()) {
         _decoder = new PBeamDecoder(nsrc, src0);
         _processor = new PBeamProcessor();
         _type_log.update("type : %s\n", "pbeam");
@@ -815,8 +753,6 @@ public:
 class BFpacketcapture_cor_impl : public BFpacketcapture_impl {
     ProcLog          _type_log;
     ProcLog          _chan_log;
-    
-    BFpacketcapture_cor_sequence_callback _sequence_callback;
     
     BFoffset _time_tag;
     int      _navg;
@@ -848,13 +784,13 @@ class BFpacketcapture_cor_impl : public BFpacketcapture_impl {
         
         if( _sequence_callback ) {
             int status = (*_sequence_callback)(*seq0,
+						hdr,
+						hdr_size,
                                                *time_tag,
                                                _chan0,
                                                _nchan*((pkt->tuning >> 8) & 0xFF),
                                                _navg,
-                                               _nsrc/((pkt->tuning >> 8) & 0xFF),
-                                               hdr,
-                                               hdr_size);
+                                               _nsrc/((pkt->tuning >> 8) & 0xFF));
             if( status != 0 ) {
                 // TODO: What to do here? Needed?
                 throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -876,12 +812,10 @@ public:
                                   int                    nsrc,
                                   int                    src0,
                                   int                    buffer_ntime,
-                                  int                    slot_ntime,
-                                  BFpacketcapture_callback sequence_callback)
+                                  int                    slot_ntime)
         : BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
           _type_log((std::string(capture->get_name())+"/type").c_str()),
-          _chan_log((std::string(capture->get_name())+"/chans").c_str()),
-          _sequence_callback(sequence_callback->get_cor()) {
+          _chan_log((std::string(capture->get_name())+"/chans").c_str()) {
         _decoder = new CORDecoder(nsrc, src0);
         _processor = new CORProcessor();
         _type_log.update("type : %s\n", "cor");
@@ -891,8 +825,6 @@ public:
 class BFpacketcapture_vdif_impl : public BFpacketcapture_impl {
     ProcLog          _type_log;
     ProcLog          _chan_log;
-    
-    BFpacketcapture_vdif_sequence_callback _sequence_callback;
     
     BFoffset _time_tag;
     int      _tuning;
@@ -930,15 +862,15 @@ class BFpacketcapture_vdif_impl : public BFpacketcapture_impl {
         
         if( _sequence_callback ) {
             int status = (*_sequence_callback)(*seq0,
+						hdr,
+						hdr_size,
                                                *time_tag,
                                                ref_epoch,
                                                _sample_rate,
                                                _chan0,
                                                bit_depth,
                                                is_complex,
-                                               _nsrc,
-                                               hdr,
-                                               hdr_size);
+                                               _nsrc);
             if( status != 0 ) {
                 // TODO: What to do here? Needed?
                 throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -961,12 +893,10 @@ public:
                                      int                    nsrc,
                                      int                    src0,
                                      int                    buffer_ntime,
-                                     int                    slot_ntime,
-                                     BFpacketcapture_callback sequence_callback)
+                                     int                    slot_ntime)
         : BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
           _type_log((std::string(capture->get_name())+"/type").c_str()),
-          _chan_log((std::string(capture->get_name())+"/chans").c_str()),
-          _sequence_callback(sequence_callback->get_vdif()) {
+          _chan_log((std::string(capture->get_name())+"/chans").c_str()) {
         _decoder = new VDIFDecoder(nsrc, src0);
         _processor = new VDIFProcessor();
         _type_log.update("type : %s\n", "vdif");
@@ -976,8 +906,6 @@ public:
 class BFpacketcapture_tbn_impl : public BFpacketcapture_impl {
 	ProcLog          _type_log;
 	ProcLog          _chan_log;
-	
-	BFpacketcapture_tbn_sequence_callback _sequence_callback;
 	
 	BFoffset _time_tag;
 	uint16_t _decim;
@@ -1009,12 +937,12 @@ class BFpacketcapture_tbn_impl : public BFpacketcapture_impl {
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
+					hdr,
+					hdr_size,
 	                                           *time_tag,
                                                _decim,
 			                                   pkt->tuning,
-			                                   _nsrc,
-			                                   hdr,
-			                                   hdr_size);
+			                                   _nsrc);
 			if( status != 0 ) {
 			    // TODO: What to do here? Needed?
 				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -1035,13 +963,11 @@ public:
 	                                int                  nsrc,
 	                                int                  src0,
 	                                int                  buffer_ntime,
-	                                int                  slot_ntime,
-	                                BFpacketcapture_callback sequence_callback)
+	                                int                  slot_ntime)
 		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
 		  _type_log((std::string(capture->get_name())+"/type").c_str()),
 		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
-		  _sequence_callback(sequence_callback->get_tbn()),
-          _decim(0) {
+		  _decim(0) {
 		_decoder = new TBNDecoder(nsrc, src0);
 		_processor = new TBNProcessor();
 		_type_log.update("type : %s\n", "tbn");
@@ -1051,8 +977,6 @@ public:
 class BFpacketcapture_drx_impl : public BFpacketcapture_impl {
 	ProcLog          _type_log;
 	ProcLog          _chan_log;
-	
-	BFpacketcapture_drx_sequence_callback _sequence_callback;
 	
 	BFoffset _time_tag;
     uint16_t _decim;
@@ -1090,13 +1014,13 @@ class BFpacketcapture_drx_impl : public BFpacketcapture_impl {
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
+					hdr,
+					hdr_size,
 	                                        *time_tag,
                                             _decim,
 			                                _chan0,
 			                                _chan1,
-			                                _nsrc,
-			                                hdr,
-			                                hdr_size);
+			                                _nsrc);
 			if( status != 0 ) {
 			    // TODO: What to do here? Needed?
 				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -1118,12 +1042,10 @@ public:
 	                                int                  nsrc,
 	                                int                  src0,
 	                                int                  buffer_ntime,
-	                                int                  slot_ntime,
-	                                BFpacketcapture_callback sequence_callback)
+	                                int                  slot_ntime)
 		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
 		  _type_log((std::string(capture->get_name())+"/type").c_str()),
-		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
-		  _sequence_callback(sequence_callback->get_drx()), 
+		  _chan_log((std::string(capture->get_name())+"/chans").c_str()), 
 		  _decim(0), _chan1(0) {
 		_decoder = new DRXDecoder(nsrc, src0);
 		_processor = new DRXProcessor();
@@ -1140,7 +1062,6 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                 BFsize           max_payload_size,
                                 BFsize           buffer_ntime,
                                 BFsize           slot_ntime,
-                                BFpacketcapture_callback sequence_callback,
                                 int              core,
                                 BFiomethod       backend) {
     BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
@@ -1200,14 +1121,12 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
     
     if( std::string(format).substr(0, 5) == std::string("chips") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_chips_impl(capture, ring, nsrc, src0,
-                                                                 buffer_ntime, slot_ntime,
-                                                                 sequence_callback),
+                                                                 buffer_ntime, slot_ntime),
                            *obj = 0);
 #define MATCH_IBEAM_MODE(NBEAM) \
     } else if( std::string(format).substr(0, 6) == std::string("ibeam"#NBEAM) ) { \
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_ibeam_impl<NBEAM>(capture, ring, nsrc, src0, \
-                                                                        buffer_ntime, slot_ntime, \
-                                                                        sequence_callback), \
+                                                                        buffer_ntime, slot_ntime), \
                            *obj = 0);
     MATCH_IBEAM_MODE(1)
     MATCH_IBEAM_MODE(2)
@@ -1216,28 +1135,23 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
 #undef MATCH_IBEAM_MODE
     } else if( std::string(format).substr(0, 5) == std::string("pbeam") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_pbeam_impl(capture, ring, nsrc, src0,
-                                                                 buffer_ntime, slot_ntime,
-                                                                 sequence_callback),
+                                                                 buffer_ntime, slot_ntime),
                            *obj = 0);
     } else if( std::string(format).substr(0, 3) == std::string("cor") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_cor_impl(capture, ring, nsrc, src0,
-                                                               buffer_ntime, slot_ntime,
-                                                               sequence_callback),
+                                                               buffer_ntime, slot_ntime),
                            *obj = 0);
     } else if( std::string(format).substr(0, 4) == std::string("vdif") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_vdif_impl(capture, ring, nsrc, src0,
-                                                                buffer_ntime, slot_ntime,
-                                                                sequence_callback),
+                                                                buffer_ntime, slot_ntime),
                            *obj = 0);
     } else if( format == std::string("tbn") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_tbn_impl(capture, ring, nsrc, src0,
-                                                               buffer_ntime, slot_ntime,
-                                                               sequence_callback),
+                                                               buffer_ntime, slot_ntime),
                            *obj = 0);
     } else if( format == std::string("drx") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_drx_impl(capture, ring, nsrc, src0,
-                                                               buffer_ntime, slot_ntime,
-                                                               sequence_callback),
+                                                               buffer_ntime, slot_ntime),
                            *obj = 0);
     } else {
         return BF_STATUS_UNSUPPORTED;

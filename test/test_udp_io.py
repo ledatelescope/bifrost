@@ -44,7 +44,7 @@ class TBNReader(object):
     def __init__(self, sock, ring):
         self.sock = sock
         self.ring = ring
-    def callback(self, seq0, time_tag, decim, chan0, nsrc, hdr_ptr, hdr_size_ptr):
+    def callback(self, seq0, hdr_ptr, hdr_size_ptr, time_tag, decim, chan0, nsrc):
         #print "++++++++++++++++ seq0     =", seq0
         #print "                 time_tag =", time_tag
         hdr = {'time_tag': time_tag,
@@ -86,7 +86,7 @@ class DRXReader(object):
         self.sock = sock
         self.ring = ring
         self.nsrc = nsrc
-    def callback(self, seq0, time_tag, decim, chan0, chan1, nsrc, hdr_ptr, hdr_size_ptr):
+    def callback(self, seq0, hdr_ptr, hdr_size_ptr, time_tag, decim, chan0, chan1, nsrc):
         #print "++++++++++++++++ seq0     =", seq0
         #print "                 time_tag =", time_tag
         hdr = {'time_tag': time_tag,
@@ -130,7 +130,7 @@ class PBeamReader(object):
         self.sock = sock
         self.ring = ring
         self.nsrc = nsrc
-    def callback(self, seq0, time_tag, navg, chan0, nchan, nbeam, hdr_ptr, hdr_size_ptr):
+    def callback(self, seq0, hdr_ptr, hdr_size_ptr, time_tag, navg, chan0, nchan, nbeam):
         #print "++++++++++++++++ seq0     =", seq0
         #print "                 time_tag =", time_tag
         hdr = {'time_tag': time_tag,

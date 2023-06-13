@@ -114,66 +114,6 @@ int PacketCaptureThread::run(uint64_t seq_beg,
 	return ret;
 }
 
-BFstatus bfPacketCaptureCallbackCreate(BFpacketcapture_callback* obj) {
-    BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_callback_impl(),
-                       *obj = 0);
-}
-
-BFstatus bfPacketCaptureCallbackDestroy(BFpacketcapture_callback obj) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    delete obj;
-    return BF_STATUS_SUCCESS;
-}
-
-BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
-                                         BFpacketcapture_chips_sequence_callback callback) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    obj->set_chips(callback);
-    return BF_STATUS_SUCCESS;
-}
-
-BFstatus bfPacketCaptureCallbackSetIBeam(BFpacketcapture_callback obj,
-                                         BFpacketcapture_ibeam_sequence_callback callback) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    obj->set_ibeam(callback);
-    return BF_STATUS_SUCCESS;
-}
-
-BFstatus bfPacketCaptureCallbackSetPBeam(BFpacketcapture_callback obj,
-                                         BFpacketcapture_pbeam_sequence_callback callback) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    obj->set_pbeam(callback);
-    return BF_STATUS_SUCCESS;
-}
-
-BFstatus bfPacketCaptureCallbackSetCOR(BFpacketcapture_callback obj,
-                                       BFpacketcapture_cor_sequence_callback callback) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    obj->set_cor(callback);
-    return BF_STATUS_SUCCESS;
-}
-
-BFstatus bfPacketCaptureCallbackSetVDIF(BFpacketcapture_callback obj,
-                                        BFpacketcapture_vdif_sequence_callback callback) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    obj->set_vdif(callback);
-    return BF_STATUS_SUCCESS;
-}
-
-BFstatus bfPacketCaptureCallbackSetTBN(BFpacketcapture_callback obj,
-                                       BFpacketcapture_tbn_sequence_callback callback) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    obj->set_tbn(callback);
-    return BF_STATUS_SUCCESS;
-}
-
-BFstatus bfPacketCaptureCallbackSetDRX(BFpacketcapture_callback obj,
-                                       BFpacketcapture_drx_sequence_callback callback) {
-    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    obj->set_drx(callback);
-    return BF_STATUS_SUCCESS;
-}
-
 BFpacketcapture_status BFpacketcapture_impl::recv() {
     _t0 = std::chrono::high_resolution_clock::now();
 	
@@ -284,7 +224,6 @@ BFstatus bfDiskReaderCreate(BFpacketcapture* obj,
                             BFsize           src0,
                             BFsize           buffer_ntime,
                             BFsize           slot_ntime,
-                            BFpacketcapture_callback sequence_callback,
                             int              core) {
     return BFpacketcapture_create(obj,
                                   format,
@@ -295,7 +234,6 @@ BFstatus bfDiskReaderCreate(BFpacketcapture* obj,
                                   9000,
                                   buffer_ntime,
                                   slot_ntime,
-                                  sequence_callback,
                                   core,
                                   BF_IO_DISK);
 }
@@ -309,7 +247,6 @@ BFstatus bfUdpCaptureCreate(BFpacketcapture* obj,
                             BFsize           max_payload_size,
                             BFsize           buffer_ntime,
                             BFsize           slot_ntime,
-                            BFpacketcapture_callback sequence_callback,
                             int              core) {
     return BFpacketcapture_create(obj,
                                   format,
@@ -320,7 +257,6 @@ BFstatus bfUdpCaptureCreate(BFpacketcapture* obj,
                                   max_payload_size,
                                   buffer_ntime,
                                   slot_ntime,
-                                  sequence_callback,
                                   core,
                                   BF_IO_UDP);
 }
@@ -334,7 +270,6 @@ BFstatus bfUdpSnifferCreate(BFpacketcapture* obj,
                             BFsize           max_payload_size,
                             BFsize           buffer_ntime,
                             BFsize           slot_ntime,
-                            BFpacketcapture_callback sequence_callback,
                             int              core) {
     return BFpacketcapture_create(obj,
                                   format,
@@ -345,7 +280,6 @@ BFstatus bfUdpSnifferCreate(BFpacketcapture* obj,
                                   max_payload_size,
                                   buffer_ntime,
                                   slot_ntime,
-                                  sequence_callback,
                                   core,
                                   BF_IO_SNIFFER);
 }
@@ -359,7 +293,6 @@ BFstatus bfUdpVerbsCaptureCreate(BFpacketcapture* obj,
                                  BFsize           max_payload_size,
                                  BFsize           buffer_ntime,
                                  BFsize           slot_ntime,
-                                 BFpacketcapture_callback sequence_callback,
                                  int              core) {
     return BFpacketcapture_create(obj,
                                   format,
@@ -370,7 +303,6 @@ BFstatus bfUdpVerbsCaptureCreate(BFpacketcapture* obj,
                                   max_payload_size,
                                   buffer_ntime,
                                   slot_ntime,
-                                  sequence_callback,
                                   core,
                                   BF_IO_VERBS);
 }
@@ -379,6 +311,13 @@ BFstatus bfPacketCaptureDestroy(BFpacketcapture obj) {
 	BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
 	delete obj;
 	return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketCaptureSetCallback(BFpacketcapture obj,
+                                    BFpacketcapture_base_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_callback(callback);
+    return BF_STATUS_SUCCESS;)
 }
 
 BFstatus bfPacketCaptureRecv(BFpacketcapture obj,
