@@ -38,7 +38,7 @@ extern "C" {
 
 // Callback setup
 
-typedef int (*BFpacketcapture_base_sequence_callback)(BFoffset, void const**, size_t*, ...);
+typedef int (*BFpacketcapture_base_sequence_callback)(BFoffset, ...);
 
 // Capture setup
 
@@ -94,6 +94,8 @@ BFstatus bfUdpVerbsCaptureCreate(BFpacketcapture* obj,
                                  BFsize           slot_ntime,
                                  int              core);
 BFstatus bfPacketCaptureDestroy(BFpacketcapture obj);
+BFstatus bfPacketCaptureGetCallbackSignature(BFpacketcapture obj,
+                                             const char** signature);
 BFstatus bfPacketCaptureSetCallback(BFpacketcapture obj,
                                     BFpacketcapture_base_sequence_callback callback);
 BFstatus bfPacketCaptureRecv(BFpacketcapture         obj,

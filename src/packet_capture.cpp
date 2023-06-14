@@ -313,6 +313,13 @@ BFstatus bfPacketCaptureDestroy(BFpacketcapture obj) {
 	return BF_STATUS_SUCCESS;
 }
 
+BFstatus bfPacketCaptureGetCallbackSignature(BFpacketcapture obj,
+                                             char const** signature) {
+   BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+   *signature = obj->get_callback_signature();
+   return BF_STATUS_SUCCESS;
+}
+
 BFstatus bfPacketCaptureSetCallback(BFpacketcapture obj,
                                     BFpacketcapture_base_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);

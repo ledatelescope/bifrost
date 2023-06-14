@@ -393,6 +393,7 @@ protected:
 	int                  _payload_size;
 	bool                 _active;
 	
+	std::string          _signature;
 	BFpacketcapture_base_sequence_callback _sequence_callback;
 
 private:
@@ -471,7 +472,7 @@ public:
 	inline BFpacketcapture_impl(PacketCaptureThread* capture,
 	                          PacketDecoder*     decoder,
 	                          PacketProcessor*   processor,
-				              BFring      ring,
+	                          BFring      ring,
             	              int         nsrc,
 	                          int         buffer_ntime,
 	                          int         slot_ntime)
@@ -512,6 +513,9 @@ public:
 			this->end_sequence();
 		}
 	}
+inline const char* get_callback_signature() const {
+	return _signature.c_str();
+}
 	inline void set_callback(BFpacketcapture_base_sequence_callback seq_callback) {
 		_sequence_callback = seq_callback;
 	}
@@ -564,13 +568,12 @@ class BFpacketcapture_chips_impl : public BFpacketcapture_impl {
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
-																			 	 hdr,
-																			 	 hdr_size,
 																				 _chan0,
 			                                   _nchan,
 			                                   _nsrc,
-			                                   time_tag
-			                                   );
+			                                   time_tag,
+			                                   hdr,
+			                                   hdr_size);
 			if( status != 0 ) {
 			    // TODO: What to do here? Needed?
 				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -599,6 +602,7 @@ public:
 		_decoder = new CHIPSDecoder(nsrc, src0);
 		_processor = new CHIPSProcessor();
 		_type_log.update("type : %s\n", "chips");
+		_signature = "BFoffset, int, int, int, BFoffset*, void const**, size_t*";
 	}
 };
 
@@ -636,12 +640,12 @@ class BFpacketcapture_ibeam_impl : public BFpacketcapture_impl {
         
         if( _sequence_callback ) {
             int status = (*_sequence_callback)(*seq0,
-																								hdr,
-																								hdr_size,
                                                _chan0,
                                                _nchan*_nsrc,
                                                _nbeam,
-                                               time_tag);
+                                               time_tag,
+                                               hdr,
+                                               hdr_size);
             if( status != 0 ) {
                 // TODO: What to do here? Needed?
                 throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -665,11 +669,12 @@ public:
                                       int                  buffer_ntime,
                                       int                  slot_ntime)
         : BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
-          _type_log((std::string(capture->get_name())+"/type").c_str()),
+				  _type_log((std::string(capture->get_name())+"/type").c_str()),
           _chan_log((std::string(capture->get_name())+"/chans").c_str()) {
         _decoder = new IBeamDecoder<B>(nsrc, src0);
         _processor = new IBeamProcessor<B>();
         _type_log.update("type : %s%i\n", "ibeam", _nbeam);
+				_signature = "BFoffset, int, int, int, BFoffset*, void const**, size_t*";
     }
 };
 
@@ -710,13 +715,13 @@ class BFpacketcapture_pbeam_impl : public BFpacketcapture_impl {
         
         if( _sequence_callback ) {
             int status = (*_sequence_callback)(*seq0,
-							hdr,
-							hdr_size,
                                                *time_tag,
                                                _navg,
                                                _chan0,
                                                _nchan*_nsrc/_nbeam,
-                                               _nbeam);
+                                               _nbeam,
+                                               hdr,
+                                               hdr_size);
             if( status != 0 ) {
                 // TODO: What to do here? Needed?
                 throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -742,11 +747,12 @@ public:
                                       int                  buffer_ntime,
                                       int                  slot_ntime)
         : BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
-          _type_log((std::string(capture->get_name())+"/type").c_str()),
+				  _type_log((std::string(capture->get_name())+"/type").c_str()),
           _chan_log((std::string(capture->get_name())+"/chans").c_str()) {
         _decoder = new PBeamDecoder(nsrc, src0);
         _processor = new PBeamProcessor();
         _type_log.update("type : %s\n", "pbeam");
+				_signature = "BFoffset, BFoffset, int, int, int, int, void const**, size_t*";
     }
 };
 
@@ -784,13 +790,13 @@ class BFpacketcapture_cor_impl : public BFpacketcapture_impl {
         
         if( _sequence_callback ) {
             int status = (*_sequence_callback)(*seq0,
-						hdr,
-						hdr_size,
                                                *time_tag,
                                                _chan0,
                                                _nchan*((pkt->tuning >> 8) & 0xFF),
                                                _navg,
-                                               _nsrc/((pkt->tuning >> 8) & 0xFF));
+                                               _nsrc/((pkt->tuning >> 8) & 0xFF),
+                                               hdr,
+                                               hdr_size);
             if( status != 0 ) {
                 // TODO: What to do here? Needed?
                 throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -814,11 +820,12 @@ public:
                                   int                    buffer_ntime,
                                   int                    slot_ntime)
         : BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
-          _type_log((std::string(capture->get_name())+"/type").c_str()),
+				  _type_log((std::string(capture->get_name())+"/type").c_str()),
           _chan_log((std::string(capture->get_name())+"/chans").c_str()) {
         _decoder = new CORDecoder(nsrc, src0);
         _processor = new CORProcessor();
         _type_log.update("type : %s\n", "cor");
+				_signature = "BFoffset, BFoffset, int, int, int, int, void const**, size_t*";
     }
 };
 
@@ -862,15 +869,15 @@ class BFpacketcapture_vdif_impl : public BFpacketcapture_impl {
         
         if( _sequence_callback ) {
             int status = (*_sequence_callback)(*seq0,
-						hdr,
-						hdr_size,
                                                *time_tag,
                                                ref_epoch,
                                                _sample_rate,
                                                _chan0,
                                                bit_depth,
                                                is_complex,
-                                               _nsrc);
+                                               _nsrc,
+                                               hdr,
+                                               hdr_size);
             if( status != 0 ) {
                 // TODO: What to do here? Needed?
                 throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -895,11 +902,12 @@ public:
                                      int                    buffer_ntime,
                                      int                    slot_ntime)
         : BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
-          _type_log((std::string(capture->get_name())+"/type").c_str()),
+				  _type_log((std::string(capture->get_name())+"/type").c_str()),
           _chan_log((std::string(capture->get_name())+"/chans").c_str()) {
         _decoder = new VDIFDecoder(nsrc, src0);
         _processor = new VDIFProcessor();
         _type_log.update("type : %s\n", "vdif");
+				_signature = "BFoffset, BFoffset, int, int, int, int, int, int, void const**, size_t*";
     }
 };
 
@@ -937,12 +945,12 @@ class BFpacketcapture_tbn_impl : public BFpacketcapture_impl {
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
-					hdr,
-					hdr_size,
 	                                           *time_tag,
-                                               _decim,
-			                                   pkt->tuning,
-			                                   _nsrc);
+	                                           _decim,
+	                                           pkt->tuning,
+	                                           _nsrc,
+	                                           hdr,
+	                                           hdr_size);
 			if( status != 0 ) {
 			    // TODO: What to do here? Needed?
 				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -971,6 +979,7 @@ public:
 		_decoder = new TBNDecoder(nsrc, src0);
 		_processor = new TBNProcessor();
 		_type_log.update("type : %s\n", "tbn");
+		_signature = "BFoffset, BFoffset, int, int, int, void const**, size_t*";
 	}
 };
                                                     
@@ -1014,13 +1023,13 @@ class BFpacketcapture_drx_impl : public BFpacketcapture_impl {
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
-					hdr,
-					hdr_size,
-	                                        *time_tag,
-                                            _decim,
+			                                *time_tag,
+			                                _decim,
 			                                _chan0,
 			                                _chan1,
-			                                _nsrc);
+			                                _nsrc,
+			                                hdr,
+			                                hdr_size);
 			if( status != 0 ) {
 			    // TODO: What to do here? Needed?
 				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
@@ -1050,6 +1059,7 @@ public:
 		_decoder = new DRXDecoder(nsrc, src0);
 		_processor = new DRXProcessor();
 		_type_log.update("type : %s\n", "drx");
+		_signature = "BFoffset, BFoffset, int, int, int, int, void const**, size_t*";
 	}
 };
 
