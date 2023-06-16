@@ -836,7 +836,7 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
 	int K_blocks = (K - 1) / BLOCK_X + 1;
 	int s_B_stride = K_blocks * BLOCK_X;
 	size_t smem = N * s_B_stride * BF_DTYPE_NBYTE(B_type)*2;
-	bool B_fits_in_shared_mem = (smem <= 48*1024);
+	bool B_fits_in_shared_mem = (smem <= BF_GPU_SHAREDMEM);
 	BF_ASSERT_EXCEPTION(B_fits_in_shared_mem, BF_STATUS_UNSUPPORTED);
 	
 	/* // TODO: Use cudaLaunchKernel instead of <<< >>>
