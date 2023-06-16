@@ -8,13 +8,7 @@ AC_DEFUN([AX_CHECK_CUDA],
               [with_cuda_home=/usr/local/cuda])
   AC_SUBST(CUDA_HOME, $with_cuda_home)
   
-  AC_ARG_ENABLE([cuda],
-                [AS_HELP_STRING([--disable-cuda],
-                                [disable cuda support (default=no)])],
-                [enable_cuda=no],
-                [enable_cuda=yes])
-  
-  AC_SUBST([HAVE_CUDA], [0])
+  AC_SUBST([HAVE_CUDA], [1])
   AC_SUBST([CUDA_VERSION], [0])
   AC_SUBST([CUDA_HAVE_CXX20], [0])
   AC_SUBST([CUDA_HAVE_CXX17], [0])
@@ -23,15 +17,14 @@ AC_DEFUN([AX_CHECK_CUDA],
   AC_SUBST([GPU_MIN_ARCH], [0])
   AC_SUBST([GPU_MAX_ARCH], [0])
   AC_SUBST([GPU_SHAREDMEM], [0])
-  AC_SUBST([GPU_PASCAL_MANAGEDMEM], [0])
+  AC_SUBST([GPU_MANAGEDMEM], [0])
   AC_SUBST([GPU_EXP_PINNED_ALLOC], [1])
   if test "$enable_cuda" != "no"; then
     AC_SUBST([HAVE_CUDA], [1])
     
-    AC_PATH_PROG(NVCC, nvcc, no, [$CUDA_HOME/bin:$PATH])
-    AC_PATH_PROG(NVPRUNE, nvprune, no, [$CUDA_HOME/bin:$PATH])
-    AC_PATH_PROG(CUOBJDUMP, cuobjdump, no, [$CUDA_HOME/bin:$PATH])
-  fi
+  AC_PATH_PROG(NVCC, nvcc, no, [$CUDA_HOME/bin:$PATH])
+  AC_PATH_PROG(NVPRUNE, nvprune, no, [$CUDA_HOME/bin:$PATH])
+  AC_PATH_PROG(CUOBJDUMP, cuobjdump, no, [$CUDA_HOME/bin:$PATH])
 
   if test "$HAVE_CUDA" = "1"; then
     AC_MSG_CHECKING([for a working CUDA installation])
@@ -40,7 +33,8 @@ AC_DEFUN([AX_CHECK_CUDA],
     LDFLAGS_save="$LDFLAGS"
     LIBS_save="$LIBS"
     
-    ac_compile='$NVCC -c $NVCCFLAGS conftest.$ac_ext >&5'
+    ac_compile='$NVCC -c $HIPCCFLAGS conftest.$ac_ext >&5'
+    AC_MSG_NOTICE([$NVCC -c $HIPCCFLAGS conftest.$ac_ext >&5])
     AC_COMPILE_IFELSE([
       AC_LANG_PROGRAM([[
           #include <cuda.h>
@@ -51,9 +45,10 @@ AC_DEFUN([AX_CHECK_CUDA],
     
     if test "$HAVE_CUDA" = "1"; then
       LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-      LIBS="$LIBS -lcuda -lcudart"
+      LIBS="-lcuda -lcudart"
 
-      ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
+      ac_link='$NVCC -o conftest$ac_exeext $HIPCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
+      AC_MSG_NOTICE([$NVCC -o conftest$ac_exeext $HIPCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext])
       AC_LINK_IFELSE([
         AC_LANG_PROGRAM([[
             #include <cuda.h>
@@ -105,7 +100,7 @@ AC_DEFUN([AX_CHECK_CUDA],
                               [flags to pass to NVCC (default='-O3 -Xcompiler "-Wall"')])],
               [],
               [with_nvcc_flags='-O3 -Xcompiler "-Wall"'])
-  AC_SUBST(NVCCFLAGS, $with_nvcc_flags)
+  HIPCCFLAGS="$with_nvcc_flags $HIPCCFLAGS"
   
   AC_ARG_WITH([stream_model],
               [AS_HELP_STRING([--with-stream-model],
@@ -119,11 +114,11 @@ AC_DEFUN([AX_CHECK_CUDA],
     dsm_supported=$( ${NVCC} -h | ${GREP} -Po -e "--default-stream" )
     if test "$dsm_supported" = "--default-stream"; then
       if test "$with_stream_model" = "per-thread"; then
-        NVCCFLAGS="$NVCCFLAGS -default-stream per-thread"
+        HIPCCFLAGS="$HIPCCFLAGS -default-stream per-thread"
         AC_MSG_RESULT([yes, using 'per-thread'])
       else
         if test "$with_stream_model" = "legacy"; then
-          NVCCFLAGS="$NVCCFLAGS -default-stream legacy"
+          HIPCCFLAGS="$HIPCCFLAGS -default-stream legacy"
           AC_MSG_RESULT([yes, using 'legacy'])
         else
           AC_MSG_ERROR(Invalid CUDA stream model: '$with_stream_model')
@@ -137,9 +132,9 @@ AC_DEFUN([AX_CHECK_CUDA],
   if test "$HAVE_CUDA" = "1"; then
     CPPFLAGS="$CPPFLAGS -DBF_CUDA_ENABLED=1"
     CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1"
-    NVCCFLAGS="$NVCCFLAGS -DBF_CUDA_ENABLED=1"
+    HIPCCFLAGS="$HIPCCFLAGS -DBF_CUDA_ENABLED=1"
     LDFLAGS="$LDFLAGS -L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-    LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lcufft_static_pruned -lculibos -lnvToolsExt"
+    LIBS="$LIBS -lcuda -lcudart -lnvrtc -lcublas -lcudadevrt -L. -lnvToolsExt -Wl,--no-as-needed -lcufft_static_pruned -lculibos"
   fi
   
   AC_ARG_WITH([gpu_archs],
@@ -291,10 +286,10 @@ AC_DEFUN([AX_CHECK_CUDA],
     AC_MSG_CHECKING([for Pascal-style CUDA managed memory])
     cm_invalid=$( echo $GPU_ARCHS | ${SED} -e 's/\b[[1-5]][[0-9]]\b/PRE/g;' )
     if ! echo $cm_invalid | ${GREP} -q PRE; then
-      AC_SUBST([GPU_PASCAL_MANAGEDMEM], [1])
+      AC_SUBST([GPU_MANAGEDMEM], [1])
       AC_MSG_RESULT([yes])
     else
-      AC_SUBST([GPU_PASCAL_MANAGEDMEM], [0])
+      AC_SUBST([GPU_MANAGEDMEM], [0])
       AC_MSG_RESULT([no])
     fi
     

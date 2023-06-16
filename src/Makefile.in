@@ -4,11 +4,11 @@
 include ../config.mk
 
 CXX            ?= @CXX@
-NVCC           ?= @NVCC@
+HIPCC          ?= @HIPCC@
 LINKER         ?= @CXX@
 CPPFLAGS       ?= @CPPFLAGS@
 CXXFLAGS       ?= @CXXFLAGS@
-NVCCFLAGS      ?= @NVCCFLAGS@
+HIPCCFLAGS     ?= @HIPCCFLAGS@
 LDFLAGS        ?= @LDFLAGS@ @LIBS@
 DOXYGEN        ?= @DX_DOXYGEN@
 PYBUILDFLAGS   ?= @PYBUILDFLAGS@
@@ -16,7 +16,8 @@ PYINSTALLFLAGS ?= @PYINSTALLFLAGS@
 
 HAVE_RECVMSG  ?= @HAVE_RECVMSG@
 
-HAVE_CUDA     ?= @HAVE_CUDA@
+ENABLE_GPU    ?= @ENABLE_GPU@
+GPU_PLATFORM  ?= @GPU_PLATFORM@
 
 GPU_ARCHS     ?= @GPU_ARCHS@
 
@@ -47,7 +48,7 @@ ifeq ($(HAVE_RECVMSG),1)
   udp_capture.o \
   udp_transmit.o
 endif
-ifeq ($(HAVE_CUDA),1)
+ifeq ($(ENABLE_GPU),1)
   # These files require the CUDA Toolkit to compile
   LIBBIFROST_OBJS += \
   transpose.o \
@@ -55,7 +56,6 @@ ifeq ($(HAVE_CUDA),1)
   fft_kernels.o \
   fdmt.o \
   map.o \
-  trace.o \
   linalg.o \
   linalg_kernels.o \
   romein.o \
@@ -64,6 +64,10 @@ ifeq ($(HAVE_CUDA),1)
   fir.o \
   guantize.o \
   gunpack.o
+endif
+
+ifeq ($(ENABLE_GPU)$(HAVE_TRACE),11)
+LIBBIFROST_OBJS += trace.o
 endif
 
 JIT_SOURCES ?= \
@@ -76,9 +80,9 @@ JIT_SOURCES ?= \
 
 MAKEFILES = ../config.mk Makefile
 
-ifeq ($(HAVE_CUDA),1)
+ifeq ($(GPU_PLATFORM),nvidia)
 # All CUDA archs supported by this version of nvcc
-GPU_ARCHS_SUPPORTED := $(shell $(NVCC) -h | grep -Po "compute_[0-9]{2}" | cut -d_ -f2 | sort | uniq)
+GPU_ARCHS_SUPPORTED := $(shell $(HIPCC) -h | grep -Po "compute_[0-9]{2}" | cut -d_ -f2 | sort | uniq)
 # Intersection of user-specified archs and supported archs
 GPU_ARCHS_VALID     := $(shell echo $(GPU_ARCHS) $(GPU_ARCHS_SUPPORTED) | xargs -n1 | sort | uniq -d | xargs)
 # Latest valid arch
@@ -90,7 +94,7 @@ NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS_VALID), \
   -gencode arch=compute_$(GPU_ARCH_LATEST),\"code=compute_$(GPU_ARCH_LATEST)\"
 endif
 
-NVCCFLAGS += $(NVCC_GENCODE)
+HIPCCFLAGS += $(NVCC_GENCODE)
 
 #NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
 #NVCCFLAGS += --expt-relaxed-constexpr
@@ -116,7 +120,7 @@ $(LIBBIFROST_VERSION_FILE): $(INC_DIR)/bifrost/*.h
 	echo "    *;"    >> $@
 	echo "};"        >> $@
 
-ifeq ($(HAVE_CUDA),1)
+ifeq ($(GPU_PLATFORM),nvidia)
 # TODO: Need to deal with 32/64 detection here
 LIBCUFFT_STATIC = $(CUDA_LIBDIR64)/libcufft_static.a
 # All PTX archs included in the lib (typically only one)
@@ -133,12 +137,12 @@ libcufft_static_pruned.a: $(LIBCUFFT_STATIC) Makefile
 	@NVPRUNE@ -o $@ $(NVCC_GENCODE) $(CUFFT_STATIC_GENCODE) $<
 fft_kernels.o: fft_kernels.cu fft_kernels.h Makefile
 	# Note: This needs to be compiled with "-dc" to make CUFFT callbacks work
-	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" -dc $(OUTPUT_OPTION) $<
+	$(HIPCC) $(HIPCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" -dc $(OUTPUT_OPTION) $<
 _cuda_device_link.o: Makefile fft_kernels.o libcufft_static_pruned.a
 	@echo "Linking _cuda_device_link.o"
 	# TODO: "nvcc -dlink ..." does not error or warn when a -lblah is not found
 	@ls ./libcufft_static_pruned.a > /dev/null
-	$(NVCC) -dlink -o $@ $(NVCCFLAGS) fft_kernels.o -L. -lcufft_static_pruned
+	$(HIPCC) -dlink -o $@ $(HIPCCFLAGS) fft_kernels.o -L. -lcufft_static_pruned
 CUDA_DEVICE_LINK_OBJ = _cuda_device_link.o
 else
 CUDA_DEVICE_LINK_OBJ =
@@ -157,6 +161,9 @@ $(LIBBIFROST_SO): $(LIBBIFROST_OBJS) $(LIBBIFROST_VERSION_FILE) $(CUDA_DEVICE_LI
 	ln -s -f $(LIBBIFROST_SO_NAME) $(LIBBIFROST_SO_STEM).$(LIBBIFROST_MAJOR)
 	ln -s -f $(LIBBIFROST_SO_NAME) $(LIBBIFROST_SO_STEM)
 	@echo "Successfully built $(LIBBIFROST_SO_NAME)"
+
+%.o: %.cu $(MAKEFILES)
+	$(HIPCC) $(HIPCCFLAGS) -c -I. $< -o $@
 
 *.o: $(MAKEFILES)
 

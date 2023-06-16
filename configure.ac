@@ -151,7 +151,11 @@ AS_IF([test x$enable_vma != xno],
 # include CUDA-specific entries #
 #################################
 
-AX_CHECK_CUDA
+AX_CHECK_HIP
+
+AS_IF([test "x$ENABLE_GPU" = "x1" && test "x$GPU_PLATFORM" = "xnvidia"], [
+      AX_CHECK_CUDA
+])
 
 #
 # Bifrost memory alignment
@@ -183,7 +187,7 @@ AC_SUBST([HAVE_DEBUG], [0])
 AS_IF([test x$enable_debug != xno],
       [AC_SUBST([HAVE_DEBUG], [1])
        CXXFLAGS="$CXXFLAGS -g"
-       NVCCFLAGS="$NVCCFLAGS -g"])
+       HIPCCFLAGS="$HIPCCFLAGS -g"])
 
 AC_ARG_ENABLE([trace],
               [AS_HELP_STRING([--enable-trace],
@@ -204,7 +208,7 @@ AC_ARG_ENABLE([cuda_debug],
 AC_SUBST([HAVE_CUDA_DEBUG], [0])
 AS_IF([test x$enable_cuda_debug != xno],
       [AC_SUBST([HAVE_CUDA_DEBUG], [1])
-       NVCCFLAGS="$NVCCFLAGS -G"])
+       HIPCCFLAGS="$HIPCCFLAGS -G"])
 
 AC_ARG_ENABLE([map_cache],
               [AS_HELP_STRING([--disable-map-cache],
@@ -213,7 +217,7 @@ AC_ARG_ENABLE([map_cache],
               [enable_map_cache=yes])
 AC_SUBST([HAVE_MAP_CACHE], [0])
 AS_IF([test x$enable_map_cache != xno],
-      [AC_SUBST([HAVE_MAP_CACHE], [$HAVE_CUDA])])
+      [AC_SUBST([HAVE_MAP_CACHE], [test "x$GPU_PLATFORM" = "xnvidia"])])
 
 #
 # Python
@@ -287,58 +291,24 @@ AC_SUBST([PACKAGE_VERSION_MICRO], [`echo $PACKAGE_VERSION | $AWK -F. '{print $3}
 # C++20/C++17/C++14/C++11 toggling
 #
 
-AC_SUBST([MAP_KERNEL_STDCXX], [c++11])
-AC_SUBST([STDCXX_IS_SET], [0])
-AS_IF([test x$HAVE_CXX20 = x1],
-      [AC_SUBST([STDCXX_IS_SET], [1])
-       CXXFLAGS="-std=c++20 $CXXFLAGS"
-       AS_IF([test x$CUDA_HAVE_CXX20 = x1],
-             [NVCCFLAGS="-std=c++20 $NVCCFLAGS"
-              AC_SUBST([MAP_KERNEL_STDCXX], [c++20])],
-             [AS_IF([test x$CUDA_HAVE_CXX17 = x1],
-                    [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
-                     AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
-                    [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
-                           [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
-                            AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
-                           [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])])
-AS_IF([test x$HAVE_CXX17 = x1],
-      [AC_SUBST([STDCXX_IS_SET], [1])
-       CXXFLAGS="-std=c++17 $CXXFLAGS"
-       AS_IF([test x$CUDA_HAVE_CXX20 = x1],
-             [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
-              AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
-             [AS_IF([test x$CUDA_HAVE_CXX17 = x1],
-                    [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
-                     AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
-                    [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
-                           [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
-                            AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
-                           [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])])
-AS_IF([test x$HAVE_CXX14 = x1],
-      [AC_SUBST([STDCXX_IS_SET], [1])
-       CXXFLAGS="-std=c++14 $CXXFLAGS"
-       AS_IF([test x$CUDA_HAVE_CXX20 = x1],
-             [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
-              AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
-             [AS_IF([test x$CUDA_HAVE_CXX17 = x1],
-                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
-                     AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
-                    [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
-                           [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
-                            AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
-                           [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])])
-AS_IF([test x$STDCXX_IS_SET != x1],
-      [AC_SUBST([STDCXX_IS_SET], [1])
-       CXXFLAGS="-std=c++11 $CXXFLAGS"
-       NVCCFLAGS="-std=c++11 -Xcompiler \"-DTHRUST_IGNORE_DEPRECATED_CPP_DIALECT\" $NVCCFLAGS"])
+AC_SUBST([MAP_KERNEL_STDCXX], [c++17])
+AS_IF([test "x$HAVE_CXX17" = "x1"], [
+      CXXFLAGS="-std=c++17 $CXXFLAGS"
+], [
+      AC_MSG_ERROR("requires a c++17 compiler")
+])
 
 #
 # Linking flags
 #
 
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
-NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
+AS_IF([test "x$GPU_PLATFORM" = "xnvidia"], [
+      HIPCCFLAGS="$HIPCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
+])
+AS_IF([test "x$GPU_PLATFORM" = "xamd"], [
+      HIPCCFLAGS="$HIPCCFLAGS $lt_prog_compiler_pic_CXX"
+])
 
 AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h])
 
