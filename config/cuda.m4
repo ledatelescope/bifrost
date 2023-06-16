@@ -234,7 +234,7 @@ AC_DEFUN([AX_CHECK_CUDA],
 
     AC_ARG_WITH([shared_mem],
            [AS_HELP_STRING([--with-shared-mem=N],
-                           [default GPU shared memory in bytes (default=detect)])],
+                           [default GPU shared memory per block in bytes (default=detect)])],
            [],
            [with_shared_mem='auto'])
     if test "$with_gpu_archs" = "auto"; then

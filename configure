@@ -1563,7 +1563,8 @@ Optional Packages:
   --with-stream-model     CUDA default stream model to use: 'legacy' or
                           'per-thread' (default='per-thread')
   --with-gpu-archs=...    default GPU architectures (default=detect)
-  --with-shared-mem=N     default GPU shared memory in bytes (default=detect)
+  --with-shared-mem=N     default GPU shared memory per block in bytes
+                          (default=detect)
   --with-alignment=N      default memory alignment in bytes (default=4096)
   --with-logging-dir=DIR  directory for Bifrost proclog logging
                           (default=autodetect)
