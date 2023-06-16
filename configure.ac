@@ -153,15 +153,6 @@ AS_IF([test x$enable_vma != xno],
 
 AX_CHECK_CUDA
 
-AC_ARG_WITH([shared_mem],
-           [AS_HELP_STRING([--with-shared-mem=N],
-                           [default GPU shared memory in bytes (default=16384)])],
-           [],
-           [with_shared_mem=16384])
-AC_SUBST([GPU_SHAREDMEM], [$with_shared_mem])
-AS_IF([test x$HAVE_CUDA = x0],
-      [AC_SUBST([GPU_SHAREDMEM], [0])])
-
 #
 # Bifrost memory alignment
 #
