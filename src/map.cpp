@@ -342,12 +342,12 @@ BFstatus build_map_kernel(int*                 external_ndim,
 #if defined(BF_MAP_KERNEL_STDCXX)
 	cs_ss << BF_MAP_KERNEL_STDCXX;
 #else
-	cs_ss << "c++14";
+	cs_ss << "c++17";
 #endif
 	options.push_back("--std="+cs_ss.str());
 #ifdef __HIP_PLATFORM_AMD__
 	options.push_back("-ffast-math");
-#endif // __HIP_PLATFORM_NVIDIA__
+#endif // __HIP_PLATFORM_AMD__
 #ifdef __HIP_PLATFORM_NVIDIA__
 	options.push_back("--device-as-default-execution-space");
 	options.push_back("--use_fast_math");
