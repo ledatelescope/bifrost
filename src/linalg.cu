@@ -127,7 +127,6 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
 		                            (double*)c_data, c_stride));
 		break;
 	}
-#if CUDART_VERSION >= 8000
 	case BF_DTYPE_CI8: {
 		BF_ASSERT(c_type == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
 		float alpha_f = (float)alpha;
@@ -147,12 +146,10 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
 		}
 		BF_FAIL("Supported dtype for array a", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
-#endif
 	case BF_DTYPE_CF32: {
 		BF_ASSERT(c_type == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
 		float alpha_f = (float)alpha;
 		float beta_f  = (float)beta;
-#if CUDART_VERSION >= 8000
 		if( get_cuda_device_cc() >= 50 ) {
 			BF_CHECK_CUBLAS(cublasCherk3mEx(handle->cublas(), uplo, trans,
 			                                n, k,
@@ -166,7 +163,6 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
 			                                c_stride));
 			break;
 		}
-#endif
 		BF_CHECK_CUBLAS(cublasCherk(handle->cublas(), uplo, trans,
 		                            n, k,
 		                            &alpha_f,
@@ -213,7 +209,7 @@ BFstatus bfMatMul_aa_exec(BFlinalg    handle,
 	//bool use_bf_cherk = use_bf_cherk_str && atoi(use_bf_cherk_str);
 	enum { BF_CUBLAS_CHERK_THRESHOLD = 896 };
 	if( //use_bf_cherk &&
-	    (CUDART_VERSION < 8000 || n < BF_CUBLAS_CHERK_THRESHOLD) &&
+	    n < BF_CUBLAS_CHERK_THRESHOLD &&
 	    trans == CUBLAS_OP_N &&
 	    n % 2 == 0 &&
 	    a_stride % 2 == 0 && a_batchstride % 2 == 0 &&
@@ -413,7 +409,6 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
 		                            (double*)c_data, c_stride));
 		break;
 	}
-#if CUDART_VERSION >= 8000
 	case BF_DTYPE_CI8: {
 		BF_ASSERT(c_type == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
 		cuComplex alpha_cf = make_cuComplex(alpha, 0);
@@ -436,12 +431,10 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
 		}
 		BF_FAIL("Supported dtype for input array", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
-#endif
 	case BF_DTYPE_CF32: {
 		BF_ASSERT(c_type == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
 		cuComplex alpha_cf = make_cuComplex(alpha, 0);
 		cuComplex beta_cf  = make_cuComplex(beta,  0);
-#if CUDART_VERSION >= 8000
 		if( get_cuda_device_cc() >= 50 ) {
 			BF_CHECK_CUBLAS(cublasCgemm3m(handle->cublas(), trans_a, trans_b,
 			                              m, n, k,
@@ -455,7 +448,6 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
 			                              c_stride));
 			break;
 		}
-#endif
 		BF_CHECK_CUBLAS(cublasCgemm(handle->cublas(), trans_a, trans_b,
 		                            m, n, k,
 		                            &alpha_cf,
