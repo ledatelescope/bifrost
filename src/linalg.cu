@@ -115,21 +115,21 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
 		float alpha_f = (float)alpha;
 		float beta_f  = (float)beta;
 		BF_CHECK_HIPBLAS(hipblasSsyrk(handle->cublas(), uplo, trans,
-		                            n, k,
-		                            &alpha_f,
-		                            (float*)a_data, a_stride,
-		                            &beta_f,
-		                            (float*)c_data, c_stride));
+		                              n, k,
+		                              &alpha_f,
+		                              (float*)a_data, a_stride,
+		                              &beta_f,
+		                              (float*)c_data, c_stride));
 		break;
 	}
 	case BF_DTYPE_F64: {
 		BF_ASSERT(c_type == BF_DTYPE_F64, BF_STATUS_UNSUPPORTED_DTYPE);
 		BF_CHECK_HIPBLAS(hipblasDsyrk(handle->cublas(), uplo, trans,
-		                            n, k,
-		                            &alpha,
-		                            (double*)a_data, a_stride,
-		                            &beta,
-		                            (double*)c_data, c_stride));
+		                              n, k,
+		                              &alpha,
+		                              (double*)a_data, a_stride,
+		                              &beta,
+		                              (double*)c_data, c_stride));
 		break;
 	}
 #if CUDART_VERSION >= 8000
@@ -137,19 +137,20 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
 		BF_ASSERT(c_type == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
 		float alpha_f = (float)alpha;
 		float beta_f  = (float)beta;
-		if( get_cuda_device_cc() >= 50 ) {
-			// BF_CHECK_CUBLAS(cublasCherk3mEx(handle->cublas(), uplo, trans,
-			//                                 n, k,
-			//                                 &alpha_f,
-			//                                 (hipComplex*)a_data,
-			//                                 HIPBLAS_C_8I,
-			//                                 a_stride,
-			//                                 &beta_f,
-			//                                 (hipComplex*)c_data,
-			//                                 HIPBLAS_C_32F,
-			//                                 c_stride));
-			// break;
-		}
+		// No HIP equivalent yet. See: https://github.com/ROCmSoftwarePlatform/rocBLAS/issues/1320
+		// if( get_cuda_device_cc() >= 50 ) {
+		// 	BF_CHECK_CUBLAS(cublasCherk3mEx(handle->cublas(), uplo, trans,
+		// 	                                n, k,
+		// 	                                &alpha_f,
+		// 	                                (hipComplex*)a_data,
+		// 	                                HIPBLAS_C_8I,
+		// 	                                a_stride,
+		// 	                                &beta_f,
+		// 	                                (hipComplex*)c_data,
+		// 	                                HIPBLAS_C_32F,
+		// 	                                c_stride));
+		// 	break;
+		// }
 		BF_FAIL("Supported dtype for array a", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 #endif
@@ -157,37 +158,22 @@ BFstatus bfMatMul_aa_exec_nobatch(BFlinalg    handle,
 		BF_ASSERT(c_type == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
 		float alpha_f = (float)alpha;
 		float beta_f  = (float)beta;
-#if CUDART_VERSION >= 8000
-		if( get_cuda_device_cc() >= 50 ) {
-			// BF_CHECK_CUBLAS(cublasCherk3mEx(handle->cublas(), uplo, trans,
-			//                                 n, k,
-			//                                 &alpha_f,
-			//                                 (hipComplex*)a_data,
-			//                                 HIPBLAS_C_32F,
-			//                                 a_stride,
-			//                                 &beta_f,
-			//                                 (hipComplex*)c_data,
-			//                                 HIPBLAS_C_32F,
-			//                                 c_stride));
-			// break;
-		}
-#endif
 		BF_CHECK_HIPBLAS(hipblasCherk(handle->cublas(), uplo, trans,
-		                            n, k,
-		                            &alpha_f,
-		                            (hipComplex*)a_data, a_stride,
-		                            &beta_f,
-		                            (hipComplex*)c_data, c_stride));
+		                              n, k,
+		                              &alpha_f,
+		                              (hipComplex*)a_data, a_stride,
+		                              &beta_f,
+		                              (hipComplex*)c_data, c_stride));
 		break;
 	}
 	case BF_DTYPE_CF64: {
 		BF_ASSERT(c_type == BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
 		BF_CHECK_HIPBLAS(hipblasZherk(handle->cublas(), uplo, trans,
-		                            n, k,
-		                            &alpha,
-		                            (hipDoubleComplex*)a_data, a_stride,
-		                            &beta,
-		                            (hipDoubleComplex*)c_data, c_stride));
+		                              n, k,
+		                              &alpha,
+		                              (hipDoubleComplex*)a_data, a_stride,
+		                              &beta,
+		                              (hipDoubleComplex*)c_data, c_stride));
 		break;
 	}
 	default:
@@ -401,23 +387,23 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
 		float alpha_f = (float)alpha;
 		float beta_f  = (float)beta;
 		BF_CHECK_HIPBLAS(hipblasSgemm(handle->cublas(), trans_a, trans_b,
-		                            m, n, k,
-		                            &alpha_f,
-		                            (float*)a_data, a_stride,
-		                            (float*)b_data, b_stride,
-		                            &beta_f,
-		                            (float*)c_data, c_stride));
+		                              m, n, k,
+		                              &alpha_f,
+		                              (float*)a_data, a_stride,
+		                              (float*)b_data, b_stride,
+		                              &beta_f,
+		                              (float*)c_data, c_stride));
 		break;
 	}
 	case BF_DTYPE_F64: {
 		BF_ASSERT(c_type == BF_DTYPE_F64, BF_STATUS_UNSUPPORTED_DTYPE);
 		BF_CHECK_HIPBLAS(hipblasDgemm(handle->cublas(), trans_a, trans_b,
-		                            m, n, k,
-		                            &alpha,
-		                            (double*)a_data, a_stride,
-		                            (double*)b_data, b_stride,
-		                            &beta,
-		                            (double*)c_data, c_stride));
+		                              m, n, k,
+		                              &alpha,
+		                              (double*)a_data, a_stride,
+		                              (double*)b_data, b_stride,
+		                              &beta,
+		                              (double*)c_data, c_stride));
 		break;
 	}
 #if CUDART_VERSION >= 8000
@@ -425,24 +411,22 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
 		BF_ASSERT(c_type == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
 		hipComplex alpha_cf = make_hipComplex(alpha, 0);
 		hipComplex beta_cf = make_hipComplex(beta,  0);
-		//if( get_cuda_device_cc() >= 50 ) {
-			BF_CHECK_HIPBLAS(hipblasGemmEx(handle->cublas(), trans_a, trans_b,
-			                              m, n, k,
-			                              &alpha_cf,
-			                              (hipComplex*)a_data,
-			                              HIPBLAS_C_8I,
-			                              a_stride,
-			                              (hipComplex*)b_data,
-			                              HIPBLAS_C_8I,
-			                              b_stride,
-			                              &beta_cf,
-			                              (hipComplex*)c_data,
-			                              HIPBLAS_C_32F,
-			                              c_stride,
-										  HIPBLAS_C_32F,
-										  HIPBLAS_GEMM_DEFAULT));
-			break;
-		//}
+		BF_CHECK_HIPBLAS(hipblasGemmEx(handle->cublas(), trans_a, trans_b,
+		                               m, n, k,
+		                               &alpha_cf,
+		                               (hipComplex*)a_data,
+		                               HIPBLAS_C_8I,
+		                               a_stride,
+		                               (hipComplex*)b_data,
+		                               HIPBLAS_C_8I,
+		                               b_stride,
+		                               &beta_cf,
+		                               (hipComplex*)c_data,
+		                               HIPBLAS_C_32F,
+		                               c_stride,
+		                               HIPBLAS_C_32F,
+		                               HIPBLAS_GEMM_DEFAULT));
+		break;
 		BF_FAIL("Supported dtype for input array", BF_STATUS_UNSUPPORTED_DTYPE);
 	}
 #endif
@@ -450,28 +434,13 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
 		BF_ASSERT(c_type == BF_DTYPE_CF32, BF_STATUS_UNSUPPORTED_DTYPE);
 		hipComplex alpha_cf = make_hipComplex(alpha, 0);
 		hipComplex beta_cf = make_hipComplex(beta,  0);
-#if CUDART_VERSION >= 8000
-		if( get_cuda_device_cc() >= 50 ) {
-			// BF_CHECK_CUBLAS(cublasCgemm3m(handle->cublas(), trans_a, trans_b,
-			//                               m, n, k,
-			//                               &alpha_cf,
-			//                               (hipComplex*)a_data,
-			//                               a_stride,
-			//                               (hipComplex*)b_data,
-			//                               b_stride,
-			//                               &beta_cf,
-			//                               (hipComplex*)c_data,
-			//                               c_stride));
-			// break;
-		}
-#endif
 		BF_CHECK_HIPBLAS(hipblasCgemm(handle->cublas(), trans_a, trans_b,
-		                            m, n, k,
-		                            &alpha_cf,
-		                            (hipComplex*)a_data, a_stride,
-		                            (hipComplex*)b_data, b_stride,
-		                            &beta_cf,
-		                            (hipComplex*)c_data, c_stride));
+		                              m, n, k,
+		                              &alpha_cf,
+		                              (hipComplex*)a_data, a_stride,
+		                              (hipComplex*)b_data, b_stride,
+		                              &beta_cf,
+		                              (hipComplex*)c_data, c_stride));
 		break;
 	}
 	case BF_DTYPE_CF64: {
@@ -479,12 +448,12 @@ BFstatus bfMatMul_ab_exec_nobatch(BFlinalg    handle,
 		hipDoubleComplex beta_cd = make_hipDoubleComplex(beta,  0);
 		BF_ASSERT(c_type == BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
 		BF_CHECK_HIPBLAS(hipblasZgemm(handle->cublas(), trans_a, trans_b,
-		                            m, n, k,
-		                            &alpha_cd,
-		                            (hipDoubleComplex*)a_data, a_stride,
-		                            (hipDoubleComplex*)b_data, b_stride,
-		                            &beta_cd,
-		                            (hipDoubleComplex*)c_data, c_stride));
+		                              m, n, k,
+		                              &alpha_cd,
+		                              (hipDoubleComplex*)a_data, a_stride,
+		                              (hipDoubleComplex*)b_data, b_stride,
+		                              &beta_cd,
+		                              (hipDoubleComplex*)c_data, c_stride));
 		break;
 	}
 	default:
