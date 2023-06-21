@@ -34,6 +34,11 @@ import imp
 import sys
 import glob
 
+try:
+    from io import StringIO
+except ImportError:
+    from StringIO import StringIO
+
 TEST_DIR = os.path.dirname(__file__)
 TOOLS_DIR = os.path.join(TEST_DIR, '..', 'tools')
 TESTBENCH_DIR = os.path.join(TEST_DIR, '..', 'testbench')
@@ -42,10 +47,12 @@ BIFROST_DIR =  os.path.abspath(modInfoBuild[1])
 
 run_scripts_tests = False
 try:
-    from pylint import epylint as lint
+    from pylint.lint import Run
+    from pylint.reporters.text import TextReporter
     run_scripts_tests = True
 except ImportError:
     pass
+run_scripts_tests &= (sys.version_info[0] >= 3)
 
 _LINT_RE = re.compile('(?P<module>.*?)\:(?P<line>\d+)\: \[(?P<type>.*?)\] (?P<info>.*)')
 
@@ -53,11 +60,16 @@ _LINT_RE = re.compile('(?P<module>.*?)\:(?P<line>\d+)\: \[(?P<type>.*?)\] (?P<in
 class ScriptTest(unittest.TestCase):
     def _test_script(self, script):
         self.assertTrue(os.path.exists(script))
-        out, err = lint.py_run("%s -E --extension-pkg-whitelist=numpy,scipy.fftpack --init-hook='import sys; sys.path=[%s]; sys.path.insert(0, \"%s\")'" % (script, ",".join(['"%s"' % p for p in sys.path]), os.path.dirname(BIFROST_DIR)), return_std=True)
-        out_lines = out.read().split('\n')
-        err_lines = err.read().split('\n')
-        out.close()
-        err.close()
+        
+        pylint_output = StringIO()
+        reporter = TextReporter(pylint_output)
+        try:
+            Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter, do_exit=False)
+        except TypeError:
+            # Python2 catch
+            Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter)
+        out = pylint_output.getvalue()
+        out_lines = out.split('\n')
         
         for line in out_lines:
             #if line.find("Module 'numpy") != -1:

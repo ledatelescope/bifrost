@@ -75,7 +75,7 @@ def read_header(f):
         except AttributeError:
             # Python2 catch
             pass
-        if record.startswith(b'END'):
+        if record.startswith('END'):
             break
         key, val = record.split('=', 1)
         key, val = key.strip(), val.strip()

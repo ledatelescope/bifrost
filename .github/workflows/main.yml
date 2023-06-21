@@ -66,6 +66,7 @@ jobs:
                pint \
                graphviz \
                ctypesgen==1.0.2 \
+               pylint \
                coverage
       - name: "Software Install - Python, part 2"
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
@@ -100,6 +101,21 @@ jobs:
           coverage run --source=bifrost.ring,bifrost,bifrost.pipeline \
             -m unittest discover
           coverage xml
+      - name: "Test, part 2"
+        if: ${{ matrix.os == 'self-hosted' }}
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib:${{ env.LD_LIBRARY_PATH }}
+        run: |
+          cd testbench
+          python generate_test_data.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_file_read_write.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_fft.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline your_first_block.py
+          python download_breakthrough_listen_data.py -y
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_guppi.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_guppi_reader.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_fdmt.py ./testdata/pulsars/blc0_guppi_57407_61054_PSR_J1840%2B5640_0004.fil
+          coverage xml
       - name: "Upload Coverage"
         env:
           UNITTEST_OS: ${{ matrix.os }}
@@ -107,7 +123,7 @@ jobs:
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version == '3.8' }}
         uses: codecov/codecov-action@v2
         with:
-          directory: ./test/
+          files: ./test/coverage.xml, ./testbench/coverage.xml
           env_vars: UNITTEST_OS,UNITTEST_PY
           fail_ci_if_error: false
           verbose: true
