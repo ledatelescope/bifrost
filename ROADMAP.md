@@ -30,4 +30,4 @@ stated, the items on this page have not yet been developed.
 
 ## Platform and dependency updates
 
- * Python 2.x will no longer be supported after the end of 2022
+ * Python 2.x will no longer be supported after the end of 2022.
