@@ -31,4 +31,3 @@ stated, the items on this page have not yet been developed.
 ## Platform and dependency updates
 
  * Python 2.x will no longer be supported after the end of 2022
- * CUDA <10.0 will no longer be supported after May 2023
