@@ -692,7 +692,6 @@ GPU_ARCHS
 CUOBJDUMP
 NVPRUNE
 NVCC
-GPU_SHAREDMEM
 CUDA_HAVE_CXX11
 CUDA_HAVE_CXX14
 CUDA_HAVE_CXX17
@@ -711,6 +710,7 @@ HIP_PATH
 GPU_PLATFORM
 HIPCC
 HIPCONFIG
+GPU_SHAREDMEM
 ENABLE_GPU
 HAVE_VMA
 HAVE_HWLOC
@@ -831,11 +831,11 @@ enable_numa
 enable_hwloc
 enable_vma
 enable_gpu
+with_shared_mem
 with_cuda_home
 with_nvcc_flags
 with_stream_model
 with_gpu_archs
-with_shared_mem
 with_alignment
 with_logging_dir
 enable_debug
@@ -1541,14 +1541,14 @@ Optional Packages:
   --with-sysroot[=DIR]    Search for dependent libraries within DIR (or the
                           compiler's sysroot if not specified).
   --with-ctags=[PATH]   absolute path to ctags executable
+  --with-shared-mem=N     default GPU shared memory per block in bytes
+                          (default=detect)
   --with-cuda-home        CUDA install path (default=/usr/local/cuda)
   --with-nvcc-flags       flags to pass to NVCC (default='-O3 -Xcompiler
                           "-Wall"')
   --with-stream-model     CUDA default stream model to use: 'legacy' or
                           'per-thread' (default='per-thread')
   --with-gpu-archs=...    default GPU architectures (default=detect)
-  --with-shared-mem=N     default GPU shared memory per block in bytes
-                          (default=detect)
   --with-alignment=N      default memory alignment in bytes (default=4096)
   --with-logging-dir=DIR  directory for Bifrost proclog logging
                           (default=autodetect)
@@ -20112,6 +20112,20 @@ $as_echo_n "checking if gpu is enabled... " >&6; }
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ENABLE_GPU" >&5
 $as_echo "$ENABLE_GPU" >&6; }
 
+    GPU_SHAREDMEM=0
+
+
+# Check whether --with-shared_mem was given.
+if test "${with_shared_mem+set}" = set; then :
+  withval=$with_shared_mem; GPU_SHAREDMEM=$withval
+
+else
+  with_shared_mem='auto'
+fi
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: -with-shared-mem=$GPU_SHAREDMEM" >&5
+$as_echo "$as_me: -with-shared-mem=$GPU_SHAREDMEM" >&6;}
+
     if test "x$ENABLE_GPU" = "x1"; then :
 
         # Extract the first word of "hipconfig", so it can be a program name with args.
@@ -20236,6 +20250,76 @@ $as_echo_n "checking for hipcc C++ config... " >&6; }
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: $HIP_CPPCONF" >&5
 $as_echo "$HIP_CPPCONF" >&6; }
 
+        if test "x$with_shared_mem" = "xauto"; then :
+
+            { $as_echo "$as_me:${as_lineno-$LINENO}: checking GPU shared memory using automatic method" >&5
+$as_echo_n "checking GPU shared memory using automatic method... " >&6; }
+            ac_compile='$HIPCC -c $HIPCCFLAGS conftest.$ac_ext >&5'
+
+            cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+                    #include <algorithm>
+                    #include <fstream>
+                    #include <iostream>
+                    #include <limits>
+                    #include <hip/hip_runtime.h>
+
+int
+main ()
+{
+
+                    int count {};
+                    auto hiperr = hipGetDeviceCount(&count);
+                    if (hiperr != hipSuccess) {
+                        std::cerr << "Error detecting devices" << std::endl;
+                        return 1;
+                    }
+                    if (count == 0) {
+                        std::cerr << "No devices detected" << std::endl;
+                        return 1;
+                    }
+
+                    size_t mem {std::numeric_limits<size_t>::max()};
+                    for (int device = 0; device < count; ++device) {
+                        hipDeviceProp_t prop;
+                        hiperr = hipGetDeviceProperties(&prop, device);
+                        if (hiperr != hipSuccess) {
+                            std::cerr << "Failed to query shared memory for device " << device << std::endl;
+                            return 1;
+                        }
+                        mem = std::min(mem, prop.sharedMemPerBlock);
+                    }
+
+                    std::ofstream fd;
+                    fd.open("confmem.out");
+                    fd << mem;
+                    fd.close();
+
+                    return 0;
+
+  ;
+  return 0;
+}
+
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"; then :
+
+                GPU_SHAREDMEM=$(cat confmem.out)
+
+                { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GPU_SHAREDMEM bytes" >&5
+$as_echo "$GPU_SHAREDMEM bytes" >&6; }
+
+else
+
+                as_fn_error $? "failed" "$LINENO" 5
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+
+fi
+
 fi
 
 
@@ -20269,6 +20353,9 @@ fi
 
 
 fi
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: hip config complete" >&5
+$as_echo "$as_me: hip config complete" >&6;}
 
 
 if test "x$ENABLE_GPU" = "x1" && test "x$GPU_PLATFORM" = "xnvidia"; then :
@@ -20312,7 +20399,7 @@ fi
     HAVE_CUDA=1
 
 
-  # Extract the first word of "nvcc", so it can be a program name with args.
+    # Extract the first word of "nvcc", so it can be a program name with args.
 set dummy nvcc; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
@@ -20354,7 +20441,7 @@ $as_echo "no" >&6; }
 fi
 
 
-  # Extract the first word of "nvprune", so it can be a program name with args.
+    # Extract the first word of "nvprune", so it can be a program name with args.
 set dummy nvprune; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
@@ -20396,7 +20483,7 @@ $as_echo "no" >&6; }
 fi
 
 
-  # Extract the first word of "cuobjdump", so it can be a program name with args.
+    # Extract the first word of "cuobjdump", so it can be a program name with args.
 set dummy cuobjdump; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
@@ -20438,6 +20525,7 @@ $as_echo "no" >&6; }
 fi
 
 
+  fi
 
   if test "$HAVE_CUDA" = "1"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for a working CUDA installation" >&5
@@ -20448,8 +20536,6 @@ $as_echo_n "checking for a working CUDA installation... " >&6; }
     LIBS_save="$LIBS"
 
     ac_compile='$NVCC -c $HIPCCFLAGS conftest.$ac_ext >&5'
-    { $as_echo "$as_me:${as_lineno-$LINENO}: $NVCC -c $HIPCCFLAGS conftest.$ac_ext >&5" >&5
-$as_echo "$as_me: $NVCC -c $HIPCCFLAGS conftest.$ac_ext >&5" >&6;}
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -20477,8 +20563,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
       LIBS="-lcuda -lcudart"
 
       ac_link='$NVCC -o conftest$ac_exeext $HIPCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
-      { $as_echo "$as_me:${as_lineno-$LINENO}: $NVCC -o conftest$ac_exeext $HIPCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext" >&5
-$as_echo "$as_me: $NVCC -o conftest$ac_exeext $HIPCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext" >&6;}
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -20730,91 +20814,6 @@ $as_echo "yes" >&6; }
     ar_max_valid=$(echo $ar_valid | ${SED} -e 's/.* //g;' )
     GPU_MAX_ARCH=$ar_max_valid
 
-
-
-# Check whether --with-shared_mem was given.
-if test "${with_shared_mem+set}" = set; then :
-  withval=$with_shared_mem;
-else
-  with_shared_mem='auto'
-fi
-
-    if test "$with_gpu_archs" = "auto"; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for minimum shared memory per block" >&5
-$as_echo_n "checking for minimum shared memory per block... " >&6; }
-
-      CXXFLAGS_save="$CXXFLAGS"
-      LDFLAGS_save="$LDFLAGS"
-      LIBS_save="$LIBS"
-
-      LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-      LIBS="-lcuda -lcudart"
-      ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS conftest.$ac_ext>&5'
-      if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-            #include <cuda.h>
-            #include <cuda_runtime.h>
-            #include <iostream>
-            #include <fstream>
-            #include <set>
-int
-main ()
-{
-
-            std::set<int> smem;
-            int smemSize;
-            int deviceCount = 0;
-            cudaGetDeviceCount(&deviceCount);
-            if( deviceCount == 0 ) {
-              return 1;
-            }
-            for(int dev=0; dev<deviceCount; dev++) {
-              cudaSetDevice(dev);
-              cudaDeviceGetAttribute(&smemSize, cudaDevAttrMaxSharedMemoryPerBlock, dev);
-              if( smem.count(smemSize) == 0 ) {
-                smem.insert(smemSize);
-              }
-            }
-            std::ofstream fh;
-            fh.open("confsmem.out");
-            if( smem.empty() ) {
-              fh << 0;
-            } else {
-              fh << *smem.begin();
-            }
-            fh.close();
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
-  GPU_SHAREDMEM=`cat confsmem.out`
-
-             { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GPU_SHAREDMEM B" >&5
-$as_echo "$GPU_SHAREDMEM B" >&6; }
-else
-  as_fn_error $? "failed to determine a value" "$LINENO" 5
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
-
-      CXXFLAGS="$CXXFLAGS_save"
-      LDFLAGS="$LDFLAGS_save"
-      LIBS="$LIBS_save"
-    else
-      GPU_SHAREDMEM=$with_shared_mem
-
-    fi
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Pascal-style CUDA managed memory" >&5
 $as_echo_n "checking for Pascal-style CUDA managed memory... " >&6; }
