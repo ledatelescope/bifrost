@@ -20250,13 +20250,50 @@ $as_echo_n "checking for hipcc C++ config... " >&6; }
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: $HIP_CPPCONF" >&5
 $as_echo "$HIP_CPPCONF" >&6; }
 
+fi
+
+
+
+    if test "x$GPU_PLATFORM" = "xnvidia"; then :
+
+        CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
+        HIPCCFLAGS="$HIPCCFLAGS --std=c++17 -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
+        LDFLAGS="$LDFLAGS -L$HIP_PATH/lib -L$ROCM_PATH/lib"
+        LIBS="$LIBS -lhipfft -lhipblas"
+
+fi
+
+    if test "x$GPU_PLATFORM" = "xamd"; then :
+
+        CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1 $HIP_CPPCONF "
+        HIPCCFLAGS="$HIPCCFLAGS -std=c++17 -Wall -O3 -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
+        LDFLAGS="$LDFLAGS -L$HIP_PATH/lib -L$ROCM_PATH/lib"
+        LIBS="$LIBS -lamdhip64 -lhipfft -lhipblas -lhiprtc"
+
+        # AMD Constants
+        GPU_MANAGEDMEM=1
+
+        GPU_MIN_ARCH=0
+
+        GPU_MAX_ARCH=0
+
+        GPU_EXP_PINNED_ALLOC=0
+
+        CUDA_VERSION=0
+
+
         if test "x$with_shared_mem" = "xauto"; then :
 
             { $as_echo "$as_me:${as_lineno-$LINENO}: checking GPU shared memory using automatic method" >&5
 $as_echo_n "checking GPU shared memory using automatic method... " >&6; }
-            ac_compile='$HIPCC -c $HIPCCFLAGS conftest.$ac_ext >&5'
 
-            cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+            if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 
@@ -20280,7 +20317,6 @@ main ()
                         std::cerr << "No devices detected" << std::endl;
                         return 1;
                     }
-
                     size_t mem {std::numeric_limits<size_t>::max()};
                     for (int device = 0; device < count; ++device) {
                         hipDeviceProp_t prop;
@@ -20291,12 +20327,10 @@ main ()
                         }
                         mem = std::min(mem, prop.sharedMemPerBlock);
                     }
-
                     std::ofstream fd;
                     fd.open("confmem.out");
                     fd << mem;
                     fd.close();
-
                     return 0;
 
   ;
@@ -20304,7 +20338,7 @@ main ()
 }
 
 _ACEOF
-if ac_fn_cxx_try_compile "$LINENO"; then :
+if ac_fn_cxx_try_run "$LINENO"; then :
 
                 GPU_SHAREDMEM=$(cat confmem.out)
 
@@ -20313,49 +20347,20 @@ $as_echo "$GPU_SHAREDMEM bytes" >&6; }
 
 else
 
-                as_fn_error $? "failed" "$LINENO" 5
+                { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "automatic shared memory detection failed (error code: $?)
+See \`config.log' for more details" "$LINENO" 5; }
 
 fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
-
-fi
-
-
-
-    if test "x$GPU_PLATFORM" = "xnvidia"; then :
-
-        CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
-        HIPCCFLAGS="$HIPCCFLAGS --std=c++17 -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
-        LDFLAGS="$LDFLAGS -L$HIP_PATH/lib -L$ROCM_PATH/lib"
-        LIBS="$LIBS -lhipfft -lhipblas"
-
-fi
-
-    if test "x$GPU_PLATFORM" = "xamd"; then :
-
-        CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1 $HIP_CPPCONF "
-        HIPCCFLAGS="$HIPCCFLAGS -std=c++17 -Wall -O3 -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
-        LDFLAGS="$LDFLAGS -L$HIP_PATH/lib -L$ROCM_PATH/lib"
-        LIBS="$LIBS -lhipfft -lhipblas -lhiprtc"
-
-        # AMD Constants
-        GPU_MANAGEDMEM=1
-
-        GPU_MIN_ARCH=0
-
-        GPU_MAX_ARCH=0
-
-        GPU_EXP_PINNED_ALLOC=0
-
-        CUDA_VERSION=0
 
 
 fi
 
-    { $as_echo "$as_me:${as_lineno-$LINENO}: hip config complete" >&5
-$as_echo "$as_me: hip config complete" >&6;}
+fi
 
 
 if test "x$ENABLE_GPU" = "x1" && test "x$GPU_PLATFORM" = "xnvidia"; then :

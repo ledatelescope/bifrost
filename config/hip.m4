@@ -49,12 +49,34 @@ AC_DEFUN([AX_CHECK_HIP],
         AC_MSG_CHECKING([for hipcc C++ config])
         AC_SUBST([HIP_CPPCONF], [`hipconfig -C`])
         AC_MSG_RESULT([$HIP_CPPCONF])
+    ])
+
+    AC_SUBST([HIPCCFLAGS])
+
+    AS_IF([test "x$GPU_PLATFORM" = "xnvidia"], [
+        CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
+        HIPCCFLAGS="$HIPCCFLAGS --std=c++17 -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
+        LDFLAGS="$LDFLAGS -L$HIP_PATH/lib -L$ROCM_PATH/lib"
+        LIBS="$LIBS -lhipfft -lhipblas"
+    ])
+
+    AS_IF([test "x$GPU_PLATFORM" = "xamd"], [
+        CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1 $HIP_CPPCONF "
+        HIPCCFLAGS="$HIPCCFLAGS -std=c++17 -Wall -O3 -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
+        LDFLAGS="$LDFLAGS -L$HIP_PATH/lib -L$ROCM_PATH/lib"
+        LIBS="$LIBS -lamdhip64 -lhipfft -lhipblas -lhiprtc"
+
+        # AMD Constants
+        AC_SUBST([GPU_MANAGEDMEM], [1])
+        AC_SUBST([GPU_MIN_ARCH], [0])
+        AC_SUBST([GPU_MAX_ARCH], [0])
+        AC_SUBST([GPU_EXP_PINNED_ALLOC], [0])
+        AC_SUBST([CUDA_VERSION], [0])
 
         AS_IF([test "x$with_shared_mem" = "xauto"], [
             AC_MSG_CHECKING([GPU shared memory using automatic method])
-            ac_compile='$HIPCC -c $HIPCCFLAGS conftest.$ac_ext >&5'
 
-            AC_COMPILE_IFELSE([
+            AC_RUN_IFELSE([
                 AC_LANG_PROGRAM([[
                     #include <algorithm>
                     #include <fstream>
@@ -72,7 +94,6 @@ AC_DEFUN([AX_CHECK_HIP],
                         std::cerr << "No devices detected" << std::endl;
                         return 1;
                     }
-
                     size_t mem {std::numeric_limits<size_t>::max()};
                     for (int device = 0; device < count; ++device) {
                         hipDeviceProp_t prop;
@@ -83,45 +104,18 @@ AC_DEFUN([AX_CHECK_HIP],
                         }
                         mem = std::min(mem, prop.sharedMemPerBlock);
                     }
-
                     std::ofstream fd;
                     fd.open("confmem.out");
                     fd << mem;
                     fd.close();
-
                     return 0;
                 ]])
             ], [
                 AC_SUBST([GPU_SHAREDMEM], [$(cat confmem.out)])
                 AC_MSG_RESULT([$GPU_SHAREDMEM bytes])
             ], [
-                AC_MSG_ERROR([failed])
+                AC_MSG_FAILURE([automatic shared memory detection failed (error code: $?)])
             ])
         ])
     ])
-
-    AC_SUBST([HIPCCFLAGS])
-
-    AS_IF([test "x$GPU_PLATFORM" = "xnvidia"], [
-        CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
-        HIPCCFLAGS="$HIPCCFLAGS --std=c++17 -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
-        LDFLAGS="$LDFLAGS -L$HIP_PATH/lib -L$ROCM_PATH/lib"
-        LIBS="$LIBS -lhipfft -lhipblas"
-    ])
-
-    AS_IF([test "x$GPU_PLATFORM" = "xamd"], [
-        CXXFLAGS="$CXXFLAGS -DBF_CUDA_ENABLED=1 $HIP_CPPCONF "
-        HIPCCFLAGS="$HIPCCFLAGS -std=c++17 -Wall -O3 -DBF_CUDA_ENABLED=1 $HIP_CPPCONF"
-        LDFLAGS="$LDFLAGS -L$HIP_PATH/lib -L$ROCM_PATH/lib"
-        LIBS="$LIBS -lhipfft -lhipblas -lhiprtc"
-
-        # AMD Constants
-        AC_SUBST([GPU_MANAGEDMEM], [1])
-        AC_SUBST([GPU_MIN_ARCH], [0])
-        AC_SUBST([GPU_MAX_ARCH], [0])
-        AC_SUBST([GPU_EXP_PINNED_ALLOC], [0])
-        AC_SUBST([CUDA_VERSION], [0])
-    ])
-
-    AC_MSG_NOTICE([hip config complete])
 ])
