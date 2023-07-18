@@ -113,8 +113,8 @@ public:
 	
 	    // Note: Using these SSE types allows the compiler to use SSE instructions
 	    //         However, they require aligned memory (otherwise segfault)
-	    uint16_t const* __restrict__ in  = (uint8_t const*)pkt->payload_ptr;
-	    uint16_t*       __restrict__ out = (uint8_t*      )&obufs[obuf_idx][obuf_offset];
+	    uint16_t const* __restrict__ in  = (uint16_t const*)pkt->payload_ptr;
+	    uint16_t*       __restrict__ out = (uint16_t*      )&obufs[obuf_idx][obuf_offset];
 	    
 	    for( int samp=0; samp<4096; ++samp ) { // HACK TESTING
 		    *(out + pkt->src) = *in;
