@@ -14,7 +14,7 @@ giving you a high-level view at arranging a series of
 blocks.
 
 We would like to construct the following pipeline,
-which will serve to calculate the beats per minute
+which will serve to calculate the beats per minute (bpm)
 of a song. As we will soon see, some intermediate
 operations will be required to get the bpm, and
 we can then write our own block.
