@@ -21430,42 +21430,16 @@ printf %s "checking for a working CUDA 10+ installation... " >&6; }
     LIBS_save="$LIBS"
 
     ac_compile='$NVCC -c $NVCCFLAGS conftest.$ac_ext >&5'
+    LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+    LIBS="$LIBS -lcuda -lcudart"
+
+    ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 
           #include <cuda.h>
           #include <cuda_runtime.h>
-int
-main (void)
-{
-#if __CUDACC_VER_MAJOR__ < 10
-             asdfdsfd
-            #endif
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_compile "$LINENO"
-then :
-
-else $as_nop
-  HAVE_CUDA=0
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-
-    if test "$HAVE_CUDA" = "1"; then
-      LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-      LIBS="$LIBS -lcuda -lcudart"
-
-      ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
-      cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-            #include <cuda.h>
-            #include <cuda_runtime.h>
 int
 main (void)
 {
@@ -21477,22 +21451,22 @@ _ACEOF
 if ac_fn_cxx_try_link "$LINENO"
 then :
   CUDA_VERSION=$( ${NVCC} --version | ${GREP} -Po -e "release.*," | cut -d,  -f1 | cut -d\  -f2 )
+         CUDA_MAJOR=$( echo "${CUDA_VERSION}" | cut -d. -f1 )
+         if test "${CUDA_MAJOR}" -ge 10; then
            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes - v$CUDA_VERSION" >&5
 printf "%s\n" "yes - v$CUDA_VERSION" >&6; }
+         else
+           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no - found v$CUDA_VERSION" >&5
+printf "%s\n" "no - found v$CUDA_VERSION" >&6; }
+         fi
 else $as_nop
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-           HAVE_CUDA=0
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no - build failure" >&5
+printf "%s\n" "no - build failure" >&6; }
+         HAVE_CUDA=0
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
-    else
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-      HAVE_CUDA=0
-
-    fi
 
     CXXFLAGS="$CXXFLAGS_save"
     LDFLAGS="$LDFLAGS_save"

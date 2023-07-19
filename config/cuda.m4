@@ -38,34 +38,24 @@ AC_DEFUN([AX_CHECK_CUDA],
     LIBS_save="$LIBS"
     
     ac_compile='$NVCC -c $NVCCFLAGS conftest.$ac_ext >&5'
-    AC_COMPILE_IFELSE([
+    LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+    LIBS="$LIBS -lcuda -lcudart"
+
+    ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
+    AC_LINK_IFELSE([
       AC_LANG_PROGRAM([[
           #include <cuda.h>
           #include <cuda_runtime.h>]],
-          [[#if __CUDACC_VER_MAJOR__ < 10
-             asdfdsfd
-            #endif]])],
-        [],
-        [AC_SUBST([HAVE_CUDA], [0])])
-    
-    if test "$HAVE_CUDA" = "1"; then
-      LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-      LIBS="$LIBS -lcuda -lcudart"
-
-      ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
-      AC_LINK_IFELSE([
-        AC_LANG_PROGRAM([[
-            #include <cuda.h>
-            #include <cuda_runtime.h>]],
-            [[cudaMalloc(0, 0);]])],
-          [CUDA_VERSION=$( ${NVCC} --version | ${GREP} -Po -e "release.*," | cut -d,  -f1 | cut -d\  -f2 )
-           AC_MSG_RESULT(yes - v$CUDA_VERSION)],
-          [AC_MSG_RESULT(no)
-           AC_SUBST([HAVE_CUDA], [0])])
-    else
-      AC_MSG_RESULT(no)
-      AC_SUBST([HAVE_CUDA], [0])
-    fi
+          [[cudaMalloc(0, 0);]])],
+        [CUDA_VERSION=$( ${NVCC} --version | ${GREP} -Po -e "release.*," | cut -d,  -f1 | cut -d\  -f2 )
+         CUDA_MAJOR=$( echo "${CUDA_VERSION}" | cut -d. -f1 )
+         if test "${CUDA_MAJOR}" -ge 10; then
+           AC_MSG_RESULT(yes - v$CUDA_VERSION)
+         else
+           AC_MSG_RESULT(no - found v$CUDA_VERSION)
+         fi],
+        [AC_MSG_RESULT(no - build failure)
+         AC_SUBST([HAVE_CUDA], [0])])
     
     CXXFLAGS="$CXXFLAGS_save"
     LDFLAGS="$LDFLAGS_save"
