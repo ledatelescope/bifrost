@@ -427,6 +427,9 @@ public:
     inline BFpacketcapture_drx_sequence_callback get_drx() {
         return _drx_callback;
     }
+		inline void set_drx8(BFpacketcapture_drx8_sequence_callback callback) {
+        _drx8_callback = callback;
+    }
 		inline BFpacketcapture_drx8_sequence_callback get_drx8() {
         return _drx8_callback;
     }
