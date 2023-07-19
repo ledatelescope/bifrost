@@ -340,7 +340,7 @@ BFstatus transpose_simple(BFarray const* in,
 	char const* arg_names[] = {"in", "out"};
 	char const* func = func_str.c_str();
 	char const* extra_code = 0;
-        return bfMap(ndim, out->shape, axis_names, narg, args, arg_names,
+	return bfMap(ndim, out->shape, axis_names, narg, args, arg_names,
 	             "transpose_simple", func, extra_code, 0, 0);
 }
 
@@ -474,7 +474,7 @@ BFstatus transpose_vector_write(BFarray const* in,
             		"}\n"
             		"out(" + out_inds_str + ") = ovals;\n";
         }
-        	// Minor HACK to avoid heap allocations
+	// Minor HACK to avoid heap allocations
 	char const* axis_names[] = {
 		"i0", "i1", "i2", "i3", "i4", "i5", "i6", "i7",
 		"i8", "i9", "iA", "iB", "iC", "iD", "iE", "iF"
