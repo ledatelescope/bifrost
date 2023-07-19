@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2021, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -171,6 +171,13 @@ BFstatus bfPacketCaptureCallbackSetDRX(BFpacketcapture_callback obj,
                                        BFpacketcapture_drx_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_drx(callback);
+    return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketCaptureCallbackSetDRX8(BFpacketcapture_callback obj,
+                                        BFpacketcapture_drx8_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_drx8(callback);
     return BF_STATUS_SUCCESS;
 }
 

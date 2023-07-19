@@ -1,5 +1,5 @@
 
-# Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -66,6 +66,10 @@ class PacketCaptureCallback(BifrostObject):
         self._ref_cache['drx'] = _bf.BFpacketcapture_drx_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetDRX(
             self.obj, self._ref_cache['drx']))
+    def set_drx8(self, fnc):
+        self._ref_cache['drx8'] = _bf.BFpacketcapture_drx8_sequence_callback(fnc)
+        _check(_bf.bfPacketCaptureCallbackSetDRX8(
+            self.obj, self._ref_cache['drx8']))
 
 class _CaptureBase(BifrostObject):
     @staticmethod

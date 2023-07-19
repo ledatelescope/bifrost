@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -379,11 +379,12 @@ class BFpacketcapture_callback_impl {
     BFpacketcapture_vdif_sequence_callback  _vdif_callback;
     BFpacketcapture_tbn_sequence_callback   _tbn_callback;
     BFpacketcapture_drx_sequence_callback   _drx_callback;
+		BFpacketcapture_drx8_sequence_callback  _drx8_callback;
 public:
     BFpacketcapture_callback_impl()
      : _chips_callback(NULL), _ibeam_callback(NULL), _pbeam_callback(NULL), 
 		    _cor_callback(NULL), _vdif_callback(NULL), _tbn_callback(NULL), 
-				_drx_callback(NULL) {}
+				_drx_callback(NULL), _drx8_callback(NULL) {}
     inline void set_chips(BFpacketcapture_chips_sequence_callback callback) {
         _chips_callback = callback;
     }
@@ -425,6 +426,9 @@ public:
     }
     inline BFpacketcapture_drx_sequence_callback get_drx() {
         return _drx_callback;
+    }
+		inline BFpacketcapture_drx8_sequence_callback get_drx8() {
+        return _drx8_callback;
     }
 };
 
@@ -1131,6 +1135,89 @@ public:
 	}
 };
 
+class BFpacketcapture_drx8_impl : public BFpacketcapture_impl {
+	ProcLog          _type_log;
+	ProcLog          _chan_log;
+	
+	BFpacketcapture_drx8_sequence_callback _sequence_callback;
+	
+	BFoffset _time_tag;
+    uint16_t _decim;
+	int      _chan1;
+	
+	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
+		_seq          = round_nearest(pkt->seq, _nseq_per_buf);
+		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
+    }
+    void on_sequence_active(const PacketDesc* pkt) {
+        if( pkt ) {
+            //cout << "Latest nchan, chan0 = " << pkt->nchan << ", " << pkt->chan0 << endl;
+        }
+		else {
+			//cout << "No latest packet" << endl;
+		}
+	}
+	inline bool has_sequence_changed(const PacketDesc* pkt) {
+	    return (   (pkt->tuning  != _chan0)
+	            || (pkt->tuning1 != _chan1)
+                || (pkt->decimation != _decim) );
+	}
+	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+	    *time_tag = pkt->time_tag;
+        _time_tag     = pkt->time_tag;
+        _chan0        = pkt->tuning;
+        _chan1        = pkt->tuning1;
+        if( _nsrc == 2 ) {
+            _chan0        = std::max(_chan0, _chan1);
+            _chan1        = 0;
+        }
+        _decim        = pkt->decimation;
+        _payload_size = pkt->payload_size;
+        
+	    if( _sequence_callback ) {
+	        int status = (*_sequence_callback)(*seq0,
+	                                        *time_tag,
+                                            _decim,
+			                                _chan0,
+			                                _chan1,
+			                                _nsrc,
+			                                hdr,
+			                                hdr_size);
+			if( status != 0 ) {
+			    // TODO: What to do here? Needed?
+				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
+			}
+		} else {
+			// Simple default for easy testing
+			*time_tag = *seq0;
+			*hdr      = NULL;
+			*hdr_size = 0;
+		}
+        
+        _chan_log.update() << "chan0        : " << _chan0 << "\n"
+					       << "chan1        : " << _chan1 << "\n"
+					       << "payload_size : " << _payload_size << "\n";
+    }
+public:
+	inline BFpacketcapture_drx8_impl(PacketCaptureThread* capture,
+	                                 BFring               ring,
+	                                 int                  nsrc,
+	                                 int                  src0,
+	                                 int                  buffer_ntime,
+	                                 int                  slot_ntime,
+	                                 BFpacketcapture_callback sequence_callback)
+		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+		  _type_log((std::string(capture->get_name())+"/type").c_str()),
+		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
+		  _sequence_callback(sequence_callback->get_drx8()), 
+		  _decim(0), _chan1(0) {
+		_decoder = new DRX8Decoder(nsrc, src0);
+		_processor = new DRX8Processor();
+		_type_log.update("type : %s\n", "drx8");
+	}
+};
+
 BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                 const char*      format,
                                 int              fd,
@@ -1180,6 +1267,8 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         max_payload_size = TBN_FRAME_SIZE;
     } else if( format == std::string("drx") ) {
         max_payload_size = DRX_FRAME_SIZE;
+    } else if( format == std::string("drx8") ) {
+        max_payload_size = DRX8_FRAME_SIZE;
     }
     
     PacketCaptureMethod* method;
@@ -1239,6 +1328,11 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                                                buffer_ntime, slot_ntime,
                                                                sequence_callback),
                            *obj = 0);
+	  } else if( format == std::string("drx8") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_drx8_impl(capture, ring, nsrc, src0,
+                                                                buffer_ntime, slot_ntime,
+                                                                sequence_callback),
+                           *obj = 0);		     
     } else {
         return BF_STATUS_UNSUPPORTED;
     }
