@@ -473,6 +473,18 @@ public:
     }
 };
 
+class BFpacketwriter_drx8_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_drx8_impl(PacketWriterThread* writer,
+                                    int                 nsamples)
+     : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI8),
+       _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new DRX8HeaderFiller();
+        _type_log.update("type : %s\n", "drx8");
+    }
+};
+
 class BFpacketwriter_tbf_impl : public BFpacketwriter_impl {
     ProcLog            _type_log;
 public:
