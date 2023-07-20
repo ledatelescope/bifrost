@@ -23,8 +23,6 @@ jobs:
         python-version: ['3.8', '3.10']
         include:
           - os: ubuntu-20.04
-            python-version: '2.7'
-          - os: ubuntu-20.04
             python-version: '3.6'
           - os: macos-latest
             python-version: '3.6'
@@ -69,7 +67,7 @@ jobs:
                pylint \
                coverage
       - name: "Software Install - Python, part 2"
-        if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
+        if: ${{ matrix.os == 'self-hosted' }}
         # Setting CPLUS_INCLUDE_PATH helps pycuda find the right
         # Python header files <pyconfig.h> to use with its embedded
         # subset of Boost.
