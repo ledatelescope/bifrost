@@ -27,6 +27,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip --no-cache-dir install \
         setuptools \
         numpy \
+        scipy \
+        jupyterlab \
+        jupyter_client \
+        nbformat \
+        nbconvert \
         matplotlib \
         contextlib2 \
         simplejson \
