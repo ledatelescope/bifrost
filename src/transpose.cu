@@ -458,11 +458,9 @@ BFstatus transpose_vector_write(BFarray const* in,
 	}
 	std::string func_str;
         if(K==1){
-            	func_str += "enum { K = " + std::to_string(K) + " };\n";
             	func_str +=
                         "    int k=0;\n"
-            		"    out_type ovals = in(" + in_inds_str + ");\n"
-            		"    out(" + out_inds_str + ") = ovals;\n";
+            		"    out(" + out_inds_str + ") = in(" + in_inds_str + ");\n";
         }
         else{
             	func_str += "enum { K = " + std::to_string(K) + " };\n";
