@@ -179,20 +179,18 @@ public:
     }
 
     inline void blank_out_source(uint8_t* data,
-                                     int      src,
-                                     int      nsrc,
-                                     int      nchan,
-                                     int      nseq) {
-            //fprintf(stderr, "TRYING TO BLANK OUT A SOURCE WITH MISSING PACKETS. BUT BLANKING NOT IMPLEMENTED\n");
-            //typedef aligned256_type otype;
-            //fprintf(stderr, "You really better not be here\n");
-            //otype* __restrict__ aligned_data = (otype*)data;
-            //for( int t=0; t<nseq; ++t ) {
-            //        for( int c=0; c<nchan; ++c ) {
-            //                ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
-            //                         0, sizeof(otype));
-            //        }
-            //}
+                                 int      src,
+                                 int      nsrc,
+                                 int      nchan,
+                                 int      nseq) {
+            typedef aligned256_type otype;
+            otype* __restrict__ aligned_data = (otype*)data;
+            for( int t=0; t<nseq; ++t ) {
+                   for( int c=0; c<nchan; ++c ) {
+                           ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
+                                    0, sizeof(otype));
+                   }
+            }
     }
 };
 
