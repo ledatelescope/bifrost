@@ -122,10 +122,8 @@ template<typename T> struct is_storage_type      { enum { value = false }; };
 template<> struct is_storage_type<signed char>   { enum { value = true  }; };
 template<> struct is_storage_type<signed short>  { enum { value = true  }; };
 template<> struct is_storage_type<signed int>    { enum { value = true  }; };
-#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
 // TODO: Complex<half> breaks because there's no half(int) constructor
 //template<> struct is_storage_type<half>          { enum { value = true  }; };
-#endif
 
 #ifdef __CUDACC_VER_MAJOR__
 template<typename Real> struct cuda_vector2_type {};
@@ -184,9 +182,7 @@ Complex<T, typename Complex_detail::enable_if<Complex_detail::is_floating_point<
 	inline __host__ __device__ Complex(Complex<signed char> c) : x(c.x), y(c.y) {}
 	inline __host__ __device__ Complex(Complex<short> c)       : x(c.x), y(c.y) {}
 	inline __host__ __device__ Complex(Complex<int> c)         : x(c.x), y(c.y) {}
-#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
 	//inline __device__ Complex(Complex<half> c) : x(__half2float(c.x)), y(__half2float(c.y)) {}
-#endif
 #ifdef __CUDACC_VER_MAJOR__
 	// Note: Use float2 to ensure vectorized load/store
 	inline __host__ __device__ Complex(typename Complex_detail::cuda_vector2_type<T>::type c) : x(c.x), y(c.y) {}
@@ -304,7 +300,6 @@ inline T type_pun(U x) {
 }
 
 #ifdef __CUDA_ARCH__
-#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
 __device__
 inline Complex<float> __shfl_sync(unsigned mask, Complex<float> const& c,
                                   int index, int width=warpSize) {
@@ -312,15 +307,6 @@ inline Complex<float> __shfl_sync(unsigned mask, Complex<float> const& c,
 	return detail::type_pun<Complex<float> >(
 		__shfl_sync(mask, detail::type_pun<shfl_type>(c), index, width));
 }
-#else
-__device__
-inline Complex<float> __shfl(Complex<float> const& c,
-                             int index, int width=warpSize) {
-	typedef unsigned long long shfl_type;
-	return detail::type_pun<Complex<float> >(
-		__shfl(detail::type_pun<shfl_type>(c), index, width));
-}
-#endif
 #endif // __CUDA_ARCH__
 
 __host__ __device__

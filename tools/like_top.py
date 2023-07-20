@@ -372,6 +372,8 @@ def main(args):
             k = _add_line(scr, k, 0, ' ', std)
             output = '%6s  %15s  %4s  %5s  %7s  %7s  %7s  %7s  Cmd' % ('PID', 'Block', 'Core', '%CPU', 'Total', 'Acquire', 'Process', 'Reserve')
             csize = size[1]-len(output)
+            if csize < 0:
+                csize = 0
             output += ' '*csize
             output += '\n'
             k = _add_line(scr, k, 0, output, rev)
