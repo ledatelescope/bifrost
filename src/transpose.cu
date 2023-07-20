@@ -379,13 +379,18 @@ BFstatus transpose_vector_read(BFarray const* in,
 		}
 	}
 	std::string func_str;
-	func_str += "enum { K = " + std::to_string(K) + " };\n";
-	func_str +=
-		"in_type ivals = in(" + in_inds_str + ");\n"
-		"#pragma unroll\n"
-		"for( int k=0; k<K; ++k ) {\n"
-		"    out(" + out_inds_str + ") = ivals[k];\n"
-		"}\n";
+        if(K==1){
+            func_str+= "int k=0;\n";
+            func_str+= "    out(" + out_inds_str + ") = in(" + in_inds_str + ");\n";
+        } else{
+        	func_str += "enum { K = " + std::to_string(K) + " };\n";
+        	func_str +=
+        		"in_type ivals = in(" + in_inds_str + ");\n"
+        		"#pragma unroll\n"
+        		"for( int k=0; k<K; ++k ) {\n"
+        		"    out(" + out_inds_str + ") = ivals[k];\n"
+        		"}\n";
+        }
 	// Minor HACK to avoid heap allocations
 	char const* axis_names[] = {
 		"i0", "i1", "i2", "i3", "i4", "i5", "i6", "i7",
@@ -452,14 +457,21 @@ BFstatus transpose_vector_write(BFarray const* in,
 		}
 	}
 	std::string func_str;
-	func_str += "enum { K = " + std::to_string(K) + " };\n";
-	func_str +=
-		"out_type ovals;\n"
-		"#pragma unroll\n"
-		"for( int k=0; k<K; ++k ) {\n"
-		"    ovals[k] = in(" + in_inds_str + ");\n"
-		"}\n"
-		"out(" + out_inds_str + ") = ovals;\n";
+        if(K==1){
+            	func_str +=
+                        "    int k=0;\n"
+            		"    out(" + out_inds_str + ") = in(" + in_inds_str + ");\n";
+        }
+        else{
+            	func_str += "enum { K = " + std::to_string(K) + " };\n";
+            	func_str +=
+            		"out_type ovals;\n"
+            		"#pragma unroll\n"
+            		"for( int k=0; k<K; ++k ) {\n"
+            		"    ovals[k] = in(" + in_inds_str + ");\n"
+            		"}\n"
+            		"out(" + out_inds_str + ") = ovals;\n";
+        }
 	// Minor HACK to avoid heap allocations
 	char const* axis_names[] = {
 		"i0", "i1", "i2", "i3", "i4", "i5", "i6", "i7",
