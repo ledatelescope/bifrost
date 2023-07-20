@@ -62,7 +62,7 @@ which is the block module in Bifrost, which is a collection of
 previously-written blocks for various functionality,and
 ``views``, which is a library for manipulations of ring headers. 
 We'll also import the ``Pipeline`` class from bifrost to
-improve readibility:
+improve readability:
 
 .. code:: python
 
