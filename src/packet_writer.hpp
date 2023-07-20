@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -473,6 +473,18 @@ public:
     }
 };
 
+class BFpacketwriter_drx8_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_drx8_impl(PacketWriterThread* writer,
+                                    int                 nsamples)
+     : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI8),
+       _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new DRX8HeaderFiller();
+        _type_log.update("type : %s\n", "drx8");
+    }
+};
+
 class BFpacketwriter_tbf_impl : public BFpacketwriter_impl {
     ProcLog            _type_log;
 public:
@@ -523,6 +535,8 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( format == std::string("tbn") ) {
         nsamples = 512;
     } else if( format == std::string("drx") ) {
+        nsamples = 4096;
+    } else if( format == std::string("drx8") ) {
         nsamples = 4096;
     } else if( format == std::string("tbf") ) {
         nsamples = 6144;
@@ -575,6 +589,9 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
                            *obj = 0);
     } else if( format == std::string("drx") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_drx_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( format == std::string("drx8") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_drx8_impl(writer, nsamples),
                            *obj = 0);
     } else if( format == std::string("tbf") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_tbf_impl(writer, nsamples),
