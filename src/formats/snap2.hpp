@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,11 +29,6 @@
 #pragma once
 
 #include "base.hpp"
-
-// TODO: parameterize somewhere. This isn't
-// related to the packet formatting
-#define PIPELINE_NPOL 704
-#define PIPELINE_NCHAN 32
 
 // All entries are network (i.e. big) endian
 struct __attribute__((packed)) snap2_hdr_type {
@@ -122,8 +117,6 @@ public:
 };
 
 class SNAP2Processor : virtual public PacketProcessor {
-protected:
-    int _pipeline_nchan = PIPELINE_NCHAN;
 public:
     inline void operator()(const PacketDesc* pkt,
                            uint64_t          seq0,
@@ -205,20 +198,21 @@ public:
 
 class SNAP2HeaderFiller : virtual public PacketHeaderFiller {
 public:
-    inline int get_size() { return sizeof(chips_hdr_type); }
+    inline int get_size() { return sizeof(snap2_hdr_type); }
     inline void operator()(const PacketDesc* hdr_base,
                            BFoffset          framecount,
                            char*             hdr) {
-        chips_hdr_type* header = reinterpret_cast<chips_hdr_type*>(hdr);
-        memset(header, 0, sizeof(chips_hdr_type));
+        snap2_hdr_type* header = reinterpret_cast<snap2_hdr_type*>(hdr);
+        memset(header, 0, sizeof(snap2_hdr_type));
         
-        header->roach    = hdr_base->src + 1;
-        header->gbe      = hdr_base->tuning;
-        header->nchan    = hdr_base->nchan;
-        header->nsubband = 1;       // Should be changable?
-        header->subband  = 0;       // Should be changable?
-        header->nroach   = hdr_base->nsrc;
-        header->chan0    = htons(hdr_base->chan0);
-        header->seq      = htobe64(hdr_base->seq);
+        header->seq           = htobe64(hdr_base->seq);
+        header->npol          = 2;
+        header->npol_tot      = 2;
+        header->nchan         = hdr_base->nchan;
+        header->nchan_tot     = hdr_base->nchan * hdr_base->nsrc;
+        header->chan_block_id = hdr-base->src;
+        header->chan0         = htons(hdr_base->chan0);
+        header->pol0          = 0;
+        
     }
 };
