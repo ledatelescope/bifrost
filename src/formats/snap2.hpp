@@ -208,7 +208,7 @@ public:
         header->npol_tot      = 2;
         header->nchan         = hdr_base->nchan;
         header->nchan_tot     = hdr_base->nchan * hdr_base->nsrc;
-        header->chan_block_id = hdr-base->src;
+        header->chan_block_id = hdr_base->src;
         header->chan0         = htons(hdr_base->chan0);
         header->pol0          = 0;
         
