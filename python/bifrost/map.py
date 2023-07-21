@@ -110,15 +110,11 @@ def map(func_string: str, data: Dict[str,Any],
       # Slice an array with a scalar index
       bf.map("c(i) = a(i,k)", {'c': c, 'a': a, 'k': 7}, ['i'], shape=c.shape)
     """
-    try:
-        func_string = func_string.encode()
-        if func_name is not None:
-            func_name = func_name.encode()
-        if extra_code is not None:
-            extra_code = extra_code.encode()
-    except AttributeError:
-        # Python2 catch
-        pass
+    func_string = func_string.encode()
+    if func_name is not None:
+        func_name = func_name.encode()
+    if extra_code is not None:
+        extra_code = extra_code.encode()
     narg = len(data)
     ndim = len(shape) if shape is not None else 0
     arg_arrays = []
