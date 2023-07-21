@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+﻿/*
+ * Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,20 +32,195 @@
 #include "utils.hpp"
 #include "cuda.hpp"
 #include "trace.hpp"
+#include "fileutils.hpp"
 
 #include <cstdlib> // For posix_memalign
 #include <cstring> // For memcpy
 #include <iostream>
+#include <cstdio>
+#include <sys/file.h>  // For flock
+#include <sys/stat.h>  // For fstat
+#include <sys/types.h> // For getpid
+#include <dirent.h>    // For opendir, readdir, closedir
+#include <system_error>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 #define BF_IS_POW2(x) (x) && !((x) & ((x) - 1))
 static_assert(BF_IS_POW2(BF_ALIGNMENT), "BF_ALIGNMENT must be a power of 2");
 #undef BF_IS_POW2
 //static_assert(BF_ALIGNMENT >= 8,        "BF_ALIGNMENT must be >= 8");
 
+#if defined(__APPLE__) && __APPLE__
+
+// Based on information from:
+//   https://hg.mozilla.org/mozilla-central/file/3d846420a907/xpcom/glue/FileUtils.cpp#l61
+
+int posix_fallocate(int fd, off_t offset, off_t len) {
+  fstore_t flags;
+  flags.fst_flags = F_ALLOCATECONTIG | F_ALLOCATEALL;
+  flags.fst_posmode = F_PEOFPOSMODE;
+  flags.fst_offset = offset;
+  flags.fst_length = len;
+  
+  if( fcntl(fd, F_PREALLOCATE, &flags) == -1 ) {
+    // Try again but this time don't request a contiguous file
+    flags.fst_flags = F_ALLOCATEALL;
+    if( fcntl(fd, F_PREALLOCATE, &flags) == -1 ) {
+      return -1;
+    }
+  }
+  
+  return ftruncate(fd, len);
+}
+
+#endif
+
+class MappedMgr {
+    const char*  base_mapped_dir = ((std::getenv("BIFROST_MAPPED_DIR") != NULL) \
+                                    ? std::getenv("BIFROST_MAPPED_DIR") \
+                                    : BF_MAPPED_RING_DIR);
+    std::string                   _mapped_dir;
+    std::map<void*, std::string> _filenames;
+    std::map<void*, int>         _fds;
+    std::map<void*, BFsize>      _lengths;
+    
+	void try_base_mapped_dir_cleanup() {
+		// Do this with a file lock to avoid interference from other processes
+		LockFile lock(std::string(base_mapped_dir) + ".lock");
+		DIR* dp;
+		// Remove pid dirs for which a corresponding process does not exist
+		if( (dp = opendir(base_mapped_dir)) ) {
+			struct dirent* ep;
+			while( (ep = readdir(dp)) ) {
+				pid_t pid = atoi(ep->d_name);
+				if( pid && !process_exists(pid) ) {
+					remove_files_recursively(std::string(base_mapped_dir) + "/" +
+					                         std::to_string(pid));
+				}
+			}
+			closedir(dp);
+		}
+		// Remove the base_logdir if it's empty
+		try { remove_dir(base_mapped_dir); }
+		catch( std::exception const& ) {}
+	}
+    void cleanup(std::string filename, int fd) {
+        if( fd >= 0 ) {
+            ::close(fd);
+        }
+        try { remove_file(filename); }
+        catch( std::exception const& ) {}
+    } 
+    MappedMgr()
+        : _mapped_dir(std::string(base_mapped_dir) + "/" + std::to_string(getpid())) {
+		this->try_base_mapped_dir_cleanup();
+		make_dir(base_mapped_dir, 0777);
+		make_dir(_mapped_dir);
+	}
+    ~MappedMgr() {
+        while(! _filenames.empty() ) {
+            auto x = _filenames.begin();
+            this->free(x->first);
+        }
+        try {
+            remove_files_recursively(_mapped_dir);
+            this->try_base_mapped_dir_cleanup();
+		} catch( std::exception const& ) {}
+    }
+public:
+    MappedMgr(MappedMgr& ) = delete;
+    MappedMgr& operator=(MappedMgr& ) = delete;
+    static MappedMgr& get() {
+        static MappedMgr mm;
+        return mm;
+    }
+    inline bool is_mapped(void* data) const {
+        if( _filenames.count(data) == 0 ) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+    int alloc(void** data, BFsize size) {
+        // Create
+        char tempname[256];
+        strcpy(tempname, _mapped_dir.c_str());
+        strcat(tempname, "/mmapXXXXXX");
+        int fd = ::mkstemp(tempname);
+        std::string filename = std::string(tempname);
+        if( fd < 0 ) {
+            this->cleanup(filename, fd);
+            return 1;
+        }
+        
+        // Allocate
+        int status = ::posix_fallocate(fd, 0, size);
+        if( status != 0 ) {
+            this->cleanup(filename, fd);
+            return 2;
+        }
+        
+        // MMap
+        *data = ::mmap(nullptr, size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+        if( *data == MAP_FAILED ) {
+            this->cleanup(filename, fd);
+            return 3;
+        }
+        
+        // Advise the kernel of how we'll use it
+        ::madvise(*data, size, MADV_SEQUENTIAL);
+        
+        // Save and return
+        _filenames[*data] = filename;
+        _fds[*data] = fd;
+        _lengths[*data] = size;
+        return 0;
+    }
+    int sync(void* data) {
+        if( !this->is_mapped(data) ) {
+            return -1;
+        }
+        
+        return ::msync(data, _lengths[data], MS_ASYNC|MS_INVALIDATE);
+    }
+    void* memcpy(void* dest, void* src, BFsize count) {
+        ::memcpy(dest, src, count);
+        if( this->is_mapped(dest) ) {
+            this->sync(dest);
+        }
+        return dest;
+    }
+    void* memset(void* dest, int ch, BFsize count) {
+        ::memset(dest, ch, count);
+        if( this->is_mapped(dest) ) {
+            this->sync(dest);
+        }
+        return dest;
+    }
+    int free(void* data) {
+        if( !this->is_mapped(data) ) {
+            return -1;
+        }
+        
+        ::munmap(data, _lengths[data]);
+        this->cleanup(_filenames[data], _fds[data]);
+        _filenames.erase(data);
+        _fds.erase(data);
+        _lengths.erase(data);
+        return 0;
+    }
+};
+
 BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 	BF_ASSERT(ptr, BF_STATUS_INVALID_POINTER);
-#if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
-	*space = BF_SPACE_SYSTEM;
+#if !defined(BF_CUDA_ENABLED) || !BF_CUDA_ENABLED
+	if( MappedMgr::get().is_mapped((void*) ptr) ) {
+        *space = BF_SPACE_MAPPED;
+    } else {
+        *space = BF_SPACE_SYSTEM;
+    }
 #else
 	cudaPointerAttributes ptr_attrs;
 	cudaError_t ret = cudaPointerGetAttributes(&ptr_attrs, ptr);
@@ -57,7 +232,11 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 		//           up in cuda-memcheck?
 		// Note: cudaPointerGetAttributes only works for memory allocated with
 		//         CUDA API functions, so if it fails we just assume sysmem.
-		*space = BF_SPACE_SYSTEM;
+		if( MappedMgr::get().is_mapped((void*) ptr) ) {
+		    *space = BF_SPACE_MAPPED;
+		} else {
+		    *space = BF_SPACE_SYSTEM;
+		}
 		// WAR to avoid the ignored failure showing up later
 		cudaGetLastError();
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 10000
@@ -95,10 +274,10 @@ const char* bfGetSpaceString(BFspace space) {
 	//       coding all of these values twice (one in memory.h for the 
 	//       enum, once here)?
 	
-	
 	switch( space ) {
 		case BF_SPACE_AUTO:         return "auto";
 		case BF_SPACE_SYSTEM:       return "system";
+		case BF_SPACE_MAPPED:       return "mapped";
 		case BF_SPACE_CUDA:         return "cuda";
 		case BF_SPACE_CUDA_HOST:    return "cuda_host";
 		case BF_SPACE_CUDA_MANAGED: return "cuda_managed";
@@ -118,7 +297,12 @@ BFstatus bfMalloc(void** ptr, BFsize size, BFspace space) {
 		//printf("bfMalloc --> %p\n", data);
 		break;
 	}
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+    case BF_SPACE_MAPPED: {
+        int err = MappedMgr::get().alloc((void**)&data, size);
+        BF_ASSERT(!err, BF_STATUS_MEM_ALLOC_FAILED);
+        break;
+    }
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 	case BF_SPACE_CUDA: {
 		BF_CHECK_CUDA(cudaMalloc((void**)&data, size),
 		              BF_STATUS_MEM_ALLOC_FAILED);
@@ -150,7 +334,8 @@ BFstatus bfFree(void* ptr, BFspace space) {
 	}
 	switch( space ) {
 	case BF_SPACE_SYSTEM:       ::free(ptr); break;
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+	case BF_SPACE_MAPPED:       MappedMgr::get().free(ptr); break;
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 	case BF_SPACE_CUDA:         cudaFree(ptr); break;
 	case BF_SPACE_CUDA_HOST:    cudaFreeHost(ptr); break;
 	case BF_SPACE_CUDA_MANAGED: cudaFree(ptr); break;
@@ -167,30 +352,39 @@ BFstatus bfMemcpy(void*       dst,
 	if( count ) {
 		BF_ASSERT(dst, BF_STATUS_INVALID_POINTER);
 		BF_ASSERT(src, BF_STATUS_INVALID_POINTER);
-#if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
-		::memcpy(dst, src, count);
-#else
 		// Note: Explicitly dispatching to ::memcpy was found to be much faster
 		//         than using cudaMemcpyDefault.
 		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		cudaMemcpyKind kind = cudaMemcpyDefault;
+#endif
 		switch( src_space ) {
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST: // fall-through
+#endif
+		case BF_SPACE_MAPPED: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA_HOST: // fall-through
+#endif
+			case BF_SPACE_MAPPED: // fall-through
 			case BF_SPACE_SYSTEM: ::memcpy(dst, src, count); return BF_STATUS_SUCCESS;
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
 			// Is this the right thing to do?
 			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+#endif
 			default: BF_FAIL("Valid bfMemcpy dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
 		}
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
+			case BF_SPACE_MAPPED: // fall-through # TODO:  Is this a good idea?
 			case BF_SPACE_SYSTEM: kind = cudaMemcpyDeviceToHost; break;
 			case BF_SPACE_CUDA: kind = cudaMemcpyDeviceToDevice; break;
 			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
@@ -200,8 +394,10 @@ BFstatus bfMemcpy(void*       dst,
 		}
 		// Is this the right thing to do?
 		case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+#endif
 		default: BF_FAIL("Valid bfMemcpy src space", BF_STATUS_INVALID_ARGUMENT);
 		}
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		BF_TRACE_STREAM(g_cuda_stream);
 		BF_CHECK_CUDA(cudaMemcpyAsync(dst, src, count, kind, g_cuda_stream),
 		              BF_STATUS_MEM_OP_FAILED);
@@ -235,30 +431,39 @@ BFstatus bfMemcpy2D(void*       dst,
 	if( width && height ) {
 		BF_ASSERT(dst, BF_STATUS_INVALID_POINTER);
 		BF_ASSERT(src, BF_STATUS_INVALID_POINTER);
-#if !defined BF_CUDA_ENABLED || !BF_CUDA_ENABLED
-		memcpy2D(dst, dst_stride, src, src_stride, width, height);
-#else
 		// Note: Explicitly dispatching to ::memcpy was found to be much faster
 		//         than using cudaMemcpyDefault.
 		if( src_space == BF_SPACE_AUTO ) bfGetSpace(src, &src_space);
 		if( dst_space == BF_SPACE_AUTO ) bfGetSpace(dst, &dst_space);
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		cudaMemcpyKind kind = cudaMemcpyDefault;
+#endif
 		switch( src_space ) {
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST: // fall-through
+#endif
+		case BF_SPACE_MAPPED: // fall-through
 		case BF_SPACE_SYSTEM: {
 			switch( dst_space ) {
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA_HOST: // fall-through
+#endif
+			case BF_SPACE_MAPPED: // fall-through
 			case BF_SPACE_SYSTEM: memcpy2D(dst, dst_stride, src, src_stride, width, height); return BF_STATUS_SUCCESS;
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 			case BF_SPACE_CUDA: kind = cudaMemcpyHostToDevice; break;
 			// TODO: Is this the right thing to do?
 			case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+#endif
 			default: BF_FAIL("Valid bfMemcpy2D dst space", BF_STATUS_INVALID_ARGUMENT);
 			}
 			break;
 		}
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA: {
 			switch( dst_space ) {
 			case BF_SPACE_CUDA_HOST: // fall-through
+			case BF_SPACE_MAPPED: // fall-through # TODO:  Is this a good idea?
 			case BF_SPACE_SYSTEM: kind = cudaMemcpyDeviceToHost; break;
 			case BF_SPACE_CUDA:   kind = cudaMemcpyDeviceToDevice; break;
 			// TODO: Is this the right thing to do?
@@ -269,8 +474,10 @@ BFstatus bfMemcpy2D(void*       dst,
 		}
 		// Is this the right thing to do?
 		case BF_SPACE_CUDA_MANAGED: kind = cudaMemcpyDefault; break;
+#endif
 		default: BF_FAIL("Valid bfMemcpy2D src space", BF_STATUS_INVALID_ARGUMENT);
 		}
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		BF_TRACE_STREAM(g_cuda_stream);
 		BF_CHECK_CUDA(cudaMemcpy2DAsync(dst, dst_stride,
 		                                src, src_stride,
@@ -292,8 +499,9 @@ BFstatus bfMemset(void*   ptr,
 			bfGetSpace(ptr, &space);
 		}
 		switch( space ) {
+		case BF_SPACE_MAPPED: // fall-through
 		case BF_SPACE_SYSTEM:       ::memset(ptr, value, count); break;
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST:    ::memset(ptr, value, count); break;
 		case BF_SPACE_CUDA: // Fall-through
 		case BF_SPACE_CUDA_MANAGED: {
@@ -329,10 +537,11 @@ BFstatus bfMemset2D(void*   ptr,
 			bfGetSpace(ptr, &space);
 		}
 		switch( space ) {
+		case BF_SPACE_MAPPED: // fall-through
 		case BF_SPACE_SYSTEM:       memset2D(ptr, stride, value, width, height); break;
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 		case BF_SPACE_CUDA_HOST:    memset2D(ptr, stride, value, width, height); break;
-		case BF_SPACE_CUDA: // Fall-through
+		case BF_SPACE_CUDA: // fall-through
 		case BF_SPACE_CUDA_MANAGED: {
 			BF_TRACE_STREAM(g_cuda_stream);
 			BF_CHECK_CUDA(cudaMemset2DAsync(ptr, stride, value, width, height, g_cuda_stream),

@@ -66,6 +66,9 @@ extern "C" {
 #define BF_TRACE_ENABLED @HAVE_TRACE@
 #define BF_CUDA_DEBUG_ENABLED @HAVE_CUDA_DEBUG@
 
+// Mapped ring directory
+#define BF_MAPPED_RING_DIR "@MAPPED_RING_DIR@"
+
 // Logging directory
 #define BF_PROCLOG_DIR "@HAVE_TMPFS@"
 

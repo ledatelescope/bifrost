@@ -709,6 +709,7 @@ PYBUILDFLAGS
 PYTHON3
 PYTHON
 HAVE_PYTHON
+MAPPED_RING_DIR
 HAVE_MAP_CACHE
 HAVE_CUDA_DEBUG
 enable_native_arch
@@ -862,6 +863,7 @@ enable_debug
 enable_trace
 enable_native_arch
 enable_cuda_debug
+with_mapped_ring_dir
 enable_map_cache
 enable_python
 with_python
@@ -1568,6 +1570,9 @@ Optional Packages:
   --with-alignment=N      default memory alignment in bytes (default=4096)
   --with-logging-dir=DIR  directory for Bifrost proclog logging
                           (default=autodetect)
+  --with-mapped-ring-dir=...
+                          directory to store mapped ring files in
+                          (default=/tmp/bifrost_mapped)
   --with-python=[PATH]  absolute path to python executable
   --with-pybuild-flags    build flags for python (default='')
   --with-pyinstall-flags  install flags for python (default='')
@@ -22075,6 +22080,16 @@ then :
        NVCCFLAGS="$NVCCFLAGS -G"
 fi
 
+# Check whether --with-mapped_ring_dir was given.
+if test ${with_mapped_ring_dir+y}
+then :
+  withval=$with_mapped_ring_dir;
+else $as_nop
+  mapped_ring_dir=/tmp/bifrost_mapped
+fi
+
+MAPPED_RING_DIR=$mapped_ring_dir
+
 # Check whether --enable-map_cache was given.
 if test ${enable_map_cache+y}
 then :
@@ -27056,6 +27071,9 @@ fi
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: memory alignment: $ALIGNMENT" >&5
 printf "%s\n" "$as_me: memory alignment: $ALIGNMENT" >&6;}
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: mapped ring directory: $mapped_ring_dir" >&5
+printf "%s\n" "$as_me: mapped ring directory: $mapped_ring_dir" >&6;}
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: logging directory: $HAVE_TMPFS" >&5
 printf "%s\n" "$as_me: logging directory: $HAVE_TMPFS" >&6;}

@@ -8,6 +8,7 @@
  * Added set_stream and get_stream to bifrost.device to help control which CUDA stream is used
  * Added bifrost.device.ExternalStream as a context manager to help with mixing Bifrost and cupy/pycuda
  * Fixed a problem calling bifrost.reduce on a slice of an array
+ * Added support for a new 'mapped' ring space which is backed by a file on disk
 
 0.10.0
  * Switched over to an autotools-based build system

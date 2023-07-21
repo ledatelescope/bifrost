@@ -116,14 +116,14 @@ class PipelineTest(unittest.TestCase):
         #         ring buffer at least a few times over in order to properly
         #         test things.
         self.fil_file = "./data/2chan16bitNoDM.fil"
-    def test_cuda_copy(self):
+    def test_cuda_copy(self, space='system'):
         def check_sequence(seq):
             pass
         def check_data(ispan):
             pass
         gulp_nframe = 101
         with bf.Pipeline() as pipeline:
-            data = read_sigproc([self.fil_file], gulp_nframe)
+            data = read_sigproc([self.fil_file], gulp_nframe, space=space)
             for _ in range(10):
                 data = copy(data, space='cuda')
                 data = copy(data, space='cuda_host')
@@ -132,6 +132,8 @@ class PipelineTest(unittest.TestCase):
             pipeline.run()
             self.assertEqual(ref['idata'].dtype, 'uint16')
             self.assertEqual(ref['idata'].shape, (29, 1, 2))
+    def test_cuda_copy_mapped(self):
+        self.test_cuda_copy(space='mapped')
     def test_fdmt(self):
         gulp_nframe = 101
         # TODO: Check handling of multiple pols (not currently supported?)

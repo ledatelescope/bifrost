@@ -181,6 +181,7 @@ def _get(func, *args):
 
 STRING2SPACE = {'auto':         _bf.BF_SPACE_AUTO,
                 'system':       _bf.BF_SPACE_SYSTEM,
+                'mapped':       _bf.BF_SPACE_MAPPED,
                 'cuda':         _bf.BF_SPACE_CUDA,
                 'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
                 'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
@@ -192,6 +193,7 @@ def _string2space(s):
 
 SPACE2STRING = {_bf.BF_SPACE_AUTO:         'auto',
                 _bf.BF_SPACE_SYSTEM:       'system',
+                _bf.BF_SPACE_MAPPED:       'mapped',
                 _bf.BF_SPACE_CUDA:         'cuda',
                 _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
                 _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}

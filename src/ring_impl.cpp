@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+﻿/*
+ * Copyright (c) 2016-2019, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -95,14 +95,16 @@ BFring_impl::BFring_impl(const char* name, BFspace space)
 	  _nread_open(0), _nwrite_open(0), _nrealloc_pending(0),
 	  _core(-1), _size_log(std::string("rings/")+name) {
 
-#if defined BF_CUDA_ENABLED && BF_CUDA_ENABLED
+#if defined(BF_CUDA_ENABLED) && BF_CUDA_ENABLED
 	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM       ||
+                        space==BF_SPACE_MAPPED       ||
 	                    space==BF_SPACE_CUDA         ||
 	                    space==BF_SPACE_CUDA_HOST    ||
 	                    space==BF_SPACE_CUDA_MANAGED,
 	                    BF_STATUS_INVALID_ARGUMENT);
 #else
-	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM,
+	BF_ASSERT_EXCEPTION(space==BF_SPACE_SYSTEM ||
+                        space==BF_SPACE_MAPPED,
 	                    BF_STATUS_INVALID_ARGUMENT);
 #endif
 	

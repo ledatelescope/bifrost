@@ -206,6 +206,13 @@ AS_IF([test x$enable_cuda_debug != xno],
       [AC_SUBST([HAVE_CUDA_DEBUG], [1])
        NVCCFLAGS="$NVCCFLAGS -G"])
 
+AC_ARG_WITH([mapped_ring_dir],
+            [AS_HELP_STRING([--with-mapped-ring-dir=...],
+                            [directory to store mapped ring files in (default=/tmp/bifrost_mapped)])],
+            [],
+            [mapped_ring_dir=/tmp/bifrost_mapped])
+AC_SUBST([MAPPED_RING_DIR], [$mapped_ring_dir])
+
 AC_ARG_ENABLE([map_cache],
               [AS_HELP_STRING([--disable-map-cache],
                               [disable caching bifrost.map kernels (default=no)])],
@@ -375,6 +382,8 @@ AS_IF([test x$HAVE_PYTHON = x1],
       [AC_MSG_NOTICE(python bindings: no)])
 
 AC_MSG_NOTICE(memory alignment: $ALIGNMENT)
+
+AC_MSG_NOTICE(mapped ring directory: $mapped_ring_dir)
       
 AC_MSG_NOTICE(logging directory: $HAVE_TMPFS)
 

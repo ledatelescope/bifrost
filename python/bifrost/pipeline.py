@@ -190,6 +190,7 @@ class BlockScope(object):
                 for oring in block.orings:
                     space_colors = {
                         'system':    'orange',
+                        'mapped':    'goldenrod',
                         'cuda':      'limegreen',
                         'cuda_host': 'deepskyblue'
                     }
