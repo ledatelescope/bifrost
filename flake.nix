@@ -34,7 +34,14 @@
       # most useful. Take care not to instatiate the cuda package though, which
       # would happen if you start inspecting header files or trying to run nvcc.
 
-      defaultGpuArchs = _cudatoolkit: [ "70" "75" ];
+      defaultGpuArchs = cudatoolkit:
+        if lib.hasPrefix "11." cudatoolkit.version then [
+          "80"
+          "86"
+        ] else [
+          "70"
+          "75"
+        ];
 
       # At time of writing (2022-03-24):
       # PACKAGE          VERSION ARCHS
@@ -308,7 +315,11 @@
           pys = lib.listToAttrs (eachConfig (suffix: config:
             lib.mapAttrsToList (name: py: {
               name = "${name}-bifrost${suffix}";
-              value = py.withPackages (p: [ (p.bifrost.override config) ]);
+              value = (py.withPackages
+                (p: [ (p.bifrost.override config) ])).override {
+                  makeWrapperArgs = lib.optionals config.enableCuda
+                    [ "--set LD_PRELOAD /usr/lib/x86_64-linux-gnu/libcuda.so" ];
+                };
             }) (pythonAttrs pkgs)));
 
         in { inherit (pkgs) bifrost-doc github_stats; } // cgens // bfs // pys);
@@ -338,6 +349,7 @@
               pkgs.python3.pkgs.breathe
               pkgs.python3.pkgs.sphinx
               pkgs.yamllint
+              pkgs.autoconf
             ];
         };
       });

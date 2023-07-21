@@ -153,15 +153,6 @@ AS_IF([test x$enable_vma != xno],
 
 AX_CHECK_CUDA
 
-AC_ARG_WITH([shared_mem],
-           [AS_HELP_STRING([--with-shared-mem=N],
-                           [default GPU shared memory in bytes (default=16384)])],
-           [],
-           [with_shared_mem=16384])
-AC_SUBST([GPU_SHAREDMEM], [$with_shared_mem])
-AS_IF([test x$HAVE_CUDA = x0],
-      [AC_SUBST([GPU_SHAREDMEM], [0])])
-
 #
 # Bifrost memory alignment
 #
@@ -300,7 +291,7 @@ AC_SUBST([PACKAGE_VERSION_MINOR], [`echo $PACKAGE_VERSION | $AWK -F. '{print $2}
 AC_SUBST([PACKAGE_VERSION_MICRO], [`echo $PACKAGE_VERSION | $AWK -F. '{print $3}'`])
 
 #
-# C++17/C++14/C++11 toggling
+# C++20/C++17/C++14/C++11 toggling
 #
 
 AC_SUBST([MAP_KERNEL_STDCXX], [c++11])
@@ -321,20 +312,29 @@ AS_IF([test x$HAVE_CXX20 = x1],
 AS_IF([test x$HAVE_CXX17 = x1],
       [AC_SUBST([STDCXX_IS_SET], [1])
        CXXFLAGS="-std=c++17 $CXXFLAGS"
-       AS_IF([test x$CUDA_HAVE_CXX17 = x1],
+       AS_IF([test x$CUDA_HAVE_CXX20 = x1],
              [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
               AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
-             [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
-                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
-                     AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
-                    [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])
+             [AS_IF([test x$CUDA_HAVE_CXX17 = x1],
+                    [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
+                     AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
+                    [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+                           [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                            AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+                           [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])])
 AS_IF([test x$HAVE_CXX14 = x1],
       [AC_SUBST([STDCXX_IS_SET], [1])
        CXXFLAGS="-std=c++14 $CXXFLAGS"
-       AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+       AS_IF([test x$CUDA_HAVE_CXX20 = x1],
              [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
               AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
-             [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])
+             [AS_IF([test x$CUDA_HAVE_CXX17 = x1],
+                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                     AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+                    [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+                           [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                            AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+                           [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])])
 AS_IF([test x$STDCXX_IS_SET != x1],
       [AC_SUBST([STDCXX_IS_SET], [1])
        CXXFLAGS="-std=c++11 $CXXFLAGS"
@@ -355,13 +355,6 @@ AC_OUTPUT
 # User warnings
 #
 
-AS_IF([test x$HAVE_CUDA = x1],
-      [cufft_c2r_modifies=$( echo $CUDA_VERSION | ${GREP} -e "10\.[[1-2]]" -e "11\.[[0-7]]" )
-       if test "$cufft_c2r_modifies" != ""; then
-         echo ""
-         AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)
-       fi])
-
 #
 # User notes
 #
@@ -369,7 +362,7 @@ AS_IF([test x$HAVE_CUDA = x1],
 echo ""
 
 AS_IF([test x$HAVE_CUDA = x1],
-      [AC_MSG_NOTICE(cuda: yes - v$CUDA_VERSION - $GPU_ARCHS)],
+      [AC_MSG_NOTICE(cuda: yes - v$CUDA_VERSION - $GPU_ARCHS - $with_stream_model streams)],
       [AC_MSG_NOTICE(cuda: no)])
 
 AS_IF([test x$HAVE_NUMA = x1],

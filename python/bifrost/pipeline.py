@@ -236,7 +236,9 @@ class Pipeline(BlockScope):
         self.all_blocks_finished_initializing_event = threading.Event()
         self.block_init_queue = queue.Queue()
     def as_default(self):
-        return PipelineContext(self)
+        # Add self to the end of the pipeline stack and update the block scope
+        thread_local.pipeline_stack.append(self)
+        thread_local.blockscope_stack.append(get_default_pipeline())
     def synchronize_block_initializations(self):
         # Wait for all blocks to finish initializing
         uninitialized_blocks = set(self.blocks)
