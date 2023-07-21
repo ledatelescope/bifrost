@@ -129,7 +129,7 @@ class DataType(object):
             self._veclen = 1 # TODO: Consider supporting this as part of string
         elif isinstance(t, (_th.BFdtype_enum, _bf.BFdtype)): # Note: This is actually just a c_int
             t = _th.BFdtype_enum(t).value
-            self._nbit = t & BF_DTYPE_NBIT_BITS
+            self._nbit = t & _bf.BF_DTYPE_NBIT_BITS
             is_complex = bool(t & _bf.BF_DTYPE_COMPLEX_BIT)
             self._kind = KINDMAP[t & _bf.BF_DTYPE_TYPE_BITS]
             if is_complex:

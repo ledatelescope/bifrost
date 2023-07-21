@@ -40,9 +40,8 @@ import sys
 import ctypes
 import numpy as np
 from bifrost.memory import raw_malloc, raw_free, raw_get_space, space_accessible
-from bifrost.libbifrost import _bf, _check, _space2string
+from bifrost.libbifrost import _bf, _th, _check, _space2string
 from bifrost import device
-from bifrost.dtype import bifrost2string
 from bifrost.DataType import DataType
 from bifrost.Space import Space
 from bifrost.libbifrost_generated import struct_BFarray_
@@ -171,7 +170,7 @@ class ndarray(np.ndarray):
                 shape = list(base.shape)[:ndim]
                 strides = list(base.strides)[:ndim]
                 space = _space2string(base.space)
-                dtype = bifrost2string(base.dtype)
+                dtype = _th.BFdtype_enum(base.dtype)
 
                 return ndarray.__new__(cls,
                     space=space,
