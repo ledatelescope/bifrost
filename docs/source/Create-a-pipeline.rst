@@ -13,13 +13,9 @@ handles all the behind-the-scenes pipeline construction,
 giving you a high-level view at arranging a series of
 blocks.
 
-We would like to construct the following pipeline,
-which will serve to calculate the beats per minute (bpm)
-of a song. As we will soon see, some intermediate
-operations will be required to get the bpm, and
-we can then write our own block.
+We would like to construct a pipeline to perform the following:
 
-1. Read in a ``.wav`` file to a ring buffer.
+1. Read in a ``.wav`` audio file to a ring buffer.
 #. Channelize it with a GPU FFT.
 #. Write it back to disk as a filterbank file.
 
@@ -39,7 +35,7 @@ This setup will require bifrost blocks which:
 #. Write this data to a filterbank file.
 
 This file could then be used to do things like calculating
-the beats per minute of the song at different points of time, or
+the beats per minute (bpm) of the song at different points of time, or
 could be used to just view the frequency components of the song with time.
 
 First, ensure you have a working Bifrost installation. You should
