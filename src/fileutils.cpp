@@ -48,9 +48,11 @@ std::string get_home_dir(void) {
 
 void make_dir(std::string path, int perms) {
 #if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
-  std::filesystem::create_directories(path);
-  std::filesystem::permissions(path, (std::filesystem::perms) perms,
-                               std::filesystem::perm_options::replace);
+  bool created = std::filesystem::create_directories(path);
+  if(created) {
+    std::filesystem::permissions(path, (std::filesystem::perms) perms,
+                                 std::filesystem::perm_options::replace);
+  }
 #else
   std::ostringstream cmd;
   cmd << "mkdir -p -m " << std::oct << perms << ' ' << path;

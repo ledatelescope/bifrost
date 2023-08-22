@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -24,6 +24,8 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+from __future__ import division
 
 import unittest
 import numpy as np
@@ -77,16 +79,33 @@ class ReduceTest(unittest.TestCase):
         a = bf.asarray(a, space='cuda')
         b = bf.empty_like(b_gold, space='cuda')
         bf.reduce(a, b, op)
-        #for _ in range(10):
-        #    bf.reduce(a, b, op)
-        #bf.device.stream_synchronize();
-        #t0 = time.time()
-        #nrep = 30
-        #for _ in range(nrep):
-        #    bf.reduce(a, b, op)
-        #bf.device.stream_synchronize();
-        #dt = time.time() - t0
-        #print nrep * (a.nbytes + b.nbytes) / dt / 1e9, 'GB/s', shape, axis, n, dtype
+        b = b.copy('system')
+        np.testing.assert_allclose(b, b_gold)
+    def run_reduce_slice_test(self, shape, axis, n, op='sum', dtype=np.float32):
+        if n is None:
+            return None
+        a = ((np.random.random(size=shape)*2-1)*127).astype(np.int8).astype(dtype)
+        if axis == 0:
+            a_slice = a[1:((a.shape[0]-1)//n-1)*n+1,...]
+        elif axis == 1:
+            a_slice = a[:,1:((a.shape[1]-1)//n-1)*n+1,:]
+        else:
+            a_slice = a[...,1:((a.shape[-1]-1)//n-1)*n+1]
+        if a_slice.shape[0] == 0 or a_slice.shape[1] == 0 or a_slice.shape[-1] == 0:
+            return None
+        if op[:3] == 'pwr':
+            b_gold = pwrscrunch(a_slice.astype(np.float32), n, axis, NP_OPS[op[3:]])
+        else:
+            b_gold = scrunch(a_slice.astype(np.float32), n, axis, NP_OPS[op])
+        a = bf.ndarray(a, space='cuda')
+        if axis == 0:
+            a_slice = a[1:((a.shape[0]-1)//n-1)*n+1,...]
+        elif axis == 1:
+            a_slice = a[:,1:((a.shape[1]-1)//n-1)*n+1,:]
+        else:
+            a_slice = a[...,1:((a.shape[-1]-1)//n-1)*n+1]
+        b = bf.empty_like(b_gold, space='cuda')
+        bf.reduce(a_slice, b, op)
         b = b.copy('system')
         np.testing.assert_allclose(b, b_gold)
     def test_reduce(self):
@@ -98,6 +117,7 @@ class ReduceTest(unittest.TestCase):
                         for dtype in [np.float32, np.int16, np.int8]:
                             #print shape, axis, n, op, dtype
                             self.run_reduce_test(shape, axis, n, op, dtype)
+                            self.run_reduce_slice_test(shape, axis, n, op, dtype)
     def test_reduce_pow2(self):
         for shape in [(16,32,64), (16,64,256), (256,64,16)]:#, (256, 256, 512)]:
             for axis in range(3):
@@ -106,6 +126,7 @@ class ReduceTest(unittest.TestCase):
                         for dtype in [np.float32, np.int16, np.int8]:
                             #print shape, axis, n, op, dtype
                             self.run_reduce_test(shape, axis, n, op, dtype)
+                            self.run_reduce_slice_test(shape, axis, n, op, dtype)
     
     def run_complex_reduce_test(self, shape, axis, n, op='sum', dtype=np.complex64):
         a = ((np.random.random(size=shape)*2-1)*127).astype(np.int8).astype(dtype) \
@@ -117,16 +138,34 @@ class ReduceTest(unittest.TestCase):
         a = bf.asarray(a, space='cuda')
         b = bf.empty_like(b_gold, space='cuda')
         bf.reduce(a, b, op)
-        #for _ in range(10):
-        #    bf.reduce(a, b, op)
-        #bf.device.stream_synchronize();
-        #t0 = time.time()
-        #nrep = 30
-        #for _ in range(nrep):
-        #    bf.reduce(a, b, op)
-        #bf.device.stream_synchronize();
-        #dt = time.time() - t0
-        #print nrep * (a.nbytes + b.nbytes) / dt / 1e9, 'GB/s', shape, axis, n, dtype
+        b = b.copy('system')
+        np.testing.assert_allclose(b, b_gold, rtol=1e-3 if op[:3] == 'pwr' else 1e-7)
+    def run_complex_reduce_slice_test(self, shape, axis, n, op='sum', dtype=np.float32):
+        if n is None:
+            return None
+        a = ((np.random.random(size=shape)*2-1)*127).astype(np.int8).astype(dtype) \
+            + 1j*((np.random.random(size=shape)*2-1)*127).astype(np.int8).astype(dtype)
+        if axis == 0:
+            a_slice = a[1:((a.shape[0]-1)//n-1)*n+1,...]
+        elif axis == 1:
+            a_slice = a[:,1:((a.shape[1]-1)//n-1)*n+1,:]
+        else:
+            a_slice = a[...,1:((a.shape[-1]-1)//n-1)*n+1]
+        if a_slice.shape[0] == 0 or a_slice.shape[1] == 0 or a_slice.shape[-1] == 0:
+            return None
+        if op[:3] == 'pwr':
+            b_gold = pwrscrunch(a_slice.astype(np.complex64), n, axis, NP_OPS[op[3:]])
+        else:
+            b_gold = scrunch(a_slice.astype(np.complex64), n, axis, NP_OPS[op])
+        a = bf.ndarray(a, space='cuda')
+        if axis == 0:
+            a_slice = a[1:((a.shape[0]-1)//n-1)*n+1,...]
+        elif axis == 1:
+            a_slice = a[:,1:((a.shape[1]-1)//n-1)*n+1,:]
+        else:
+            a_slice = a[...,1:((a.shape[-1]-1)//n-1)*n+1]
+        b = bf.empty_like(b_gold, space='cuda')
+        bf.reduce(a_slice, b, op)
         b = b.copy('system')
         np.testing.assert_allclose(b, b_gold, rtol=1e-3 if op[:3] == 'pwr' else 1e-7)
     def test_complex_reduce(self):
@@ -138,6 +177,7 @@ class ReduceTest(unittest.TestCase):
                         for dtype in [np.complex64,]:
                             #print shape, axis, n, op, dtype
                             self.run_complex_reduce_test(shape, axis, n, op, dtype)
+                            self.run_complex_reduce_slice_test(shape, axis, n, op, dtype)
     def test_complex_reduce_pow2(self):
         for shape in [(16,32,64), (16,64,256), (256,64,16)]:#, (256, 256, 512)]:
             for axis in range(3):
@@ -146,3 +186,4 @@ class ReduceTest(unittest.TestCase):
                         for dtype in [np.complex64,]:
                             #print shape, axis, n, op, dtype
                             self.run_complex_reduce_test(shape, axis, n, op, dtype)
+                            self.run_complex_reduce_slice_test(shape, axis, n, op, dtype)

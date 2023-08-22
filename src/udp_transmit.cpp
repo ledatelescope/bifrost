@@ -145,7 +145,6 @@ class BFudptransmit_impl {
 	ProcLog            _type_log;
 	ProcLog            _bind_log;
 	ProcLog            _stat_log;
-	pid_t              _pid;
 	
 	void update_stats_log() {
 		const PacketStats* stats = _transmit.get_stats();

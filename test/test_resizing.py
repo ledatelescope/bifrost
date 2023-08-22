@@ -45,7 +45,7 @@ class ModResizeAsciiBlock(SinkBlock):
         self.shape = header_dict['shape']
         size_of_float32 = 4
         if self.gulp_size is None:
-            self.gulp_size = np.product(self.shape) * size_of_float32
+            self.gulp_size = np.prod(self.shape) * size_of_float32
     def iterate_ring_read(self, input_ring):
         """Iterate through one input ring
         @param[in] input_ring Ring to read through"""

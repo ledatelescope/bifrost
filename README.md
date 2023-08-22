@@ -9,6 +9,11 @@ A stream processing framework for high-throughput applications.
 ### [![Paper](https://img.shields.io/badge/arXiv-1708.00720-blue.svg)](https://arxiv.org/abs/1708.00720)
 
 ### [Bifrost Documentation](http://ledatelescope.github.io/bifrost/)
+
+See also the [Bifrost tutorial notebooks](tutorial/), which can be run
+on Google Colab or any Jupyter environment where Bifrost is installed
+(and a GPU is available).
+
 ### [Bifrost Roadmap](ROADMAP.md)
 
 ## A Simple Pipeline

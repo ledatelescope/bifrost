@@ -322,7 +322,7 @@ def main(args):
             k = _add_line(scr, k, 0, output, std)
             ### General - header
             k = _add_line(scr, k, 0, ' ', std)
-            output = '%6s        %9s        %6s        %9s        %6s' % ('PID', 'RX Rate', 'RX #/s', 'TX Rate', 'TX #/s')
+            output = '%7s       %9s        %6s        %9s        %6s' % ('PID', 'RX Rate', 'RX #/s', 'TX Rate', 'TX #/s')
             output += ' '*(size[1]-len(output))
             output += '\n'
             k = _add_line(scr, k, 0, output, rev)
@@ -342,7 +342,7 @@ def main(args):
                 drateT, drateuT = _set_units(drateT)
 
 
-                output = '%6i        %7.2f%2s        %6i        %7.2f%2s        %6i\n' % (o, drateR, drateuR, prateR, drateT, drateuT, prateT)
+                output = '%7i       %7.2f%2s        %6i        %7.2f%2s        %6i\n' % (o, drateR, drateuR, prateR, drateT, drateuT, prateT)
                 try:
                     if o == order[sel]:
                         sty = std|curses.A_BOLD

@@ -149,3 +149,34 @@ def numpy2string(dtype):
     elif dtype == np.complex128: return 'cf64'
     elif dtype == np.complex256: return 'cf128'
     else: raise TypeError("Unsupported dtype: " + str(dtype))
+
+def bifrost2string(dtype):
+    """ Convert bifrost BF_DTYPE integer code to ndarray string """
+    typedict = {
+        _bf.BF_DTYPE_I8:  'i8',
+        _bf.BF_DTYPE_I16: 'i16',
+        _bf.BF_DTYPE_I32: 'i32',
+        _bf.BF_DTYPE_I64: 'i64',
+        _bf.BF_DTYPE_U8:  'u8',
+        _bf.BF_DTYPE_U16: 'u16',
+        _bf.BF_DTYPE_U32: 'u32',
+        _bf.BF_DTYPE_U64: 'u64',
+        _bf.BF_DTYPE_F16: 'f16',
+        _bf.BF_DTYPE_F32: 'f32',
+        _bf.BF_DTYPE_F64: 'f64',
+        _bf.BF_DTYPE_CI8: 'ci8',
+        _bf.BF_DTYPE_CI16: 'ci16',
+        _bf.BF_DTYPE_CI32: 'ci32',
+        _bf.BF_DTYPE_CF16: 'cf16',
+        _bf.BF_DTYPE_CF32: 'cf32',
+        _bf.BF_DTYPE_CF64: 'cf64',
+    }
+    if BF_FLOAT128_ENABLED:
+        typedict[_bf.BF_DTYPE_CF128] = 'cf128'
+        typedict[_bf.BF_DTYPE_F128] = 'f128'
+        
+    dtype_str = typedict.get(dtype)
+    if dtype_str is None:
+        raise ValueError("Could not convert dtype integer to string. Value not understood.")
+    else:
+        return dtype_str
