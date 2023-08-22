@@ -162,7 +162,7 @@ class TestMap(unittest.TestCase):
                 a_orig['im'] = np.random.randint(256, size=n)
             except ValueError:
                 # ci4 is different
-                a_orig['re_im'] = np.random.randint(256, size=n)
+                a_orig['re_im'] = np.random.randint(256, size=n, dtype=np.uint8)
             for out_dtype in (in_dtype, 'cf32'):
                 a = a_orig.copy(space='cuda')
                 b = bf.ndarray(shape=(n,), dtype=out_dtype, space='cuda')

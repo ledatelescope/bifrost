@@ -64,7 +64,7 @@ class ScriptTest(unittest.TestCase):
         pylint_output = StringIO()
         reporter = TextReporter(pylint_output)
         try:
-            Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter, do_exit=False)
+            Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter, exit=False)
         except TypeError:
             # Python2 catch
             Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter)
