@@ -63,7 +63,7 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 10000
 } else {
    switch( ptr_attrs.type ) {
-	   case cudaMemoryTypeUnregistered: *space = BF_SPACE_SYSTEM;       break
+	   case cudaMemoryTypeUnregistered: *space = BF_SPACE_SYSTEM;       break;
 	   case cudaMemoryTypeHost:         *space = BF_SPACE_CUDA_HOST;    break;
 	   case cudaMemoryTypeDevice:       *space = BF_SPACE_CUDA;         break;
 	   case cudaMemoryTypeManaged:      *space = BF_SPACE_CUDA_MANAGED; break;
