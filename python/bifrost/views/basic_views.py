@@ -114,13 +114,12 @@ def delete_axis(block: Block, axis: int) -> Block:
         tensor = hdr['_tensor']
         specified_axis = axis
         if isinstance(axis, str):
-            specified_axis = "'%s'" % specified_axis
+            specified_axis = f"'{specified_axis}'"
             axis = tensor['labels'].index(axis)
         if axis < 0:
             axis += len(tensor['shape']) + 1
         if tensor['shape'][axis] != 1:
-            raise ValueError("Cannot delete non-unitary axis %s with shape %i"
-                             % (specified_axis, tensor['shape'][axis]))
+            raise ValueError(f"Cannot delete non-unitary axis {specified_axis} with shape {tensor['shape'][axis]}")
         del tensor['shape'][axis]
         if 'labels' in tensor:
             del tensor['labels'][axis]
@@ -160,8 +159,7 @@ def split_axis(block: Block, axis: int, n: int, label: Optional[str]=None) -> Bl
         else:
             # Axis is not frame axis
             if shape[axis] % n:
-                raise ValueError("Split does not evenly divide axis (%i // %i)" %
-                                 (tensor['shape'][axis], n))
+                raise ValueError(f"Split does not evenly divide axis ({tensor['shape'][axis]} // {n})")
             shape[axis] //= n
         shape.insert(axis + 1, n)
         if 'units' in tensor:
@@ -205,7 +203,7 @@ def merge_axes(block: Block, axis1: int, axis2: int, label: Optional[str]=None) 
             scale2 = convert_units(scale2, units2, units1)
             if not isclose(scale1, n * scale2):
                 raise ValueError("Scales of merge axes do not line up: "
-                                 "%f != %f" % (scale1, n * scale2))
+                                 f"{scale1} != {n * scale2}")
             tensor['scales'][axis1][1] = scale2
             del tensor['scales'][axis2]
             del tensor['units'][axis2]
