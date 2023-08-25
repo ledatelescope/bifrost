@@ -37,7 +37,7 @@ struct __attribute__((packed)) tbf_hdr_type {
     uint32_t frame_count_word;
     uint32_t seconds_count;
     uint16_t first_chan;
-    uint16_t unassinged;
+    uint16_t nstand;
     uint64_t time_tag;
 };
 
@@ -55,6 +55,7 @@ public:
         header->frame_count_word = htobe32((framecount & 0xFFFFFF) \
                                            | ((uint32_t) 0x01 << 24));
         header->first_chan       = htons(hdr_base->src);
+        header->nstand           = htobe16(hdr_base->nsrc);
         header->time_tag         = htobe64(hdr_base->seq);
     }
 };
