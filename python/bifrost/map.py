@@ -152,16 +152,16 @@ def list_map_cache() -> None:
                 version = fh.read()
             mapcache, runtime, driver = version.split(None, 2)
             mapcache = int(mapcache, 10)
-            mapcache = "%i.%i" % (mapcache//1000, (mapcache//10) % 1000)
+            mapcache = f"{mapcache//1000}.{mapcache//10) % 1000}"
             runtime = int(runtime, 10)
-            runtime = "%i.%i" % (runtime//1000, (runtime//10) % 1000)
+            runtime = f"{runtime//1000}.{runtime//10) % 1000}"
             driver = int(driver, 10)
-            driver = "%i.%i" % (driver//1000, (driver//10) % 1000)
+            driver = f"{driver//1000}.{driver//10) % 1000}"
             
             entries = glob.glob(os.path.join(cache_path, '*.inf'))
             
-            output += "\nCache version: %s (map cache) %s (runtime), %s (driver)" % (mapcache, runtime, driver)
-            output += "\nCache entries: %i" % len(entries)
+            output += f"\nCache version: {mapcache} (map cache) {runtime} (runtime), {driver} (driver)"
+            output += f"\nCache entries: {len(entries)}"
         except OSError:
             pass
             

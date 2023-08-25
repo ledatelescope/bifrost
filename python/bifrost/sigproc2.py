@@ -337,7 +337,7 @@ class SigprocFile(object):
             start = nframe_or_start or 0
             if start * self.frame_size * self.nbit % 8 != 0:
                 raise ValueError("Start index must be aligned with byte boundary " +
-                                 "(idx=%i, nbit=%i)" % (start, self.nbit))
+                                 f"(idx={start}, nbit={self.nbit})")
             self.seek(start * self.frame_size * self.nbit // 8)
             if end == -1:
                 end = self.nframe()
@@ -347,7 +347,7 @@ class SigprocFile(object):
         if self.nbit < 8:
             if nframe * self.frame_size * self.nbit % 8 != 0:
                 raise ValueError("No. frames must correspond to whole number of bytes " +
-                                 "(idx=%i, nbit=%i)" % (nframe, self.nbit))
+                                 f"(idx={nframe}, nbit={self.nbit})")
             #data = np.fromfile(self.f, np.uint8,
             #                   nframe * self.frame_size * self.nbit // 8)
             #requested_nbyte = nframe * self.frame_nbyte

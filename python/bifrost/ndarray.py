@@ -204,9 +204,8 @@ class ndarray(np.ndarray):
                     base = base.astype(dtype.as_numpy_dtype())
                 base = ndarray(base) # View base as bf.ndarray
                 if dtype is not None and base.bf.dtype != dtype:
-                    raise TypeError('Unable to convert type %s to %s during '
-                                    'array construction' %
-                                    (base.bf.dtype, dtype))
+                    raise TypeError(f"Unable to convert type {base.bf.dtype} to {dtype} during "
+                                    "array construction")
                 #base = base.view(cls
                 #if dtype is not None:
                 #    base = base.astype(DataType(dtype).as_numpy_dtype())

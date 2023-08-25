@@ -282,7 +282,7 @@ class Pipeline(BlockScope):
                             reversed(sorted(signal.__dict__.items()))
                             if v.startswith('SIG') and
                             not v.startswith('SIG_'))
-        warnings.warn("Received signal %i %s, shutting down pipeline" % (signum, SIGNAL_NAMES[signum]), RuntimeWarning)
+        warnings.warn(f"Received signal {signum} {SIGNAL_NAMES[signum]}, shutting down pipeline", RuntimeWarning)
         self.shutdown()
     def __enter__(self):
         thread_local.pipeline_stack.append(self)
@@ -340,8 +340,7 @@ class Block(BlockScope):
         valid_inp_spaces = self._define_valid_input_spaces()
         for i, (iring, valid_spaces) in enumerate(zip(irings, valid_inp_spaces)):
             if not memory.space_accessible(iring.space, valid_spaces):
-                raise ValueError("Block %s input %i's space must be accessible from one of: %s" %
-                                 (self.name, i, str(valid_spaces)))
+                raise ValueError(f"Block {self.name} input {i}'s space must be accessible from one of: {valid_spaces}")
         self.orings = [] # Update this in subclass constructors
         self.shutdown_event = threading.Event()
         self.bind_proclog = ProcLog(self.name + "/bind")

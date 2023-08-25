@@ -1010,7 +1010,7 @@ class NumpySourceBlock(MultiTransformBlock):
                 equal to the number of outgoing rings attached to this block.
             @param[in] changing Whether or not the arrays will be different in shape"""
         super(NumpySourceBlock, self).__init__()
-        outputs = ['out_%d' % (i + 1) for i in range(outputs)]
+        outputs = [f"out_{i+1}" for i in range(outputs)]
         self.ring_names = {}
         for output_name in outputs:
             ring_description = "Output number " + output_name[4:]
@@ -1026,7 +1026,7 @@ class NumpySourceBlock(MultiTransformBlock):
             @param[in] arrays The arrays outputted by self.generator"""
         for index in range(len(self.ring_names)):
             assert isinstance(arrays[index], np.ndarray)
-            ring_name = 'out_%d' % (index + 1)
+            ring_name = f"out_{index+1}"
             self.header[ring_name] = {
                 'dtype': str(arrays[index].dtype),
                 'shape': list(arrays[index].shape),
@@ -1038,7 +1038,7 @@ class NumpySourceBlock(MultiTransformBlock):
             @param[in] headers List of dictionaries from self.generator
                 for each ring's sequence header"""
         for i, header in enumerate(headers):
-            ring_name = 'out_%d' % (i + 1)
+            ring_name = f"out_{i+1}"
             for parameter in header:
                 self.header[ring_name][parameter] = header[parameter]
             if 'dtype' in header:
