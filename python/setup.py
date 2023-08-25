@@ -63,6 +63,7 @@ setup(name='bifrost',
       url='https://github.com/ledatelescope/bifrost',
       packages=find_packages(),
       scripts=scripts,
+      python_requires='>=3.6',
       install_requires=[
           "numpy>=1.8.1",
           "contextlib2>=0.4.0",
