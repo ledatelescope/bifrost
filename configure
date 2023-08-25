@@ -22310,7 +22310,19 @@ fi
 fi
        if test x${PYTHON} != xno
 then :
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether $PYTHON as ctypesgen" >&5
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $PYTHON is version 3.6 or later" >&5
+printf %s "checking if $PYTHON is version 3.6 or later... " >&6; }
+              if ! ${PYTHON} -c "import sys; assert(sys.version_info >= (3,6,0))" 2>/dev/null
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+                     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: python module will not be built" >&5
+printf "%s\n" "$as_me: WARNING: python module will not be built" >&2;}
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+fi
+              { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether $PYTHON as ctypesgen" >&5
 printf %s "checking whether $PYTHON as ctypesgen... " >&6; }
               if ! ${PYTHON} -c "import ctypesgen" 2>/dev/null
 then :
