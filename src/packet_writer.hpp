@@ -486,14 +486,16 @@ public:
 };
 
 class BFpacketwriter_tbf_impl : public BFpacketwriter_impl {
+    int16_t            _nstand;
     ProcLog            _type_log;
 public:
     inline BFpacketwriter_tbf_impl(PacketWriterThread* writer,
                                    int                 nsamples)
      : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI4),
-       _type_log((std::string(writer->get_name())+"/type").c_str()) {
+       _nstand(0), _type_log((std::string(writer->get_name())+"/type").c_str()) {
         _filler = new TBFHeaderFiller();
-        _type_log.update("type : %s\n", "tbf");
+        _nstand = nsamples / 2 / 12;
+        _type_log.update("type : %s%i\n", "tbf", _nstand);
     }
 };
 
@@ -517,7 +519,7 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( std::string(format).substr(0, 5) == std::string("pbeam") ) {
         int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
         nsamples = 4*nchan;
-    } else if(std::string(format).substr(0, 4) == std::string("cor_") ) {
+    } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
         int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
         nsamples = 4*nchan;
     } else if( format == std::string("tbn") ) {
@@ -526,8 +528,9 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
         nsamples = 4096;
     } else if( format == std::string("drx8") ) {
         nsamples = 4096;
-    } else if( format == std::string("tbf") ) {
-        nsamples = 6144;
+    } else if( std::string(format).substr(0, 4) == std::string("tbf_") ) {
+        int nstand = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
+        nsamples = nstand*2*12;
     }
     
     PacketWriterMethod* method;
@@ -577,7 +580,7 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( format == std::string("drx8") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_drx8_impl(writer, nsamples),
                            *obj = 0);
-    } else if( format == std::string("tbf") ) {
+    } else if( std::string(format).substr(0, 4) == std::string("tbf_")  ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_tbf_impl(writer, nsamples),
                            *obj = 0);
     } else {
