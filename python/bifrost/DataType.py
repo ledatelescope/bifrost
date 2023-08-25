@@ -52,7 +52,7 @@ telemetry.track_module()
 #   E.g., np.ndarray([(0x10,), (0x32,)], dtype=ci4) # Special case
 #         np.ndarray([  (0,1),   (2,3)], dtype=ci8)
 #         np.ndarray([  (0,1),   (2,3)], dtype=ci16)
-ci4  = np.dtype([('re_im', np.int8)])
+ci4  = np.dtype([('re_im', np.uint8)])
 ci8  = np.dtype([('re', np.int8),    ('im', np.int8)])
 ci16 = np.dtype([('re', np.int16),   ('im', np.int16)])
 ci32 = np.dtype([('re', np.int32),   ('im', np.int32)])

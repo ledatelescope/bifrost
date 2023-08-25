@@ -371,11 +371,11 @@ class SplitterBlock(MultiTransformBlock):
         self.header['out_2']['shape'] = sections[1]
     def load_settings(self):
         """Set the gulp sizes appropriate to the input ring"""
-        self.gulp_size['in'] = np.product(self.header['in']['shape']) * self.header['in']['nbit'] // 8
-        self.gulp_size['out_1'] = (self.gulp_size['in'] * np.product(self.header['out_1']['shape']) //
-                                   np.product(self.header['in']['shape']))
-        self.gulp_size['out_2'] = (self.gulp_size['in'] * np.product(self.header['out_2']['shape']) //
-                                   np.product(self.header['in']['shape']))
+        self.gulp_size['in'] = np.prod(self.header['in']['shape']) * self.header['in']['nbit'] // 8
+        self.gulp_size['out_1'] = (self.gulp_size['in'] * np.prod(self.header['out_1']['shape']) //
+                                   np.prod(self.header['in']['shape']))
+        self.gulp_size['out_2'] = (self.gulp_size['in'] * np.prod(self.header['out_2']['shape']) //
+                                   np.prod(self.header['in']['shape']))
     def main(self):
         """Split the incoming ring into the outputs rings"""
         for inspan, outspan1, outspan2 in self.izip(
