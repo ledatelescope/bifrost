@@ -25,11 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from typing import Optional
-
 from bifrost.libbifrost import _bf, _check, BifrostObject
 from bifrost.ndarray import asarray
 from bifrost.ndarray import ndarray
+
+from typing import Optional
 
 from bifrost import telemetry
 telemetry.track_module()
