@@ -25,6 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from typing import Optional
+
 from bifrost.libbifrost import _bf, _check, BifrostObject
 from bifrost.ndarray import asarray
 from bifrost.ndarray import ndarray
@@ -35,7 +37,7 @@ telemetry.track_module()
 class LinAlg(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfLinAlgCreate, _bf.bfLinAlgDestroy)
-    def matmul(self, alpha: float, a: ndarray, b: ndarray, beta: float, c: ndarray) -> ndarray:
+    def matmul(self, alpha: float, a: Optional[ndarray], b: Optional[ndarray], beta: float, c: ndarray) -> ndarray:
         """Computes:
           c = alpha*a.b + beta*c
         or if b is None:
