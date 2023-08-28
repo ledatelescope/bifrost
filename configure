@@ -22318,11 +22318,16 @@ then :
 printf "%s\n" "no" >&6; }
                      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: python module will not be built" >&5
 printf "%s\n" "$as_me: WARNING: python module will not be built" >&2;}
+                     PYTHON=no
+
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
 fi
-              { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether $PYTHON as ctypesgen" >&5
+fi
+       if test x${PYTHON} != xno
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether $PYTHON as ctypesgen" >&5
 printf %s "checking whether $PYTHON as ctypesgen... " >&6; }
               if ! ${PYTHON} -c "import ctypesgen" 2>/dev/null
 then :
