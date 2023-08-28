@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,8 +29,6 @@
 #pragma once
 
 #include "base.hpp"
-
-#define TBF_FRAME_SIZE 6168
 
 struct __attribute__((packed)) tbf_hdr_type {
     uint32_t sync_word;
