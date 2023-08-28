@@ -232,6 +232,13 @@ AS_IF([test x$enable_python != xno],
               AS_IF([test x${PYTHON3} != xno],
                     [AC_SUBST([PYTHON], [$PYTHON3])])])
        AS_IF([test x${PYTHON} != xno],
+             [AC_MSG_CHECKING([if $PYTHON is version 3.6 or later])
+              AS_IF([! ${PYTHON} -c "import sys; assert(sys.version_info >= (3,6,0))" 2>/dev/null],
+                    [AC_MSG_RESULT([no])
+                     AC_MSG_WARN([python module will not be built])
+                     AC_SUBST([PYTHON], [no])],
+                    [AC_MSG_RESULT([yes])])])
+       AS_IF([test x${PYTHON} != xno],
              [AC_MSG_CHECKING([whether $PYTHON as ctypesgen])
               AS_IF([! ${PYTHON} -c "import ctypesgen" 2>/dev/null],
                     [AC_MSG_RESULT([no])

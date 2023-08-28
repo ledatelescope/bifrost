@@ -1,4 +1,5 @@
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,10 +24,8 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-from __future__ import absolute_import
-
-import bifrost as bf
+    
+from bifrost.map import map as bf_map
 from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
 
@@ -81,7 +80,7 @@ class DetectBlock(TransformBlock):
         idata = ispan.data
         odata = ospan.data
         if self.npol == 1:
-            bf.map("b = Complex<b_type>(a).mag2()", {'a': idata, 'b': odata})
+            bf_map("b = Complex<b_type>(a).mag2()", {'a': idata, 'b': odata})
         else:
             shape = idata.shape[:self.axis] + idata.shape[self.axis + 1:]
             inds = ['i%i' % i for i in range(idata.ndim)]
@@ -131,7 +130,7 @@ class DetectBlock(TransformBlock):
                 b(%s) = xy.imag;
                 """ % (inds_[0], inds_[1],
                        inds_[0], inds_[1], inds_[2], inds_[3])
-            bf.map(func, shape=shape, axis_names=inds,
+            bf_map(func, shape=shape, axis_names=inds,
                    data={'a': ispan.data, 'b': ospan.data})
 
 def detect(iring, mode, axis=None, *args, **kwargs):

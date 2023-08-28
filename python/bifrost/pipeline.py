@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,17 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import print_function
 import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 import threading
-try:
-    import queue
-except ImportError:
-    import Queue as queue
+import queue
 import time
 import signal
 import warnings
@@ -54,6 +46,11 @@ from bifrost.proclog import ProcLog
 from bifrost.ndarray import memset_array # TODO: This feels a bit hacky
 from bifrost.libbifrost import EndOfDataStop
 
+from graphviz import Digraph
+
+from collections.abc import Iterable
+from typing import Any, Callable, List, Optional, Union
+
 from bifrost import telemetry
 telemetry.track_module()
 
@@ -62,7 +59,7 @@ telemetry.track_module()
 #          module import time to make things easy.
 device.set_devices_no_spin_cpu()
 
-def izip(*iterables):
+def izip(*iterables: Iterable) -> List:
     while True:
         try:
             yield [next(it) for it in iterables]
@@ -71,32 +68,32 @@ def izip(*iterables):
 
 thread_local = threading.local()
 thread_local.pipeline_stack = []
-def get_default_pipeline():
+def get_default_pipeline() -> "Pipeline":
     return thread_local.pipeline_stack[-1]
 
 thread_local.blockscope_stack = []
-def get_current_block_scope():
+def get_current_block_scope() -> "BlockScope":
     if len(thread_local.blockscope_stack):
         return thread_local.blockscope_stack[-1]
     else:
         return None
 
-def block_scope(*args, **kwargs):
+def block_scope(*args, **kwargs) -> "BlockScope":
     return BlockScope(*args, **kwargs)
 
 class BlockScope(object):
     instance_count = 0
     def __init__(self,
-                 name=None,
-                 gulp_nframe=None,
-                 buffer_nframe=None,
-                 buffer_factor=None,
-                 core=None,
-                 gpu=None,
-                 share_temp_storage=False,
-                 fuse=False):
+                 name: Optional[str]=None,
+                 gulp_nframe: Optional[int]=None,
+                 buffer_nframe: Optional[int]=None,
+                 buffer_factor: Optional[int]=None,
+                 core: Optional[int]=None,
+                 gpu: Optional[int]=None,
+                 share_temp_storage: bool=False,
+                 fuse: bool=False):
         if name is None:
-            name = 'BlockScope_%i' % BlockScope.instance_count
+            name = f"BlockScope_{BlockScope.instance_count}"
             BlockScope.instance_count += 1
         self._name = name
         self._gulp_nframe   = gulp_nframe
@@ -126,7 +123,7 @@ class BlockScope(object):
     def __getattr__(self, name):
         # Use child's value if set, othersize defer to parent
         if '_'+name not in self.__dict__:
-            raise AttributeError("'%s' object has no attribute '%s'" % (self.__class__, name))
+            raise AttributeError(f"'{self.__class__}' object has no attribute '{name}'")
         self_value = getattr(self, '_' + name)
         if self_value is not None:
             return self_value
@@ -135,7 +132,7 @@ class BlockScope(object):
                 return getattr(self._parent_scope, name)
             else:
                 return None
-    def _get_temp_storage(self, space):
+    def _get_temp_storage(self, space: str) -> TempStorage:
         if space not in self._temp_storage_:
             self._temp_storage_[space] = TempStorage(space)
         return self._temp_storage_[space]
@@ -147,31 +144,29 @@ class BlockScope(object):
             scope_hierarchy.append(parent)
             parent = parent._parent_scope
         return reversed(scope_hierarchy)
-    def cache_scope_hierarchy(self):
+    def cache_scope_hierarchy(self) -> None:
         self.scope_hierarchy = self._get_scope_hierarchy()
         self.fused_ancestor = None
         for ancestor in self.scope_hierarchy:
             if ancestor._fused:
                 self.fused_ancestor = ancestor
                 break
-    def is_fused_with(self, other):
+    def is_fused_with(self, other: "BlockScope") -> bool:
         return (self.fused_ancestor is not None and
                 self.fused_ancestor is other.fused_ancestor)
-    def get_temp_storage(self, space):
+    def get_temp_storage(self, space: str) -> TempStorage:
         # TODO: Cache the first share_temp_storage scope to avoid walking each time
         for scope in self.scope_hierarchy:
             if scope.share_temp_storage:
                 return scope._get_temp_storage(space)
         return self._get_temp_storage(space)
-    def dot_graph(self, parent_graph=None):
-        from graphviz import Digraph
-
+    def dot_graph(self, parent_graph: Optional[Digraph]=None) -> Digraph:
         #graph_attr = {'label': self._name}
         graph_attr = {}
         if parent_graph is None:
-            g = Digraph('cluster_' + self._name, graph_attr=graph_attr)
+            g = Digraph(f"cluster_{self._name}", graph_attr=graph_attr)
         else:
-            g = parent_graph.subgraph('cluster_' + self._name,
+            g = parent_graph.subgraph(f"cluster_{self.name}",
                                       label=self._name)
         for child in self._children:
             if isinstance(child, Block):
@@ -205,11 +200,11 @@ class BlockScope(object):
                 g.subgraph(child.dot_graph())
         return g
 
-def try_join(thread, timeout=0.):
+def try_join(thread: threading.Thread, timeout=0.) -> bool:
     thread.join(timeout)
     return not thread.is_alive()
 # Utility function for joining a collection of threads with a timeout
-def join_all(threads, timeout):
+def join_all(threads: List[threading.Thread], timeout: Union[int,float]):
     deadline = time.time() + timeout
     alive_threads = list(threads)
     while True:
@@ -225,9 +220,9 @@ class PipelineInitError(Exception):
 
 class Pipeline(BlockScope):
     instance_count = 0
-    def __init__(self, name=None, **kwargs):
+    def __init__(self, name: str=None, **kwargs):
         if name is None:
-            name = 'Pipeline_%i' % Pipeline.instance_count
+            name = f"Pipeline_{Pipeline.instance_count}"
             Pipeline.instance_count += 1
         super(Pipeline, self).__init__(name=name, **kwargs)
         self.blocks = []
@@ -238,7 +233,7 @@ class Pipeline(BlockScope):
         # Add self to the end of the pipeline stack and update the block scope
         thread_local.pipeline_stack.append(self)
         thread_local.blockscope_stack.append(get_default_pipeline())
-    def synchronize_block_initializations(self):
+    def synchronize_block_initializations(self) -> None:
         # Wait for all blocks to finish initializing
         uninitialized_blocks = set(self.blocks)
         while len(uninitialized_blocks):
@@ -248,10 +243,10 @@ class Pipeline(BlockScope):
             if not init_succeeded:
                 self.shutdown()
                 raise PipelineInitError(
-                    "The following block failed to initialize: " + block.name)
+                    f"The following block failed to initialize: {block.name}")
         # Tell blocks that they can begin data processing
         self.all_blocks_finished_initializing_event.set()
-    def run(self):
+    def run(self) -> None:
         # Launch blocks as threads
         self.threads = [threading.Thread(target=block.run, name=block.name)
                         for block in self.blocks]
@@ -264,7 +259,7 @@ class Pipeline(BlockScope):
             # Note: Doing it this way allows signals to be caught here
             while thread.is_alive():
                 thread.join(timeout=2**30)
-    def shutdown(self):
+    def shutdown(self) -> None:
         for block in self.blocks:
             block.shutdown()
         # Ensure all blocks can make progress
@@ -272,8 +267,8 @@ class Pipeline(BlockScope):
         join_all(self.threads, timeout=self.shutdown_timeout)
         for thread in self.threads:
             if thread.is_alive():
-                warnings.warn("Thread %s did not shut down on time and will be killed" % thread.name, RuntimeWarning)
-    def shutdown_on_signals(self, signals=None):
+                warnings.warn(f"Thread {thread.name} did not shut down on time and will be killed", RuntimeWarning)
+    def shutdown_on_signals(self, signals: Optional[List[signal.Signals]]=None) -> None:
         if signals is None:
             signals = [signal.SIGHUP,
                        signal.SIGINT,
@@ -287,7 +282,7 @@ class Pipeline(BlockScope):
                             reversed(sorted(signal.__dict__.items()))
                             if v.startswith('SIG') and
                             not v.startswith('SIG_'))
-        warnings.warn("Received signal %i %s, shutting down pipeline" % (signum, SIGNAL_NAMES[signum]), RuntimeWarning)
+        warnings.warn(f"Received signal {signum} {SIGNAL_NAMES[signum]}, shutting down pipeline", RuntimeWarning)
         self.shutdown()
     def __enter__(self):
         thread_local.pipeline_stack.append(self)
@@ -301,13 +296,13 @@ class Pipeline(BlockScope):
 thread_local.pipeline_stack.append(Pipeline())
 thread_local.blockscope_stack.append(get_default_pipeline())
 
-def get_ring(block_or_ring):
+def get_ring(block_or_ring: Union["Block", Ring]) -> Ring:
     try:
         return block_or_ring.orings[0]
     except AttributeError:
         return block_or_ring
 
-def block_view(block, header_transform):
+def block_view(block: "Block", header_transform: Callable) -> "Block":
     """View a block with modified output headers
 
     Use this function to adjust the output headers of a ring
@@ -328,12 +323,12 @@ def block_view(block, header_transform):
 
 class Block(BlockScope):
     instance_counts = defaultdict(lambda: 0)
-    def __init__(self, irings,
-                 name=None,
-                 type_=None,
+    def __init__(self, irings: List[Union["Block",Ring]],
+                 name: Optional[str]=None,
+                 type_: Optional[str]=None,
                  **kwargs):
         self.type = type_ or self.__class__.__name__
-        self.name = name or '%s_%i' % (self.type, Block.instance_counts[self.type])
+        self.name = name or f"{self.type}_{Block.instance_counts[self.type]}"
         Block.instance_counts[self.type] += 1
         super(Block, self).__init__(**kwargs)
         self.pipeline = get_default_pipeline()
@@ -345,8 +340,7 @@ class Block(BlockScope):
         valid_inp_spaces = self._define_valid_input_spaces()
         for i, (iring, valid_spaces) in enumerate(zip(irings, valid_inp_spaces)):
             if not memory.space_accessible(iring.space, valid_spaces):
-                raise ValueError("Block %s input %i's space must be accessible from one of: %s" %
-                                 (self.name, i, str(valid_spaces)))
+                raise ValueError(f"Block {self.name} input {i}'s space must be accessible from one of: {valid_spaces}")
         self.orings = [] # Update this in subclass constructors
         self.shutdown_event = threading.Event()
         self.bind_proclog = ProcLog(self.name + "/bind")
@@ -354,14 +348,14 @@ class Block(BlockScope):
 
         rnames = {'nring': len(self.irings)}
         for i, r in enumerate(self.irings):
-            rnames['ring%i' % i] = r.name
+            rnames[f"ring{i}"] = r.name
         self.in_proclog.update(rnames)
         self.init_trace = ''.join(traceback.format_stack()[:-1])
-    def shutdown(self):
+    def shutdown(self) -> None:
         self.shutdown_event.set()
-    def create_ring(self, *args, **kwargs):
+    def create_ring(self, *args, **kwargs) -> Ring:
         return Ring(*args, owner=self, **kwargs)
-    def run(self):
+    def run(self) -> None:
         #affinity.set_openmp_cores(cpus) # TODO
         core = self.core
         if core is not None:
@@ -380,10 +374,10 @@ class Block(BlockScope):
                 sys.stderr.write("From block instantiated here:\n")
                 sys.stderr.write(self.init_trace)
                 raise
-    def num_outputs(self):
+    def num_outputs(self) -> int:
         # TODO: This is a little hacky
         return len(self.orings)
-    def begin_writing(self, exit_stack, orings):
+    def begin_writing(self, exit_stack, orings: List[Ring]) -> List:
         return [exit_stack.enter_context(oring.begin_writing())
                 for oring in orings]
     def begin_sequences(self, exit_stack, orings, oheaders,
@@ -453,7 +447,7 @@ class SourceBlock(Block):
 
         rnames = {'nring': len(self.orings)}
         for i, r in enumerate(self.orings):
-            rnames['ring%i' % i] = r.name
+            rnames[f"ring{i}"] = r.name
         self.out_proclog.update(rnames)
 
     def main(self, orings):
@@ -466,7 +460,7 @@ class SourceBlock(Block):
                     if 'time_tag' not in ohdr:
                         ohdr['time_tag'] = self._seq_count
                     if 'name' not in ohdr:
-                        ohdr['name'] = 'unnamed-sequence-%i' % self._seq_count
+                        ohdr['name'] = f"unnamed-sequence-{self._seq_count}"
                 self._seq_count += 1
                 with ExitStack() as oseq_stack:
                     oseqs, ogulp_overlaps = self.begin_sequences(
@@ -530,13 +524,13 @@ class MultiTransformBlock(Block):
                        for iring in self.irings]
         self._seq_count = 0
         self.perf_proclog = ProcLog(self.name + "/perf")
-        self.sequence_proclogs = [ProcLog(self.name + "/sequence%i" % i)
+        self.sequence_proclogs = [ProcLog(self.name + f"/sequence{i}")
                                   for i in range(len(self.irings))]
         self.out_proclog = ProcLog(self.name + "/out")
 
         rnames = {'nring': len(self.orings)}
         for i, r in enumerate(self.orings):
-            rnames['ring%i' % i] = r.name
+            rnames[f"ring{i}"] = r.name
         self.out_proclog.update(rnames)
 
     def main(self, orings):

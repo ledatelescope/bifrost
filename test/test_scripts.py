@@ -1,7 +1,6 @@
-#!/usr/bin/env python
 
-# Copyright (c) 2019, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2019, The University of New Mexico. All rights reserved.
+# Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -63,11 +62,7 @@ class ScriptTest(unittest.TestCase):
         
         pylint_output = StringIO()
         reporter = TextReporter(pylint_output)
-        try:
-            Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter, do_exit=False)
-        except TypeError:
-            # Python2 catch
-            Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter)
+        Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter, exit=False)
         out = pylint_output.getvalue()
         out_lines = out.split('\n')
         

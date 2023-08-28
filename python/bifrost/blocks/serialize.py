@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,13 +25,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import, print_function
-import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 from bifrost.pipeline import SinkBlock, SourceBlock
+from bifrost.ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 import os
 import warnings
 try:
@@ -41,6 +36,8 @@ except ImportError:
     import json
 import glob
 from functools import reduce
+
+from typing import Any, Dict, List, Optional
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -52,7 +49,7 @@ def _parse_bifrost_filename(fname):
     return frame0, ringlet_inds
 
 class BifrostReader(object):
-    def __init__(self, basename):
+    def __init__(self, basename: str):
         assert(basename.endswith('.bf'))
         hdr_filename = basename + '.json'
         with open(hdr_filename, 'r') as hdr_file:
@@ -91,7 +88,7 @@ class BifrostReader(object):
         else:
             for f in self.files:
                 f.close()
-    def readinto(self, buf, frame_nbyte):
+    def readinto(self, buf: memoryview, frame_nbyte: int) -> int:
         if self.cur_file == self.nfile:
             return 0
         nframe_read = 0
@@ -122,17 +119,18 @@ class BifrostReader(object):
         return nframe_read
 
 class DeserializeBlock(SourceBlock):
-    def __init__(self, filenames, gulp_nframe, *args, **kwargs):
+    def __init__(self, filenames: List[str], gulp_nframe: int, *args, **kwargs):
         super(DeserializeBlock, self).__init__(filenames, gulp_nframe, *args, **kwargs)
-    def create_reader(self, sourcename):
+    def create_reader(self, sourcename: str) -> BifrostReader:
         return BifrostReader(sourcename)
-    def on_sequence(self, ireader, sourcename):
+    def on_sequence(self, ireader: BifrostReader, sourcename: str) -> List[Dict[str,Any]]:
         return [ireader.header]
-    def on_data(self, reader, ospans):
+    def on_data(self, reader: BifrostReader, ospans: List[WriteSpan]) -> List[int]:
         ospan = ospans[0]
         return [reader.readinto(ospan.data, ospan.frame_nbyte)]
 
-def deserialize(filenames, gulp_nframe, *args, **kwargs):
+def deserialize(filenames: List[str], gulp_nframe: int,
+                *args, **kwargs) -> DeserializeBlock:
     """Deserializes a data stream from a set of files using a simple data format
 
     Sequence headers are read as JSON files, and sequence data are read
@@ -172,7 +170,7 @@ def deserialize(filenames, gulp_nframe, *args, **kwargs):
 
 # **TODO: Write a DeserializeBlock that does the inverse of this
 class SerializeBlock(SinkBlock):
-    def __init__(self, iring, path, max_file_size=None, *args, **kwargs):
+    def __init__(self, iring: Ring, path: str, max_file_size: Optional[int]=None, *args, **kwargs):
         super(SerializeBlock, self).__init__(iring, *args, **kwargs)
         if path is None:
             path = ''
@@ -203,7 +201,7 @@ class SerializeBlock(SinkBlock):
             raise NotImplementedError("Multiple ringlet axes not supported")
         # Open data files
         self.ofiles = [open(fname, 'wb') for fname in filenames]
-    def on_sequence(self, iseq):
+    def on_sequence(self, iseq: ReadSequence) -> None:
         hdr = iseq.header
         tensor = hdr['_tensor']
         if hdr['name'] != '':
@@ -222,9 +220,9 @@ class SerializeBlock(SinkBlock):
         self.frame_axis = shape.index(-1)
         self.nringlet = reduce(lambda a, b: a * b, shape[:self.frame_axis], 1)
         self._open_new_data_files(frame_offset=0)
-    def on_sequence_end(self, iseq):
+    def on_sequence_end(self, iseq: ReadSequence) -> None:
         self._close_data_files()
-    def on_data(self, ispan):
+    def on_data(self, ispan: ReadSpan) -> None:
         if self.nringlet == 1:
             bytes_to_write = ispan.data.nbytes
         else:
@@ -240,7 +238,8 @@ class SerializeBlock(SinkBlock):
             for r in range(self.nringlet):
                 ispan.data[r].tofile(self.ofiles[r])
 
-def serialize(iring, path=None, max_file_size=None, *args, **kwargs):
+def serialize(iring: Ring, path: str=None, max_file_size: Optional[int]=None,
+              *args, **kwargs) -> SerializeBlock:
     """Serializes a data stream to a set of files using a simple data format
 
     Sequence headers are written as JSON files, and sequence data are written

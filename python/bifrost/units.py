@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,22 +27,23 @@
 
 import pint
 
+from typing import Union
+
 from bifrost import telemetry
 telemetry.track_module()
 
 ureg = pint.UnitRegistry()
 
-def convert_units(value, old_units, new_units):
+def convert_units(value: Union[int,float], old_units:str, new_units:str) -> Union[int,float]:
     old_quantity = value * ureg.parse_expression(old_units)
     try:
         new_quantity = old_quantity.to(new_units)
     except pint.DimensionalityError:
-        raise ValueError("Cannot convert units %s to %s" %
-                         (old_units, new_units))
+        raise ValueError(f"Cannot convert units {old_units} to {new_units}")
     return new_quantity.magnitude
 
 # TODO: May need something more flexible, like a Units wrapper class with __str__
-def transform_units(units, exponent):
+def transform_units(units: str, exponent: Union[int,float]) -> str:
     old_quantity = ureg.parse_expression(units)
     new_quantity = old_quantity**exponent
     new_units_str = '{:P~}'.format(new_quantity.units)

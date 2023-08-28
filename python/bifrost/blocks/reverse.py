@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,12 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 from bifrost.map import map as bf_map
 from bifrost.pipeline import TransformBlock
 
