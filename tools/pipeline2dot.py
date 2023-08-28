@@ -62,7 +62,7 @@ def get_process_details(pid):
 
     data = {'user':'', 'cpu':0.0, 'mem':0.0, 'etime':'00:00', 'threads':0}
     try:
-        output = subprocess.check_output(f"ps o user,pcpu,pmem,etime,nlwp {pid}", shell=True)
+        output = subprocess.check_output(['ps', 'o', 'user,pcpu,pmem,etime,nlwp', str(pid)])
         output = output.decode()
         output = output.split('\n')[1]
         fields = output.split(None, 4)
