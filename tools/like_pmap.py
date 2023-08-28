@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2017-2021, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2021, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,9 +26,6 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-# Python2 compatibility
-from __future__ import print_function
 
 import os
 import re
@@ -89,9 +86,8 @@ def main(args):
         
     # Load in the NUMA map page for this process
     try:
-        fh = open('/proc/%i/numa_maps' % args.pid, 'r')
-        numaInfo = fh.read()
-        fh.close()
+        with open(f"/proc/{pid}/numa_maps", 'r') as fh:
+            numaInfo = fh.read()
     except IOError:
         raise RuntimeError("Cannot find NUMA memory info for PID: %i" % args.pid)
         
@@ -266,4 +262,3 @@ if __name__ == "__main__":
                         help='process ID')
     args = parser.parse_args()
     main(args)
-    

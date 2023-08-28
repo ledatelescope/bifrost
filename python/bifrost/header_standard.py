@@ -1,4 +1,4 @@
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -45,6 +45,8 @@ Optional parameters (which some blocks require):
 
 import numpy as np
 
+from typing import Dict, Any
+
 from bifrost import telemetry
 telemetry.track_module()
 
@@ -61,7 +63,7 @@ STANDARD_HEADER = {
     'tstart': ((float, np.float64), 0),
     'tsamp':  ((float, np.float64), 0)}
 
-def enforce_header_standard(header_dict):
+def enforce_header_standard(header_dict: Dict[str,Any]) -> bool:
     """Raise an error if the header dictionary passed
         does not fit the standard specified above."""
     if type(header_dict) != dict:

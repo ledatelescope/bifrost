@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -26,19 +26,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-
 from bifrost.libbifrost import _bf, _check, _get, _array
+
+from typing import List
 
 from bifrost import telemetry
 telemetry.track_module()
 
-def get_core():
+def get_core() -> int:
     return _get(_bf.bfAffinityGetCore)
-def set_core(core):
+def set_core(core: int) -> None:
     _check(_bf.bfAffinitySetCore(core))
-def set_openmp_cores(cores):
+def set_openmp_cores(cores: List[int]) -> None:
     # PYCLIBRARY ISSUE
     # TODO: Would be really nice to be able to directly pass
     #         a list here instead of needing to specify _array+type.

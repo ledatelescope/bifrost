@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,18 +25,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-
 from bifrost.libbifrost import _bf, _check
 from bifrost.ndarray import asarray
+from bifrost.ndarray import ndarray
 
 import ctypes
+
+from typing import List, Optional, Tuple, Union
 
 from bifrost import telemetry
 telemetry.track_module()
 
-def transpose(dst, src, axes=None):
+def transpose(dst: ndarray, src: ndarray, axes: Optional[Union[List[int],Tuple[int]]]=None) -> ndarray:
     if axes is None:
         axes = reversed(range(len(dst.shape)))
     dst_bf = asarray(dst).as_BFarray()
@@ -44,3 +44,4 @@ def transpose(dst, src, axes=None):
     array_type = ctypes.c_int * src.ndim
     axes_array = array_type(*axes)
     _check(_bf.bfTranspose(src_bf, dst_bf, axes_array))
+    return dst

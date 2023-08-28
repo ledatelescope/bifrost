@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2017-2021, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2021, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,9 +26,6 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-# Python2 compatibility
-from __future__ import print_function
 
 import os
 import sys
@@ -65,10 +62,8 @@ def get_process_details(pid):
 
     data = {'user':'', 'cpu':0.0, 'mem':0.0, 'etime':'00:00', 'threads':0}
     try:
-        output = subprocess.check_output('ps o user,pcpu,pmem,etime,nlwp %i' % pid, shell=True)
-        if sys.version_info.major > 2 and isinstance(output, bytes):
-            # decode the output to utf-8 in python 3
-            output = output.decode("utf-8")
+        output = subprocess.check_output(['ps', 'o', 'user,pcpu,pmem,etime,nlwp', str(pid)])
+        output = output.decode()
         output = output.split('\n')[1]
         fields = output.split(None, 4)
         data['user'] = fields[0]
@@ -91,10 +86,9 @@ def get_command_line(pid):
     cmd = ''
 
     try:
-        with open('/proc/%i/cmdline' % pid, 'r') as fh:
+        with open(f"/proc/{pid}/cmdline", 'r') as fh:
             cmd = fh.read()
             cmd = cmd.replace('\0', ' ')
-            fh.close()
     except IOError:
         pass
     return cmd
@@ -170,7 +164,7 @@ def get_data_flows(blocks):
                                 if blocks[other_block][log]['complex']:
                                     bits *= 2
                                 name = 'cplx' if  blocks[other_block][log]['complex'] else 'real'
-                                dtype = '%s%i' % (name, bits)
+                                dtype = f"{name}{bits}"
                             except KeyError:
                                 pass
                         elif log not in ('in', 'out'):
@@ -198,7 +192,7 @@ def get_data_flows(blocks):
         refCores = []
         for i in range(32):
             try:
-                refCores.append( blocks[block]['bind']['core%i' % i] )
+                refCores.append( blocks[block]['bind'][f"core{i}"] )
             except KeyError:
                 break
 
@@ -212,7 +206,7 @@ def get_data_flows(blocks):
             other_cores = []
             for i in range(32):
                 try:
-                    other_cores.append( blocks[other_block]['bind']['core%i' % i] )
+                    other_cores.append( blocks[other_block]['bind'][f"core{i}"] )
                 except KeyError:
                     break
 
@@ -353,4 +347,3 @@ if __name__ == "__main__":
                         help='exclude associated blocks')
     args = parser.parse_args()
     main(args)
-    

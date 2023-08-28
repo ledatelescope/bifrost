@@ -32,7 +32,7 @@ Basic file I/O blocks for reading and writing data.
 """
 import numpy as np
 import bifrost.pipeline as bfp
-from bifrost.dtype import name_nbit2numpy
+from bifrost.DataType import DataType
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -76,7 +76,7 @@ class BinaryFileReadBlock(bfp.SourceBlock):
         # Do a lookup on bifrost datatype to numpy datatype
         dcode = self.dtype.rstrip('0123456789')
         nbits = int(self.dtype[len(dcode):])
-        np_dtype = name_nbit2numpy(dcode, nbits)
+        np_dtype = DataType(dcode+str(nbits)).as_numpy_dtype()
 
         return BinaryFileRead(filename, self.gulp_size, np_dtype)
 
