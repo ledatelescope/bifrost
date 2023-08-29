@@ -32,6 +32,8 @@ from bifrost.ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 
 from copy import deepcopy
 
+from typing import Any, Dict, Tuple, Union
+
 from bifrost import telemetry
 telemetry.track_module()
 
