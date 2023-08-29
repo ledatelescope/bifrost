@@ -31,6 +31,7 @@ from bifrost.DataType import DataType
 from bifrost.ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 
 from copy import deepcopy
+import numpy as np
 
 from typing import Any, Dict, Tuple, Union
 
