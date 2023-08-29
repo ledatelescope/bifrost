@@ -46,7 +46,7 @@ class UnpackBlock(TransformBlock):
         self.align_msb = align_msb
     def define_valid_input_spaces(self) -> Tuple[str]:
         """Return set of valid spaces (or 'any') for each input"""
-        return ('system',)
+        return ('any',)
     def on_sequence(self, iseq: ReadSequence) -> Dict[str,Any]:
         ihdr = iseq.header
         ohdr = deepcopy(ihdr)
@@ -76,8 +76,8 @@ def unpack(iring: Ring, dtype: Union[str,np.dtype], *args, **kwargs) -> UnpackBl
 
     **Tensor semantics**::
 
-        Input:  [...], dtype = one of: i/u2, i/u4, ci2, ci4, space = SYSTEM
-        Output: [...], dtype = i8 or ci8 (matching input), space = SYSTEM
+        Input:  [...], dtype = one of: i/u2, i/u4, ci2, ci4, space = SYSTEM or CUDA
+        Output: [...], dtype = i8 or ci8 (matching input), space = SYSTEM or CUDA
 
     Returns:
         UnpackBlock: A new block instance.
