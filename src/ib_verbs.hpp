@@ -553,8 +553,8 @@ class Verbs {
             qp_init.send_cq = _verbs.send_cq[i];
             qp_init.recv_cq = _verbs.cq[i];
             _verbs.qp[i] = ibv_create_qp(_verbs.pd, &qp_init);
-            check_null(_verbs.qp[i],
-                       "create queue pair");
+            check_null_qp(_verbs.qp[i],
+                          "create queue pair");
             
             // Transition queue pair to INIT state
             ibv_qp_attr qp_attr;
@@ -958,6 +958,23 @@ class Verbs {
             std::stringstream ss;
             ss << "Failed to " << what << ": (" << errno << ") "
                << strerror(errno);
+            throw Verbs::Error(ss.str());
+        }
+    }
+    inline void check_null_qp(void* ptr, std::string what) {
+        if( ptr == NULL ) {
+            destroy_flows();
+            destroy_queues();
+            destroy_buffers();
+            destroy_context();
+            
+            std::stringstream ss;
+            ss << "Failed to " << what << ": (" << errno << ") "
+               << strerror(errno);
+            if( errno == EPERM ) {
+              ss << "  Do you need to set 'options ibverbs disable_raw_qp_enforcement=1' " 
+                 << "or add the CAP_NET_RAW capability?";
+            }
             throw Verbs::Error(ss.str());
         }
     }
