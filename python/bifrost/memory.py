@@ -63,7 +63,7 @@ def alignment() -> int:
 # **TODO: Deprecate below here!
 
 def _get_space(arr: Any) -> str:
-    try:             return arr.flags['SPACE']
+    try:             return raw_get_space(arr.ctypes.data)
     except KeyError: return 'system' # TODO: Dangerous to assume?
 
 # Note: These functions operate on numpy or GPU arrays
