@@ -67,7 +67,7 @@ def _get_space(arr: Any) -> str:
     except KeyError: return 'system' # TODO: Dangerous to assume?
 
 # Note: These functions operate on numpy or GPU arrays
-def memcpy(dst: int, src: int) -> None:
+def memcpy(dst: "bifrost.ndarray", src: "bifrost.ndarray") -> None:
     assert(dst.flags['C_CONTIGUOUS'])
     assert(src.shape == dst.shape)
     dst_space = _string2space(_get_space(dst))
@@ -77,7 +77,7 @@ def memcpy(dst: int, src: int) -> None:
                         src.ctypes.data, src_space,
                         count))
     return dst
-def memcpy2D(dst: int, src: int) -> None:
+def memcpy2D(dst: "bifrost.ndarray", src: "bifrost.ndarray") -> None:
     assert(len(dst.shape) == 2)
     assert(src.shape == dst.shape)
     dst_space = _string2space(_get_space(dst))
@@ -87,12 +87,12 @@ def memcpy2D(dst: int, src: int) -> None:
     _check(_bf.bfMemcpy2D(dst.ctypes.data, dst.strides[0], dst_space,
                           src.ctypes.data, src.strides[0], src_space,
                           width_bytes, height))
-def memset(dst: int, val: int=0) -> None:
+def memset(dst: "bifrost.ndarray", val: int=0) -> None:
     assert(dst.flags['C_CONTIGUOUS'])
     space = _string2space(_get_space(dst))
     count = dst.nbytes
     _check(_bf.bfMemset(dst.ctypes.data, space, val, count))
-def memset2D(dst: int, val: int=0) -> None:
+def memset2D(dst: "bifrost.ndarray", val: int=0) -> None:
     assert(len(dst.shape) == 2)
     space = _string2space(_get_space(dst))
     height, width = dst.shape
