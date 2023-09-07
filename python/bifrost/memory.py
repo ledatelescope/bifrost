@@ -67,8 +67,9 @@ def _get_space(arr: Any) -> str:
         space = arr.bf.space
         if space is None:
             space = 'system'
-    except KeyError:
-        return 'system' # TODO: Dangerous to assume?
+    except AttributeError:
+        space = 'system' # TODO: Dangerous to assume?
+    return space
 
 # Note: These functions operate on numpy or GPU arrays
 def memcpy(dst: "bifrost.ndarray", src: "bifrost.ndarray") -> None:
