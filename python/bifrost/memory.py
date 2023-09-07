@@ -63,8 +63,12 @@ def alignment() -> int:
 # **TODO: Deprecate below here!
 
 def _get_space(arr: Any) -> str:
-    try:             return raw_get_space(arr.ctypes.data)
-    except KeyError: return 'system' # TODO: Dangerous to assume?
+    try:
+        space = arr.bf.space
+        if space is None:
+            space = 'system'
+    except KeyError:
+        return 'system' # TODO: Dangerous to assume?
 
 # Note: These functions operate on numpy or GPU arrays
 def memcpy(dst: "bifrost.ndarray", src: "bifrost.ndarray") -> None:
