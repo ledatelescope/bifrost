@@ -62,21 +62,18 @@ def alignment() -> int:
 
 # **TODO: Deprecate below here!
 
-def _get_space(arr: Any) -> str:
+def _get_space(arr: Any) -> _bf.BFspace:
     try:
-        space = arr.bf.space
-        if space is None:
-            space = 'system'
+        return raw_get_space(arr.ctypes.data)
     except AttributeError:
-        space = 'system' # TODO: Dangerous to assume?
-    return space
+        return _bf.BF_SPACE_SYSTEM # TODO: Dangerous to assume?
 
 # Note: These functions operate on numpy or GPU arrays
 def memcpy(dst: "bifrost.ndarray", src: "bifrost.ndarray") -> None:
     assert(dst.flags['C_CONTIGUOUS'])
     assert(src.shape == dst.shape)
-    dst_space = _string2space(_get_space(dst))
-    src_space = _string2space(_get_space(src))
+    dst_space = _get_space(dst)
+    src_space = _get_space(src)
     count = dst.nbytes
     _check(_bf.bfMemcpy(dst.ctypes.data, dst_space,
                         src.ctypes.data, src_space,
@@ -85,8 +82,8 @@ def memcpy(dst: "bifrost.ndarray", src: "bifrost.ndarray") -> None:
 def memcpy2D(dst: "bifrost.ndarray", src: "bifrost.ndarray") -> None:
     assert(len(dst.shape) == 2)
     assert(src.shape == dst.shape)
-    dst_space = _string2space(_get_space(dst))
-    src_space = _string2space(_get_space(src))
+    dst_space = _get_space(dst)
+    src_space = _get_space(src)
     height, width = dst.shape
     width_bytes = width * dst.dtype.itemsize
     _check(_bf.bfMemcpy2D(dst.ctypes.data, dst.strides[0], dst_space,
@@ -94,12 +91,12 @@ def memcpy2D(dst: "bifrost.ndarray", src: "bifrost.ndarray") -> None:
                           width_bytes, height))
 def memset(dst: "bifrost.ndarray", val: int=0) -> None:
     assert(dst.flags['C_CONTIGUOUS'])
-    space = _string2space(_get_space(dst))
+    space = _get_space(dst)
     count = dst.nbytes
     _check(_bf.bfMemset(dst.ctypes.data, space, val, count))
 def memset2D(dst: "bifrost.ndarray", val: int=0) -> None:
     assert(len(dst.shape) == 2)
-    space = _string2space(_get_space(dst))
+    space = _get_space(dst)
     height, width = dst.shape
     width_bytes = width * dst.dtype.itemsize
     _check(_bf.bfMemset2D(dst.ctypes.data, dst.strides[0], space,
