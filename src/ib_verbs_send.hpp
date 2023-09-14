@@ -371,7 +371,7 @@ class VerbsSend {
         // Done
         if( !found ) {
             destroy_context();
-            throw Verbs::Error("specified device not found");
+            throw VerbsSend::Error("specified device not found");
         }
     }
     void destroy_context() {
@@ -633,7 +633,7 @@ class VerbsSend {
             std::stringstream ss;
             ss << "Failed to " << what << ": (" << errno << ") "
                << strerror(errno);
-            throw Verbs::Error(ss.str());
+            throw VerbsSend::Error(ss.str());
         }
     }
     inline void check_null(void* ptr, std::string what) {
@@ -646,7 +646,7 @@ class VerbsSend {
             std::stringstream ss;
             ss << "Failed to " << what << ": (" << errno << ") "
                << strerror(errno);
-            throw Verbs::Error(ss.str());
+            throw VerbsSend::Error(ss.str());
         }
     }
     inline void check_null_qp(void* ptr, std::string what) {
@@ -663,7 +663,7 @@ class VerbsSend {
               ss << "  Do you need to set 'options ibverbs disable_raw_qp_enforcement=1' " 
                  << "or add the CAP_NET_RAW capability?";
             }
-            throw Verbs::Error(ss.str());
+            throw VerbsSend::Error(ss.str());
         }
     }
 public:
