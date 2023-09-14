@@ -664,10 +664,10 @@ class Verbs {
         }
         
         // Link the work requests to send queue
-        uint32_t send_flags = 0;
+        uint32_t send_flags = IBV_SEND_SIGNALED;
         #if defined BF_ENABLE_VERBS_OFFLOAD && BF_ENABLE_VERBS_OFFLOAD
         if( _verbs.offload_csum ) {
-          send_flags =  IBV_SEND_IP_CSUM;
+          send_flags |= IBV_SEND_IP_CSUM;
         }
         #endif
         
