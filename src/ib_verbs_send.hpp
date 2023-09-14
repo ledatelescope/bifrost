@@ -518,7 +518,7 @@ class VerbsSend {
     }
     void link_work_requests() {
         // Make sure we are ready to go
-        check_null(_verbs.pkt_buf,
+        check_null(_verbs.send_pkt_buf,
                    "find existing packet buffer");
         check_null(_verbs.qp,
                    "find existing queue pairs");
@@ -625,7 +625,6 @@ class VerbsSend {
     }
     inline void check_error(int retval, std::string what) {
         if( retval < 0 ) {
-            destroy_flows();
             destroy_queues();
             destroy_buffers();
             destroy_context();
@@ -638,7 +637,6 @@ class VerbsSend {
     }
     inline void check_null(void* ptr, std::string what) {
         if( ptr == NULL ) {
-            destroy_flows();
             destroy_queues();
             destroy_buffers();
             destroy_context();
@@ -651,7 +649,6 @@ class VerbsSend {
     }
     inline void check_null_qp(void* ptr, std::string what) {
         if( ptr == NULL ) {
-            destroy_flows();
             destroy_queues();
             destroy_buffers();
             destroy_context();
