@@ -671,17 +671,14 @@ class Verbs {
         }
         #endif
         
-        for(i=0; i<BF_VERBS_NQP; i++) {
-            k = i*BF_VERBS_NPKTBUF;
-            for(j=0; j<BF_VERBS_NPKTBUF-1; j++) {
-                _verbs.send_pkt_buf[k+j].wr.next = &(_verbs.send_pkt_buf[k+j+1].wr);
-                _verbs.send_pkt_buf[k+j].wr.opcode = IBV_WR_SEND;
-                _verbs.send_pkt_buf[k+j].wr.send_flags = send_flags;
-            }
-            _verbs.send_pkt_buf[k+BF_VERBS_NPKTBUF-1].wr.next = NULL;
-            _verbs.send_pkt_buf[k+BF_VERBS_NPKTBUF-1].wr.opcode = IBV_WR_SEND;
-            _verbs.send_pkt_buf[k+BF_VERBS_NPKTBUF-1].wr.send_flags = send_flags;
+        for(i=0; i<BF_VERBS_NQP*BF_VERBS_NPKTBUF-1; i++) {
+            _verbs.send_pkt_buf[i].wr.next = &(_verbs.send_pkt_buf[i+1].wr);
+            _verbs.send_pkt_buf[i].wr.opcode = IBV_WR_SEND;
+            _verbs.send_pkt_buf[i].wr.send_flags = send_flags;
         }
+        _verbs.send_pkt_buf[BF_VERBS_NQP*BF_VERBS_NPKTBUF-1].wr.next = NULL;
+        _verbs.send_pkt_buf[BF_VERBS_NQP*BF_VERBS_NPKTBUF-1].wr.opcode = IBV_WR_SEND;
+        _verbs.send_pkt_buf[BF_VERBS_NQP*BF_VERBS_NPKTBUF-1].wr.send_flags = send_flags;
         _verbs.send_pkt_head = _verbs.send_pkt_buf;
         
         // End Send
