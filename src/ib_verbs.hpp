@@ -237,7 +237,7 @@ class Verbs {
             char* end;
             sprintf(cmd, "ping -c 1 %s", ip_str);
             FILE* fp = popen(cmd, "r");
-            sprintf(cmd, "ip neigh | grep %s | awk '{print $5}'", ip_str);
+            sprintf(cmd, "ip neigh | grep -e \"%s \" | awk '{print $5}'", ip_str);
             fp = popen(cmd, "r");
             if( fgets(line, sizeof(line), fp) != NULL) {
                 if( line[strlen(line)-1] == '\n' ) {
