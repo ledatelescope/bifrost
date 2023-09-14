@@ -279,12 +279,12 @@ class Verbs {
         _verbs.mr_buf = (uint8_t *) ::mmap(NULL, _verbs.mr_size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_LOCKED, -1, 0);
 
         check_error(_verbs.mr_buf == MAP_FAILED,
-                    "allocate memory region buffer");
+                    "allocate receive memory region buffer");
         check_error(::mlock(_verbs.mr_buf, _verbs.mr_size),
-                    "lock memory region buffer");
+                    "lock receive memory region buffer");
         _verbs.mr = ibv_reg_mr(_verbs.pd, _verbs.mr_buf, _verbs.mr_size, IBV_ACCESS_LOCAL_WRITE);
         check_null(_verbs.mr,
-                   "register memory region");
+                   "register receive memory region");
     }
     void destroy_buffers() {
         int failures = 0;
@@ -316,29 +316,29 @@ class Verbs {
         // Setup the completion channel and make it non-blocking
         _verbs.cc = ibv_create_comp_channel(_verbs.ctx);
         check_null(_verbs.cc,
-                   "create completion channel");
+                   "create receive completion channel");
         int flags = ::fcntl(_verbs.cc->fd, F_GETFL);
         check_error(::fcntl(_verbs.cc->fd, F_SETFL, flags | O_NONBLOCK),
-                    "set completion channel to non-blocking");
+                    "set receive completion channel to non-blocking");
         flags = ::fcntl(_verbs.cc->fd, F_GETFD);
         check_error(::fcntl(_verbs.cc->fd, F_SETFD, flags | O_CLOEXEC),
-                    "set completion channel to non-blocking");
+                    "set receive completion channel to non-blocking");
         ::madvise(_verbs.cc, sizeof(ibv_pd), MADV_DONTFORK);
         
         // Setup the completion queues
         _verbs.cq = (ibv_cq**) ::malloc(BF_VERBS_NQP * sizeof(ibv_cq*));
         check_null(_verbs.cq,
-                   "allocate completion queues");
+                   "allocate receive completion queues");
         ::memset(_verbs.cq, 0, BF_VERBS_NQP * sizeof(ibv_cq*));
         for(i=0; i<BF_VERBS_NQP; i++) {
             _verbs.cq[i] = ibv_create_cq(_verbs.ctx, BF_VERBS_NPKTBUF, NULL, _verbs.cc, 0);
             check_null(_verbs.cq[i],
-                       "create completion queue");
+                       "create receive completion queue");
             
             // Request notifications before any receive completion can be created.
             // Do NOT restrict to solicited-only completions for receive.
             check_error(ibv_req_notify_cq(_verbs.cq[i], 0),
-                        "change completion queue request notifications");
+                        "change receive completion queue request notifications");
         }
         
         // Setup the queue pairs
@@ -356,14 +356,14 @@ class Verbs {
         
         _verbs.qp = (ibv_qp**) ::malloc(BF_VERBS_NQP*sizeof(ibv_qp*));
         check_null(_verbs.qp,
-                   "allocate queue pairs");
+                   "allocate receive queue pairs");
         ::memset(_verbs.qp, 0, BF_VERBS_NQP*sizeof(ibv_qp*));
         for(i=0; i<BF_VERBS_NQP; i++) {
             qp_init.send_cq = _verbs.cq[i];
             qp_init.recv_cq = _verbs.cq[i];
             _verbs.qp[i] = ibv_create_qp(_verbs.pd, &qp_init);
             check_null_qp(_verbs.qp[i],
-                          "create queue pair");
+                          "create receive queue pair");
             
             // Transition queue pair to INIT state
             ibv_qp_attr qp_attr;
@@ -372,7 +372,7 @@ class Verbs {
             qp_attr.port_num = _verbs.port_num;
             
             check_error(ibv_modify_qp(_verbs.qp[i], &qp_attr, IBV_QP_STATE|IBV_QP_PORT),
-                        "modify queue pair state");
+                        "modify receive queue pair state");
         }
     }
     void destroy_queues() {
@@ -409,9 +409,9 @@ class Verbs {
     void link_work_requests() {
         // Make sure we are ready to go
         check_null(_verbs.pkt_buf,
-                   "find existing packet buffer");
+                   "find existing receive packet buffer");
         check_null(_verbs.qp,
-                   "find existing queue pairs");
+                   "find existing receive queue pairs");
         
         // Setup the work requests
         int i, j, k;
