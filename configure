@@ -21077,7 +21077,8 @@ printf %s "checking for AVX support... " >&6; }
       int main() {
         __m256d x = _mm256_set1_pd(1.0);
         x = _mm256_add_pd(x, x);
-        return _mm256_cvtsd_f64(x) != 2.0;
+        double f = _mm256_cvtsd_f64(x);
+        return f != 2.0;
       }
 
 
@@ -21120,7 +21121,8 @@ printf %s "checking for AVX-512 support... " >&6; }
       int main() {
         __m512d x = _mm512_set1_pd(1.0);
         x = _mm512_add_pd(x, x);
-        return _mm512_cvtsd_f64(x) != 2.0;
+        double f = _mm512_cvtsd_f64(x);
+        return f != 2.0;
       }
 
 

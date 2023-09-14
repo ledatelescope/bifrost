@@ -131,7 +131,8 @@ AC_DEFUN([AC_CHECK_AVX], [
       int main() {
         __m256d x = _mm256_set1_pd(1.0);
         x = _mm256_add_pd(x, x);
-        return _mm256_cvtsd_f64(x) != 2.0;
+        double f = _mm256_cvtsd_f64(x);
+        return f != 2.0;
       }
     ]])
   ], [
@@ -158,7 +159,8 @@ AC_DEFUN([AC_CHECK_AVX512], [
       int main() {
         __m512d x = _mm512_set1_pd(1.0);
         x = _mm512_add_pd(x, x);
-        return _mm512_cvtsd_f64(x) != 2.0;
+        double f = _mm512_cvtsd_f64(x);
+        return f != 2.0;
       }
     ]])
   ], [
