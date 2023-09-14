@@ -120,7 +120,7 @@ public:
             status = ::write(_fd, hdrs+hdr_size*i, hdr_size);
             if( status != hdr_size ) continue;
             status = ::write(_fd, data+data_size*i, data_size);
-            if( status != data_size) continue;
+            if( status != data_size ) continue;
             nsent += 1;
         }
         return nsent;
@@ -187,10 +187,10 @@ public:
 };
 
 #if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
-#include "ib_verbs.hpp"
+#include "ib_verbs_send.hpp"
 
 class UDPVerbsSender : public PacketWriterMethod {
-    Verbs           _ibv;
+    VerbsSend       _ibv;
     bf_comb_udp_hdr _udp_hdr;
     int             _last_size;
     int             _last_count;
