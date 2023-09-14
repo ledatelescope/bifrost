@@ -448,7 +448,7 @@ class VerbsSend {
         ::memset(_verbs.send_cq, 0, BF_VERBS_SEND_NQP * sizeof(ibv_cq*));
         for(i=0; i<BF_VERBS_SEND_NQP; i++) {
             _verbs.send_cq[i] = ibv_create_cq(_verbs.ctx, BF_VERBS_SEND_NPKTBUF, NULL, NULL, 0);
-            check_null(_verbs.cq[i],
+            check_null(_verbs.send_cq[i],
                        "create send completion queue");
         }
         
@@ -471,6 +471,7 @@ class VerbsSend {
         ::memset(_verbs.qp, 0, BF_VERBS_SEND_NQP*sizeof(ibv_qp*));
         for(i=0; i<BF_VERBS_SEND_NQP; i++) {
             qp_init.send_cq = _verbs.send_cq[i];
+            qp_init.recv_cq = _verbs.send_cq[i];
             _verbs.qp[i] = ibv_create_qp(_verbs.pd, &qp_init);
             check_null_qp(_verbs.qp[i],
                           "create queue pair");
@@ -554,7 +555,8 @@ class VerbsSend {
         _verbs.send_pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.opcode = IBV_WR_SEND;
         _verbs.send_pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.send_flags = send_flags;
         _verbs.send_pkt_head = _verbs.send_pkt_buf;
-    }
+    }'
+    ;'
     inline bf_ibv_send_pkt* queue(int npackets) {
         int i, j;
         int num_wce;
