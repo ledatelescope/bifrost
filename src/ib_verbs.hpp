@@ -229,16 +229,6 @@ class Verbs {
                     if( (ibv_gid.global.subnet_prefix == 0x80feUL) \
                        && (ibv_gid.global.interface_id  == gid) ) {
                         found = 1;
-                        #if defined BF_ENABLE_VERBS_OFFLOAD && BF_ENABLE_VERBS_OFFLOAD
-                        if( ibv_dev_attr.raw_packet_caps & IBV_RAW_PACKET_CAP_IP_CSUM ) {
-                          _verbs.offload_csum = 1;
-                        } else {
-                          _verbs.offload_csum = 0;
-                        }
-                        #else
-                        _verbs.offload_csum = 0;
-                        #endif
-                        std::cout << "_verbs.offload_csum: " << (int) _verbs.offload_csum << std::endl;
                         break;
                     }
                 }
