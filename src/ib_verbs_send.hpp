@@ -83,12 +83,6 @@ struct bf_ibv_send {
     size_t            mr_size;
     ibv_mr*           mr;
     
-    ibv_cq**          cq;
-    
-    uint8_t*          mr_buf;
-    size_t            mr_size;
-    ibv_mr*           mr;
-    
     bf_ibv_send_pkt*  pkt_buf;
     bf_ibv_send_pkt*  pkt_head;
     
@@ -147,6 +141,7 @@ class VerbsSend {
     int         _fd;
     size_t      _pkt_size_max;
     int         _timeout;
+    uint32_t    _rate_limit;
     bf_ibv_send _verbs;
     
     void get_interface_name(char* name) {
@@ -677,7 +672,7 @@ public:
     };
     
     VerbsSend(int fd, size_t pkt_size_max)
-        : _fd(fd), _pkt_size_max(pkt_size_max), _timeout(1) {
+        : _fd(fd), _pkt_size_max(pkt_size_max), _timeout(1), _rate_limit(0) {
             _timeout = get_timeout_ms();
             
             ::memset(&_verbs, 0, sizeof(_verbs));
