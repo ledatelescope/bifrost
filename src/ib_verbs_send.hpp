@@ -47,12 +47,7 @@
 #include <infiniband/verbs.h>
 
 // Catch for older InfiniBand verbs installs that do not have the
-// IBV_RAW_PACKET_CAP_IP_CSUM feature check.
-#ifndef IBV_RAW_PACKET_CAP_IP_CSUM
-#define BF_ENABLE_VERBS_OFFLOAD 0
-#else
-#define BF_ENABLE_VERBS_OFFLOAD 1
-#endif
+//#define BF_ENABLE_VERBS_OFFLOAD 0
 
 #ifndef BF_VERBS_SEND_NQP
 #define BF_VERBS_SEND_NQP 1
@@ -65,6 +60,8 @@
 #ifndef BF_VERBS_SEND_WCBATCH
 #define BF_VERBS_SEND_WCBATCH 16
 #endif
+
+#define BF_VERBS_SEND_PAYLOAD_OFFSET 42
 
 struct bf_ibv_send_pkt{
     ibv_send_wr wr;
@@ -87,7 +84,7 @@ struct bf_ibv_send {
     bf_ibv_send_pkt*  pkt_head;
     
     uint8_t           offload_csum;
-    uint8_t           hardware_pacing;
+    uint32_t          hardware_pacing;
 };
 
 struct __attribute__((packed)) bf_ethernet_hdr {
@@ -330,6 +327,7 @@ class VerbsSend {
                     if( (ibv_gid.global.subnet_prefix == 0x80feUL) \
                        && (ibv_gid.global.interface_id  == gid) ) {
                         found = 1;
+                        
                         #if defined BF_ENABLE_VERBS_OFFLOAD && BF_ENABLE_VERBS_OFFLOAD
                         if( ibv_dev_attr.raw_packet_caps & IBV_RAW_PACKET_CAP_IP_CSUM ) {
                           _verbs.offload_csum = 1;
@@ -340,6 +338,13 @@ class VerbsSend {
                         _verbs.offload_csum = 0;
                         #endif
                         std::cout << "_verbs.offload_csum: " << (int) _verbs.offload_csum << std::endl;
+                        
+                        _verbs.hardware_pacing = 0;
+                        if( ibv_is_qpt_supported(ibv_dev_attr.packet_pacing_caps.supported_qpts, IBV_QPT_RAW_PACKET) == 0 ) {
+                          _verbs.hardware_pacing = ibv_dev_attr.packet_pacing_caps.qp_rate_limit_max;  
+                        }
+                        std::cout << "_verbs.hardware_pacing: " << (int) _verbs.hardware_pacing << std::endl;
+                        
                         break;
                     }
                 }
@@ -687,6 +692,31 @@ public:
         destroy_queues();
         destroy_buffers();
         destroy_context();
+    }
+    inline void set_rate_limit(uint32_t rate_limit, size_t udp_length=1) {
+      int i;
+      
+      // Converts to B/s to kb/s assuming a packet size
+      size_t pkt_size = udp_length + BF_VERBS_SEND_PAYLOAD_OFFSET;
+      rate_limit = ((float) rate_limit) / udp_length * pkt_size / 8 / 1000;
+      
+      // Verify that this rate limit is valid
+      if( rate_limit > _verbs.hardware_pacing ) {
+        throw VerbsSend::Error("Failed to set rate limit, specified rate limit is out of range");
+      }
+      
+      // Apply the rate limit
+      ibv_qp_rate_limit_attr qp_attr;
+      ::memset(&qp_attr, 0, sizeof(ibv_qp_rate_limit_attr));
+      attr.rate_limit = rate_limit;
+      attr.typical_pkt_sz = pkt_size;
+      attr.max_burst_sz = 0;
+      for(i=0; i<BF_VERBS_SEND_NQP; i++) {
+          check_error(ibv_modify_qp_rate_limit(_verbs.qp[i], &attr),
+                      "set queue pair rate limit");
+      }
+      
+      _rate_limit = rate_limit;
     }
     inline void get_ethernet_header(bf_ethernet_hdr* hdr) {
         uint8_t src_mac[6], dst_mac[6];
