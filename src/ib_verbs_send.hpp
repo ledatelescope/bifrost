@@ -698,7 +698,7 @@ public:
       
       // Converts to B/s to kb/s assuming a packet size
       size_t pkt_size = udp_length + BF_VERBS_SEND_PAYLOAD_OFFSET;
-      rate_limit = ((float) rate_limit) / udp_length * pkt_size / 8 / 1000;
+      rate_limit = ((float) rate_limit) / udp_length * pkt_size * 8 / 1000;
       
       // Verify that this rate limit is valid
       if( rate_limit > _verbs.hardware_pacing ) {
