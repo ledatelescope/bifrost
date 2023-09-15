@@ -549,7 +549,7 @@ class VerbsSend {
         for(i=0; i<BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1; i++) {
             _verbs.pkt_buf[i].wr.next = &(_verbs.pkt_buf[i+1].wr);
             _verbs.pkt_buf[i].wr.opcode = IBV_WR_SEND;
-            _verbs.pkt_buf[i].wr.flags = send_flags;
+            _verbs.pkt_buf[i].wr.send_flags = send_flags;
         }
         _verbs.pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.next = NULL;
         _verbs.pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.opcode = IBV_WR_SEND;
