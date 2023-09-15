@@ -83,14 +83,14 @@ struct bf_ibv_send {
     size_t            mr_size;
     ibv_mr*           mr;
     
-    ibv_cq**          send_cq;
+    ibv_cq**          cq;
     
-    uint8_t*          send_mr_buf;
-    size_t            send_mr_size;
-    ibv_mr*           send_mr;
+    uint8_t*          mr_buf;
+    size_t            mr_size;
+    ibv_mr*           mr;
     
-    bf_ibv_send_pkt*  send_pkt_buf;
-    bf_ibv_send_pkt*  send_pkt_head;
+    bf_ibv_send_pkt*  pkt_buf;
+    bf_ibv_send_pkt*  pkt_head;
     
     uint8_t           offload_csum;
     uint8_t           hardware_pacing;
@@ -387,37 +387,37 @@ class VerbsSend {
         _verbs.pd = ibv_alloc_pd(_verbs.ctx);
         
         // Create the buffers and the memory region
-        _verbs.send_pkt_buf = (bf_ibv_send_pkt*) ::malloc(BF_VERBS_SEND_NPKTBUF*BF_VERBS_SEND_NQP * sizeof(struct bf_ibv_send_pkt));
-        check_null(_verbs.send_pkt_buf, 
+        _verbs.pkt_buf = (bf_ibv_send_pkt*) ::malloc(BF_VERBS_SEND_NPKTBUF*BF_VERBS_SEND_NQP * sizeof(struct bf_ibv_send_pkt));
+        check_null(_verbs.pkt_buf, 
                    "allocate send packet buffer");
-        ::memset(_verbs.send_pkt_buf, 0, BF_VERBS_SEND_NPKTBUF*BF_VERBS_SEND_NQP * sizeof(struct bf_ibv_send_pkt));
-        _verbs.send_mr_size = (size_t) BF_VERBS_SEND_NPKTBUF*BF_VERBS_SEND_NQP * _pkt_size_max;
-        _verbs.send_mr_buf = (uint8_t *) ::mmap(NULL, _verbs.send_mr_size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_LOCKED, -1, 0);
+        ::memset(_verbs.pkt_buf, 0, BF_VERBS_SEND_NPKTBUF*BF_VERBS_SEND_NQP * sizeof(struct bf_ibv_send_pkt));
+        _verbs.mr_size = (size_t) BF_VERBS_SEND_NPKTBUF*BF_VERBS_SEND_NQP * _pkt_size_max;
+        _verbs.mr_buf = (uint8_t *) ::mmap(NULL, _verbs.mr_size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_LOCKED, -1, 0);
 
-        check_error(_verbs.send_mr_buf == MAP_FAILED,
-                    "allocate memory region buffer");
-        check_error(::mlock(_verbs.send_mr_buf, _verbs.send_mr_size),
-                    "lock memory region buffer");
-        _verbs.send_mr = ibv_reg_mr(_verbs.pd, _verbs.send_mr_buf, _verbs.send_mr_size, IBV_ACCESS_LOCAL_WRITE);
-        check_null(_verbs.send_mr,
-                   "register memory region");
+        check_error(_verbs.mr_buf == MAP_FAILED,
+                    "allocate send memory region buffer");
+        check_error(::mlock(_verbs.mr_buf, _verbs.mr_size),
+                    "lock send memory region buffer");
+        _verbs.mr = ibv_reg_mr(_verbs.pd, _verbs.mr_buf, _verbs.mr_size, IBV_ACCESS_LOCAL_WRITE);
+        check_null(_verbs.mr,
+                   "register send memory region");
     }
     void destroy_buffers() {
         int failures = 0;
-        if( _verbs.send_mr ) {
-            if( ibv_dereg_mr(_verbs.send_mr) ) {
+        if( _verbs.mr ) {
+            if( ibv_dereg_mr(_verbs.mr) ) {
                 failures += 1;
             }
         }
         
-        if( _verbs.send_mr_buf ) {
-            if( ::munmap(_verbs.send_mr_buf, _verbs.send_mr_size) ) {
+        if( _verbs.mr_buf ) {
+            if( ::munmap(_verbs.mr_buf, _verbs.mr_size) ) {
                 failures += 1;
             }
         }
         
-        if( _verbs.send_pkt_buf ) {
-            free(_verbs.send_pkt_buf);
+        if( _verbs.pkt_buf ) {
+            free(_verbs.pkt_buf);
         }
         
         if( _verbs.pd ) {
@@ -432,23 +432,23 @@ class VerbsSend {
         // Setup the completion channel and make it non-blocking
         _verbs.cc = ibv_create_comp_channel(_verbs.ctx);
         check_null(_verbs.cc,
-                   "create completion channel");
+                   "create send completion channel");
         int flags = ::fcntl(_verbs.cc->fd, F_GETFL);
         check_error(::fcntl(_verbs.cc->fd, F_SETFL, flags | O_NONBLOCK),
-                    "set completion channel to non-blocking");
+                    "set send completion channel to non-blocking");
         flags = ::fcntl(_verbs.cc->fd, F_GETFD);
         check_error(::fcntl(_verbs.cc->fd, F_SETFD, flags | O_CLOEXEC),
-                    "set completion channel to non-blocking");
+                    "set send completion channel to non-blocking");
         ::madvise(_verbs.cc, sizeof(ibv_pd), MADV_DONTFORK);
         
         // Setup the completion queues
-        _verbs.send_cq = (ibv_cq**) ::malloc(BF_VERBS_SEND_NQP * sizeof(ibv_cq*));
-        check_null(_verbs.send_cq,
+        _verbs.cq = (ibv_cq**) ::malloc(BF_VERBS_SEND_NQP * sizeof(ibv_cq*));
+        check_null(_verbs.cq,
                    "allocate send completion queues");
-        ::memset(_verbs.send_cq, 0, BF_VERBS_SEND_NQP * sizeof(ibv_cq*));
+        ::memset(_verbs.cq, 0, BF_VERBS_SEND_NQP * sizeof(ibv_cq*));
         for(i=0; i<BF_VERBS_SEND_NQP; i++) {
-            _verbs.send_cq[i] = ibv_create_cq(_verbs.ctx, BF_VERBS_SEND_NPKTBUF, NULL, NULL, 0);
-            check_null(_verbs.send_cq[i],
+            _verbs.cq[i] = ibv_create_cq(_verbs.ctx, BF_VERBS_SEND_NPKTBUF, NULL, NULL, 0);
+            check_null(_verbs.cq[i],
                        "create send completion queue");
         }
         
@@ -467,14 +467,14 @@ class VerbsSend {
         
         _verbs.qp = (ibv_qp**) ::malloc(BF_VERBS_SEND_NQP*sizeof(ibv_qp*));
         check_null(_verbs.qp,
-                   "allocate queue pairs");
+                   "allocate send queue pairs");
         ::memset(_verbs.qp, 0, BF_VERBS_SEND_NQP*sizeof(ibv_qp*));
         for(i=0; i<BF_VERBS_SEND_NQP; i++) {
-            qp_init.send_cq = _verbs.send_cq[i];
-            qp_init.recv_cq = _verbs.send_cq[i];
+            qp_init.send_cq = _verbs.cq[i];
+            qp_init.recv_cq = _verbs.cq[i];
             _verbs.qp[i] = ibv_create_qp(_verbs.pd, &qp_init);
             check_null_qp(_verbs.qp[i],
-                          "create queue pair");
+                          "create send queue pair");
             
             // Transition queue pair to INIT state
             ibv_qp_attr qp_attr;
@@ -483,7 +483,7 @@ class VerbsSend {
             qp_attr.port_num = _verbs.port_num;
             
             check_error(ibv_modify_qp(_verbs.qp[i], &qp_attr, IBV_QP_STATE|IBV_QP_PORT),
-                        "modify queue pair state");
+                        "modify send queue pair state");
         }
     }
     void destroy_queues() {
@@ -506,35 +506,35 @@ class VerbsSend {
             }
         }
         
-        if( _verbs.send_cq ) {
+        if( _verbs.cq ) {
             for(int i=0; i<BF_VERBS_SEND_NQP; i++) {
-                if( _verbs.send_cq[i] ) {
-                    if( ibv_destroy_cq(_verbs.send_cq[i]) ) {
+                if( _verbs.cq[i] ) {
+                    if( ibv_destroy_cq(_verbs.cq[i]) ) {
                         failures += 1;
                     }
                 }
             }
-            free(_verbs.send_cq);
+            free(_verbs.cq);
         }
     }
     void link_work_requests() {
         // Make sure we are ready to go
-        check_null(_verbs.send_pkt_buf,
-                   "find existing packet buffer");
+        check_null(_verbs.pkt_buf,
+                   "find existing send packet buffer");
         check_null(_verbs.qp,
-                   "find existing queue pairs");
+                   "find existing send queue pairs");
         
         // Setup the work requests
         int i, j, k;
         for(i=0; i<BF_VERBS_SEND_NPKTBUF*BF_VERBS_SEND_NQP; i++) {
-            _verbs.send_pkt_buf[i].wr.wr_id = i;
-            _verbs.send_pkt_buf[i].wr.num_sge = 1;
-            _verbs.send_pkt_buf[i].sg.addr = (uint64_t) _verbs.send_mr_buf + i * _pkt_size_max;
-            _verbs.send_pkt_buf[i].sg.length = _pkt_size_max;
+            _verbs.pkt_buf[i].wr.wr_id = i;
+            _verbs.pkt_buf[i].wr.num_sge = 1;
+            _verbs.pkt_buf[i].sg.addr = (uint64_t) _verbs.mr_buf + i * _pkt_size_max;
+            _verbs.pkt_buf[i].sg.length = _pkt_size_max;
             
-            _verbs.send_pkt_buf[i].wr.sg_list = &(_verbs.send_pkt_buf[i].sg);
-            for(j=0; j<_verbs.send_pkt_buf[i].wr.num_sge; j++) {
-                _verbs.send_pkt_buf[i].wr.sg_list[j].lkey = _verbs.send_mr->lkey;
+            _verbs.pkt_buf[i].wr.sg_list = &(_verbs.pkt_buf[i].sg);
+            for(j=0; j<_verbs.pkt_buf[i].wr.num_sge; j++) {
+                _verbs.pkt_buf[i].wr.sg_list[j].lkey = _verbs.mr->lkey;
             }
         }
         
@@ -547,16 +547,15 @@ class VerbsSend {
         #endif
         
         for(i=0; i<BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1; i++) {
-            _verbs.send_pkt_buf[i].wr.next = &(_verbs.send_pkt_buf[i+1].wr);
-            _verbs.send_pkt_buf[i].wr.opcode = IBV_WR_SEND;
-            _verbs.send_pkt_buf[i].wr.send_flags = send_flags;
+            _verbs.pkt_buf[i].wr.next = &(_verbs.pkt_buf[i+1].wr);
+            _verbs.pkt_buf[i].wr.opcode = IBV_WR_SEND;
+            _verbs.pkt_buf[i].wr.flags = send_flags;
         }
-        _verbs.send_pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.next = NULL;
-        _verbs.send_pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.opcode = IBV_WR_SEND;
-        _verbs.send_pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.send_flags = send_flags;
-        _verbs.send_pkt_head = _verbs.send_pkt_buf;
-    }'
-    ;'
+        _verbs.pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.next = NULL;
+        _verbs.pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.opcode = IBV_WR_SEND;
+        _verbs.pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.send_flags = send_flags;
+        _verbs.pkt_head = _verbs.pkt_buf;
+    }
     inline bf_ibv_send_pkt* queue(int npackets) {
         int i, j;
         int num_wce;
@@ -596,31 +595,31 @@ class VerbsSend {
         
         for(i=0; i<BF_VERBS_SEND_NQP; i++) {
             do {
-              num_wce = ibv_poll_cq(_verbs.send_cq[i], BF_VERBS_SEND_WCBATCH, &wc[0]);
+              num_wce = ibv_poll_cq(_verbs.cq[i], BF_VERBS_SEND_WCBATCH, &wc[0]);
               if(num_wce < 0) {
                  return NULL;
               }
               
               // Loop through all work completions
               for(j=0; j<num_wce; j++) {
-                  send_pkt = &(_verbs.send_pkt_buf[wc[j].wr_id]);
-                  send_pkt->wr.next = &(_verbs.send_pkt_head->wr);
-                  _verbs.send_pkt_head = send_pkt;
+                  send_pkt = &(_verbs.pkt_buf[wc[j].wr_id]);
+                  send_pkt->wr.next = &(_verbs.pkt_head->wr);
+                  _verbs.pkt_head = send_pkt;
               } // for each work completion
             } while(num_wce);
         }
         
-        if( npackets == 0 || !_verbs.send_pkt_head ) {
+        if( npackets == 0 || !_verbs.pkt_head ) {
             return NULL;
         }
         
-        send_head = _verbs.send_pkt_head;
-        send_tail = _verbs.send_pkt_head;
+        send_head = _verbs.pkt_head;
+        send_tail = _verbs.pkt_head;
         for(i=0; i<npackets-1 && send_tail->wr.next; i++) {
           send_tail = (bf_ibv_send_pkt*) send_tail->wr.next;
         }
         
-        _verbs.send_pkt_head = (bf_ibv_send_pkt*) send_tail->wr.next;
+        _verbs.pkt_head = (bf_ibv_send_pkt*) send_tail->wr.next;
         send_tail->wr.next = NULL;
         
         return send_head;
@@ -744,19 +743,19 @@ public:
       uint64_t offset;
       for(i=0; i<npackets; i++) {
           offset = 0;
-          ::memcpy(_verbs.send_mr_buf + i * _pkt_size_max + offset,
+          ::memcpy(_verbs.mr_buf + i * _pkt_size_max + offset,
                    mmsg[i].msg_hdr.msg_iov[0].iov_base,
                    mmsg[i].msg_hdr.msg_iov[0].iov_len);
           offset += mmsg[i].msg_hdr.msg_iov[0].iov_len;
-          ::memcpy(_verbs.send_mr_buf + i * _pkt_size_max + offset,
+          ::memcpy(_verbs.mr_buf + i * _pkt_size_max + offset,
                    mmsg[i].msg_hdr.msg_iov[1].iov_base,
                    mmsg[i].msg_hdr.msg_iov[1].iov_len);
           offset += mmsg[i].msg_hdr.msg_iov[1].iov_len;
-          ::memcpy(_verbs.send_mr_buf + i * _pkt_size_max + offset,
+          ::memcpy(_verbs.mr_buf + i * _pkt_size_max + offset,
                    mmsg[i].msg_hdr.msg_iov[2].iov_base,
                    mmsg[i].msg_hdr.msg_iov[2].iov_len);
           offset += mmsg[i].msg_hdr.msg_iov[2].iov_len;
-          _verbs.send_pkt_buf[i].sg.length = offset;
+          _verbs.pkt_buf[i].sg.length = offset;
       }
       
       head = this->queue(npackets);
