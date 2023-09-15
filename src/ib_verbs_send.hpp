@@ -706,13 +706,13 @@ public:
       }
       
       // Apply the rate limit
-      ibv_qp_rate_limit_attr qp_attr;
-      ::memset(&qp_attr, 0, sizeof(ibv_qp_rate_limit_attr));
-      attr.rate_limit = rate_limit;
-      attr.typical_pkt_sz = pkt_size;
-      attr.max_burst_sz = 0;
+      ibv_qp_rate_limit_attr rl_attr;
+      ::memset(&rl_attr, 0, sizeof(ibv_qp_rate_limit_attr));
+      rl_attr.rate_limit = rate_limit;
+      rl_attr.typical_pkt_sz = pkt_size;
+      rl_attr.max_burst_sz = 0;
       for(i=0; i<BF_VERBS_SEND_NQP; i++) {
-          check_error(ibv_modify_qp_rate_limit(_verbs.qp[i], &attr),
+          check_error(ibv_modify_qp_rate_limit(_verbs.qp[i], &rl_attr),
                       "set queue pair rate limit");
       }
       
