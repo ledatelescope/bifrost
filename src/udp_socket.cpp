@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -101,7 +101,7 @@ BFstatus bfUdpSocketGetPromiscuous(BFudpsocket obj, int* promisc) {
 	try {
 		*promisc = obj->get_promiscuous();
 	}
-	catch( Socket::Error ) {
+	catch( Socket::Error& ) {
 		*promisc = 0;
 		return BF_STATUS_INVALID_STATE;
 	}

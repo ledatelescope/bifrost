@@ -525,7 +525,7 @@ class VerbsSend {
                    "find existing send queue pairs");
         
         // Setup the work requests
-        int i, j, k;
+        int i, j;
         for(i=0; i<BF_VERBS_SEND_NPKTBUF*BF_VERBS_SEND_NQP; i++) {
             _verbs.pkt_buf[i].wr.wr_id = i;
             _verbs.pkt_buf[i].wr.num_sge = 1;

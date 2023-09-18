@@ -59,7 +59,7 @@ class RateLimiter {
   std::chrono::high_resolution_clock::time_point _start;
   std::chrono::high_resolution_clock::time_point _stop;
 public:
-  RateLimiter(uint32_t rate_limit)
+  RateLimiter(uint32_t rate_limit=0)
    : _rate(rate_limit), _counter(0), _first(true) {}
   inline void set_rate(uint32_t rate_limit) { _rate = rate_limit; }
   inline uint32_t get_rate() { return _rate; }
@@ -73,7 +73,7 @@ public:
   inline void end_and_wait(size_t npackets) {
     if( _rate > 0 ) {
       _stop = std::chrono::high_resolution_clock::now();
-      _counter += std::max(0, npackets);
+      _counter += std::max((size_t) 0, npackets);
       double elapsed_needed = (double) _counter / _rate;
       std::chrono::duration<double> elapsed_actual = std::chrono::duration_cast<std::chrono::duration<double>>(_stop-_start);
       
@@ -104,7 +104,7 @@ public:
         return 0;
     }
     virtual const char* get_name()     { return "generic_writer"; }
-    inline void set_rate(uint32_t rate_limit) { _limter.set_rate(rate); }
+    inline void set_rate(uint32_t rate_limit) { _limiter.set_rate(rate_limit); }
     inline uint32_t get_rate() { return _limiter.get_rate(); }
     inline void reset_counter() { _limiter.reset_counter(); }
 };
@@ -296,9 +296,9 @@ public:
      : BoundThread(core), _method(method), _core(core) {
         this->reset_stats();
     }
-    inline void set_rate_limit(uint32_t rate_limit) { _method.set_rate(rate_limit); }
-    inline uint32_t get_rate_limit() { return _method.get_rate(); }
-    inline void reset_rate_limit_counter() { _method.reset_counter(); }
+    inline void set_rate_limit(uint32_t rate_limit) { _method->set_rate(rate_limit); }
+    inline uint32_t get_rate_limit() { return _method->get_rate(); }
+    inline void reset_rate_limit_counter() { _method->reset_counter(); }
     inline ssize_t send(char* hdrs,
                         int   hdr_size,
                         char* datas,
@@ -387,7 +387,7 @@ public:
       }
     }
     inline void set_rate_limit(uint32_t rate_limit) { _writer->set_rate_limit(rate_limit); }
-    inline void reset_rate_limit() { _writer->reset_rate_limit(); }
+    inline void reset_rate_limit_counter() { _writer->reset_rate_limit_counter(); }
     inline void reset_counter() { _framecount = 0; }
     BFstatus send(BFheaderinfo   info,
                   BFoffset       seq,
@@ -557,7 +557,7 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else {
         return BF_STATUS_UNSUPPORTED;
     }
-    PacketWriterThread* writer = new PacketWriterThread(method, 0, core);
+    PacketWriterThread* writer = new PacketWriterThread(method, core);
     
     if( std::string(format).substr(0, 8) == std::string("generic_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_generic_impl(writer, nsamples),
