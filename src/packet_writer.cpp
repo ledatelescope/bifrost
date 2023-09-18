@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -172,9 +172,9 @@ BFstatus bfPacketWriterSetRateLimit(BFpacketwriter obj,
     BF_TRY_RETURN(obj->set_rate_limit(rate_limit));
 }
 
-BFstatus bfPacketWriterResetRateLimit(BFpacketwriter obj) {
+BFstatus bfPacketWriterResetRateLimitCounter(BFpacketwriter obj) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
-    BF_TRY_RETURN(obj->reset_rate_limit());
+    BF_TRY_RETURN(obj->reset_rate_limit_counter());
 }
 
 BFstatus bfPacketWriterResetCounter(BFpacketwriter obj) {

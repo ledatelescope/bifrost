@@ -63,7 +63,7 @@ public:
    : _rate(rate_limit), _counter(0), _first(true) {}
   inline void set_rate(uint32_t rate_limit) { _rate = rate_limit; }
   inline uint32_t get_rate() { return _rate; }
-  inline void reset() { _first = true; _counter = 0; }
+  inline void reset_counter() { _first = true; _counter = 0; }
   inline void begin() {
     if( _first ) {
       _start = std::chrono::high_resolution_clock::now();
@@ -73,7 +73,7 @@ public:
   inline void end_and_wait(size_t npackets) {
     if( _rate > 0 ) {
       _stop = std::chrono::high_resolution_clock::now();
-      _counter += npackets;
+      _counter += std::max(0, npackets);
       double elapsed_needed = (double) _counter / _rate;
       std::chrono::duration<double> elapsed_actual = std::chrono::duration_cast<std::chrono::duration<double>>(_stop-_start);
       
@@ -90,10 +90,11 @@ public:
 
 class PacketWriterMethod {
 protected:
-    int       _fd;
+    int         _fd;
+    RateLimiter _limiter;
 public:
     PacketWriterMethod(int fd)
-     : _fd(fd) {}
+     : _fd(fd), _limiter(0) {}
     virtual ssize_t send_packets(char* hdrs, 
                                  int   hdr_size,
                                  char* data, 
@@ -103,6 +104,9 @@ public:
         return 0;
     }
     virtual const char* get_name()     { return "generic_writer"; }
+    inline void set_rate(uint32_t rate_limit) { _limter.set_rate(rate); }
+    inline uint32_t get_rate() { return _limiter.get_rate(); }
+    inline void reset_counter() { _limiter.reset_counter(); }
 };
 
 class DiskPacketWriter : public PacketWriterMethod {
@@ -116,6 +120,7 @@ public:
                          int   npackets,
                          int   flags=0) {
         ssize_t status, nsent = 0;
+        _limiter.begin();
         for(int i=0; i<npackets; i++) {
             status = ::write(_fd, hdrs+hdr_size*i, hdr_size);
             if( status != hdr_size ) continue;
@@ -123,6 +128,7 @@ public:
             if( status != data_size ) continue;
             nsent += 1;
         }
+        _limiter.end_and_wait(nsent);
         return nsent;
     }
     inline const char* get_name() { return "disk_writer"; }
@@ -174,7 +180,9 @@ public:
             _iovs[2*i+1].iov_len = data_size;
         }
         
+        _limiter.begin();
         ssize_t nsent = ::sendmmsg(_fd, _mmsg, npackets, flags);
+        _limiter.end_and_wait(nsent);
         /*
         if( nsent == -1 ) {
             std::cout << "sendmmsg failed: " << std::strerror(errno) << " with " << hdr_size << " and " << data_size << std::endl;
@@ -196,10 +204,11 @@ class UDPVerbsSender : public PacketWriterMethod {
     int             _last_count;
     mmsghdr*        _mmsg;
     iovec*          _iovs;
+    uint32_t        _rate_holder;
 public:
     UDPVerbsSender(int fd)
         : PacketWriterMethod(fd), _ibv(fd, JUMBO_FRAME_SIZE), _last_size(0),
-          _last_count(0), _mmsg(NULL), _iovs(NULL) {}
+          _last_count(0), _mmsg(NULL), _iovs(NULL), _rate_holder(0) {}
     ~UDPVerbsSender() {
       if( _mmsg ) {
         free(_mmsg);
@@ -235,6 +244,10 @@ public:
             _ibv.get_ethernet_header(&(_udp_hdr.ethernet));
             _ibv.get_ipv4_header(&(_udp_hdr.ipv4), _last_size);
             _ibv.get_udp_header(&(_udp_hdr.udp), _last_size);
+            
+            if( _rate_holder > 0 ) {
+                _ibv.set_rate_limit(_rate_holder*_last_size);
+            }
         }
         
         for(int i=0; i<npackets; i++) {
@@ -258,6 +271,8 @@ public:
         return nsent;
     }
     inline const char* get_name() { return "udp_verbs_transmit"; }
+    inline void set_rate(uint32_t rate_limit) { _rate_holder = rate_limit; }
+    inline uint32_t get_rate() { return _rate_holder; }
 };
 #endif // BF_VERBS_ENABLED
 
@@ -274,23 +289,21 @@ class PacketWriterThread : public BoundThread {
 private:
     PacketWriterMethod*  _method;
     PacketStats          _stats;
-    RateLimiter          _limiter;
     int                  _core;
     
 public:
-    PacketWriterThread(PacketWriterMethod* method, uint32_t rate_limit=0, int core=0)
-     : BoundThread(core), _method(method), _limiter(rate_limit), _core(core) {
+    PacketWriterThread(PacketWriterMethod* method, int core=0)
+     : BoundThread(core), _method(method), _core(core) {
         this->reset_stats();
     }
-    inline void set_rate_limit(uint32_t rate_limit) { _limiter.set_rate(rate_limit); }
-    inline uint32_t get_rate_limit() { return _limiter.get_rate(); }
-    inline void reset_rate_limit() { _limiter.reset(); }
+    inline void set_rate_limit(uint32_t rate_limit) { _method.set_rate(rate_limit); }
+    inline uint32_t get_rate_limit() { return _method.get_rate(); }
+    inline void reset_rate_limit_counter() { _method.reset_counter(); }
     inline ssize_t send(char* hdrs,
                         int   hdr_size,
                         char* datas,
                         int   data_size,
                         int   npackets) {
-        _limiter.begin();
         ssize_t nsent = _method->send_packets(hdrs, hdr_size, datas, data_size, npackets);
         if( nsent == -1 ) {
             _stats.ninvalid += npackets;
@@ -300,7 +313,6 @@ public:
             _stats.nvalid_bytes += nsent * (hdr_size + data_size);
             _stats.ninvalid += (npackets - nsent);
             _stats.ninvalid_bytes += (npackets - nsent) * (hdr_size + data_size);
-            _limiter.end_and_wait(npackets);
         }
         return nsent;
     }

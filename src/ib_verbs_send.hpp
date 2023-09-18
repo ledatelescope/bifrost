@@ -701,6 +701,9 @@ public:
       rate_limit = ((float) rate_limit) / udp_length * pkt_size * 8 / 1000;
       
       // Verify that this rate limit is valid
+      if( rate_limit == 0 ) {
+        rate_limit = _verbs.hardware_pacing;
+      }
       if( rate_limit > _verbs.hardware_pacing ) {
         throw VerbsSend::Error("Failed to set rate limit, specified rate limit is out of range");
       }
