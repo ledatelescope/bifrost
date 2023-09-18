@@ -21350,7 +21350,7 @@ else $as_nop
 fi
 
 
-  NVCCLIBS="$LIBS"
+  NVCCLIBS=""
   ac_compile_save="$ac_compile"
   ac_link_save="$ac_link"
   ac_run_save="$ac_run"
@@ -21524,7 +21524,7 @@ printf %s "checking for a working CUDA installation... " >&6; }
 
     CXXFLAGS_save="$CXXFLAGS"
     LDFLAGS_save="$LDFLAGS"
-    LIBS_save="$LIBS"
+    NVCCLIBS_save="$NVCCLIBS"
 
     ac_compile='$NVCC -c $NVCCFLAGS conftest.$ac_ext >&5'
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -21554,7 +21554,7 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
       LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
       NVCCLIBS="$NVCCLIBS -lcuda -lcudart"
 
-      ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $NVCCLIBS conftest.$ac_ext >&5'
+      ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS $NVCCLIBS conftest.$ac_ext >&5'
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -21712,7 +21712,7 @@ printf %s "checking which CUDA architectures to target... " >&6; }
 
       LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
       NVCCLIBS="-lcuda -lcudart"
-      ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $NVCCLIBS conftest.$ac_ext>&5'
+      ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS $NVCCLIBS conftest.$ac_ext>&5'
       if test "$cross_compiling" = yes
 then :
   { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
@@ -21837,7 +21837,7 @@ printf %s "checking for thrust pinned allocated support... " >&6; }
 
     LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
     LIBS="-lcuda -lcudart"
-    ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $NVCCLIBS conftest.$ac_ext>&5'
+    ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS $NVCCLIBS conftest.$ac_ext>&5'
     if test "$cross_compiling" = yes
 then :
   { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
@@ -24976,7 +24976,7 @@ fi
 
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
 NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
-LIBS="$NVCCLIBS"
+LIBS="$LIBS $NVCCLIBS"
 
 ac_config_files="$ac_config_files config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h"
 

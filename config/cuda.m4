@@ -14,7 +14,7 @@ AC_DEFUN([AX_CHECK_CUDA],
                 [enable_cuda=no],
                 [enable_cuda=yes])
   
-  NVCCLIBS="$LIBS"
+  NVCCLIBS=""
   ac_compile_save="$ac_compile"
   ac_link_save="$ac_link"
   ac_run_save="$ac_run"
@@ -40,7 +40,7 @@ AC_DEFUN([AX_CHECK_CUDA],
     
     CXXFLAGS_save="$CXXFLAGS"
     LDFLAGS_save="$LDFLAGS"
-    LIBS_save="$LIBS"
+    NVCCLIBS_save="$NVCCLIBS"
     
     ac_compile='$NVCC -c $NVCCFLAGS conftest.$ac_ext >&5'
     AC_COMPILE_IFELSE([
@@ -55,7 +55,7 @@ AC_DEFUN([AX_CHECK_CUDA],
       LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
       NVCCLIBS="$NVCCLIBS -lcuda -lcudart"
 
-      ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $NVCCLIBS conftest.$ac_ext >&5'
+      ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS $NVCCLIBS conftest.$ac_ext >&5'
       AC_LINK_IFELSE([
         AC_LANG_PROGRAM([[
             #include <cuda.h>
@@ -164,7 +164,7 @@ AC_DEFUN([AX_CHECK_CUDA],
       
       LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
       NVCCLIBS="-lcuda -lcudart"
-      ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $NVCCLIBS conftest.$ac_ext>&5'
+      ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS $NVCCLIBS conftest.$ac_ext>&5'
       AC_RUN_IFELSE([
         AC_LANG_PROGRAM([[
             #include <cuda.h>
@@ -251,7 +251,7 @@ AC_DEFUN([AX_CHECK_CUDA],
     
     LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
     LIBS="-lcuda -lcudart"
-    ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $NVCCLIBS conftest.$ac_ext>&5'
+    ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS $NVCCLIBS conftest.$ac_ext>&5'
     AC_RUN_IFELSE([
       AC_LANG_PROGRAM([[
           #include <cuda.h>

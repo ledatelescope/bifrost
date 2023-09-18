@@ -375,7 +375,7 @@ AS_IF([test x$STDCXX_IS_SET != x1],
 
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
 NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
-LIBS="$NVCCLIBS"
+LIBS="$LIBS $NVCCLIBS"
 
 AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h])
 
