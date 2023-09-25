@@ -384,7 +384,7 @@ AC_SUBST([NVCC_GENCODE], [])
 AS_IF([test x$HAVE_CUDA != x0],
       [NVCC_GENCODE=$(echo $GPU_ARCHS | ${SED} -e 's/\([[0-9]]\{2,3\}\)/-gencode arch=compute_\1,\\"code=sm_\1\\"/g;')
        NVCC_GENCODE="$NVCC_GENCODE -gencode arch=compute_${GPU_MAX_ARCH},\\\"code=compute_${GPU_MAX_ARCH}\\\""
-       NVCCFLAGS="$NVCCFLAGS ${NVCC_GENCODE}
+       NVCCFLAGS="$NVCCFLAGS ${NVCC_GENCODE}"
        CPPFLAGS="$CPPFLAGS -I$CUDA_HOME/include"
       ])
 
