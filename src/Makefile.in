@@ -26,6 +26,8 @@ CUDA_LIBDIR   ?= $(CUDA_HOME)/lib
 CUDA_LIBDIR64 ?= $(CUDA_HOME)/lib64
 CUDA_INCDIR   ?= $(CUDA_HOME)/include
 
+NVCC_GENCODE ?= @NVCC_GENCODE@
+
 LIBBIFROST_OBJS = \
   common.o \
   memory.o \
