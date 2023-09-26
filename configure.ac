@@ -358,7 +358,7 @@ AS_IF([test x$HAVE_CUDA != x0],
        CPPFLAGS="$CPPFLAGS -I$CUDA_HOME/include"
       ])
 
-AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h plugins/Makefile.template])
+AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h tools/Makefile tools/bifrost-config.cpp])
 
 AC_OUTPUT
 

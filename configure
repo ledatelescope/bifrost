@@ -24695,7 +24695,7 @@ then :
 
 fi
 
-ac_config_files="$ac_config_files config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h plugins/Makefile.template"
+ac_config_files="$ac_config_files config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h tools/Makefile tools/bifrost-config.cpp"
 
 
 cat >confcache <<\_ACEOF
@@ -25797,7 +25797,8 @@ do
     "python/Makefile") CONFIG_FILES="$CONFIG_FILES python/Makefile" ;;
     "share/bifrost.pc") CONFIG_FILES="$CONFIG_FILES share/bifrost.pc" ;;
     "src/bifrost/config.h") CONFIG_FILES="$CONFIG_FILES src/bifrost/config.h" ;;
-    "plugins/Makefile.template") CONFIG_FILES="$CONFIG_FILES plugins/Makefile.template" ;;
+    "tools/Makefile") CONFIG_FILES="$CONFIG_FILES tools/Makefile" ;;
+    "tools/bifrost-config.cpp") CONFIG_FILES="$CONFIG_FILES tools/bifrost-config.cpp" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
