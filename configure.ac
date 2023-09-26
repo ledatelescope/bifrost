@@ -347,6 +347,17 @@ AS_IF([test x$STDCXX_IS_SET != x1],
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
 NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
 
+#
+# Additional CUDA flags
+#
+AC_SUBST([NVCC_GENCODE], [])
+AS_IF([test x$HAVE_CUDA != x0],
+      [NVCC_GENCODE=$(echo $GPU_ARCHS | ${SED} -e 's/\([[0-9]]\{2,3\}\)/-gencode arch=compute_\1,\\"code=sm_\1\\"/g;')
+       NVCC_GENCODE="$NVCC_GENCODE -gencode arch=compute_${GPU_MAX_ARCH},\\\"code=compute_${GPU_MAX_ARCH}\\\""
+       NVCCFLAGS="$NVCCFLAGS ${NVCC_GENCODE}"
+       CPPFLAGS="$CPPFLAGS -I$CUDA_HOME/include"
+      ])
+
 AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h plugins/Makefile.template])
 
 AC_OUTPUT
