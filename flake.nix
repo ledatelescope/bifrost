@@ -8,8 +8,7 @@
   };
 
   inputs.pre-commit-hooks = {
-    url =
-      "github:cachix/pre-commit-hooks.nix/ff9c0b459ddc4b79c06e19d44251daa8e9cd1746";
+    url = "github:cachix/pre-commit-hooks.nix";
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
@@ -28,11 +27,21 @@
       version = "${acVersion}.dev"
         + lib.optionalString (self ? shortRev) "+g${self.shortRev}";
 
+      compilerName = stdenv:
+        lib.replaceStrings [ "-wrapper" ] [ "" ] stdenv.cc.pname;
+
       # Can inspect the cuda version to guess at what architectures would be
       # most useful. Take care not to instatiate the cuda package though, which
       # would happen if you start inspecting header files or trying to run nvcc.
 
-      defaultGpuArchs = _cudatoolkit: [ "70" "75" ];
+      defaultGpuArchs = cudatoolkit:
+        if lib.hasPrefix "11." cudatoolkit.version then [
+          "80"
+          "86"
+        ] else [
+          "70"
+          "75"
+        ];
 
       # At time of writing (2022-03-24):
       # PACKAGE          VERSION ARCHS
@@ -49,7 +58,8 @@
         , enablePython ? true, python3, enableCuda ? false, cudatoolkit
         , util-linuxMinimal, gpuArchs ? defaultGpuArchs cudatoolkit }:
         stdenv.mkDerivation {
-          name = lib.optionalString (!enablePython) "lib" + "bifrost"
+          name = lib.optionalString (!enablePython) "lib" + "bifrost-"
+            + compilerName stdenv + lib.versions.majorMinor stdenv.cc.version
             + lib.optionalString enablePython
             "-py${lib.versions.majorMinor python3.version}"
             + lib.optionalString enableCuda
@@ -57,7 +67,7 @@
             + lib.optionalString enableDebug "-debug" + "-${version}";
           inherit version;
           src = ./.;
-          buildInputs = [ ctags ncurses ] ++ lib.optionals enablePython [
+          buildInputs = [ stdenv ctags ncurses ] ++ lib.optionals enablePython [
             python3
             python3.pkgs.ctypesgen
             python3.pkgs.setuptools
@@ -226,6 +236,10 @@
         {
           bifrost = final.callPackage bifrost { };
           bifrost-doc = final.callPackage bifrost-doc { };
+          github_stats = final.writeShellScriptBin "github_stats" ''
+            ${final.python3.withPackages (p: [ p.PyGithub ])}/bin/python \
+              ${tools/github_stats.py} "$@"
+          '';
         }
         # Apply the python overlay to every python package set we find.
         // lib.mapAttrs (_: py: py.override { packageOverrides = pyOverlay; })
@@ -239,23 +253,43 @@
           # the default 10 and 11. It's easy to generate other point releases
           # from the overlay. (Versions prior to 10 are not supported anymore by
           # nixpkgs.)
-          isCuda = name: builtins.match "cudatoolkit(_1[01])" name != null;
-          shortenCuda = lib.replaceStrings [ "toolkit" "_" ] [ "" "" ];
-          cudaAttrs = lib.filterAttrs
-            (name: pkg: isCuda name && lib.elem pkgs.system pkg.meta.platforms)
+          isCuda = name: builtins.match "cudaPackages(_1[01])" name != null;
+          shortenCuda = lib.replaceStrings [ "Packages" "_" ] [ "" "" ];
+          cudaAttrs = lib.filterAttrs (name: pkg:
+            isCuda name && lib.elem pkgs.system pkg.cudatoolkit.meta.platforms)
             pkgs;
+
+          # Which C++ compilers can we build with? How to name them?
+          eachCxx = f:
+            lib.concatMap f (with pkgs; [
+              stdenv
+              gcc8Stdenv
+              gcc9Stdenv
+              gcc10Stdenv
+              gcc11Stdenv
+              clang6Stdenv
+              clang7Stdenv
+              clang8Stdenv
+              clang9Stdenv
+              clang10Stdenv
+            ]);
+          cxxName = stdenv:
+            lib.optionalString (stdenv != pkgs.stdenv)
+            ("-" + compilerName stdenv + lib.versions.major stdenv.cc.version);
 
           eachBool = f: lib.concatMap f [ true false ];
           eachCuda = f: lib.concatMap f ([ null ] ++ lib.attrNames cudaAttrs);
           eachConfig = f:
             eachBool (enableDebug:
               eachCuda (cuda:
-                f (lib.optionalString (cuda != null) "-${shortenCuda cuda}"
-                  + lib.optionalString enableDebug "-debug") {
-                    inherit enableDebug;
-                    enableCuda = cuda != null;
-                    cudatoolkit = pkgs.${cuda};
-                  }));
+                eachCxx (stdenv:
+                  f (cxxName stdenv
+                    + lib.optionalString (cuda != null) "-${shortenCuda cuda}"
+                    + lib.optionalString enableDebug "-debug") {
+                      inherit stdenv enableDebug;
+                      enableCuda = cuda != null;
+                      cudatoolkit = pkgs.${cuda}.cudatoolkit;
+                    })));
 
           # Runnable ctypesgen per python. Though it's just the executable we
           # need, it's possible something about ctypes library could change
@@ -281,10 +315,14 @@
           pys = lib.listToAttrs (eachConfig (suffix: config:
             lib.mapAttrsToList (name: py: {
               name = "${name}-bifrost${suffix}";
-              value = py.withPackages (p: [ (p.bifrost.override config) ]);
+              value = (py.withPackages
+                (p: [ (p.bifrost.override config) ])).override {
+                  makeWrapperArgs = lib.optionals config.enableCuda
+                    [ "--set LD_PRELOAD /usr/lib/x86_64-linux-gnu/libcuda.so" ];
+                };
             }) (pythonAttrs pkgs)));
 
-        in { inherit (pkgs) bifrost-doc; } // cgens // bfs // pys);
+        in { inherit (pkgs) bifrost-doc github_stats; } // cgens // bfs // pys);
 
       devShells = eachSystem (pkgs: {
         default = let
@@ -293,9 +331,10 @@
             hooks.nixfmt.enable = true;
             hooks.nix-linter.enable = true;
             hooks.yamllint.enable = true;
+            hooks.yamllint.excludes = [ ".github/workflows/main.yml" ];
           };
 
-        in pkgs.mkShell {
+        in pkgs.mkShellNoCC {
           inherit (pre-commit) shellHook;
 
           # Tempting to include bifrost-doc.buildInputs here, but that requires
@@ -310,6 +349,7 @@
               pkgs.python3.pkgs.breathe
               pkgs.python3.pkgs.sphinx
               pkgs.yamllint
+              pkgs.autoconf
             ];
         };
       });

@@ -1,5 +1,5 @@
-#!/usr/bin/env python
-# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
+#!/usr/bin/env python3
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -25,9 +25,6 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-# Python2 compatibility
-from __future__ import print_function
 
 from setuptools import setup, Extension, find_packages
 import os
@@ -55,11 +52,6 @@ except IOError:
     print("*************************************************************************")
     raise
 
-# Build the PyPy3 compatibility module, if needed
-modules = []
-if sys.version.find('PyPy') != -1:
-    modules.append(Extension('_pypy3_compat', ['bifrost/pypy3_compat.c']))
-
 # Build up a list of scripts to install
 scripts = glob.glob(os.path.join('..', 'tools', '*.py'))
 scripts.extend(glob.glob(os.path.join('..', 'plugins', '*.py')))
@@ -72,6 +64,7 @@ setup(name='bifrost',
       url='https://github.com/ledatelescope/bifrost',
       packages=find_packages(),
       scripts=scripts,
+      python_requires='>=3.6',
       install_requires=[
           "numpy>=1.8.1",
           "contextlib2>=0.4.0",
@@ -81,4 +74,4 @@ setup(name='bifrost',
           "matplotlib"
       ],
       ext_package='bifrost',
-      ext_modules = modules)
+      ext_modules = [])

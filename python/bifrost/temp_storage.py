@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -33,14 +33,14 @@ from bifrost import telemetry
 telemetry.track_module()
 
 class TempStorage(object):
-    def __init__(self, space):
+    def __init__(self, space: str):
         self.space = space
         self.size  = 0
         self.ptr   = None
         self.lock  = threading.Lock()
     def __del__(self):
         self._free()
-    def allocate(self, size):
+    def allocate(self, size: int) -> "TempStorageAllocation":
         return TempStorageAllocation(self, size)
     def _allocate(self, size):
         if size > self.size:
@@ -52,14 +52,15 @@ class TempStorage(object):
             bf.memory.raw_free(self.ptr, self.space)
             self.ptr  = None
             self.size = 0
+
 class TempStorageAllocation(object):
-    def __init__(self, parent, size):
+    def __init__(self, parent: TempStorage, size: int):
         self.parent = parent
         self.parent.lock.acquire()
         self.parent._allocate(size)
         self.size = parent.size
         self.ptr  = parent.ptr
-    def release(self):
+    def release(self) -> None:
         self.parent.lock.release()
     def __enter__(self):
         return self

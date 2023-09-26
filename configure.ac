@@ -39,9 +39,15 @@ AC_SUBST(SO_EXT, $shrext_cmds)
 #
 
 AC_C_INLINE
-AX_CXX_COMPILE_STDCXX(14, noext, optional)
-AS_IF([test x$HAVE_CXX14 != x1],
-      [AX_CXX_COMPILE_STDCXX(11, noext, mandatory)])
+AX_CXX_COMPILE_STDCXX(20, noext, optional)
+AS_IF([test x$HAVE_CXX20 != x1],
+      [AX_CXX_COMPILE_STDCXX(17, noext, optional)
+       AS_IF([test x$HAVE_CXX17 != x1],
+             [AX_CXX_COMPILE_STDCXX(14, noext, optional)
+              AS_IF([test x$HAVE_CXX14 != x1],
+                    [AX_CXX_COMPILE_STDCXX(11, noext, mandatory)])])])
+AX_CHECK_CXX_FILESYSTEM
+AX_CHECK_CXX_ENDS_WITH
 AC_CHECK_FUNCS([memset])
 AC_CHECK_FUNCS([rint])
 AC_CHECK_FUNCS([socket])
@@ -128,6 +134,9 @@ AC_SUBST([HAVE_VMA], [0])
 AS_IF([test x$enable_vma != xno],
       [AC_CHECK_LIB([vma], [recvfrom_zcopy],
                     [AC_SUBST([HAVE_VMA], [1])
+                     LIBS="$LIBS -lvma"])
+       AC_CHECK_LIB([vma], [vma_recvfrom_zcopy],
+                    [AC_SUBST([HAVE_VMA], [1])
                      LIBS="$LIBS -lvma"])])
 
 #
@@ -143,15 +152,6 @@ AS_IF([test x$enable_vma != xno],
 #################################
 
 AX_CHECK_CUDA
-
-AC_ARG_WITH([shared_mem],
-           [AS_HELP_STRING([--with-shared-mem=N],
-                           [default GPU shared memory in bytes (default=16384)])],
-           [],
-           [with_shared_mem=16384])
-AC_SUBST([GPU_SHAREDMEM], [$with_shared_mem])
-AS_IF([test x$HAVE_CUDA = x0],
-      [AC_SUBST([GPU_SHAREDMEM], [0])])
 
 #
 # Bifrost memory alignment
@@ -232,6 +232,13 @@ AS_IF([test x$enable_python != xno],
               AS_IF([test x${PYTHON3} != xno],
                     [AC_SUBST([PYTHON], [$PYTHON3])])])
        AS_IF([test x${PYTHON} != xno],
+             [AC_MSG_CHECKING([if $PYTHON is version 3.6 or later])
+              AS_IF([! ${PYTHON} -c "import sys; assert(sys.version_info >= (3,6,0))" 2>/dev/null],
+                    [AC_MSG_RESULT([no])
+                     AC_MSG_WARN([python module will not be built])
+                     AC_SUBST([PYTHON], [no])],
+                    [AC_MSG_RESULT([yes])])])
+       AS_IF([test x${PYTHON} != xno],
              [AC_MSG_CHECKING([whether $PYTHON as ctypesgen])
               AS_IF([! ${PYTHON} -c "import ctypesgen" 2>/dev/null],
                     [AC_MSG_RESULT([no])
@@ -284,13 +291,53 @@ AC_SUBST([PACKAGE_VERSION_MINOR], [`echo $PACKAGE_VERSION | $AWK -F. '{print $2}
 AC_SUBST([PACKAGE_VERSION_MICRO], [`echo $PACKAGE_VERSION | $AWK -F. '{print $3}'`])
 
 #
-# C++14/C++11 toggling
+# C++20/C++17/C++14/C++11 toggling
 #
 
+AC_SUBST([MAP_KERNEL_STDCXX], [c++11])
+AC_SUBST([STDCXX_IS_SET], [0])
+AS_IF([test x$HAVE_CXX20 = x1],
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++20 $CXXFLAGS"
+       AS_IF([test x$CUDA_HAVE_CXX20 = x1],
+             [NVCCFLAGS="-std=c++20 $NVCCFLAGS"
+              AC_SUBST([MAP_KERNEL_STDCXX], [c++20])],
+             [AS_IF([test x$CUDA_HAVE_CXX17 = x1],
+                    [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
+                     AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
+                    [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+                           [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                            AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+                           [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])])
+AS_IF([test x$HAVE_CXX17 = x1],
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++17 $CXXFLAGS"
+       AS_IF([test x$CUDA_HAVE_CXX20 = x1],
+             [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
+              AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
+             [AS_IF([test x$CUDA_HAVE_CXX17 = x1],
+                    [NVCCFLAGS="-std=c++17 $NVCCFLAGS"
+                     AC_SUBST([MAP_KERNEL_STDCXX], [c++17])],
+                    [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+                           [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                            AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+                           [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])])
 AS_IF([test x$HAVE_CXX14 = x1],
-      [CXXFLAGS="-std=c++14 $CXXFLAGS"
-       NVCCFLAGS="-std=c++14 $NVCCFLAGS"],
-      [CXXFLAGS="-std=c++11 $CXXFLAGS"
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++14 $CXXFLAGS"
+       AS_IF([test x$CUDA_HAVE_CXX20 = x1],
+             [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+              AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+             [AS_IF([test x$CUDA_HAVE_CXX17 = x1],
+                    [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                     AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+                    [AS_IF([test x$CUDA_HAVE_CXX14 = x1],
+                           [NVCCFLAGS="-std=c++14 $NVCCFLAGS"
+                            AC_SUBST([MAP_KERNEL_STDCXX], [c++14])],
+                           [NVCCFLAGS="-std=c++11 $NVCCFLAGS"])])])])
+AS_IF([test x$STDCXX_IS_SET != x1],
+      [AC_SUBST([STDCXX_IS_SET], [1])
+       CXXFLAGS="-std=c++11 $CXXFLAGS"
        NVCCFLAGS="-std=c++11 -Xcompiler \"-DTHRUST_IGNORE_DEPRECATED_CPP_DIALECT\" $NVCCFLAGS"])
 
 #
@@ -308,13 +355,6 @@ AC_OUTPUT
 # User warnings
 #
 
-AS_IF([test x$HAVE_CUDA = x1],
-      [cufft_c2r_modifies=$( echo $CUDA_VERSION | ${GREP} -e "10\.[[1-2]]" -e "11\.[[0-6]]" )
-       if test "$cufft_c2r_modifies" != ""; then
-         echo ""
-         AC_MSG_WARN(This version of cuFFT may have unexpected behavior for complex-to-real transforms)
-       fi])
-
 #
 # User notes
 #
@@ -322,7 +362,7 @@ AS_IF([test x$HAVE_CUDA = x1],
 echo ""
 
 AS_IF([test x$HAVE_CUDA = x1],
-      [AC_MSG_NOTICE(cuda: yes - v$CUDA_VERSION - $GPU_ARCHS)],
+      [AC_MSG_NOTICE(cuda: yes - v$CUDA_VERSION - $GPU_ARCHS - $with_stream_model streams)],
       [AC_MSG_NOTICE(cuda: no)])
 
 AS_IF([test x$HAVE_NUMA = x1],

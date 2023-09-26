@@ -73,7 +73,7 @@ class ProcLogMgr {
 	ProcLogMgr()
 		: _logdir(std::string(base_logdir) + "/" + std::to_string(getpid())) {
 		this->try_base_logdir_cleanup();
-		make_dir(base_logdir, 777);
+		make_dir(base_logdir, 0777);
 		make_dir(_logdir);
 	}
 	~ProcLogMgr() {
@@ -129,7 +129,7 @@ public:
 	}
 	void destroy_log(std::string filename) {
 		std::lock_guard<std::mutex> lock(_mutex);
-		remove_file_glob(filename);
+		remove_file(filename);
 		_logs.erase(filename);
 	}
 	void update_log_s(std::string filename, const char* str) {

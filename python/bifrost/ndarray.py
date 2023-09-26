@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,24 +36,15 @@ TODO: Some calls result in segfault with space=cuda (e.g., __getitem__
 
 """
 
-# Python2 compatibility
-from __future__ import absolute_import
 import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 import ctypes
 import numpy as np
 from bifrost.memory import raw_malloc, raw_free, raw_get_space, space_accessible
-from bifrost.libbifrost import _bf, _check
+from bifrost.libbifrost import _bf, _th, _check, _space2string
 from bifrost import device
 from bifrost.DataType import DataType
 from bifrost.Space import Space
-
-try:
-    from bifrost._pypy3_compat import PyMemoryView_FromMemory
-except ImportError:
-    pass
+from bifrost.libbifrost_generated import struct_BFarray_
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -73,23 +64,11 @@ def _address_as_buffer(address, nbyte, readonly=False):
     # Note: This works as a buffer in regular python and pypy
     # Note: int_asbuffer is undocumented; see here:
     # https://mail.scipy.org/pipermail/numpy-discussion/2008-January/030938.html
-    try:
-        int_asbuffer = ctypes.pythonapi.PyMemoryView_FromMemory
-        int_asbuffer.restype = ctypes.py_object
-        int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
-        return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
-    except AttributeError:
-        try:
-            # Python2 catch
-            return np.core.multiarray.int_asbuffer(address,
-                                                   nbyte,
-                                                   readonly=readonly,
-                                                   check=False)
-        except AttributeError:
-            # PyPy3 catch
-            int_asbuffer = PyMemoryView_FromMemory
-            return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
-
+    int_asbuffer = ctypes.pythonapi.PyMemoryView_FromMemory
+    int_asbuffer.restype = ctypes.py_object
+    int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
+    return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
+        
 def asarray(arr, space=None):
     if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
         return arr
@@ -185,6 +164,22 @@ class ndarray(np.ndarray):
                                            dtype=base.dtype,
                                            strides=base.strides,
                                            native=np.dtype(base.dtype).isnative)
+            # Check if a BFarray ctypes struct is passed
+            if isinstance(base, struct_BFarray_):
+                ndim = base.ndim
+                shape = list(base.shape)[:ndim]
+                strides = list(base.strides)[:ndim]
+                space = _space2string(base.space)
+                dtype = _th.BFdtype_enum(base.dtype)
+
+                return ndarray.__new__(cls,
+                    space=space,
+                    buffer=int(base.data),
+                    shape=shape,
+                    dtype=dtype,
+                    strides=strides
+                    )
+                
             if dtype is not None:
                 dtype = DataType(dtype)
             if space is None and dtype is None:
@@ -209,9 +204,8 @@ class ndarray(np.ndarray):
                     base = base.astype(dtype.as_numpy_dtype())
                 base = ndarray(base) # View base as bf.ndarray
                 if dtype is not None and base.bf.dtype != dtype:
-                    raise TypeError('Unable to convert type %s to %s during '
-                                    'array construction' %
-                                    (base.bf.dtype, dtype))
+                    raise TypeError(f"Unable to convert type {base.bf.dtype} to {dtype} during "
+                                    "array construction")
                 #base = base.view(cls
                 #if dtype is not None:
                 #    base = base.astype(DataType(dtype).as_numpy_dtype())
@@ -388,6 +382,42 @@ class ndarray(np.ndarray):
             raise NotImplementedError('Only order="C" is supported')
         if space is None:
             space = self.bf.space
+        if not self.flags['C_CONTIGUOUS']:
+            # Deal with arrays that need to have their layouts changed
+            # TODO: Is there a better way to handle this?
+            if space_accessible(self.bf.space, ['system']):
+                ## For arrays that can be accessed from the system space, use
+                ## numpy.ndarray.copy() to do the heavy lifting
+                if space == 'cuda_managed':
+                    ## TODO: Decide where/when these need to be called
+                    device.stream_synchronize()
+                ## This actually makes two copies and throws one away
+                temp = ndarray(shape=self.shape, dtype=self.dtype, space=self.bf.space)
+                temp[...] = np.array(self).copy()
+                if self.bf.space != space:
+                    return ndarray(temp, space=space)
+                return temp
+            else:
+                ## For arrays that can be access from CUDA, use bifrost.transpose
+                ## to do the heavy lifting
+                ### Figure out the correct axis order for C
+                permute = np.argsort(self.strides)[::-1]
+                c_shape = [self.shape[p] for p in permute]
+                ### Make a BFarray wrapper for self so we can reset shape/strides
+                ### to what they should be for a C ordered array
+                self_corder = self.as_BFarray()
+                shape_type = ctypes.c_long*_bf.BF_MAX_DIMS
+                self_corder.shape = shape_type(*c_shape)
+                self_corder.strides = shape_type(*[self.strides[p] for p in permute])
+                ### Make a temporary array with the right shape that will be C ordered
+                temp = ndarray(shape=self.shape, dtype=self.dtype, space=self.bf.space)
+                ### Run the transpose using the BFarray wrapper and the temporary array
+                array_type = ctypes.c_int * self.ndim
+                axes_array = array_type(*permute)
+                _check(_bf.bfTranspose(self_corder, temp.as_BFarray(), axes_array))
+                if self.bf.space != space:
+                    return ndarray(temp, space=space)
+                return temp
         # Note: This makes an actual copy as long as space is not None
         return ndarray(self, space=space)
     def _key_returns_scalar(self, key):
