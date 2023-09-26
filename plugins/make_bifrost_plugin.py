@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2019-2022, The University of New Mexico. All rights reserved.
+# Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,8 +27,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import print_function
-
 import os
 import sys
 import glob
@@ -42,16 +40,62 @@ BIFROST_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # Makefile template
-_MAKEFILE_PATH = os.path.dirname(os.path.abspath(__file__))
-with open(os.path.join(_MAKEFILE_PATH, 'Makefile.template'), 'r') as fh:
-    _MAKEFILE_TEMPLATE = fh.read()
+_MAKEFILE_TEMPLATE = """
+{preamble}
+
+CXXFLAGS  += -I{bifrost_include} -I.
+NVCCFLAGS += -I{bifrost_include} -I. -Xcompiler "-fPIC" $(NVCC_GENCODE)
+LDFLAGS += -L{bifrost_library} -lbifrost
+
+PYTHON_BINDINGS_FILE={libname}_generated.py
+PYTHON_WRAPPER_FILE={libname}.py
+
+.PHONY: all
+all: lib{libname}.so $(PYTHON_BINDINGS_FILE) $(PYTHON_WRAPPER_FILE)
+
+define run_ctypesgen
+	{python} -c 'from ctypesgen import main as ctypeswrap; ctypeswrap.main()' -l$1 -I. -I{bifrost_include} $^ -o $@
+	# WAR for 'const char**' being generated as POINTER(POINTER(c_char)) instead of POINTER(c_char_p)
+	sed -i 's/POINTER(c_char)/c_char_p/g' $@
+	# WAR for a buggy WAR in ctypesgen that breaks type checking and auto-byref functionality
+	sed -i 's/def POINTER/def POINTER_not_used/' $@
+	# WAR for a buggy WAR in ctypesgen that breaks string buffer arguments (e.g., as in address.py)
+	sed -i 's/class String/String = c_char_p\\nclass String_not_used/' $@
+	sed -i 's/String.from_param/String_not_used.from_param/g' $@
+	sed -i 's/def ReturnString/ReturnString = c_char_p\\ndef ReturnString_not_used/' $@
+	sed -i '/errcheck = ReturnString/s/^/#/' $@
+endef
+
+define run_wrapper
+	{python} {bifrost_script}/wrap_bifrost_plugin.py $1
+endef
+
+lib{libname}.so: {libname}.o
+	$(CXX) -o lib{libname}.so {libname}.o -lm -shared -fopenmp $(LDFLAGS)
+
+%.o: %.cpp {includes}
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(GCCFLAGS) $(TARGET_ARCH) -c $(OUTPUT_OPTION) $<
+
+%.o: %.cu {includes}
+	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -Xcompiler "$(GCCFLAGS)" $(TARGET_ARCH) -c $(OUTPUT_OPTION) $<
+
+$(PYTHON_BINDINGS_FILE): {includes}
+	$(call run_ctypesgen,{libname},{includes})
+
+$(PYTHON_WRAPPER_FILE): $(PYTHON_BINDINGS_FILE)
+	$(call run_wrapper,$(PYTHON_BINDINGS_FILE))
+
+clean:
+	rm -f lib{libname}.so {libname}.o $(PYTHON_BINDINGS_FILE) $(PYTHON_WRAPPER_FILE)
+
+"""
 
 
 def resolve_bifrost(bifrost_path=None):
     """
     Given a base path for a Bifrost installation, find all of the necessary 
-    components for the Makefile.  Returns a three-element tuple of the includes
-    path, library path, and plugin scripts path.
+    components for the Makefile.  Returns a four-element tuple of the
+    configuration path, includes path, library path, and plugin scripts path.
     """
     
     # Get the Bifrost source path, if needed
@@ -59,6 +103,11 @@ def resolve_bifrost(bifrost_path=None):
         bifrost_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
     # Setup the dependant paths
+    ## Configuration files
+    bifrost_config_path = bifrost_path+'/include/bifrost/config'
+    if not os.path.exists(os.path.join(bifrost_config_path, 'config.mk')):
+        ### Fallback to this being in the directory itself
+        bifrost_config_path = bifrost_path
     ## Includes
     bifrost_include_path = bifrost_path+'/include'
     if not os.path.exists(os.path.join(bifrost_include_path, 'bifrost', 'ring.h')):
@@ -70,7 +119,7 @@ def resolve_bifrost(bifrost_path=None):
     bifrost_script_path = os.path.dirname(os.path.abspath(__file__))
     
     # Done
-    return bifrost_include_path, bifrost_library_path, bifrost_script_path
+    return bifrost_config_path, bifrost_include_path, bifrost_library_path, bifrost_script_path
 
 
 def get_makefile_name(libname):
@@ -92,15 +141,49 @@ def create_makefile(libname, includes, bifrost_path=None):
         includes = " ".join(includes)
         
     # Get the Bifrost paths
-    bifrost_include, bifrost_library, bifrost_script = resolve_bifrost(bifrost_path=bifrost_path)
-       
+    bifrost_config, bifrost_include, bifrost_library, bifrost_script = resolve_bifrost(bifrost_path=bifrost_path)
+    
+    preamble = ''
+    with open(os.path.join(bifrost_include, 'Makefile'), 'r') as ch:
+        in_block = 0
+        block = ''
+        dump_block = False
+        for line in ch:
+            if line.startswith('ifeq') or line.startswith('ifdef') or line.startswith('ifndef'):
+                in_block += 1
+            if in_block:
+                block += line
+                if line.startswith('endif'):
+                    in_block -= 1
+                    
+                    if in_block == 0:
+                        if (block.find('GPU') != -1 or block.find('NVCC') != -1 or block.find('FLAGS') != -1) \
+                            and block.find('CUFFT') == -1:
+                            preamble += block
+                        block = ''
+                        
+            elif line.startswith('include') and line.find('autodep') == -1:
+                preamble += line.replace('../', bifrost_config+'/')
+            elif line.find('?=') != -1 and line.find('JIT') == -1 and line.find('WLFLAGS') == -1:
+                preamble += line 
+            elif len(line) < 3:
+                preamble += line
+    preamble = preamble.replace('-lcufft_static_pruned', '')
+    
+    # Sort out the old vs. new build system
+    if os.path.exists(os.path.join(bifrost_include, 'bifrost', 'config.h')):
+        preamble += 'CPPFLAGS += -DBF_HAVE_CONFIG_H=1\n'
+        preamble += 'NVCCFLAGS += -DBF_HAVE_CONFIG_H=1\n'
+        
     # Fill the template, save it, and return the filename
     template = _MAKEFILE_TEMPLATE.format(libname=libname,
                                          includes=includes,
+                                         bifrost_config=bifrost_config,
                                          bifrost_include=bifrost_include,
                                          bifrost_library=bifrost_library,
-                                         bifrost_script=bifrost_script)
-    template = template.replace('-L. -lcufft_static_pruned', '')
+                                         bifrost_script=bifrost_script,
+                                         preamble=preamble,
+                                         python=sys.executable)
     filename = get_makefile_name(libname)
     with open(filename, 'w') as fh:
         fh.write(template)

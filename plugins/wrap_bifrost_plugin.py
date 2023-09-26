@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2019, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2019, The University of New Mexico. All rights reserved.
+# Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,14 +27,17 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import print_function
-
 import os
+import re
 import sys
 import glob
 import warnings
 import argparse
 from textwrap import fill as tw_fill
+
+
+# Class vs function diviner
+_CLASS_RE = re.compile(r'((?P<class>.+)_(?P<method>(create|init|execute|destroy))|(?P<function>.+))')
 
 
 # Python wrapper template
@@ -99,7 +102,7 @@ def _normalize_function_name(function):
     """
     
     name = function[0].lower()
-    for l in function[1:]:
+    for i,l in enumerate(function[1:]):
         if l.isupper():
             name += '_'
         name += l.lower()
@@ -163,9 +166,11 @@ def _extract_calls(filename, libname):
     functions = {}
     locations = {}
     for i,line in enumerate(wrapper):
-        if line.find('if not hasattr(_lib') != -1 or line.find('if hasattr(_lib') != -1:
+        if line.find('if not hasattr(_lib') != -1 or line.find('if hasattr(_lib') != -1 or line.find('if not _lib.has') != -1:
             function = line.split(None)[-1][1:]
-            function = function.replace("'):", '')
+            if line.find('if not _lib.has') != -1:
+                function = line.split('(')[-1].split(',')[0]
+            function = function.replace("'):", '').replace('"', '')
             py_name = function.split(_reverse_normalize_function_name(libname), 1)[-1]
             if py_name == '':
                 ## Catch for when the library name is the same as the function
@@ -235,6 +240,7 @@ def _class_or_functions(calls):
     """
     
     wrap_type = "functions"
+    calls = [_CLASS_RE.match(call).group('method') for call in calls]
     if 'create' in calls \
        and 'destroy' in calls \
        and 'init' in calls \
@@ -367,6 +373,24 @@ def main(args):
                 function = _render_call(py_name, call, for_method=False, indent=0)
                 fh.write(function)
         else:
+            trimmed_calls = {}
+            base_class = None
+            for call in calls:
+                base_class = _CLASS_RE.match(call).group('class')
+                if base_class is not None:
+                    break            
+            for call in calls:
+                method = _CLASS_RE.match(call).group('method')
+                if method is not None:
+                    trimmed_calls[method] = calls[call]
+                else:
+                    if call.startswith(base_class):
+                        tcall = call[len(base_class)+1:]
+                    else:
+                        tcall = call
+                    trimmed_calls[tcall] = calls[call]
+            calls = trimmed_calls
+            
             fh.write("class {wrapname}(BifrostObject):\n".format(wrapname=_reverse_normalize_function_name(libname)))
             fh.write("    def __init__(self):\n")
             fh.write("        BifrostObject.__init__(self, _gen.{create}, _gen.{destroy})\n".format(create=calls['create']['c_name'],
