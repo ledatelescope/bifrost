@@ -54,11 +54,15 @@
 #endif
 
 #ifndef BF_VERBS_SEND_NPKTBUF
-#define BF_VERBS_SEND_NPKTBUF 1024
+#define BF_VERBS_SEND_NPKTBUF 512
 #endif
 
 #ifndef BF_VERBS_SEND_WCBATCH
 #define BF_VERBS_SEND_WCBATCH 16
+#endif
+
+#ifndef BF_VERBS_SEND_NPKTBURST
+#define BF_VERBS_SEND_NPKTBURST 16
 #endif
 
 #define BF_VERBS_SEND_PAYLOAD_OFFSET 42
@@ -463,7 +467,7 @@ class VerbsSend {
         qp_init.cap.max_recv_sge = 0;
         qp_init.cap.max_inline_data = 0;
         qp_init.qp_type = IBV_QPT_RAW_PACKET;
-        qp_init.sq_sig_all = 0;
+        qp_init.sq_sig_all = 1;
         
         _verbs.qp = (ibv_qp**) ::malloc(BF_VERBS_SEND_NQP*sizeof(ibv_qp*));
         check_null(_verbs.qp,
@@ -555,6 +559,34 @@ class VerbsSend {
         _verbs.pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.opcode = IBV_WR_SEND;
         _verbs.pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.send_flags = send_flags;
         _verbs.pkt_head = _verbs.pkt_buf;
+    }
+    inline void wait_for_buffers() {
+        int i;
+        pollfd pfd;
+        ibv_cq *ev_cq;
+        intptr_t ev_cq_ctx;
+        
+        // Setup for poll
+        pfd.fd = _verbs.cc->fd;
+        pfd.events = POLLIN;
+        pfd.revents = 0;
+        
+        // poll completion channel's fd with given timeout
+        int rc = ::poll(&pfd, 1, _timeout);
+        if( rc < 0) {
+            // Error
+            throw VerbsSend::Error("error");
+        }
+        
+        // Request notification upon the next completion event
+        // Do NOT restrict to solicited-only completions
+        ibv_req_notify_cq(_verbs.cq[0], 0);
+        
+        // Get the completion event(s)
+        while( ibv_get_cq_event(_verbs.cc, &ev_cq, (void **)&ev_cq_ctx) == 0 ) {
+            // Ack the event
+            ibv_ack_cq_events(_verbs.cq[0], 1);
+        }
     }
     inline bf_ibv_send_pkt* queue(int npackets) {
         int i, j;
@@ -713,7 +745,7 @@ public:
       ::memset(&rl_attr, 0, sizeof(ibv_qp_rate_limit_attr));
       rl_attr.rate_limit = rate_limit;
       rl_attr.typical_pkt_sz = pkt_size;
-      rl_attr.max_burst_sz = 0;
+      rl_attr.max_burst_sz = BF_VERBS_SEND_NPKTBURST*pkt_size;
       for(i=0; i<BF_VERBS_SEND_NQP; i++) {
           check_error(ibv_modify_qp_rate_limit(_verbs.qp[i], &rl_attr),
                       "set queue pair rate limit");
@@ -766,6 +798,12 @@ public:
       int ret;
       bf_ibv_send_pkt* head;
       ibv_send_wr *s;
+      
+      if( npackets > BF_VERBS_SEND_NPKTBUF ) {
+        throw VerbsSend::Error(std::string("Too many packets for the current buffer size"));
+      }
+      
+      this->wait_for_buffers();
       
       int i;
       uint64_t offset;
