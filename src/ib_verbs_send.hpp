@@ -561,7 +561,6 @@ class VerbsSend {
         _verbs.pkt_head = _verbs.pkt_buf;
     }
     inline void wait_for_buffers() {
-        int i;
         pollfd pfd;
         ibv_cq *ev_cq;
         intptr_t ev_cq_ctx;
