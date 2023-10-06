@@ -165,15 +165,19 @@ public:
           
           _last_count = npackets;
           _mmsg = (struct mmsghdr *) malloc(sizeof(struct mmsghdr)*npackets);
-          _iovs = (struct iovec *) malloc(sizeof(struct iovec)*5*npackets);
+          _iovs = (struct iovec *) malloc(sizeof(struct iovec)2*npackets);
           ::mlock(_mmsg, sizeof(struct mmsghdr)*npackets);
-          ::mlock(_iovs, sizeof(struct iovec)*5*npackets);
-        }
-        memset(_mmsg, 0, sizeof(struct mmsghdr)*npackets);
-        
-        for(int i=0; i<npackets; i++) {
+          ::mlock(_iovs, sizeof(struct iovec)*2*npackets);
+          
+          ::memset(_mmsg, 0, sizeof(struct mmsghdr)*npackets);
+          
+          for(int i=0; i<npackets; i++) {
             _mmsg[i].msg_hdr.msg_iov = &_iovs[2*i];
             _mmsg[i].msg_hdr.msg_iovlen = 2;
+          }
+        }
+        
+        for(int i=0; i<npackets; i++) {
             _iovs[2*i+0].iov_base = (hdrs + i*hdr_size);
             _iovs[2*i+0].iov_len = hdr_size;
             _iovs[2*i+1].iov_base = (data + i*data_size);
@@ -236,8 +240,14 @@ public:
           _iovs = (struct iovec *) malloc(sizeof(struct iovec)*3*npackets);
           ::mlock(_mmsg, sizeof(struct mmsghdr)*npackets);
           ::mlock(_iovs, sizeof(struct iovec)*3*npackets);
+          
+          ::memset(_mmsg, 0, sizeof(struct mmsghdr)*npackets);
+          
+          for(int i=0; i<npackets; i++) {
+              _mmsg[i].msg_hdr.msg_iov = &_iovs[3*i];
+              _mmsg[i].msg_hdr.msg_iovlen = 3;
+          }
         }
-        memset(_mmsg, 0, sizeof(struct mmsghdr)*npackets);
         
         if( (hdr_size + data_size) != _last_size ) {
             _last_size = hdr_size + data_size;
@@ -251,8 +261,6 @@ public:
         }
         
         for(int i=0; i<npackets; i++) {
-            _mmsg[i].msg_hdr.msg_iov = &_iovs[3*i];
-            _mmsg[i].msg_hdr.msg_iovlen = 3;
             _iovs[3*i+0].iov_base = &_udp_hdr;
             _iovs[3*i+0].iov_len = sizeof(bf_comb_udp_hdr);
             _iovs[3*i+1].iov_base = (hdrs + i*hdr_size);
