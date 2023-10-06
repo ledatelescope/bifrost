@@ -41,6 +41,7 @@
 #include <arpa/inet.h>
 #include <linux/if_ether.h>
 #include <netinet/if_ether.h>
+#include <ifaddrs.h>
 #include <sys/mman.h>
 #include <errno.h>
 
@@ -147,47 +148,25 @@ class VerbsSend {
     
     void get_interface_name(char* name) {
         sockaddr_in sin;
-        char ip[INET_ADDRSTRLEN];
         socklen_t len = sizeof(sin);
         check_error(::getsockname(_fd, (sockaddr *)&sin, &len),
                     "query socket name");
-        inet_ntop(AF_INET, &(sin.sin_addr), ip, INET_ADDRSTRLEN);
         
-        // TODO: Is there a better way to find this?
-        char cmd[256] = {'\0'};
-        char line[256] = {'\0'};
-        int is_lo = 0;
-        sprintf(cmd, "ip route get to %s | grep dev | awk '{print $4}'", ip);
-        FILE* fp = popen(cmd, "r");
-        if( fgets(line, sizeof(line), fp) != NULL) {
-            if( line[strlen(line)-1] == '\n' ) {
-                line[strlen(line)-1] = '\0';
+        ifaddrs *ifaddr;
+        check_error(::getifaddrs(&ifaddr), 
+                    "query interfaces");
+        for(ifaddrs *ifa=ifaddr; ifa != NULL; ifa=ifa->ifa_next) {
+            if( ifa->ifa_addr != NULL) {
+                if( reinterpret_cast<sockaddr_in*>(ifa->ifa_addr)->sin_addr.s_addr == sin.sin_addr.s_addr ) {
+                    #pragma GCC diagnostic push
+                    #pragma GCC diagnostic ignored "-Wstringop-truncation"
+                    ::strncpy(name, ifa->ifa_name, IFNAMSIZ);
+                    #pragma GCC diagnostic pop
+                    break;
+                }
             }
-            if( strncmp(&(line[0]), "lo", 2) == 0 ) {
-                is_lo = 1;
-            }
-            #pragma GCC diagnostic push
-            #pragma GCC diagnostic ignored "-Wstringop-truncation"
-            strncpy(name, &(line[0]), IFNAMSIZ);
-            #pragma GCC diagnostic pop
         }
-        pclose(fp);
-        
-        if( is_lo ) {
-            // TODO: Is there a way to avoid having to do this?
-            sprintf(cmd, "ip route show | grep %s | grep -v default | awk '{print $3}'", ip);
-            fp = popen(cmd, "r");
-            if( fgets(line, sizeof(line), fp) != NULL) {
-                if( line[strlen(line)-1] == '\n' ) {
-                    line[strlen(line)-1] = '\0';
-                } 
-                #pragma GCC diagnostic push
-                #pragma GCC diagnostic ignored "-Wstringop-truncation"
-                strncpy(name, &(line[0]), IFNAMSIZ);
-                #pragma GCC diagnostic pop
-            }
-            pclose(fp);
-        }
+        ::freeifaddrs(ifaddr);
     }
     void get_mac_address(uint8_t* mac) {
         ifreq ethreq;
@@ -201,7 +180,7 @@ class VerbsSend {
         uint32_t ip;
         char ip_str[INET_ADDRSTRLEN];
         this->get_remote_ip_address(&(ip_str[0]));
-        inet_pton(AF_INET, &(ip_str[0]), &ip);
+        ::inet_pton(AF_INET, &(ip_str[0]), &ip);
         
         if( ((ip & 0xFF) >= 224) && ((ip & 0xFF) < 240) ) {
             ETHER_MAP_IP_MULTICAST(&ip, mac);
@@ -209,25 +188,33 @@ class VerbsSend {
             int ret = -1;
             char cmd[256] = {'\0'};
             char line[256] = {'\0'};
+            char ip_entry[INET_ADDRSTRLEN];
+            unsigned int hw_type, flags;
+            char mac_str[17];
+            char mask[24];
+            char dev[IFNAMSIZ];
             char* end;
+            
             sprintf(cmd, "ping -c 1 %s", ip_str);
             FILE* fp = popen(cmd, "r");
-            sprintf(cmd, "ip neigh | grep -e \"%s \" | awk '{print $5}'", ip_str);
-            fp = popen(cmd, "r");
-            if( fgets(line, sizeof(line), fp) != NULL) {
-                if( line[strlen(line)-1] == '\n' ) {
-                    line[strlen(line)-1] = '\0';
-                }
-                if( strncmp(&(line[2]), ":", 1) == 0 ) {
+            
+            fp = fopen("/proc/net/arp", "r");
+            while( ::fgets(line, sizeof(line), fp) != NULL) {
+                ::sscanf(line, "%s 0x%x 0x%x %s %s %s\n",
+                         ip_entry, &hw_type, &flags, mac_str, mask, dev);
+                
+                if( ::strcmp(ip_str, ip_entry) == 0 ) {
                     ret = 0;
-                    mac[0] = (uint8_t) strtol(&line[0], &end, 16);
-                    mac[1] = (uint8_t) strtol(&line[3], &end, 16);
-                    mac[2] = (uint8_t) strtol(&line[6], &end, 16);
-                    mac[3] = (uint8_t) strtol(&line[9], &end, 16);
-                    mac[4] = (uint8_t) strtol(&line[12], &end, 16);
-                    mac[5] = (uint8_t) strtol(&line[15], &end, 16);
+                    mac[0] = (uint8_t) strtol(&mac_str[0], &end, 16);
+                    mac[1] = (uint8_t) strtol(&mac_str[3], &end, 16);
+                    mac[2] = (uint8_t) strtol(&mac_str[6], &end, 16);
+                    mac[3] = (uint8_t) strtol(&mac_str[9], &end, 16);
+                    mac[4] = (uint8_t) strtol(&mac_str[12], &end, 16);
+                    mac[5] = (uint8_t) strtol(&mac_str[15], &end, 16);
+                    break;
                 }
             }
+            fclose(fp);
             check_error(ret, "determine remote hardware address");    
         }
     }
