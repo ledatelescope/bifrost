@@ -165,7 +165,7 @@ public:
           
           _last_count = npackets;
           _mmsg = (struct mmsghdr *) malloc(sizeof(struct mmsghdr)*npackets);
-          _iovs = (struct iovec *) malloc(sizeof(struct iovec)2*npackets);
+          _iovs = (struct iovec *) malloc(sizeof(struct iovec)*2*npackets);
           ::mlock(_mmsg, sizeof(struct mmsghdr)*npackets);
           ::mlock(_iovs, sizeof(struct iovec)*2*npackets);
           
