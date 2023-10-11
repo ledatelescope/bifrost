@@ -206,7 +206,7 @@ class VerbsSend {
                 ::sscanf(line, "%s 0x%x 0x%x %s %s %s\n",
                          ip_entry, &hw_type, &flags, mac_str, mask, dev);
                 
-                if( (::strcmp(ip_str, ip_entry) == 0) && (flags & ATF_COM == ATF_COM) ) {
+                if( (::strcmp(ip_str, ip_entry) == 0) && (flags & ATF_COM) ) {
                     ret = 0;
                     mac[0] = (uint8_t) strtol(&mac_str[0], &end, 16);
                     mac[1] = (uint8_t) strtol(&mac_str[3], &end, 16);
@@ -641,6 +641,7 @@ class VerbsSend {
         
         _verbs.pkt_head = (bf_ibv_send_pkt*) send_tail->wr.next;
         send_tail->wr.next = NULL;
+        
         _verbs.nqueued += npackets;
         
         return send_head;
@@ -793,7 +794,7 @@ public:
       }
       
       // Reclaim a set of buffers to use
-      this->get_packet_buffers(npackets);
+      head = this->get_packet_buffers(npackets);
       
       // Load in the new data
       int i;
