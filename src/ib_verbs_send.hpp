@@ -39,6 +39,7 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <arpa/inet.h>
+#include <linux/if_arp.h>
 #include <linux/if_ether.h>
 #include <netinet/if_ether.h>
 #include <ifaddrs.h>
@@ -203,7 +204,7 @@ class VerbsSend {
                 ::sscanf(line, "%s 0x%x 0x%x %s %s %s\n",
                          ip_entry, &hw_type, &flags, mac_str, mask, dev);
                 
-                if( ::strcmp(ip_str, ip_entry) == 0 ) {
+                if( (::strcmp(ip_str, ip_entry) == 0) && (flags & ATF_COM == ATF_COM) ) {
                     ret = 0;
                     mac[0] = (uint8_t) strtol(&mac_str[0], &end, 16);
                     mac[1] = (uint8_t) strtol(&mac_str[3], &end, 16);
