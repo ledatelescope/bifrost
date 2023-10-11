@@ -442,6 +442,11 @@ class VerbsSend {
             _verbs.cq[i] = ibv_create_cq(_verbs.ctx, BF_VERBS_SEND_NPKTBUF, NULL, NULL, 0);
             check_null(_verbs.cq[i],
                        "create send completion queue");
+            
+            // Request notifications before any receive completion can be created.
+            // Do NOT restrict to solicited-only completions for receive.
+            check_error(ibv_req_notify_cq(_verbs.cq[i], 0),
+                        "change receive completion queue request notifications");
         }
         
         // Setup the queue pairs
