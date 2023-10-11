@@ -89,6 +89,8 @@ struct bf_ibv_send {
     bf_ibv_send_pkt*  pkt_buf;
     bf_ibv_send_pkt*  pkt_head;
     
+    int               nqueued;
+    
     uint8_t           offload_csum;
     uint32_t          hardware_pacing;
 };
@@ -553,37 +555,12 @@ class VerbsSend {
         _verbs.pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.send_flags = send_flags;
         _verbs.pkt_head = _verbs.pkt_buf;
     }
-    inline void wait_for_buffers() {
-        pollfd pfd;
-        ibv_cq *ev_cq;
-        intptr_t ev_cq_ctx;
-        
-        // Setup for poll
-        pfd.fd = _verbs.cc->fd;
-        pfd.events = POLLIN;
-        pfd.revents = 0;
-        
-        // poll completion channel's fd with given timeout
-        int rc = ::poll(&pfd, 1, _timeout);
-        if( rc < 0) {
-            // Error
-            throw VerbsSend::Error("error");
-        }
-        
-        // Request notification upon the next completion event
-        // Do NOT restrict to solicited-only completions
-        ibv_req_notify_cq(_verbs.cq[0], 0);
-        
-        // Get the completion event(s)
-        while( ibv_get_cq_event(_verbs.cc, &ev_cq, (void **)&ev_cq_ctx) == 0 ) {
-            // Ack the event
-            ibv_ack_cq_events(_verbs.cq[0], 1);
-        }
-    }
-    inline bf_ibv_send_pkt* queue(int npackets) {
+    inline void get_packet_buffers(int npackets) {
         int i, j;
         int num_wce;
         ibv_qp_attr qp_attr;
+        ibv_cq *ev_cq;
+        intptr_t ev_cq_ctx;
         ibv_wc wc[BF_VERBS_SEND_WCBATCH];
         bf_ibv_send_pkt *send_pkt = NULL;
         bf_ibv_send_pkt *send_head = NULL;
@@ -617,20 +594,39 @@ class VerbsSend {
             }
         }
         
+        // Get the completion event(s)
+        while( ibv_get_cq_event(_verbs.cc, &ev_cq, (void **)&ev_cq_ctx) == 0 ) {
+            // Ack the event
+            ibv_ack_cq_events(ev_cq, 1);
+        }
+        
         for(i=0; i<BF_VERBS_SEND_NQP; i++) {
-            do {
-              num_wce = ibv_poll_cq(_verbs.cq[i], BF_VERBS_SEND_WCBATCH, &wc[0]);
-              if(num_wce < 0) {
-                 return NULL;
-              }
-              
-              // Loop through all work completions
-              for(j=0; j<num_wce; j++) {
-                  send_pkt = &(_verbs.pkt_buf[wc[j].wr_id]);
-                  send_pkt->wr.next = &(_verbs.pkt_head->wr);
-                  _verbs.pkt_head = send_pkt;
-              } // for each work completion
-            } while(num_wce);
+          // Request notification upon the next completion event
+          // Do NOT restrict to solicited-only completions
+          if( ibv_req_notify_cq(_verbs.cq[i], 0) ) {
+              return NULL;
+           }
+        }
+        
+        while(_verbs.nqueued > 0 ) {
+            for(i=0; i<BF_VERBS_SEND_NQP; i++) {
+                do {
+                    num_wce = ibv_poll_cq(_verbs.cq[i], BF_VERBS_SEND_WCBATCH, &wc[0]);
+                    if(num_wce < 0) {
+                        return NULL;
+                    }
+                    
+                    // Loop through all work completions
+                    for(j=0; j<num_wce; j++) {
+                        send_pkt = &(_verbs.pkt_buf[wc[j].wr_id]);
+                        send_pkt->wr.next = &(_verbs.pkt_head->wr);
+                        _verbs.pkt_head = send_pkt;
+                    } // for each work completion
+                    
+                    // Decrement the number of packet buffers in use
+                    _verbs.nqueued -= num_wce;
+                } while(num_wce);
+            }
         }
         
         if( npackets == 0 || !_verbs.pkt_head ) {
@@ -645,6 +641,7 @@ class VerbsSend {
         
         _verbs.pkt_head = (bf_ibv_send_pkt*) send_tail->wr.next;
         send_tail->wr.next = NULL;
+        _verbs.nqueued += npackets;
         
         return send_head;
     }
@@ -795,8 +792,10 @@ public:
         throw VerbsSend::Error(std::string("Too many packets for the current buffer size"));
       }
       
-      this->wait_for_buffers();
+      // Reclaim a set of buffers to use
+      this->get_packet_buffers(npackets);
       
+      // Load in the new data
       int i;
       uint64_t offset;
       for(i=0; i<npackets; i++) {
@@ -816,7 +815,7 @@ public:
           _verbs.pkt_buf[i].sg.length = offset;
       }
       
-      head = this->queue(npackets);
+      // Queue for sending
       ret = ibv_post_send(_verbs.qp[0], &(head->wr), &s);
       if( ret ) {
         ret = -1;
