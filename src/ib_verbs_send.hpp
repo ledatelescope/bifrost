@@ -555,7 +555,7 @@ class VerbsSend {
         _verbs.pkt_buf[BF_VERBS_SEND_NQP*BF_VERBS_SEND_NPKTBUF-1].wr.send_flags = send_flags;
         _verbs.pkt_head = _verbs.pkt_buf;
     }
-    inline void get_packet_buffers(int npackets) {
+    inline bf_ibv_send_pkt* get_packet_buffers(int npackets) {
         int i, j;
         int num_wce;
         ibv_qp_attr qp_attr;
