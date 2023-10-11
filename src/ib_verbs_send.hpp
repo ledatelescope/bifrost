@@ -39,8 +39,8 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <arpa/inet.h>
-#include <linux/if_arp.h>
 #include <linux/if_ether.h>
+#include <net/if_arp.h>
 #include <netinet/if_ether.h>
 #include <ifaddrs.h>
 #include <sys/mman.h>
