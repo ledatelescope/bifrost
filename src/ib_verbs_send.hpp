@@ -715,7 +715,7 @@ public:
         destroy_buffers();
         destroy_context();
     }
-    inline void set_rate_limit(uint32_t rate_limit, size_t udp_length=1) {
+    inline void set_rate_limit(uint32_t rate_limit, size_t udp_length=1, size_t max_burst_size=BF_VERBS_SEND_NPKTBURST) {
       int i;
       
       // Converts to B/s to kb/s assuming a packet size
@@ -735,7 +735,7 @@ public:
       ::memset(&rl_attr, 0, sizeof(ibv_qp_rate_limit_attr));
       rl_attr.rate_limit = rate_limit;
       rl_attr.typical_pkt_sz = pkt_size;
-      rl_attr.max_burst_sz = BF_VERBS_SEND_NPKTBURST*pkt_size;
+      rl_attr.max_burst_sz = max_burst_size*pkt_size;
       for(i=0; i<BF_VERBS_SEND_NQP; i++) {
           check_error(ibv_modify_qp_rate_limit(_verbs.qp[i], &rl_attr),
                       "set queue pair rate limit");
