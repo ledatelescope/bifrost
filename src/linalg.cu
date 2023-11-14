@@ -679,15 +679,28 @@ BFstatus bfMatMul_ab_exec(BFlinalg    handle,
 	
 	// TODO: Why does ci8 yield nans when we go into batched execution?
 	if( nbatch > 12 &&  a_type != BF_DTYPE_CI8 ) {
-			BF_CHECK( bfMatMul_ab_exec_batch(handle, stream,
-																			 trans_a, trans_b,
-																			 m, n, k,
-																			 alpha,
-																			 a_data, a_type, a_stride, a_batchstride,
-																			 b_data, b_type, b_stride, b_batchstride,
-																			 beta,
-																			 c_data, c_type, c_stride, c_batchstride,
-																			 nbatch) );
+			BF_CHECK( bfMatMul_ab_exec_batch(handle, 
+                                                         stream,
+							 trans_a, 
+                                                         trans_b,
+							 m, 
+                                                         n, 
+                                                         k,
+							 alpha,
+							 a_data, 
+                                                         a_type, 
+                                                         a_stride, 
+                                                         a_batchstride,
+							 b_data, 
+                                                         b_type, 
+                                                         b_stride, 
+                                                         b_batchstride,
+							 beta,
+							 c_data,  
+                                                         c_type, 
+                                                         c_stride, 
+                                                         c_batchstride,
+							 nbatch) );
 	} else {
 		  for( long b=0; b<nbatch; ++b ) {
 					cuda::child_stream child_stream(stream);
