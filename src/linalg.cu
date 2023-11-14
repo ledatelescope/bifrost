@@ -661,15 +661,12 @@ BFstatus bfMatMul_ab_exec(BFlinalg    handle,
 	// We prefer the CI4@CF32 -> CF32 code
         // second choice would be the batched algorithms
 	
-	//char* use_bf_cgemm_str = getenv("BF_CGEMM");
-	//bool use_bf_cgemm = use_bf_cgemm_str && atoi(use_bf_cgemm_str);
-       // std::cout << "nbatch: "<<nbatch<<std::endl;
-	if( //use_bf_cgemm &&
-	    trans_a == CUBLAS_OP_T && trans_b == CUBLAS_OP_N &&
+
+	if( trans_a == CUBLAS_OP_T &&
+            trans_b == CUBLAS_OP_N &&
 	    (a_type == BF_DTYPE_CI4  || a_type == BF_DTYPE_CI8) &&
 	    (b_type == BF_DTYPE_CI16 || b_type == BF_DTYPE_CF16 || b_type == BF_DTYPE_CF32) &&
 	    c_type == BF_DTYPE_CF32 ) {
-                std::cout<<"custom kernel"<<endl;
 		BF_TRY_RETURN(bf_cgemm_TN_smallM(
 			m, n, k, nbatch,
 			alpha,
@@ -682,7 +679,6 @@ BFstatus bfMatMul_ab_exec(BFlinalg    handle,
 	
 	// TODO: Why does ci8 yield nans when we go into batched execution?
 	if( nbatch > 12 &&  a_type != BF_DTYPE_CI8 ) {
-		  //std::cout << "nbatch: " << nbatch << std::endl;
 			BF_CHECK( bfMatMul_ab_exec_batch(handle, stream,
 																			 trans_a, trans_b,
 																			 m, n, k,
