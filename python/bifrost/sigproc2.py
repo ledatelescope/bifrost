@@ -353,12 +353,12 @@ class SigprocFile(object):
             #requested_nbyte = nframe * self.frame_nbyte
             requested_nbyte = nframe * self.frame_nbyte * self.nbit // 8
             if self.buf.nbytes != requested_nbyte:
-                self.buf.resize(requested_nbyte)
+                self.buf = np.resize(self.buf, requested_nbyte)
             nbyte = self.f.readinto(self.buf)
             if nbyte * 8 % self.frame_nbit != 0:
                 raise IOError("File read returned incomplete frame (truncated file?)")
             if nbyte < self.buf.nbytes:
-                self.buf.resize(nbyte)
+                self.buf = np.resize(self.buf, nbyte)
             nframe = nbyte * 8 // (self.frame_size * self.nbit)
             data = self.buf
             data = unpack(data, self.nbit)
