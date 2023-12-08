@@ -1,5 +1,5 @@
 
-# Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -52,8 +52,8 @@ class _WriterBase(BifrostObject):
         return self
     def __exit__(self, type, value, tb):
         pass
-    def set_rate_limit(self, rate_limit_Bps):
-        _check(_bf.bfPacketWriterSetRateLimit(self.obj, rate_limit_Bps))
+    def set_rate_limit(self, rate_limit_pps):
+        _check(_bf.bfPacketWriterSetRateLimit(self.obj, rate_limit_pps))
     def reset_counter(self):
         _check(_bf.bfPacketWriterResetCounter(self.obj))
     def send(self, headerinfo, seq, seq_increment, src, src_increment, idata):

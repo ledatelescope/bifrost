@@ -52,6 +52,10 @@
 #include <chrono>
 #include <time.h>
 
+#ifndef BF_SEND_NPKTBURST
+#define BF_SEND_NPKTBURST 16
+#endif
+
 class RateLimiter {
   uint32_t _rate;
   uint64_t _counter;
@@ -59,11 +63,11 @@ class RateLimiter {
   std::chrono::high_resolution_clock::time_point _start;
   std::chrono::high_resolution_clock::time_point _stop;
 public:
-  RateLimiter(uint32_t rate_limit)
+  RateLimiter(uint32_t rate_limit=0)
    : _rate(rate_limit), _counter(0), _first(true) {}
   inline void set_rate(uint32_t rate_limit) { _rate = rate_limit; }
   inline uint32_t get_rate() { return _rate; }
-  inline void reset() { _first = true; _counter = 0; }
+  inline void reset_counter() { _first = true; _counter = 0; }
   inline void begin() {
     if( _first ) {
       _start = std::chrono::high_resolution_clock::now();
@@ -73,7 +77,7 @@ public:
   inline void end_and_wait(size_t npackets) {
     if( _rate > 0 ) {
       _stop = std::chrono::high_resolution_clock::now();
-      _counter += npackets;
+      _counter += std::max((size_t) 0, npackets);
       double elapsed_needed = (double) _counter / _rate;
       std::chrono::duration<double> elapsed_actual = std::chrono::duration_cast<std::chrono::duration<double>>(_stop-_start);
       
@@ -90,10 +94,12 @@ public:
 
 class PacketWriterMethod {
 protected:
-    int       _fd;
+    int         _fd;
+    size_t      _max_burst_size;
+    RateLimiter _limiter;
 public:
-    PacketWriterMethod(int fd)
-     : _fd(fd) {}
+    PacketWriterMethod(int fd, size_t max_burst_size=BF_SEND_NPKTBURST)
+     : _fd(fd), _max_burst_size(max_burst_size), _limiter(0) {}
     virtual ssize_t send_packets(char* hdrs, 
                                  int   hdr_size,
                                  char* data, 
@@ -103,25 +109,40 @@ public:
         return 0;
     }
     virtual const char* get_name()     { return "generic_writer"; }
+    inline void set_rate(uint32_t rate_limit) { _limiter.set_rate(rate_limit); }
+    inline uint32_t get_rate() { return _limiter.get_rate(); }
+    inline void reset_counter() { _limiter.reset_counter(); }
 };
 
 class DiskPacketWriter : public PacketWriterMethod {
 public:
-    DiskPacketWriter(int fd)
-     : PacketWriterMethod(fd) {}
+    DiskPacketWriter(int fd, size_t max_burst_size=BF_SEND_NPKTBURST)
+     : PacketWriterMethod(fd, max_burst_size) {}
     ssize_t send_packets(char* hdrs, 
                          int   hdr_size,
                          char* data, 
                          int   data_size, 
                          int   npackets,
                          int   flags=0) {
-        ssize_t status, nsent = 0;
-        for(int i=0; i<npackets; i++) {
-            status = ::write(_fd, hdrs+hdr_size*i, hdr_size);
-            if( status != hdr_size ) continue;
-            status = ::write(_fd, data+data_size*i, data_size);
-            if( status != data_size) continue;
-            nsent += 1;
+        int i = 0;
+        ssize_t status, nsend, nsent = 0;
+        while(npackets > 0) {
+            _limiter.begin();
+            if( _max_burst_size > 0 ) {
+                nsend = std::min(_max_burst_size, (size_t) npackets);
+            } else {
+                nsend = npackets;
+            }
+            for(int j=0; j<nsend; j++) {
+                status = ::write(_fd, hdrs+hdr_size*(i+j), hdr_size);
+                if( status != hdr_size ) continue;
+                status = ::write(_fd, data+data_size*(i+j), data_size);
+                if( status != data_size ) continue;
+                nsent += 1;
+            }
+            i += nsend;
+            npackets -= nsend;
+            _limiter.end_and_wait(nsend);
         }
         return nsent;
     }
@@ -133,8 +154,8 @@ class UDPPacketSender : public PacketWriterMethod {
   mmsghdr* _mmsg;
   iovec*   _iovs;
 public:
-    UDPPacketSender(int fd)
-     : PacketWriterMethod(fd), _last_count(0), _mmsg(NULL), _iovs(NULL) {}
+    UDPPacketSender(int fd, size_t max_burst_size=BF_SEND_NPKTBURST)
+     : PacketWriterMethod(fd, max_burst_size), _last_count(0), _mmsg(NULL), _iovs(NULL) {}
     ~UDPPacketSender() {
       if( _mmsg ) {
         free(_mmsg);
@@ -159,27 +180,47 @@ public:
           
           _last_count = npackets;
           _mmsg = (struct mmsghdr *) malloc(sizeof(struct mmsghdr)*npackets);
-          _iovs = (struct iovec *) malloc(sizeof(struct iovec)*5*npackets);
+          _iovs = (struct iovec *) malloc(sizeof(struct iovec)*2*npackets);
           ::mlock(_mmsg, sizeof(struct mmsghdr)*npackets);
-          ::mlock(_iovs, sizeof(struct iovec)*5*npackets);
-        }
-        memset(_mmsg, 0, sizeof(struct mmsghdr)*npackets);
-        
-        for(int i=0; i<npackets; i++) {
+          ::mlock(_iovs, sizeof(struct iovec)*2*npackets);
+          
+          ::memset(_mmsg, 0, sizeof(struct mmsghdr)*npackets);
+          
+          for(int i=0; i<npackets; i++) {
             _mmsg[i].msg_hdr.msg_iov = &_iovs[2*i];
             _mmsg[i].msg_hdr.msg_iovlen = 2;
+          }
+        }
+        
+        for(int i=0; i<npackets; i++) {
             _iovs[2*i+0].iov_base = (hdrs + i*hdr_size);
             _iovs[2*i+0].iov_len = hdr_size;
             _iovs[2*i+1].iov_base = (data + i*data_size);
             _iovs[2*i+1].iov_len = data_size;
         }
         
-        ssize_t nsent = ::sendmmsg(_fd, _mmsg, npackets, flags);
-        /*
-        if( nsent == -1 ) {
-            std::cout << "sendmmsg failed: " << std::strerror(errno) << " with " << hdr_size << " and " << data_size << std::endl;
+        int i = 0;
+        ssize_t nsend, nsent_batch, nsent = 0;
+        while(npackets > 0) {
+            _limiter.begin();
+            if( _max_burst_size > 0 ) {
+                nsend = std::min(_max_burst_size, (size_t) npackets);
+            } else {
+                nsend = npackets;
+            }
+            nsent_batch = ::sendmmsg(_fd, _mmsg+i, nsend, flags);
+            if( nsent_batch > 0 ) {
+                nsent += nsent_batch;
+            }
+            /*
+            if( nsent_batch == -1 ) {
+                std::cout << "sendmmsg failed: " << std::strerror(errno) << " with " << hdr_size << " and " << data_size << std::endl;
+            }
+            */
+            i += nsend;
+            npackets -= nsend;
+            _limiter.end_and_wait(nsend);
         }
-        */
         
         return nsent;
     }
@@ -187,19 +228,20 @@ public:
 };
 
 #if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
-#include "ib_verbs.hpp"
+#include "ib_verbs_send.hpp"
 
 class UDPVerbsSender : public PacketWriterMethod {
-    Verbs           _ibv;
+    VerbsSend       _ibv;
     bf_comb_udp_hdr _udp_hdr;
     int             _last_size;
     int             _last_count;
     mmsghdr*        _mmsg;
     iovec*          _iovs;
+    uint32_t        _rate_holder;
 public:
-    UDPVerbsSender(int fd)
-        : PacketWriterMethod(fd), _ibv(fd, JUMBO_FRAME_SIZE), _last_size(0),
-          _last_count(0), _mmsg(NULL), _iovs(NULL) {}
+    UDPVerbsSender(int fd, size_t max_burst_size=BF_VERBS_SEND_NPKTBURST)
+        : PacketWriterMethod(fd, max_burst_size), _ibv(fd, JUMBO_FRAME_SIZE), _last_size(0),
+          _last_count(0), _mmsg(NULL), _iovs(NULL), _rate_holder(0) {}
     ~UDPVerbsSender() {
       if( _mmsg ) {
         free(_mmsg);
@@ -227,19 +269,27 @@ public:
           _iovs = (struct iovec *) malloc(sizeof(struct iovec)*3*npackets);
           ::mlock(_mmsg, sizeof(struct mmsghdr)*npackets);
           ::mlock(_iovs, sizeof(struct iovec)*3*npackets);
+          
+          ::memset(_mmsg, 0, sizeof(struct mmsghdr)*npackets);
+          
+          for(int i=0; i<npackets; i++) {
+              _mmsg[i].msg_hdr.msg_iov = &_iovs[3*i];
+              _mmsg[i].msg_hdr.msg_iovlen = 3;
+          }
         }
-        memset(_mmsg, 0, sizeof(struct mmsghdr)*npackets);
         
         if( (hdr_size + data_size) != _last_size ) {
             _last_size = hdr_size + data_size;
             _ibv.get_ethernet_header(&(_udp_hdr.ethernet));
             _ibv.get_ipv4_header(&(_udp_hdr.ipv4), _last_size);
             _ibv.get_udp_header(&(_udp_hdr.udp), _last_size);
+            
+            if( _rate_holder > 0 ) {
+                _ibv.set_rate_limit(_rate_holder*_last_size, _last_size, _max_burst_size);
+            }
         }
         
         for(int i=0; i<npackets; i++) {
-            _mmsg[i].msg_hdr.msg_iov = &_iovs[3*i];
-            _mmsg[i].msg_hdr.msg_iovlen = 3;
             _iovs[3*i+0].iov_base = &_udp_hdr;
             _iovs[3*i+0].iov_len = sizeof(bf_comb_udp_hdr);
             _iovs[3*i+1].iov_base = (hdrs + i*hdr_size);
@@ -258,6 +308,8 @@ public:
         return nsent;
     }
     inline const char* get_name() { return "udp_verbs_transmit"; }
+    inline void set_rate(uint32_t rate_limit) { _rate_holder = rate_limit; }
+    inline uint32_t get_rate() { return _rate_holder; }
 };
 #endif // BF_VERBS_ENABLED
 
@@ -274,23 +326,21 @@ class PacketWriterThread : public BoundThread {
 private:
     PacketWriterMethod*  _method;
     PacketStats          _stats;
-    RateLimiter          _limiter;
     int                  _core;
     
 public:
-    PacketWriterThread(PacketWriterMethod* method, uint32_t rate_limit=0, int core=0)
-     : BoundThread(core), _method(method), _limiter(rate_limit), _core(core) {
+    PacketWriterThread(PacketWriterMethod* method, int core=0)
+     : BoundThread(core), _method(method), _core(core) {
         this->reset_stats();
     }
-    inline void set_rate_limit(uint32_t rate_limit) { _limiter.set_rate(rate_limit); }
-    inline uint32_t get_rate_limit() { return _limiter.get_rate(); }
-    inline void reset_rate_limit() { _limiter.reset(); }
+    inline void set_rate_limit(uint32_t rate_limit) { _method->set_rate(rate_limit); }
+    inline uint32_t get_rate_limit() { return _method->get_rate(); }
+    inline void reset_rate_limit_counter() { _method->reset_counter(); }
     inline ssize_t send(char* hdrs,
                         int   hdr_size,
                         char* datas,
                         int   data_size,
                         int   npackets) {
-        _limiter.begin();
         ssize_t nsent = _method->send_packets(hdrs, hdr_size, datas, data_size, npackets);
         if( nsent == -1 ) {
             _stats.ninvalid += npackets;
@@ -300,7 +350,6 @@ public:
             _stats.nvalid_bytes += nsent * (hdr_size + data_size);
             _stats.ninvalid += (npackets - nsent);
             _stats.ninvalid_bytes += (npackets - nsent) * (hdr_size + data_size);
-            _limiter.end_and_wait(npackets);
         }
         return nsent;
     }
@@ -375,7 +424,7 @@ public:
       }
     }
     inline void set_rate_limit(uint32_t rate_limit) { _writer->set_rate_limit(rate_limit); }
-    inline void reset_rate_limit() { _writer->reset_rate_limit(); }
+    inline void reset_rate_limit_counter() { _writer->reset_rate_limit_counter(); }
     inline void reset_counter() { _framecount = 0; }
     BFstatus send(BFheaderinfo   info,
                   BFoffset       seq,
@@ -486,14 +535,16 @@ public:
 };
 
 class BFpacketwriter_tbf_impl : public BFpacketwriter_impl {
+    int16_t            _nstand;
     ProcLog            _type_log;
 public:
     inline BFpacketwriter_tbf_impl(PacketWriterThread* writer,
                                    int                 nsamples)
      : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI4),
-       _type_log((std::string(writer->get_name())+"/type").c_str()) {
+       _nstand(0), _type_log((std::string(writer->get_name())+"/type").c_str()) {
         _filler = new TBFHeaderFiller();
-        _type_log.update("type : %s\n", "tbf");
+        _nstand = nsamples / 2 / 12;
+        _type_log.update("type : %s%i\n", "tbf", _nstand);
     }
 };
 
@@ -529,7 +580,7 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( std::string(format).substr(0, 5) == std::string("pbeam") ) {
         int nchan = std::atoi((std::string(format).substr(7, std::string(format).length())).c_str());
         nsamples = 4*nchan;
-    } else if(std::string(format).substr(0, 4) == std::string("cor_") ) {
+    } else if( std::string(format).substr(0, 4) == std::string("cor_") ) {
         int nchan = std::atoi((std::string(format).substr(4, std::string(format).length())).c_str());
         nsamples = 4*nchan;
     } else if( format == std::string("tbn") ) {
@@ -558,7 +609,7 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else {
         return BF_STATUS_UNSUPPORTED;
     }
-    PacketWriterThread* writer = new PacketWriterThread(method, 0, core);
+    PacketWriterThread* writer = new PacketWriterThread(method, core);
     
     if( std::string(format).substr(0, 8) == std::string("generic_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_generic_impl(writer, nsamples),
@@ -593,7 +644,7 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     } else if( format == std::string("drx8") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_drx8_impl(writer, nsamples),
                            *obj = 0);
-    } else if( format == std::string("tbf") ) {
+    } else if( std::string(format).substr(0, 3) == std::string("tbf")  ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_tbf_impl(writer, nsamples),
                            *obj = 0);
     } else if( std::string(format).substr(0, 6) == std::string("vbeam_") ) {
