@@ -28,8 +28,6 @@
 
 #pragma once
 
-#include <bifrost/config.h>
-
 #include <stdexcept>
 #include <string>
 #include <sstream>
@@ -50,6 +48,10 @@
 
 #ifndef BF_VERBS_NQP
 #define BF_VERBS_NQP 1
+#endif
+
+#ifndef BF_VERBS_NPKTBUF
+#define BF_VERBS_NPKTBUF 8192
 #endif
 
 #ifndef BF_VERBS_WCBATCH
@@ -276,32 +278,13 @@ class Verbs {
         _verbs.mr_size = (size_t) BF_VERBS_NPKTBUF*BF_VERBS_NQP * _pkt_size_max;
         _verbs.mr_buf = (uint8_t *) ::mmap(NULL, _verbs.mr_size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_LOCKED, -1, 0);
 
-        check_error(_verbs.mr_buf == MAP_FAILED ? -1 : 0,
-                    "allocate memory region buffer");
+        check_error(_verbs.mr_buf == MAP_FAILED,
+                    "allocate receive memory region buffer");
         check_error(::mlock(_verbs.mr_buf, _verbs.mr_size),
                     "lock receive memory region buffer");
         _verbs.mr = ibv_reg_mr(_verbs.pd, _verbs.mr_buf, _verbs.mr_size, IBV_ACCESS_LOCAL_WRITE);
         check_null(_verbs.mr,
-                   "register memory region");
-                   
-        // Start Send
-        
-        _verbs.send_pkt_buf = (bf_ibv_send_pkt*) ::malloc(BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct bf_ibv_send_pkt));
-        check_null(_verbs.send_pkt_buf, 
-                   "allocate send packet buffer");
-        ::memset(_verbs.send_pkt_buf, 0, BF_VERBS_NPKTBUF*BF_VERBS_NQP * sizeof(struct bf_ibv_send_pkt));
-        _verbs.send_mr_size = (size_t) BF_VERBS_NPKTBUF*BF_VERBS_NQP * _pkt_size_max;
-        _verbs.send_mr_buf = (uint8_t *) ::mmap(NULL, _verbs.send_mr_size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_LOCKED, -1, 0);
-
-        check_error(_verbs.send_mr_buf == MAP_FAILED ? -1 : 0,
-                    "allocate memory region buffer");
-        check_error(::mlock(_verbs.send_mr_buf, _verbs.send_mr_size),
-                    "lock memory region buffer");
-        _verbs.send_mr = ibv_reg_mr(_verbs.pd, _verbs.send_mr_buf, _verbs.send_mr_size, IBV_ACCESS_LOCAL_WRITE);
-        check_null(_verbs.send_mr,
-                   "register memory region");
-        
-        // End Send
+                   "register receive memory region");
     }
     void destroy_buffers() {
         int failures = 0;
