@@ -334,9 +334,11 @@ class VerbsSend {
                         std::cout << "_verbs.offload_csum: " << (int) _verbs.offload_csum << std::endl;
                         
                         _verbs.hardware_pacing = 0;
+                        /*
                         if( ibv_is_qpt_supported(ibv_dev_attr.packet_pacing_caps.supported_qpts, IBV_QPT_RAW_PACKET) ) {
                           _verbs.hardware_pacing = ibv_dev_attr.packet_pacing_caps.qp_rate_limit_max;  
                         }
+                        */
                         std::cout << "_verbs.hardware_pacing: " << (int) _verbs.hardware_pacing << std::endl;
                         
                         break;
@@ -731,6 +733,7 @@ public:
       }
       
       // Apply the rate limit
+      /*
       ibv_qp_rate_limit_attr rl_attr;
       ::memset(&rl_attr, 0, sizeof(ibv_qp_rate_limit_attr));
       rl_attr.rate_limit = rate_limit;
@@ -740,7 +743,7 @@ public:
           check_error(ibv_modify_qp_rate_limit(_verbs.qp[i], &rl_attr),
                       "set queue pair rate limit");
       }
-      
+      */
       _rate_limit = rate_limit;
     }
     inline void get_ethernet_header(bf_ethernet_hdr* hdr) {
