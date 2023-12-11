@@ -139,6 +139,48 @@ AS_IF([test x$enable_verbs != xno],
                     [AC_SUBST([HAVE_VERBS], [1])
                      LIBS="$LIBS -libverbs"])])
 
+ AC_ARG_WITH([rx-buffer-size],
+            [AS_HELP_STRING([--with-rx-buffer-size=N],
+                            [default Infiniband verbs receive buffer size in packets (default=8192)])],
+            [],
+            [with_rx_buffer_size=8192])
+ AC_SUBST([VERBS_NPKTBUF], [$with_rx_buffer_size])
+ AS_IF([test x$HAVE_VERBS = x0],
+       [AC_SUBST([VERBS_NPKTBUF], [0])])
+
+ AC_ARG_WITH([tx-buffer-size],
+            [AS_HELP_STRING([--with-tx-buffer-size=N],
+                            [default Infiniband verbs send buffer size in packets (default=512)])],
+            [],
+            [with_tx_buffer_size=512])
+ AC_SUBST([VERBS_SEND_NPKTBUF], [$with_tx_buffer_size])
+ AS_IF([test x$HAVE_VERBS = x0],
+       [AC_SUBST([VERBS_SEND_NPKTBUF], [0])])
+
+ AS_IF([test x$HAVE_VERBS != x0],
+       [AC_MSG_CHECKING([for Infiniband verbs packet pacing support])
+        AC_COMPILE_IFELSE([
+          AC_LANG_PROGRAM([[
+            #include <infiniband/verbs.h>]],
+          [[
+            int ndev, d;
+            ibv_device** ibv_dev_list = NULL;
+            ibv_context* ibv_ctx = NULL;
+            ibv_device_attr_ex ibv_dev_attr;
+            
+            ibv_dev_list = ibv_get_device_list(&ndev);
+            for(d=0; d<ndev; d++) {
+                ibv_ctx = ibv_open_device(ibv_dev_list[d]);
+                ibv_query_device_ex(ibv_ctx, NULL, &ibv_dev_attr);
+                ibv_is_qpt_supported(ibv_dev_attr.packet_pacing_caps.supported_qpts, IBV_QPT_RAW_PACKET);
+            }
+          ]])],
+          [AC_SUBST([VERBS_SEND_PACING], [1])
+           AC_MSG_RESULT([yes])],
+          [AC_SUBST([VERBS_SEND_PACING], [0])
+           AC_MSG_RESULT([no])])
+       ])
+
 #
 # RDMA
 #

@@ -739,6 +739,9 @@ HAVE_CUDA
 CUDA_HOME
 RDMA_MAXMEM
 HAVE_RDMA
+VERBS_SEND_PACING
+VERBS_SEND_NPKTBUF
+VERBS_NPKTBUF
 HAVE_VERBS
 HAVE_VMA
 HAVE_HWLOC
@@ -856,6 +859,8 @@ with_ctags
 enable_hwloc
 enable_vma
 enable_verbs
+with_rx_buffer_size
+with_tx_buffer_size
 enable_rdma
 with_rdma_max_mem
 with_cuda_home
@@ -1572,6 +1577,10 @@ Optional Packages:
   --with-sysroot[=DIR]    Search for dependent libraries within DIR (or the
                           compiler's sysroot if not specified).
   --with-ctags=[PATH]   absolute path to ctags executable
+  --with-rx-buffer-size=N default Infiniband verbs receive buffer size in
+                          packets (default=8192)
+  --with-tx-buffer-size=N default Infiniband verbs send buffer size in packets
+                          (default=512)
   --with-rdma-max-mem=N   maximum RDMA buffer size in bytes
                           (default=134217728)
   --with-cuda-home        CUDA install path (default=/usr/local/cuda)
@@ -21237,6 +21246,85 @@ then :
 
                      LIBS="$LIBS -libverbs"
 fi
+
+fi
+
+
+# Check whether --with-rx-buffer-size was given.
+if test ${with_rx_buffer_size+y}
+then :
+  withval=$with_rx_buffer_size;
+else $as_nop
+  with_rx_buffer_size=8192
+fi
+
+ VERBS_NPKTBUF=$with_rx_buffer_size
+
+ if test x$HAVE_VERBS = x0
+then :
+  VERBS_NPKTBUF=0
+
+fi
+
+
+# Check whether --with-tx-buffer-size was given.
+if test ${with_tx_buffer_size+y}
+then :
+  withval=$with_tx_buffer_size;
+else $as_nop
+  with_tx_buffer_size=512
+fi
+
+ VERBS_SEND_NPKTBUF=$with_tx_buffer_size
+
+ if test x$HAVE_VERBS = x0
+then :
+  VERBS_SEND_NPKTBUF=0
+
+fi
+
+ if test x$HAVE_VERBS != x0
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for Infiniband verbs packet pacing support" >&5
+printf %s "checking for Infiniband verbs packet pacing support... " >&6; }
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+            #include <infiniband/verbs.h>
+int
+main (void)
+{
+
+            int ndev, d;
+            ibv_device** ibv_dev_list = NULL;
+            ibv_context* ibv_ctx = NULL;
+            ibv_device_attr_ex ibv_dev_attr;
+
+            ibv_dev_list = ibv_get_device_list(&ndev);
+            for(d=0; d<ndev; d++) {
+                ibv_ctx = ibv_open_device(ibv_dev_list[d]);
+                ibv_query_device_ex(ibv_ctx, NULL, &ibv_dev_attr);
+                ibv_is_qpt_supported(ibv_dev_attr.packet_pacing_caps.supported_qpts, IBV_QPT_RAW_PACKET);
+            }
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"
+then :
+  VERBS_SEND_PACING=1
+
+           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+else $as_nop
+  VERBS_SEND_PACING=0
+
+           { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
 
 fi
 
