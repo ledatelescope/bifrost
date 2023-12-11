@@ -45,6 +45,7 @@ int HardwareLocality::get_numa_node_of_core(int core) {
              }
         }
         // Find the correct NUMA node for the PU
+        tmp = NULL;
         while( obj != NULL && (tmp = hwloc_get_next_obj_by_type(_topo, HWLOC_OBJ_NUMANODE, tmp)) != NULL ) {
             if( hwloc_bitmap_intersects(obj->cpuset, tmp->cpuset) ) {
                 ret = tmp->os_index;
