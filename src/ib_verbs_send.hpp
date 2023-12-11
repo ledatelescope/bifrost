@@ -67,6 +67,10 @@
 #define BF_VERBS_SEND_NPKTBURST 16
 #endif
 
+#ifndef BF_VERBS_SEND_PACING
+#define BF_VERBS_SEND_PACING 0
+#endif
+
 #define BF_VERBS_SEND_PAYLOAD_OFFSET 42
 
 struct bf_ibv_send_pkt{
@@ -334,13 +338,12 @@ class VerbsSend {
                         std::cout << "_verbs.offload_csum: " << (int) _verbs.offload_csum << std::endl;
                         
                         _verbs.hardware_pacing = 0;
-                        /*
+                        #if defined BF_VERBS_SEND_PACING && BF_VERBS_SEND_PACING
                         if( ibv_is_qpt_supported(ibv_dev_attr.packet_pacing_caps.supported_qpts, IBV_QPT_RAW_PACKET) ) {
                           _verbs.hardware_pacing = ibv_dev_attr.packet_pacing_caps.qp_rate_limit_max;  
                         }
-                        */
                         std::cout << "_verbs.hardware_pacing: " << (int) _verbs.hardware_pacing << std::endl;
-                        
+                        #endif
                         break;
                     }
                 }
@@ -733,7 +736,7 @@ public:
       }
       
       // Apply the rate limit
-      /*
+      #if defined BF_VERBS_SEND_PACING && BF_VERBS_SEND_PACING
       ibv_qp_rate_limit_attr rl_attr;
       ::memset(&rl_attr, 0, sizeof(ibv_qp_rate_limit_attr));
       rl_attr.rate_limit = rate_limit;
@@ -743,7 +746,8 @@ public:
           check_error(ibv_modify_qp_rate_limit(_verbs.qp[i], &rl_attr),
                       "set queue pair rate limit");
       }
-      */
+      #endif
+      
       _rate_limit = rate_limit;
     }
     inline void get_ethernet_header(bf_ethernet_hdr* hdr) {
