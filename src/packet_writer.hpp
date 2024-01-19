@@ -446,6 +446,18 @@ public:
     }
 };
 
+class BFpacketwriter_simple_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_simple_impl(PacketWriterThread* writer,
+                                     int                 nsamples)
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_I2),
+          _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new SIMPLEHeaderFiller();
+        _type_log.update("type : %s\n", "simple");
+    }
+};
+
 class BFpacketwriter_chips_impl : public BFpacketwriter_impl {
     ProcLog            _type_log;
 public:
@@ -558,6 +570,8 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     int nsamples = 0;
     if(std::string(format).substr(0, 8) == std::string("generic_") ) {
         nsamples = std::atoi((std::string(format).substr(8, std::string(format).length())).c_str());
+    } else if( std::string(format).substr(0, 7) == std::string("simple_") ) {
+        nsamples = 4092;
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
         nsamples = 32*nchan;
