@@ -342,7 +342,8 @@ public:
 	        size_t*  src_ngood_bytes[],
 	        PDC*     decode,
 	        PPC*     process);
-	inline const char* get_name() { return _method->get_name(); }
+	inline const char* get_name() {
+        return _method->get_name(); }
 	inline const size_t get_max_size() { return _method->get_max_size(); }
 	inline const BFiomethod get_io_method() { return _method->get_io_method(); }
 	inline const int get_core() { return _core; }
@@ -391,7 +392,7 @@ public:
     }
     inline BFpacketcapture_simple_sequence_callback get_simple() {
         return _simple_callback;
-    
+    } 
     inline void set_chips(BFpacketcapture_chips_sequence_callback callback) {
         _chips_callback = callback;
     }
@@ -612,22 +613,12 @@ class BFpacketcapture_simple_impl : public BFpacketcapture_impl {
 		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
     }
     void on_sequence_active(const PacketDesc* pkt) {
-        if( pkt ) {
-		    //cout << "Latest nchan, chan0 = " << pkt->nchan << ", " << pkt->chan0 << endl;
-		}
-		else {
-			//cout << "No latest packet" << endl;
-		}
 	}
 	inline bool has_sequence_changed(const PacketDesc* pkt) {
-	    return (pkt->chan0 != _chan0) \
-	           || (pkt->nchan != _nchan);
+	    return 1;
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
-        _chan0 = pkt->chan0;
-        _nchan = pkt->nchan;
-        _payload_size = pkt->payload_size;
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
@@ -648,9 +639,6 @@ class BFpacketcapture_simple_impl : public BFpacketcapture_impl {
 			*hdr_size = 0;
 		}
         
-		_chan_log.update() << "chan0        : " << _chan0 << "\n"
-		                   << "nchan        : " << _nchan << "\n"
-		                   << "payload_size : " << _payload_size << "\n";
     }
 public:
 	inline BFpacketcapture_simple_impl(PacketCaptureThread* capture,
@@ -1318,7 +1306,7 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
             int nchan = 1;
-            max_payload_size = sizeof(simple_hdr_type) + (4*nchan);
+            max_payload_size = 8192;
         }
     } else if( std::string(format).substr(0, 5) == std::string("chips") ) {
         if( backend == BF_IO_DISK ) {
@@ -1374,8 +1362,13 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         return BF_STATUS_UNSUPPORTED;
     }
     PacketCaptureThread* capture = new PacketCaptureThread(method, nsrc, core);
+    if (std::string(format).substr(0, 6) == std::string("simple") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_simple_impl(capture, ring, nsrc, src0,
+                                                                  buffer_ntime, slot_ntime,
+                                                                  sequence_callback),
+                                                                  *obj = 0);
     
-    if( std::string(format).substr(0, 5) == std::string("chips") ) {
+    } else if( std::string(format).substr(0, 5) == std::string("chips") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_chips_impl(capture, ring, nsrc, src0,
                                                                  buffer_ntime, slot_ntime,
                                                                  sequence_callback),

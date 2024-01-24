@@ -28,7 +28,7 @@
  
 #include "packet_capture.hpp"
 
-#define BF_JAYCE_DEBUG 0
+#define BF_JAYCE_DEBUG 1
 
 #if BF_JAYCE_DEBUG
 #define BF_PRINTD(stmt) \
@@ -98,16 +98,22 @@ int PacketCaptureThread::run(uint64_t seq_beg,
 			BF_PRINTD("CONTINUE HERE");
 			continue;
 		}
-		BF_PRINTD("FINALLY");
+		BF_PRINTD("FINALLY1");
 		++_stats.nvalid;
+		BF_PRINTD("FINALLY2");
 		_stats.nvalid_bytes += _pkt.payload_size;
+		BF_PRINTD("FINALLY3");
 		++_src_stats[_pkt.src].nvalid;
+		BF_PRINTD("FINALLY4");
 		_src_stats[_pkt.src].nvalid_bytes += _pkt.payload_size;
+		BF_PRINTD("FINALLY5");
 		// HACK TODO: src_ngood_bytes should be accumulated locally and
 		//              then atomically updated, like ngood_bytes. The
 		//              current way is not thread-safe.
+		BF_PRINTD("INPUTS" << " " << &_pkt << " " << seq_beg << " " << nseq_per_obuf << " " << nbuf <<" " << obufs<< " " << local_ngood_bytes << " " << src_ngood_bytes);
 		(*process)(&_pkt, seq_beg, nseq_per_obuf, nbuf, obufs,
 		           local_ngood_bytes, /*local_*/src_ngood_bytes);
+		BF_PRINTD("FINALLY6");
 	}
 	if( nbuf > 0 ) { atomic_add_and_fetch(ngood_bytes[0], local_ngood_bytes[0]); }
 	if( nbuf > 1 ) { atomic_add_and_fetch(ngood_bytes[1], local_ngood_bytes[1]); }
@@ -122,6 +128,13 @@ BFstatus bfPacketCaptureCallbackCreate(BFpacketcapture_callback* obj) {
 BFstatus bfPacketCaptureCallbackDestroy(BFpacketcapture_callback obj) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     delete obj;
+    return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketCaptureCallbackSetSIMPLE(BFpacketcapture_callback obj,
+                                         BFpacketcapture_simple_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_simple(callback);
     return BF_STATUS_SUCCESS;
 }
 
@@ -184,19 +197,23 @@ BFstatus bfPacketCaptureCallbackSetDRX8(BFpacketcapture_callback obj,
 BFpacketcapture_status BFpacketcapture_impl::recv() {
     _t0 = std::chrono::high_resolution_clock::now();
 	
+        BF_PRINTD("impl, start clock");
 	uint8_t* buf_ptrs[2];
 	// Minor HACK to access the buffers in a 2-element queue
 	buf_ptrs[0] = _bufs.size() > 0 ? (uint8_t*)_bufs.front()->data() : NULL;
 	buf_ptrs[1] = _bufs.size() > 1 ? (uint8_t*)_bufs.back()->data()  : NULL;
+        BF_PRINTD("buff ptrs");
 	
 	size_t* ngood_bytes_ptrs[2];
 	ngood_bytes_ptrs[0] = _buf_ngood_bytes.size() > 0 ? &_buf_ngood_bytes.front() : NULL;
 	ngood_bytes_ptrs[1] = _buf_ngood_bytes.size() > 1 ? &_buf_ngood_bytes.back()  : NULL;
 	
+        BF_PRINTD("ngoodbytes");
 	size_t* src_ngood_bytes_ptrs[2];
 	src_ngood_bytes_ptrs[0] = _buf_src_ngood_bytes.size() > 0 ? &_buf_src_ngood_bytes.front()[0] : NULL;
 	src_ngood_bytes_ptrs[1] = _buf_src_ngood_bytes.size() > 1 ? &_buf_src_ngood_bytes.back()[0]  : NULL;
 	
+        BF_PRINTD("srcngoodbytes");
 	int state = _capture->run(_seq,
 	                          _nseq_per_buf,
 	                          _bufs.size(),

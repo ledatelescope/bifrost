@@ -36,7 +36,7 @@ struct __attribute__((packed)) simple_hdr_type {
 
 class SIMPLEDecoder : virtual public PacketDecoder {
 	inline bool valid_packet(const PacketDesc* pkt) const {
-        return (pkt->seq   >= 0 )
+        return (pkt->seq   >= 0 );
     }
 public:
     SIMPLEDecoder(int nsrc, int src0) : PacketDecoder(nsrc, src0) {}
@@ -49,7 +49,7 @@ public:
 	    const simple_hdr_type* pkt_hdr  = (simple_hdr_type*)pkt_ptr;
 	    const uint8_t*        pkt_pld  = pkt_ptr  + sizeof(simple_hdr_type);
 	    int                   pld_size = pkt_size - sizeof(simple_hdr_type);
-	    pkt->seq =   be32toh(pkt_hdr->timetag);
+	    pkt->seq =   be32toh(pkt_hdr->seq);
             pkt->nsrc = 1;
             pkt->src = 0;
 	    pkt->payload_size = pld_size;
@@ -93,7 +93,7 @@ public:
 			//cout << pkt->src << ", " << pkt->nsrc << endl;
 		  //cout << pkt->nchan << endl;
 			for( ; chan<pkt->nchan; ++chan ) {
-#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
+/*#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
            _mm256_store_si256(reinterpret_cast<__m256i*>(&out[pkt->src + pkt->nsrc*chan]),
 					                    _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&in[chan])));
 #else
@@ -104,12 +104,12 @@ public:
            _mm_store_si128(reinterpret_cast<__m128i*>(ddst),
 					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc)));
            _mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
-					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1)));
-#else
+					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1)));*/
+//#else
 						::memcpy(&out[pkt->src + pkt->nsrc*chan],
 						      	 &in[chan], sizeof(otype));
-#endif
-#endif
+//#endif
+//#endif
       }
     }
 
@@ -149,7 +149,7 @@ public:
     inline void operator()(const PacketDesc* hdr_base,
                            BFoffset          framecount,
                            char*             hdr) {
-        chips_hdr_type* header = reinterpret_cast<simple_hdr_type*>(hdr);
+        simple_hdr_type* header = reinterpret_cast<simple_hdr_type*>(hdr);
         memset(header, 0, sizeof(simple_hdr_type));
         
         header->seq      = htobe32(hdr_base->seq);
