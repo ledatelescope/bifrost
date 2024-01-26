@@ -28,7 +28,7 @@
  
 #include "packet_capture.hpp"
 
-#define BF_JAYCE_DEBUG 1
+#define BF_JAYCE_DEBUG 0
 
 #if BF_JAYCE_DEBUG
 #define BF_PRINTD(stmt) \
