@@ -105,11 +105,11 @@ public:
 					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc)));
            _mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
 					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1)));
-//#else
+#else
 						::memcpy(&out[pkt->src + pkt->nsrc*chan],
 						      	 &in[chan], sizeof(otype));
-//#endif
-//#endif
+#endif
+#endif
       }
     }
 
