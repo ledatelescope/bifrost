@@ -615,7 +615,7 @@ class BFpacketcapture_simple_impl : public BFpacketcapture_impl {
     void on_sequence_active(const PacketDesc* pkt) {
 	}
 	inline bool has_sequence_changed(const PacketDesc* pkt) {
-	    return 1;
+	    return 0;
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
