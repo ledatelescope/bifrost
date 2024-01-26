@@ -93,7 +93,7 @@ public:
 			//cout << pkt->src << ", " << pkt->nsrc << endl;
 		  //cout << pkt->nchan << endl;
 			for( ; chan<pkt->nchan; ++chan ) {
-/*#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
+#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
            _mm256_store_si256(reinterpret_cast<__m256i*>(&out[pkt->src + pkt->nsrc*chan]),
 					                    _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&in[chan])));
 #else
@@ -104,7 +104,7 @@ public:
            _mm_store_si128(reinterpret_cast<__m128i*>(ddst),
 					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc)));
            _mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
-					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1)));*/
+					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1)));
 //#else
 						::memcpy(&out[pkt->src + pkt->nsrc*chan],
 						      	 &in[chan], sizeof(otype));
