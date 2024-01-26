@@ -619,7 +619,8 @@ class BFpacketcapture_simple_impl : public BFpacketcapture_impl {
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
-        
+	    _payload_size = pkt->payload_size;
+
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
 			                                   _chan0,
