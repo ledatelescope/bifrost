@@ -90,24 +90,25 @@ public:
 	    otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
 	
 	    int chan = 0;
+            int nelem = 256;
 			//cout << pkt->src << ", " << pkt->nsrc << endl;
 		  //cout << pkt->nchan << endl;
-			for( ; chan<pkt->nchan; ++chan ) {
+			for( ; chan<nelem; ++chan ) {
 /* #if defined BF_AVX_ENABLED && BF_AVX_ENABLED
            _mm256_store_si256(reinterpret_cast<__m256i*>(&out[pkt->src + pkt->nsrc*chan]),
 					                    _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&in[chan])));
-#else
-#if defined BF_SSE_ENABLED && BF_SSE_ENABLED
-           const unaligned128_type* dsrc = (const unaligned128_type*) &in[chan];
-           aligned128_type* ddst = (aligned128_type*) &out[pkt->src + pkt->nsrc*chan];
-           
-           _mm_store_si128(reinterpret_cast<__m128i*>(ddst),
-					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc)));
-           _mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
-					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1)));
 #else*/
-						::memcpy(&out[pkt->src + pkt->nsrc*chan],
-						      	 &in[chan], 256*sizeof(otype));
+// #if defined BF_SSE_ENABLED && BF_SSE_ENABLED
+//            const unaligned128_type* dsrc = (const unaligned128_type*) &in[chan];
+//            aligned128_type* ddst = (aligned128_type*) &out[chan];
+//            
+//            _mm_store_si128(reinterpret_cast<__m128i*>(ddst),
+// 					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc))); // Problem HERE? 
+//            _mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
+// 					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1)));
+// #else
+						::memcpy(&out[chan],
+						      	 &in[chan], sizeof(otype));
 // #endif
 // #endif
       }
@@ -116,28 +117,29 @@ public:
     inline void blank_out_source(uint8_t* data,
 	                             int      src,
 	                             int      nsrc,
-	                             int      nchan,
+	                             int      nchan, 
 	                             int      nseq) {
 	    typedef aligned256_type otype;
+            int nelem = 256;
 	    otype* __restrict__ aligned_data = (otype*)data;
 	    for( int t=0; t<nseq; ++t ) {
-		    for( int c=0; c<nchan; ++c ) {
+		    for( int c=0; c<nelem; ++c ) {
 /* #if defined BF_AVX_ENABLED && BF_AVX_ENABLED
-			    _mm256_store_si256(reinterpret_cast<__m256i*>(&aligned_data[src + nsrc*(c + nchan*t)]),
+			    _mm256_store_si256(reinterpret_cast<__m256i*>(&aligned_data[src + nsrc*(c + nelem*t)]),
 					                   _mm256_setzero_si256());
-#else
-#if defined BF_SSE_ENABLED && BF_SSE_ENABLED
-			    aligned128_type* ddst = (aligned128_type*) &aligned_data[src + nsrc*(c + nchan*t)];
-					
-					_mm_store_si128(reinterpret_cast<__m128i*>(ddst),
-					                _mm_setzero_si128());
-					_mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
-					                _mm_setzero_si128());
 #else*/
-			    ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
+//  #if defined BF_SSE_ENABLED && BF_SSE_ENABLED
+//  			    aligned128_type* ddst = (aligned128_type*) &aligned_data[src + nsrc*(c + nelem*t)];
+//  					
+//  					_mm_store_si128(reinterpret_cast<__m128i*>(ddst),
+//  					                _mm_setzero_si128());
+//  					_mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
+//  					                _mm_setzero_si128());
+//  #else
+			    ::memset(&aligned_data[src + nsrc*(c + nelem*t)],
 			             0, sizeof(otype));
 // #endif
-// #endif
+//#endif
 		    }
 	    }
     }
