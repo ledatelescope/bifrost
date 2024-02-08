@@ -93,7 +93,7 @@ public:
 			//cout << pkt->src << ", " << pkt->nsrc << endl;
 		  //cout << pkt->nchan << endl;
 			for( ; chan<pkt->nchan; ++chan ) {
-#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
+/* #if defined BF_AVX_ENABLED && BF_AVX_ENABLED
            _mm256_store_si256(reinterpret_cast<__m256i*>(&out[pkt->src + pkt->nsrc*chan]),
 					                    _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&in[chan])));
 #else
@@ -105,11 +105,11 @@ public:
 					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc)));
            _mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
 					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1)));
-#else
+#else*/
 						::memcpy(&out[pkt->src + pkt->nsrc*chan],
-						      	 &in[chan], sizeof(otype));
-#endif
-#endif
+						      	 &in[chan], 256*sizeof(otype));
+// #endif
+// #endif
       }
     }
 
@@ -122,7 +122,7 @@ public:
 	    otype* __restrict__ aligned_data = (otype*)data;
 	    for( int t=0; t<nseq; ++t ) {
 		    for( int c=0; c<nchan; ++c ) {
-#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
+/* #if defined BF_AVX_ENABLED && BF_AVX_ENABLED
 			    _mm256_store_si256(reinterpret_cast<__m256i*>(&aligned_data[src + nsrc*(c + nchan*t)]),
 					                   _mm256_setzero_si256());
 #else
@@ -133,11 +133,11 @@ public:
 					                _mm_setzero_si128());
 					_mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
 					                _mm_setzero_si128());
-#else
+#else*/
 			    ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
 			             0, sizeof(otype));
-#endif
-#endif
+// #endif
+// #endif
 		    }
 	    }
     }
