@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,38 +25,22 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from bifrost.libbifrost import _bf
+from bifrost.libbifrost import _bf, _th
+
+from typing import Union
 
 from bifrost import telemetry
 telemetry.track_module()
 
-SPACEMAP_TO_STR = {_bf.BF_SPACE_AUTO:         'auto',
-                   _bf.BF_SPACE_SYSTEM:       'system',
-                   _bf.BF_SPACE_CUDA:         'cuda',
-                   _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
-                   _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
-
-SPACEMAP_FROM_STR = {'auto':         _bf.BF_SPACE_AUTO,
-                     'system':       _bf.BF_SPACE_SYSTEM,
-                     'cuda':         _bf.BF_SPACE_CUDA,
-                     'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
-                     'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
-
 class Space(object):
-    def __init__(self, s):
+    def __init__(self, s: Union[str,_th.BFspace_enum,_bf.BFspace]):
         if isinstance(s, str):
-            if s not in set(['auto', 'system',
-                             'cuda', 'cuda_host', 'cuda_managed']):
-                raise ValueError('Invalid space: %s' % s)
-            self._space = s
-        elif isinstance(s, _bf.BFspace) or isinstance(s, int):
-            if s not in SPACEMAP_TO_STR:
-                raise KeyError("Invalid space: " + s +
-                               ". Valid spaces: " + str(SPACEMAP_TO_STR.keys()))
-            self._space = SPACEMAP_TO_STR[s]
+            self._space = getattr(_th.BFspace_enum, s)
+        elif isinstance(s, (_th.BFspace_enum, _bf.BFspace, int)):
+            self._space = _th.BFspace_enum(s)
         else:
-            raise ValueError('%s is not a space' % s)
-    def as_BFspace(self):
-            return SPACEMAP_FROM_STR[self._space]
+            raise ValueError(f"'{s}' is not a space")
+    def as_BFspace(self) -> _bf.BFspace:
+        return _bf.BFspace(self._space.value)
     def __str__(self):
-        return self._space
+        return self._space.name

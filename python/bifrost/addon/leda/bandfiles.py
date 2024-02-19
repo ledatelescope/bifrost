@@ -1,4 +1,4 @@
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -24,8 +24,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import print_function
-
 import os, sys
 
 sys.path.append('..')
@@ -48,9 +46,9 @@ def extract_obs_offset_from_name(fname):
   return int(os.path.basename(fname)[20:36])
 
 def extract_obs_offset_in_file(fname):
-  f = open(fname, 'rb')
-  headerstr = f.read(DADA_HEADER_SIZE)
-  f.close()
+  with open(fname, 'rb') as f:
+      headerstr = f.read(DADA_HEADER_SIZE)
+      headerstr = headerstr.decode()
   if len(headerstr) < DADA_HEADER_SIZE: return "UNKNOWN"
   for line in headerstr.split('\n'):
     key, value = line.split()

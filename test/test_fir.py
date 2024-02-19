@@ -1,6 +1,6 @@
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,8 +28,6 @@
 
 """This set of unit tests check the functionality
 on the bifrost FIR filter."""
-# Python2 compatibility
-from __future__ import division
 
 import ctypes
 import unittest

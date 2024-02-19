@@ -476,11 +476,11 @@ class TestMultiTransformBlock(unittest.TestCase):
             if self.i > 1 and self.i < 11:
                 with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
                     span_gen = curr_seq.read(1)
-                    self.all_sequence_starts.append(int(next(span_gen).data[0]))
+                    self.all_sequence_starts.append(int(next(span_gen).data[0][0]))
             if self.i > 12:
                 with self.monitor_block.rings['out_1'].open_latest_sequence(guarantee=False) as curr_seq:
                     span_gen = curr_seq.read(1)
-                    self.all_sequence_starts.append(int(next(span_gen).data[0]))
+                    self.all_sequence_starts.append(int(next(span_gen).data[0][0]))
             self.i += 1
             return array
 

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -34,12 +34,13 @@
 #    instance instead of LP_s
 #  E.g., _bf.bfRingSequenceGetName(<BFspan>) [should be <BFsequence>]
 
-# Python2 compatibility
-from __future__ import absolute_import
-
 import ctypes
 import bifrost.libbifrost_generated as _bf
+import bifrost.libbifrost_typehints as _th
 bf = _bf # Public access to library
+th = _th # Public access to type hints
+
+from typing import Any, Callable
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -57,7 +58,7 @@ class EndOfDataStop(RuntimeError):
 
 class BifrostObject(object):
     """Base class for simple objects with create/destroy functions"""
-    def __init__(self, constructor, destructor, *args):
+    def __init__(self, constructor: Callable, destructor: Callable, *args: Any):
         self._obj_basename = constructor.__name__.replace('Create','')
         self.obj = destructor.argtypes[0]()
         _check(constructor(ctypes.byref(self.obj), *args))
@@ -72,14 +73,14 @@ class BifrostObject(object):
         return self
     def __exit__(self, type, value, tb):
         self._destroy()
-    def set_stream(self, stream):
+    def set_stream(self, stream: int):
         set_fnc = getattr(_bf, self._obj_basename+"SetStream", None)
         if set_fnc is None:
             raise AttributeError("set_stream() is not supported by %s objects" % self._obj_basename)
             
         _check( set_fnc(self.obj,
                         ctypes.pointer(stream)) )
-    def get_stream(self):
+    def get_stream(self) -> int:
         get_fnc = getattr(_bf, self._obj_basename+"GetStream", None)
         if get_fnc is None:
             raise AttributeError("get_stream() is not supported by %s objects" % self._obj_basename)
@@ -110,11 +111,7 @@ def _array(size_or_vals, dtype=None):
             elif isinstance(vals[0], float):
                 dtype = ctypes.c_double
             elif isinstance(vals[0], str):
-                try:
-                    vals = [val.encode() for val in vals]
-                except AttributeError:
-                    # Python2 catch
-                    pass
+                vals = [val.encode() for val in vals]
                 dtype = ctypes.c_char_p
             elif isinstance(vals[0], _bf.BFarray):
                 dtype = ctypes.POINTER(_bf.BFarray)
@@ -125,7 +122,7 @@ def _array(size_or_vals, dtype=None):
                 raise TypeError("Cannot deduce C type from ", type(vals[0]))
         return (dtype * len(vals))(*vals)
 
-def _check(status):
+def _check(status: _bf.BFstatus) -> _th.BFstatus_enum:
     if __debug__:
         if status != _bf.BF_STATUS_SUCCESS:
             if status is None:
@@ -142,7 +139,7 @@ def _check(status):
             raise EndOfDataStop('BF_STATUS_END_OF_DATA')
         elif status == _bf.BF_STATUS_WOULD_BLOCK:
             raise IOError('BF_STATUS_WOULD_BLOCK')
-    return status
+    return _th.BFstatus_enum(status)
 
 DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
                                         ctypes.c_char,
@@ -171,7 +168,7 @@ DEREF = {ctypes.POINTER(t): t for t in [ctypes.c_bool,
                                         ctypes.c_void_p,
                                         ctypes.c_wchar,
                                         ctypes.c_wchar_p]}
-def _get(func, *args):
+def _get(func: Callable, *args: Any) -> Any:
     retarg = -1
     dtype = DEREF[func.argtypes[retarg]]
     ret = dtype()
@@ -179,21 +176,14 @@ def _get(func, *args):
     _check(func(*args))
     return ret.value
 
-STRING2SPACE = {'auto':         _bf.BF_SPACE_AUTO,
-                'system':       _bf.BF_SPACE_SYSTEM,
-                'cuda':         _bf.BF_SPACE_CUDA,
-                'cuda_host':    _bf.BF_SPACE_CUDA_HOST,
-                'cuda_managed': _bf.BF_SPACE_CUDA_MANAGED}
-def _string2space(s):
-    if s not in STRING2SPACE:
+def _string2space(s: str) -> _bf.BFspace:
+    try:
+        space = getattr(_th.BFspace_enum, s)
+    except AttributeError:
         raise KeyError("Invalid space '" + str(s) +
-                       "'.\nValid spaces: " + str(list(STRING2SPACE.keys())))
-    return STRING2SPACE[s]
+                       "'.\nValid spaces: " + str(list(_th.BFspace_enum)))
+    return _bf.BFspace(space.value)
 
-SPACE2STRING = {_bf.BF_SPACE_AUTO:         'auto',
-                _bf.BF_SPACE_SYSTEM:       'system',
-                _bf.BF_SPACE_CUDA:         'cuda',
-                _bf.BF_SPACE_CUDA_HOST:    'cuda_host',
-                _bf.BF_SPACE_CUDA_MANAGED: 'cuda_managed'}
-def _space2string(i):
-    return SPACE2STRING[i]
+def _space2string(i: _bf.BFspace) -> str:
+    name = _th.BFspace_enum(i).name
+    return name.replace('BF_SPACE_', '').lower()

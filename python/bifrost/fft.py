@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,12 +25,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-
-from bifrost.libbifrost import _bf, _check, _get, BifrostObject
+from bifrost.libbifrost import _bf, _th, _check, _get, BifrostObject
 from bifrost.ndarray import asarray
+from bifrost.ndarray import ndarray
 import ctypes
+
+from typing import List, Optional, Tuple, Union
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -38,7 +38,9 @@ telemetry.track_module()
 class Fft(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfFftCreate, _bf.bfFftDestroy)
-    def init(self, iarray, oarray, axes=None, apply_fftshift=False):
+    def init(self, iarray: ndarray, oarray: ndarray,
+             axes: Optional[Union[int,List[int],Tuple[int]]]=None,
+             apply_fftshift: bool=False):
         if isinstance(axes, int):
             axes = [axes]
         ndim = len(axes)
@@ -52,12 +54,13 @@ class Fft(BifrostObject):
                                    ndim,
                                    axes,
                                    apply_fftshift)
-    def execute(self, iarray, oarray, inverse=False):
+    def execute(self, iarray: ndarray, oarray: ndarray, inverse: bool=False) -> ndarray:
         return self.execute_workspace(iarray, oarray,
                                       workspace_ptr=None, workspace_size=0,
                                       inverse=inverse)
-    def execute_workspace(self, iarray, oarray, workspace_ptr, workspace_size,
-                          inverse=False):
+    def execute_workspace(self, iarray: ndarray, oarray: ndarray,
+                          workspace_ptr: int, workspace_size: int,
+                          inverse: bool=False) -> ndarray:
         _check(_bf.bfFftExecute(
             self.obj,
             asarray(iarray).as_BFarray(),
