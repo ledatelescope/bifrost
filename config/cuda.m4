@@ -47,7 +47,7 @@ AC_DEFUN([AX_CHECK_CUDA],
     
     ac_compile='$NVCC -c $NVCCFLAGS conftest.$ac_ext >&5'
     LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-    LIBS="$LIBS -lcuda -lcudart"
+    NVCCLIBS="$LIBS -lcuda -lcudart"
 
     ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
     AC_LINK_IFELSE([
