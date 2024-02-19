@@ -1,6 +1,6 @@
 
-# Copyright (c) 2022, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2022, The University of New Mexico. All rights reserved.
+# Copyright (c) 2022-2024, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2022-2024, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,40 +26,41 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-
-from bifrost.libbifrost import _bf, _check, _get, BifrostObject
+from bifrost.libbifrost import _bf, _th, _check, _get, BifrostObject
 from bifrost.ndarray import ndarray, asarray
 from bifrost.proclog import ProcLog
 import bifrost.affinity as cpu_affinity
+from bifrost.udp_socket import UDPSocket
+from bifrost.ring import Ring
+from bifrost.ring2 import Ring as Ring2
 
 import time
 import ctypes
 
+from typing import Optional, Tuple, Union
+
+from bifrost import telemetry
+telemetry.track_module()
+
 class RdmaSender(BifrostObject):
-    def __init__(self, sock, message_size):
+    def __init__(self, sock: UDPSocket, message_size: int):
         BifrostObject.__init__(
             self, _bf.bfRdmaCreate, _bf.bfRdmaDestroy,
             sock.fileno(), message_size, 1)
-    def send_header(self, time_tag, header, offset_from_head):
-        try:
-            header = header.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
+    def send_header(self, time_tag: int, header: str, offset_from_head: int):
+        header = header.encode()
         header_buf = ctypes.create_string_buffer(header)
         _check(_bf.bfRdmaSendHeader(self.obj,
                                     time_tag,
                                     len(header),
                                     ctypes.cast(header_buf, ctypes.c_void_p),
                                     offset_from_head))
-    def send_span(self, span_data):
+    def send_span(self, span_data: ndarray):
         _check(_bf.bfRdmaSendSpan(self.obj,
                                   asarray(span_data).as_BFarray()))
 
 class RdmaReceiver(BifrostObject):
-    def __init__(self, sock, message_size, buffer_factor=5):
+    def __init__(self, sock: UDPSocket, message_size: int, buffer_factor: int=5):
         BifrostObject.__init__(
             self, _bf.bfRdmaCreate, _bf.bfRdmaDestroy,
             sock.fileno(), message_size, 0)
@@ -75,7 +76,7 @@ class RdmaReceiver(BifrostObject):
             contents_buf = ctypes.create_string_buffer(self.message_size)
             self.contents_bufs.append(contents_buf)
         self.index = 0
-    def receive(self):
+    def receive(self) -> Union[Tuple[int,int,str],ndarray]:
         contents_buf = self.contents_bufs[self.index]
         self.index += 1
         if self.index == self.buffer_factor:
@@ -96,7 +97,8 @@ class RdmaReceiver(BifrostObject):
             return span_data
 
 class RingSender(object):
-    def __init__(self, iring, sock, gulp_size, guarantee=True, core=-1):
+    def __init__(self, iring: Union[Ring,Ring2], sock: UDPSocket, gulp_size: int,
+                 guarantee: bool=True, core: Optional[int]=None):
         self.iring = iring
         self.sock = sock
         self.gulp_size = gulp_size
@@ -111,6 +113,11 @@ class RingSender(object):
         self.in_proclog.update(  {'nring':1, 'ring0':self.iring.name})
         
     def main(self):
+        if self.core is not None:
+            cpu_affinity.set_core(self.core)
+        self.bind_proclog.update({'ncore': 1, 
+                                  'core0': cpu_affinity.get_core(),})
+        
         sender = RdmaSender(self.sock, self.gulp_size)
         
         for iseq in self.iring.read(guarantee=self.guarantee):
@@ -138,7 +145,8 @@ class RingSender(object):
 
 
 class RingReceiver(object):
-    def __init__(self, oring, sock, gulp_size, guarantee=True, core=-1):
+    def __init__(self, oring; Union[Ring,Ring2], sock: UDPSocket, gulp_size: int,
+                 guarantee: bool=True, core: Optional[int]=None):
         self.oring = oring
         self.sock = sock
         self.gulp_size = gulp_size
@@ -153,7 +161,8 @@ class RingReceiver(object):
         self.out_proclog.update(  {'nring':1, 'ring0':self.oring.name})
         
     def main(self):
-        cpu_affinity.set_core(self.core)
+        if self.core is not None:
+            cpu_affinity.set_core(self.core)
         self.bind_proclog.update({'ncore': 1, 
                                   'core0': cpu_affinity.get_core(),})
         
