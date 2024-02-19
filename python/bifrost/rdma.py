@@ -145,7 +145,7 @@ class RingSender(object):
 
 
 class RingReceiver(object):
-    def __init__(self, oring; Union[Ring,Ring2], sock: UDPSocket, gulp_size: int,
+    def __init__(self, oring: Union[Ring,Ring2], sock: UDPSocket, gulp_size: int,
                  guarantee: bool=True, core: Optional[int]=None):
         self.oring = oring
         self.sock = sock
