@@ -105,17 +105,12 @@ class UDPCapture(_CaptureBase):
                  nsrc: int, src0: int, max_payload_size: int, buffer_ntime: int,
                  slot_ntime: int, sequence_callback: PacketCaptureCallback,
                  core: Optional[int]=None):
-        try:
-            fmt = fmt.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
         nsrc = self._flatten_value(nsrc)
         if core is None:
             core = -1
         BifrostObject.__init__(
             self, _bf.bfUdpCaptureCreate, _bf.bfPacketCaptureDestroy,
-            fmt, sock.fileno(), ring.obj, nsrc, src0,
+            fmt.encode(), sock.fileno(), ring.obj, nsrc, src0,
             max_payload_size, buffer_ntime, slot_ntime,
             sequence_callback.obj, core)
 
@@ -124,17 +119,12 @@ class UDPSniffer(_CaptureBase):
                  nsrc: int, src0: int, max_payload_size: int, buffer_ntime: int,
                  slot_ntime: int, sequence_callback: PacketCaptureCallback,
                  core: Optional[int]=None):
-        try:
-            fmt = fmt.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
         nsrc = self._flatten_value(nsrc)
         if core is None:
             core = -1
         BifrostObject.__init__(
             self, _bf.bfUdpSnifferCreate, _bf.bfPacketCaptureDestroy,
-            fmt, sock.fileno(), ring.obj, nsrc, src0,
+            fmt.encode(), sock.fileno(), ring.obj, nsrc, src0,
             max_payload_size, buffer_ntime, slot_ntime,
             sequence_callback.obj, core)
 
@@ -143,16 +133,11 @@ class UDPVerbsCapture(_CaptureBase):
                  nsrc: int, src0: int, max_payload_size: int, buffer_ntime: int,
                  slot_ntime: int, sequence_callback: PacketCaptureCallback,
                  core: Optional[int]=None):
-        try:
-            fmt = fmt.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
         if core is None:
             core = -1
         BifrostObject.__init__(
             self, _bf.bfUdpVerbsCaptureCreate, _bf.bfPacketCaptureDestroy,
-            fmt, sock.fileno(), ring.obj, nsrc, src0,
+            fmt.encode(), sock.fileno(), ring.obj, nsrc, src0,
             max_payload_size, buffer_ntime, slot_ntime,
             sequence_callback.obj, core)
 
@@ -161,17 +146,12 @@ class DiskReader(_CaptureBase):
                  nsrc: int, src0: int, buffer_nframe: int, slot_nframe: int,
                  sequence_callback: PacketCaptureCallback,
                  core: Optional[int]=None):
-        try:
-            fmt = fmt.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
         nsrc = self._flatten_value(nsrc)
         if core is None:
             core = -1
         BifrostObject.__init__(
             self, _bf.bfDiskReaderCreate, _bf.bfPacketCaptureDestroy,
-            fmt, fh.fileno(), ring.obj, nsrc, src0,
+            fmt.encode(), fh.fileno(), ring.obj, nsrc, src0,
             buffer_nframe, slot_nframe,
             sequence_callback.obj, core)
         # Make sure we start in the same place in the file

@@ -78,41 +78,26 @@ class _WriterBase(BifrostObject):
 
 class UDPTransmit(_WriterBase):
     def __init__(self, fmt: str, sock: UDPSocket, core: Optional[int]=None):
-        try:
-            fmt = fmt.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
         if core is None:
             core = -1
         BifrostObject.__init__(
             self, _bf.bfUdpTransmitCreate, _bf.bfPacketWriterDestroy,
-            fmt, sock.fileno(), core)
+            fmt.encode(), sock.fileno(), core)
 
 
 class UDPVerbsTransmit(_WriterBase):
     def __init__(self, fmt: str, sock: UDPSocket, core: Optional[int]=None):
-        try:
-            fmt = fmt.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
         if core is None:
             core = -1
         BifrostObject.__init__(
             self, _bf.bfUdpVerbsTransmitCreate, _bf.bfPacketWriterDestroy,
-            fmt, sock.fileno(), core)
+            fmt.encode(), sock.fileno(), core)
    
 
 class DiskWriter(_WriterBase):
     def __init__(self, fmt: str, fh: IOBase, core: Optional[int]=None):
-        try:
-            fmt = fmt.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
         if core is None:
             core = -1
         BifrostObject.__init__(
             self, _bf.bfDiskWriterCreate, _bf.bfPacketWriterDestroy,
-            fmt, fh.fileno(), core)
+            fmt.encode(), fh.fileno(), core)
