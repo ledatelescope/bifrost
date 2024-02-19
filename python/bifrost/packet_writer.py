@@ -1,5 +1,5 @@
 
-# Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2024, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -29,22 +29,31 @@
 
 from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 from bifrost.ndarray import asarray
+from bifrost.ndarray import ndarray
+from bifrost.udp_socket import UDPSocket
+
+from io import IOBase
+
+from typing import Optional
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class HeaderInfo(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(
             self, _bf.bfHeaderInfoCreate, _bf.bfHeaderInfoDestroy)
-    def set_nsrc(self,  nsrc):
+    def set_nsrc(self,  nsrc: int):
         _check(_bf.bfHeaderInfoSetNSrc(self.obj, nsrc))
-    def set_nchan(self, nchan):
+    def set_nchan(self, nchan: int):
         _check(_bf.bfHeaderInfoSetNChan(self.obj, nchan))
-    def set_chan0(self, chan0):
+    def set_chan0(self, chan0: int):
         _check(_bf.bfHeaderInfoSetChan0(self.obj, chan0))
-    def set_tuning(self, tuning):
+    def set_tuning(self, tuning: int):
         _check(_bf.bfHeaderInfoSetTuning(self.obj, tuning))
-    def set_gain(self, gain):
+    def set_gain(self, gain: int):
         _check(_bf.bfHeaderInfoSetGain(self.obj, gain))
-    def set_decimation(self, decimation):
+    def set_decimation(self, decimation: int):
         _check(_bf.bfHeaderInfoSetDecimation(self.obj, decimation))
 
 class _WriterBase(BifrostObject):
@@ -52,11 +61,13 @@ class _WriterBase(BifrostObject):
         return self
     def __exit__(self, type, value, tb):
         pass
-    def set_rate_limit(self, rate_limit_pps):
+    def set_rate_limit(self, rate_limit_pps: int):
         _check(_bf.bfPacketWriterSetRateLimit(self.obj, rate_limit_pps))
     def reset_counter(self):
         _check(_bf.bfPacketWriterResetCounter(self.obj))
-    def send(self, headerinfo, seq, seq_increment, src, src_increment, idata):
+    def send(self, headerinfo: HeaderInfo,
+             seq: int, seq_increment: int, src: int, src_increment: int,
+             idata: ndarray):
         _check(_bf.bfPacketWriterSend(self.obj,
                                       headerinfo.obj,
                                       seq,
@@ -66,7 +77,7 @@ class _WriterBase(BifrostObject):
                                       asarray(idata).as_BFarray()))
 
 class UDPTransmit(_WriterBase):
-    def __init__(self, fmt, sock, core=None):
+    def __init__(self, fmt: str, sock: UDPSocket, core: Optional[int]=None):
         try:
             fmt = fmt.encode()
         except AttributeError:
@@ -80,7 +91,7 @@ class UDPTransmit(_WriterBase):
 
 
 class UDPVerbsTransmit(_WriterBase):
-    def __init__(self, fmt, sock, core=None):
+    def __init__(self, fmt: str, sock: UDPSocket, core: Optional[int]=None):
         try:
             fmt = fmt.encode()
         except AttributeError:
@@ -94,7 +105,7 @@ class UDPVerbsTransmit(_WriterBase):
    
 
 class DiskWriter(_WriterBase):
-    def __init__(self, fmt, fh, core=None):
+    def __init__(self, fmt: str, fh: IOBase, core: Optional[int]=None):
         try:
             fmt = fmt.encode()
         except AttributeError:
