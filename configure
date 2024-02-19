@@ -21930,10 +21930,10 @@ printf %s "checking for minimum shared memory per block... " >&6; }
 
       CXXFLAGS_save="$CXXFLAGS"
       LDFLAGS_save="$LDFLAGS"
-      LIBS_save="$LIBS"
+      NVCCLIBS_save="$NVCCLIBS"
 
       LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-      LIBS="-lcuda -lcudart"
+      NVCCLIBS="-lcuda -lcudart"
       ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS conftest.$ac_ext>&5'
       if test "$cross_compiling" = yes
 then :
@@ -21997,7 +21997,7 @@ fi
 
       CXXFLAGS="$CXXFLAGS_save"
       LDFLAGS="$LDFLAGS_save"
-      LIBS="$LIBS_save"
+      NVCCLIBS="$NVCCLIBS_save"
     else
       GPU_SHAREDMEM=$with_shared_mem
 
