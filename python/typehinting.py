@@ -6,7 +6,8 @@ def build_typehinting(filename):
              'space':    {},
              'dtype':    {},
              'capture':  {},
-             'transmit': {},
+             'io':       {},
+             'whence':   {},
              'reduce':   {}}
     
     with open(filename, 'r') as fh:
