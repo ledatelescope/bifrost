@@ -24,6 +24,9 @@ def build_typehinting(filename):
                         if tag == 'space':
                             name = name.replace('BF_SPACE_', '')
                             enums[tag][name.lower()] = value
+                        elif tag == 'io':
+                            name = name.replace('BF_IO_', '')
+                            enums[tag][name.lower()] = value
                         elif tag == 'reduce':
                             name = name.replace('BF_REDUCE_', '')
                             name = name.replace('POWER_', 'pwr')
