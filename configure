@@ -21624,7 +21624,7 @@ printf %s "checking for a working CUDA 10+ installation... " >&6; }
 
     ac_compile='$NVCC -c $NVCCFLAGS conftest.$ac_ext >&5'
     LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
-    LIBS="$LIBS -lcuda -lcudart"
+    NVCCLIBS="$LIBS -lcuda -lcudart"
 
     ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
