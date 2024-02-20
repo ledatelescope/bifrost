@@ -29,7 +29,6 @@
 import unittest
 import os
 import re
-import imp
 import sys
 import glob
 
@@ -41,8 +40,6 @@ except ImportError:
 TEST_DIR = os.path.dirname(__file__)
 TOOLS_DIR = os.path.join(TEST_DIR, '..', 'tools')
 TESTBENCH_DIR = os.path.join(TEST_DIR, '..', 'testbench')
-modInfoBuild = imp.find_module('bifrost', [os.path.join(TEST_DIR, '..', 'python')])
-BIFROST_DIR =  os.path.abspath(modInfoBuild[1])
 
 run_scripts_tests = False
 try:
