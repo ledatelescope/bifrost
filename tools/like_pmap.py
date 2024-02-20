@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2023, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2024, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2024, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -92,7 +92,7 @@ def main(args):
         raise RuntimeError("Cannot find NUMA memory info for PID: %i" % args.pid)
         
     # Parse out the anonymous entries in this file
-    _numaRE = re.compile('(?P<addr>[0-9a-f]+).*[(anon)|(mapped)]=(?P<size>\d+).*(swapcache=(?P<swap>\d+))?.*N(?P<binding>\d+)=(?P<size2>\d+)')
+    _numaRE = re.compile('(?P<addr>[0-9a-f]+).*[(anon)|(mapped)]=(?P<size>[0-9]+).*(swapcache=(?P<swap>[0-9]+))?.*N(?P<binding>[0-9]+)=(?P<size2>[0-9]+)')
     areas = {}
     files = {}
     for line in numaInfo.split('\n'):
