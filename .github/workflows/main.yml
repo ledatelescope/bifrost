@@ -3,7 +3,7 @@ name: "Build and Test"
 "on": [push, pull_request]
 jobs:
   pre_build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         os: [self-hosted, ubuntu-latest, macos-latest]
-        python-version: ['3.8', '3.10']
+        python-version: ['3.8', '3.10', '3.12']
         include:
           - os: ubuntu-20.04
             python-version: '3.6'
@@ -53,7 +53,7 @@ jobs:
             gnu-sed \
             hwloc \
             pkg-config
-      - uses: actions/setup-python@v4.3.0
+      - uses: actions/setup-python@v5.0.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: "Software Install - Python"
