@@ -35,8 +35,54 @@ from bifrost.packet_writer import HeaderInfo, DiskWriter
 from bifrost.packet_capture import PacketCaptureCallback, DiskReader
 from bifrost.quantize import quantize
 from bifrost.pipeline import SourceBlock, SinkBlock
+import datetime
 import numpy as np
+start_pipeline = datetime.datetime.now()
 
+
+class SIMPLEReader(object):
+    def __init__(self, sock, ring):
+        self.sock = sock
+        self.ring = ring
+        self.nsrc = 1
+    def seq_callback(self, seq0, chan0, nchan, nsrc,
+                     time_tag_ptr, hdr_ptr, hdr_size_ptr):
+        FS = 196.0e6
+        CHAN_BW = 1e3
+       #  timestamp0 = (self.utc_start - ADP_EPOCH).total_seconds()
+       #  time_tag0  = timestamp0 * int(FS)
+        time_tag   = int((datetime.datetime.now() - start_pipeline).total_seconds()*1e6)
+        time_tag_ptr[0] = time_tag
+        cfreq = 55e6
+        hdr = {'time_tag': time_tag,
+               'seq0':     seq0,
+               'chan0':    chan0,
+               'nchan':    nchan,
+               'cfreq':    cfreq,
+               'bw':       CHAN_BW,
+               'nstand':   2,
+               #'stand0':   src0*16, # TODO: Pass src0 to the callback too(?)
+               'npol':     2,
+               'complex':  False,
+               'nbit':     2}
+        hdr_str = json.dumps(hdr).encode()
+        # TODO: Can't pad with NULL because returned as C-string
+        #hdr_str = json.dumps(hdr).ljust(4096, '\0')
+        #hdr_str = json.dumps(hdr).ljust(4096, ' ')
+        self.header_buf = ctypes.create_string_buffer(hdr_str)
+        hdr_ptr[0]      = ctypes.cast(self.header_buf, ctypes.c_void_p)
+        hdr_size_ptr[0] = len(hdr_str)
+        return 0
+    def main(self):
+        seq_callback = PacketCaptureCallback()
+        seq_callback.set_simple(self.seq_callback)
+        with DiskReader("simple" , self.sock, self.ring, self.nsrc, 0, 128, 128,
+                        sequence_callback=seq_callback) as capture:
+            while True:
+                status = capture.recv()
+                if status in (1,4,5,6):
+                    break
+        del capture
 
 class TBNReader(object):
     def __init__(self, sock, ring):
@@ -201,6 +247,68 @@ class DiskIOTest(unittest.TestCase):
         if filename not in self._cache:
             self._cache.append(filename)
         return fh
+
+    def _get_simple_data(self):
+        desc = HeaderInfo()
+        data_q = bf.ndarray(np.ones((512,1,4094)), dtype='i16')
+        return desc, data_q
+
+    def test_write_simple(self):
+        fh = self._open('test_simple.dat','wb')
+        oop = DiskWriter('simple', fh)
+        desc,data = self._get_simple_data()
+        oop.send(desc,0,512, 0, 1, data)
+        fh.close()
+        expectedsize = 512*8192
+        self.assertEqual(os.path.getsize('test_simple.dat'), \
+                        expectedsize)
+
+    def test_read_simple(self):
+        # Write
+        fh = self._open('test_simple.dat', 'wb')
+        oop = DiskWriter('simple', fh)
+        
+        # Get TBN data
+        desc, data = self._get_simple_data()
+        
+        # Go!
+        oop.send(desc,0,512, 0, 1, data)
+        fh.close()
+        
+        # Read
+        fh = self._open('test_simple.dat', 'rb')
+        ring = Ring(name="capture_simple")
+        iop = SIMPLEReader(fh, ring)
+        ## Data accumulation
+        final = []
+        expectedsize = 8192*512
+        aop = AccumulateOp(ring, final, expectedsize,dtype=np.short)
+        
+        # Start the reader and accumlator threads
+        reader = threading.Thread(target=iop.main)
+        accumu = threading.Thread(target=aop.main)
+        reader.start()
+        accumu.start()
+        
+        # Get simple data
+        reader.join()
+        accumu.join()
+        
+        # Compare
+        ## Reorder to match what we sent out
+        for f in final:
+            print(f)
+        final = np.array(final, dtype=np.short)
+        final = bf.ndarray(shape=final.shape, dtype='i16', buffer=final.ctypes.data)
+        ## Reduce to match the capture block size
+        data = data[:final.shape[0],...]
+        for i in range(1, data.shape[0]):
+            np.testing.assert_equal(final[i,...], data[i,...])
+            
+        # Clean up
+        del oop
+        fh.close()
+        
         
     def _get_tbn_data(self):
         # Setup the packet HeaderInfo
