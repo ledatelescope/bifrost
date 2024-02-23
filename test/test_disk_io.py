@@ -76,7 +76,7 @@ class SIMPLEReader(object):
     def main(self):
         seq_callback = PacketCaptureCallback()
         seq_callback.set_simple(self.seq_callback)
-        with DiskReader("simple" , self.sock, self.ring, self.nsrc, 0, 128, 128,
+        with DiskReader("simple" , self.sock, self.ring, self.nsrc, 0, 512, 512,
                         sequence_callback=seq_callback) as capture:
             while True:
                 status = capture.recv()
@@ -89,8 +89,6 @@ class TBNReader(object):
         self.sock = sock
         self.ring = ring
     def callback(self, seq0, time_tag, decim, chan0, nsrc, hdr_ptr, hdr_size_ptr):
-        #print "++++++++++++++++ seq0     =", seq0
-        #print "                 time_tag =", time_tag
         hdr = {'time_tag': time_tag,
                'seq0':     seq0, 
                'chan0':    chan0,
@@ -100,7 +98,6 @@ class TBNReader(object):
                'npol':     2,
                'complex':  True,
                'nbit':     8}
-        #print "******** CFREQ:", hdr['cfreq']
         try:
             hdr_str = json.dumps(hdr).encode()
         except AttributeError:
@@ -131,8 +128,6 @@ class DRXReader(object):
         self.ring = ring
         self.nsrc = nsrc
     def callback(self, seq0, time_tag, decim, chan0, chan1, nsrc, hdr_ptr, hdr_size_ptr):
-        #print "++++++++++++++++ seq0     =", seq0
-        #print "                 time_tag =", time_tag
         hdr = {'time_tag': time_tag,
                'seq0':     seq0, 
                'chan0':    chan0,
@@ -144,7 +139,6 @@ class DRXReader(object):
                'npol':     2,
                'complex':  True,
                'nbit':     4}
-        #print "******** CFREQ:", hdr['cfreq']
         try:
             hdr_str = json.dumps(hdr).encode()
         except AttributeError:
@@ -176,8 +170,6 @@ class PBeamReader(object):
         self.nchan = nchan
         self.nsrc = nsrc
     def callback(self, seq0, time_tag, navg, chan0, nchan, nbeam, hdr_ptr, hdr_size_ptr):
-        #print "++++++++++++++++ seq0     =", seq0
-        #print "                 time_tag =", time_tag
         hdr = {'time_tag': time_tag,
                'seq0':     seq0, 
                'chan0':    chan0,
@@ -188,7 +180,6 @@ class PBeamReader(object):
                'npol':     4,
                'complex':  False,
                'nbit':     32}
-        #print("******** HDR:", hdr)
         try:
             hdr_str = json.dumps(hdr).encode()
         except AttributeError:
@@ -228,7 +219,7 @@ class AccumulateOp(object):
             while not self.ring.writing_ended():
                 for ispan in iseq_spans:
                     idata = ispan.data_view(self.dtype)
-                    self.output.append(idata)
+                    self.output.append(idata.copy())
 
             
 class DiskIOTest(unittest.TestCase):
@@ -250,14 +241,15 @@ class DiskIOTest(unittest.TestCase):
 
     def _get_simple_data(self):
         desc = HeaderInfo()
-        data_q = bf.ndarray(np.ones((512,1,4094)), dtype='i16')
+        testdata = self.s0[:2096128].real.astype(np.short)
+        data_q = bf.ndarray(testdata.reshape(512,1,4094), dtype='i16')
         return desc, data_q
 
     def test_write_simple(self):
         fh = self._open('test_simple.dat','wb')
         oop = DiskWriter('simple', fh)
         desc,data = self._get_simple_data()
-        oop.send(desc,0,512, 0, 1, data)
+        oop.send(desc,0,1, 0, 1, data)
         fh.close()
         expectedsize = 512*8192
         self.assertEqual(os.path.getsize('test_simple.dat'), \
@@ -272,11 +264,13 @@ class DiskIOTest(unittest.TestCase):
         desc, data = self._get_simple_data()
         
         # Go!
-        oop.send(desc,0,512, 0, 1, data)
+        oop.send(desc,0,1, 0, 1, data)
         fh.close()
         
         # Read
         fh = self._open('test_simple.dat', 'rb')
+        from  shutil import copyfile
+        copyfile("test_simple.dat","check_simple.dat")
         ring = Ring(name="capture_simple")
         iop = SIMPLEReader(fh, ring)
         ## Data accumulation
@@ -296,15 +290,18 @@ class DiskIOTest(unittest.TestCase):
         
         # Compare
         ## Reorder to match what we sent out
-        for f in final:
-            print(f)
         final = np.array(final, dtype=np.short)
-        final = bf.ndarray(shape=final.shape, dtype='i16', buffer=final.ctypes.data)
-        ## Reduce to match the capture block size
-        data = data[:final.shape[0],...]
-        for i in range(1, data.shape[0]):
-            np.testing.assert_equal(final[i,...], data[i,...])
-            
+
+        finalcopy = final.copy()
+        # The following statement starts with 32 bytes of garbage
+        finalcopy = bf.ndarray(shape=finalcopy.shape, dtype='i16', buffer=finalcopy.ctypes.data)
+        
+        # This statuement should be equivalent, but instead does not contain garbage
+        final = bf.ndarray(final, dtype='i16' )
+        final = final.reshape(data.shape)
+
+        np.testing.assert_equal(final,data)
+
         # Clean up
         del oop
         fh.close()

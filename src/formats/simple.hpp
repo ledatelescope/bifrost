@@ -84,8 +84,6 @@ public:
 	
 	    obuf_offset *= BF_UNPACK_FACTOR;
 	
-	    // Note: Using these SSE types allows the compiler to use SSE instructions
-	    //         However, they require aligned memory (otherwise segfault)
 	    itype const* __restrict__ in  = (itype const*)pkt->payload_ptr;
 	    otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
 	
