@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 # Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,6 @@ Bifrost pipeline processing library
 """
 
 # TODO: Decide how to organise the namespace
-from __future__ import print_function, absolute_import
 
 from bifrost import core, memory, affinity, ring, block, address, udp_socket
 from bifrost import pipeline

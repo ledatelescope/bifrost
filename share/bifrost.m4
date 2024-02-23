@@ -8,7 +8,7 @@ AC_DEFUN([AX_CHECK_BIFROST],
               [with_bifrost=/usr/local/])
   AC_SUBST([BIFROST_PATH], [$with_bifrost])
   
-  AS_SUBST([HAVE_BIFROST], [1])
+  AC_SUBST([HAVE_BIFROST], [1])
   AC_CHECK_HEADER([bifrost/config.h], [], [AC_SUBST([HAVE_BIFROST], [0])])
   if test "$HAVE_BIFROST" = "1"; then
     AC_MSG_CHECKING([for a working Bifrost installation])

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,11 +25,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-
 from bifrost.libbifrost import _bf, _check, BifrostObject
 from bifrost.ndarray import asarray
+from bifrost.ndarray import ndarray
+
+from typing import Optional
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -37,7 +37,7 @@ telemetry.track_module()
 class LinAlg(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfLinAlgCreate, _bf.bfLinAlgDestroy)
-    def matmul(self, alpha, a, b, beta, c):
+    def matmul(self, alpha: float, a: Optional[ndarray], b: Optional[ndarray], beta: float, c: ndarray) -> ndarray:
         """Computes:
           c = alpha*a.b + beta*c
         or if b is None:

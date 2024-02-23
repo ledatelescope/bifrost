@@ -720,14 +720,14 @@ HAVE_TRACE
 HAVE_DEBUG
 HAVE_TMPFS
 ALIGNMENT
-GPU_SHAREDMEM
-GPU_EXP_PINNED_ALLOC
-GPU_PASCAL_MANAGEDMEM
 GPU_ARCHS
 NVCCFLAGS
 CUOBJDUMP
 NVPRUNE
 NVCC
+GPU_EXP_PINNED_ALLOC
+GPU_PASCAL_MANAGEDMEM
+GPU_SHAREDMEM
 GPU_MAX_ARCH
 GPU_MIN_ARCH
 CUDA_HAVE_CXX11
@@ -1589,7 +1589,8 @@ Optional Packages:
   --with-stream-model     CUDA default stream model to use: 'legacy' or
                           'per-thread' (default='per-thread')
   --with-gpu-archs=...    default GPU architectures (default=detect)
-  --with-shared-mem=N     default GPU shared memory in bytes (default=16384)
+  --with-shared-mem=N     default GPU shared memory per block in bytes
+                          (default=detect)
   --with-alignment=N      default memory alignment in bytes (default=4096)
   --with-logging-dir=DIR  directory for Bifrost proclog logging
                           (default=autodetect)
@@ -21460,6 +21461,12 @@ fi
 
   GPU_MAX_ARCH=0
 
+  GPU_SHAREDMEM=0
+
+  GPU_PASCAL_MANAGEDMEM=0
+
+  GPU_EXP_PINNED_ALLOC=1
+
   if test "$enable_cuda" != "no"; then
     HAVE_CUDA=1
 
@@ -21608,14 +21615,18 @@ fi
   fi
 
   if test "$HAVE_CUDA" = "1"; then
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for a working CUDA installation" >&5
-printf %s "checking for a working CUDA installation... " >&6; }
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for a working CUDA 10+ installation" >&5
+printf %s "checking for a working CUDA 10+ installation... " >&6; }
 
     CXXFLAGS_save="$CXXFLAGS"
     LDFLAGS_save="$LDFLAGS"
     NVCCLIBS_save="$NVCCLIBS"
 
     ac_compile='$NVCC -c $NVCCFLAGS conftest.$ac_ext >&5'
+    LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+    NVCCLIBS="$LIBS -lcuda -lcudart"
+
+    ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -21630,14 +21641,15 @@ cudaMalloc(0, 0);
   return 0;
 }
 _ACEOF
-if ac_fn_cxx_try_compile "$LINENO"
+if ac_fn_cxx_try_link "$LINENO"
 then :
 
 else $as_nop
   HAVE_CUDA=0
 
 fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
 
     if test "$HAVE_CUDA" = "1"; then
       LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
@@ -21903,6 +21915,94 @@ printf "%s\n" "yes" >&6; }
     GPU_MAX_ARCH=$ar_max_valid
 
 
+
+# Check whether --with-shared_mem was given.
+if test ${with_shared_mem+y}
+then :
+  withval=$with_shared_mem;
+else $as_nop
+  with_shared_mem='auto'
+fi
+
+    if test "$with_gpu_archs" = "auto"; then
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for minimum shared memory per block" >&5
+printf %s "checking for minimum shared memory per block... " >&6; }
+
+      CXXFLAGS_save="$CXXFLAGS"
+      LDFLAGS_save="$LDFLAGS"
+      NVCCLIBS_save="$NVCCLIBS"
+
+      LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
+      NVCCLIBS="-lcuda -lcudart"
+      ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS conftest.$ac_ext>&5'
+      if test "$cross_compiling" = yes
+then :
+  { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+printf "%s\n" "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else $as_nop
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+            #include <cuda.h>
+            #include <cuda_runtime.h>
+            #include <iostream>
+            #include <fstream>
+            #include <set>
+int
+main (void)
+{
+
+            std::set<int> smem;
+            int smemSize;
+            int deviceCount = 0;
+            cudaGetDeviceCount(&deviceCount);
+            if( deviceCount == 0 ) {
+              return 1;
+            }
+            for(int dev=0; dev<deviceCount; dev++) {
+              cudaSetDevice(dev);
+              cudaDeviceGetAttribute(&smemSize, cudaDevAttrMaxSharedMemoryPerBlock, dev);
+              if( smem.count(smemSize) == 0 ) {
+                smem.insert(smemSize);
+              }
+            }
+            std::ofstream fh;
+            fh.open("confsmem.out");
+            if( smem.empty() ) {
+              fh << 0;
+            } else {
+              fh << *smem.begin();
+            }
+            fh.close();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_run "$LINENO"
+then :
+  GPU_SHAREDMEM=`cat confsmem.out`
+
+             { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $GPU_SHAREDMEM B" >&5
+printf "%s\n" "$GPU_SHAREDMEM B" >&6; }
+else $as_nop
+  as_fn_error $? "failed to determine a value" "$LINENO" 5
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+
+      CXXFLAGS="$CXXFLAGS_save"
+      LDFLAGS="$LDFLAGS_save"
+      NVCCLIBS="$NVCCLIBS_save"
+    else
+      GPU_SHAREDMEM=$with_shared_mem
+
+    fi
+
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for Pascal-style CUDA managed memory" >&5
 printf %s "checking for Pascal-style CUDA managed memory... " >&6; }
     cm_invalid=$( echo $GPU_ARCHS | ${SED} -e 's/\b[1-5][0-9]\b/PRE/g;' )
@@ -21980,23 +22080,6 @@ fi
   ac_link="$ac_link_save"
   ac_run="$ac_run_save"
 
-
-
-# Check whether --with-shared_mem was given.
-if test ${with_shared_mem+y}
-then :
-  withval=$with_shared_mem;
-else $as_nop
-  with_shared_mem=16384
-fi
-
-GPU_SHAREDMEM=$with_shared_mem
-
-if test x$HAVE_CUDA = x0
-then :
-  GPU_SHAREDMEM=0
-
-fi
 
 #
 # Bifrost memory alignment
@@ -22648,6 +22731,23 @@ fi
 then :
   PYTHON=$PYTHON3
 
+fi
+fi
+       if test x${PYTHON} != xno
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if $PYTHON is version 3.6 or later" >&5
+printf %s "checking if $PYTHON is version 3.6 or later... " >&6; }
+              if ! ${PYTHON} -c "import sys; assert(sys.version_info >= (3,6,0))" 2>/dev/null
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+                     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: python module will not be built" >&5
+printf "%s\n" "$as_me: WARNING: python module will not be built" >&2;}
+                     PYTHON=no
+
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
 fi
 fi
        if test x${PYTHON} != xno

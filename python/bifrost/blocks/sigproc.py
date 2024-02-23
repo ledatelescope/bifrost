@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,19 +25,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import, print_function
-import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 from bifrost.pipeline import SourceBlock, SinkBlock
 import bifrost.sigproc2 as sigproc
 from bifrost.DataType import DataType
 from bifrost.units import convert_units
+from bifrost.ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 from numpy import transpose
 
 import os
+
+from typing import Any, Dict, List, Optional
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -52,12 +49,12 @@ def _unix2mjd(unix):
     return unix / 86400. + 40587
 
 class SigprocSourceBlock(SourceBlock):
-    def __init__(self, filenames, gulp_nframe, unpack=True, *args, **kwargs):
+    def __init__(self, filenames: List[str], gulp_nframe: int, unpack: bool=True, *args, **kwargs):
         super(SigprocSourceBlock, self).__init__(filenames, gulp_nframe, *args, **kwargs)
         self.unpack = unpack
-    def create_reader(self, sourcename):
+    def create_reader(self, sourcename: str) -> sigproc.SigprocFile:
         return sigproc.SigprocFile(sourcename)
-    def on_sequence(self, ireader, sourcename):
+    def on_sequence(self, ireader: sigproc.SigprocFile, sourcename: str) -> List[Dict[str,Any]]:
         ihdr = ireader.header
         assert(ihdr['data_type'] in [1,  # filterbank
                                      2,  # (dedispersed) time series
@@ -104,7 +101,7 @@ class SigprocSourceBlock(SourceBlock):
         ohdr['time_tag'] = time_tag
         ohdr['name']     = sourcename
         return [ohdr]
-    def on_data(self, reader, ospans):
+    def on_data(self, reader: sigproc.SigprocFile, ospans: List[WriteSpan]) -> List[int]:
         ospan = ospans[0]
         #print("SigprocReadBlock::on_data", ospan.data.dtype)
         if self.unpack:
@@ -133,7 +130,8 @@ class SigprocSourceBlock(SourceBlock):
             nframe = nbyte // ospan.frame_nbyte
         return [nframe]
 
-def read_sigproc(filenames, gulp_nframe, unpack=True, *args, **kwargs):
+def read_sigproc(filenames: List[str], gulp_nframe: int, unpack: bool=True,
+                 *args, **kwargs) -> SigprocSourceBlock:
     """Read SIGPROC data files.
 
     Capable of reading filterbank, time series, and dedispersed subband data.
@@ -162,12 +160,12 @@ def _copy_item_if_exists(dst, src, key, newkey=None):
         dst[newkey] = src[key]
 
 class SigprocSinkBlock(SinkBlock):
-    def __init__(self, iring, path=None, *args, **kwargs):
+    def __init__(self, iring: Ring, path: Optional[str]=None, *args, **kwargs):
         super(SigprocSinkBlock, self).__init__(iring, *args, **kwargs)
         if path is None:
             path = ''
         self.path = path
-    def on_sequence(self, iseq):
+    def on_sequence(self, iseq: ReadSequence) -> None:
         ihdr = iseq.header
         itensor = ihdr['_tensor']
 
@@ -322,14 +320,14 @@ class SigprocSinkBlock(SinkBlock):
                              "  [time, pol]\n  [dispersion, time, pol]\n" +
                              "  [pol, freq, phase]")
 
-    def on_sequence_end(self, iseq):
+    def on_sequence_end(self, iseq: ReadSequence) -> None:
         if hasattr(self, 'ofile'):
             self.ofile.close()
         elif hasattr(self, 'ofiles'):
             for ofile in self.ofiles:
                 ofile.close()
 
-    def on_data(self, ispan):
+    def on_data(self, ispan: ReadSpan) -> None:
         idata = ispan.data
         if self.data_format == 'filterbank':
             if len(idata.shape) == 3:
@@ -359,7 +357,8 @@ class SigprocSinkBlock(SinkBlock):
         else:
             raise ValueError("Internal error: Unknown data format!")
 
-def write_sigproc(iring, path=None, *args, **kwargs):
+def write_sigproc(iring: Ring, path: Optional[str]=None,
+                  *args, **kwargs) -> SigprocSinkBlock:
     """Write data as Sigproc files.
 
     Args:

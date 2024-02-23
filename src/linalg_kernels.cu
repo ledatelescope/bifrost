@@ -73,11 +73,7 @@ public:
 template<typename T>
 inline __device__
 T shfl_warp_sync(T var, int srcLane, int width=warpSize) {
-#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
-	return __shfl_sync(0xFFFFFFFF, var, srcLane, width);
-#else
-	return __shfl(var, srcLane, width);
-#endif
+return __shfl_sync(0xFFFFFFFF, var, srcLane, width);
 }
 
 inline __host__ __device__
@@ -537,7 +533,9 @@ void bf_cherk_N(int N, int K, int nbatch,
 	int A_offset = A_byte_offset / element_bytes;
 	
 	size_t A_nelement_total =
-		std::max(A_stride * K, A_batchstride * nbatch) + A_offset;
+   		 (A_offset + N)                  // the elements in the first row of first batch
+    		+ (K - 1) * A_stride            // the elements in the rest of the first batch
+    		+ (nbatch - 1) * A_batchstride; // the elements for the remaining batches
 	size_t texture_element_limit = 1 << 27;
 	BF_ASSERT_EXCEPTION(A_nelement_total <= texture_element_limit,
 	                    BF_STATUS_UNSUPPORTED_SHAPE);
@@ -653,11 +651,7 @@ inline __device__ T warp_all_sum(T x) {
 	typedef typename shflable_type<sizeof(T)>::type shfl_type;
 #pragma unroll
 	for( int k=WIDTH>>1; k>=1; k>>=1 ) {
-#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
 		x += type_pun<T>(__shfl_xor_sync(0xFFFFFFFF, type_pun<shfl_type>(x), k, WIDTH));
-#else
-		x += type_pun<T>(__shfl_xor(type_pun<shfl_type>(x), k, WIDTH));
-#endif
 	}
 	return x;
 }
@@ -836,7 +830,7 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
 	int K_blocks = (K - 1) / BLOCK_X + 1;
 	int s_B_stride = K_blocks * BLOCK_X;
 	size_t smem = N * s_B_stride * BF_DTYPE_NBYTE(B_type)*2;
-	bool B_fits_in_shared_mem = (smem <= 48*1024);
+	bool B_fits_in_shared_mem = (smem <= BF_GPU_SHAREDMEM);
 	BF_ASSERT_EXCEPTION(B_fits_in_shared_mem, BF_STATUS_UNSUPPORTED);
 	
 	/* // TODO: Use cudaLaunchKernel instead of <<< >>>
@@ -867,13 +861,11 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
 				JonesVec<FourBit>, JonesVec<int16_t>, Complex<float>);
 			break;
 		}
-#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
 		//case BF_DTYPE_CF16: {
 		//	LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
 		//		JonesVec<FourBit>, JonesVec<half>, Complex<float>);
 		//	break;
 		//}
-#endif
 		case BF_DTYPE_CF32: {
 			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
 				JonesVec<FourBit>, JonesVec<float>, Complex<float>);
@@ -892,13 +884,11 @@ void bf_cgemm_TN_smallM_staticN_v2(int M,
 				JonesVec<int8_t>, JonesVec<int16_t>, Complex<float>);
 			break;
 		}
-#if defined(__CUDACC_VER_MAJOR__) && __CUDACC_VER_MAJOR__ >= 9
 		//case BF_DTYPE_CF16: {
 		//	LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
 		//		JonesVec<int8_t>, JonesVec<half>, Complex<float>);
 		//	break;
 		//}
-#endif
 		case BF_DTYPE_CF32: {
 			LAUNCH_BF_CGEMM_TN_SMALLM_KERNEL(
 				JonesVec<int8_t>, JonesVec<float>, Complex<float>);
