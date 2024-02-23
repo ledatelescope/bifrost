@@ -269,13 +269,11 @@ class DiskIOTest(unittest.TestCase):
         
         # Read
         fh = self._open('test_simple.dat', 'rb')
-        from  shutil import copyfile
-        copyfile("test_simple.dat","check_simple.dat")
         ring = Ring(name="capture_simple")
         iop = SIMPLEReader(fh, ring)
         ## Data accumulation
         final = []
-        expectedsize = 8192*512
+        expectedsize = 4096*512
         aop = AccumulateOp(ring, final, expectedsize,dtype=np.short)
         
         # Start the reader and accumlator threads
@@ -292,11 +290,6 @@ class DiskIOTest(unittest.TestCase):
         ## Reorder to match what we sent out
         final = np.array(final, dtype=np.short)
 
-        finalcopy = final.copy()
-        # The following statement starts with 32 bytes of garbage
-        finalcopy = bf.ndarray(shape=finalcopy.shape, dtype='i16', buffer=finalcopy.ctypes.data)
-        
-        # This statuement should be equivalent, but instead does not contain garbage
         final = bf.ndarray(final, dtype='i16' )
         final = final.reshape(data.shape)
 

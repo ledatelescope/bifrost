@@ -31,6 +31,7 @@ import time
 import ctypes
 import threading
 import bifrost as bf
+import datetime
 from bifrost.ring import Ring
 from bifrost.address import Address
 from bifrost.udp_socket import UDPSocket
@@ -39,7 +40,52 @@ from bifrost.packet_capture import PacketCaptureCallback, UDPCapture
 from bifrost.quantize import quantize
 import numpy as np
 
+start_pipeline = datetime.datetime.now()
 
+
+class SIMPLEReader(object):
+    def __init__(self, sock, ring):
+        self.sock = sock
+        self.ring = ring
+        self.nsrc = 1
+    def seq_callback(self, seq0, chan0, nchan, nsrc,
+                     time_tag_ptr, hdr_ptr, hdr_size_ptr):
+        FS = 196.0e6
+        CHAN_BW = 1e3
+       #  timestamp0 = (self.utc_start - ADP_EPOCH).total_seconds()
+       #  time_tag0  = timestamp0 * int(FS)
+        time_tag   = int((datetime.datetime.now() - start_pipeline).total_seconds()*1e6)
+        time_tag_ptr[0] = time_tag
+        cfreq = 55e6
+        hdr = {'time_tag': time_tag,
+               'seq0':     seq0,
+               'chan0':    chan0,
+               'nchan':    nchan,
+               'cfreq':    cfreq,
+               'bw':       CHAN_BW,
+               'nstand':   2,
+               #'stand0':   src0*16, # TODO: Pass src0 to the callback too(?)
+               'npol':     2,
+               'complex':  False,
+               'nbit':     2}
+        hdr_str = json.dumps(hdr).encode()
+        # TODO: Can't pad with NULL because returned as C-string
+        #hdr_str = json.dumps(hdr).ljust(4096, '\0')
+        #hdr_str = json.dumps(hdr).ljust(4096, ' ')
+        self.header_buf = ctypes.create_string_buffer(hdr_str)
+        hdr_ptr[0]      = ctypes.cast(self.header_buf, ctypes.c_void_p)
+        hdr_size_ptr[0] = len(hdr_str)
+        return 0
+    def main(self):
+        seq_callback = PacketCaptureCallback()
+        seq_callback.set_simple(self.seq_callback)
+        with UDPCapture("simple" , self.sock, self.ring, self.nsrc, 0, 9000,512, 512,
+                        sequence_callback=seq_callback) as capture:
+            while True:
+                status = capture.recv()
+                if status in (1,4,5,6):
+                    break
+        del capture
 class TBNReader(object):
     def __init__(self, sock, ring):
         self.sock = sock
@@ -193,6 +239,74 @@ class UDPIOTest(unittest.TestCase):
         w = 0.2
         self.s0 = 5*np.cos(w * t, dtype='float32') \
                 + 3j*np.sin(w * t, dtype='float32')
+
+    def _get_simple_data(self):
+        desc = HeaderInfo()
+        testdata = self.s0[:2096128].real.astype(np.short)
+        data_q = bf.ndarray(testdata.reshape(512,1,4094), dtype='i16')
+        return desc, data_q
+
+    def test_write_simple(self):
+        addr = Address('127.0.0.1', 7147)
+        sock = UDPSocket()
+        sock.connect(addr)
+        # Get simple data
+        op = UDPTransmit('simple', sock)
+
+        desc, data = self._get_simple_data()
+        # Go!
+        op.send(desc, 0, 1, 0, 1, data)
+        sock.close()
+
+    def test_read_simple(self):
+        # Setup the ring
+        ring = Ring(name="capture_simple")
+        
+        # Setup the blocks
+        addr = Address('127.0.0.1', 7147)
+        ## Output via UDPTransmit
+        osock = UDPSocket()
+        osock.connect(addr)
+        oop = UDPTransmit('simple', osock)
+        ## Input via UDPCapture
+        isock = UDPSocket()
+        isock.bind(addr)
+        isock.timeout = 1.0
+        iop = SIMPLEReader(isock, ring)
+        ## Data accumulation
+        final = []
+        expectedsize = 4096*512
+        aop = AccumulateOp(ring, final, expectedsize,dtype=np.short)
+        
+        
+        # Start the reader and accumlator threads
+        reader = threading.Thread(target=iop.main)
+        accumu = threading.Thread(target=aop.main)
+        reader.start()
+        accumu.start()
+        
+        # Get simple data and send it off
+        desc, data = self._get_simple_data()
+        for p in range(data.shape[0]):
+            oop.send(desc, p*1, 1, 0, 1, data[p,...].reshape(1,1,4094))
+            time.sleep(0.001)
+        reader.join()
+        accumu.join()
+        
+        # Compare
+        ## Reorder to match what we sent out
+        final = np.array(final, dtype=np.short)
+
+        
+        final = bf.ndarray(final, dtype='i16' )
+        final = final.reshape(data.shape)
+
+        np.testing.assert_equal(final,data)
+
+        # Clean up
+        del oop
+        isock.close()
+        osock.close()
         
     def _get_tbn_data(self):
         # Setup the packet HeaderInfo
