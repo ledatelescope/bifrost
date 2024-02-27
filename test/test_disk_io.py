@@ -241,8 +241,13 @@ class DiskIOTest(unittest.TestCase):
 
     def _get_simple_data(self):
         desc = HeaderInfo()
-        testdata = self.s0[:2096128].real.astype(np.short)
-        data_q = bf.ndarray(testdata.reshape(512,1,4094), dtype='i16')
+        
+        # Reorder as packets, stands, time
+        data = self.s0.reshape(512,1,4096)
+        # Convert to ci16 for simple
+        data_q = bf.ndarray(shape=data.shape, dtype='ci16')
+        quantize(data, data_q, scale=10)
+        
         return desc, data_q
 
     def test_write_simple(self):
@@ -251,7 +256,7 @@ class DiskIOTest(unittest.TestCase):
         desc,data = self._get_simple_data()
         oop.send(desc,0,1, 0, 1, data)
         fh.close()
-        expectedsize = 512*8192
+        expectedsize = 512*8200
         self.assertEqual(os.path.getsize('test_simple.dat'), \
                         expectedsize)
 
@@ -260,7 +265,7 @@ class DiskIOTest(unittest.TestCase):
         fh = self._open('test_simple.dat', 'wb')
         oop = DiskWriter('simple', fh)
         
-        # Get TBN data
+        # Get data
         desc, data = self._get_simple_data()
         
         # Go!
@@ -290,7 +295,7 @@ class DiskIOTest(unittest.TestCase):
         ## Reorder to match what we sent out
         final = np.array(final, dtype=np.short)
 
-        final = bf.ndarray(final, dtype='i16' )
+        final = bf.ndarray(final, dtype='ci16' )
         final = final.reshape(data.shape)
 
         np.testing.assert_equal(final,data)
