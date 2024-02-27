@@ -98,22 +98,16 @@ int PacketCaptureThread::run(uint64_t seq_beg,
 			BF_PRINTD("CONTINUE HERE");
 			continue;
 		}
-		BF_PRINTD("FINALLY1");
+		BF_PRINTD("FINALLY");
 		++_stats.nvalid;
-		BF_PRINTD("FINALLY2");
 		_stats.nvalid_bytes += _pkt.payload_size;
-		BF_PRINTD("FINALLY3");
 		++_src_stats[_pkt.src].nvalid;
-		BF_PRINTD("FINALLY4");
 		_src_stats[_pkt.src].nvalid_bytes += _pkt.payload_size;
-		BF_PRINTD("FINALLY5");
 		// HACK TODO: src_ngood_bytes should be accumulated locally and
 		//              then atomically updated, like ngood_bytes. The
 		//              current way is not thread-safe.
-		BF_PRINTD("INPUTS" << " " << &_pkt << " " << seq_beg << " " << nseq_per_obuf << " " << nbuf <<" " << obufs<< " " << local_ngood_bytes << " " << src_ngood_bytes);
 		(*process)(&_pkt, seq_beg, nseq_per_obuf, nbuf, obufs,
 		           local_ngood_bytes, /*local_*/src_ngood_bytes);
-		BF_PRINTD("FINALLY6");
 	}
 	if( nbuf > 0 ) { atomic_add_and_fetch(ngood_bytes[0], local_ngood_bytes[0]); }
 	if( nbuf > 1 ) { atomic_add_and_fetch(ngood_bytes[1], local_ngood_bytes[1]); }
