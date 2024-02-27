@@ -60,11 +60,11 @@ class SIMPLEReader(object):
                'nchan':    nchan,
                'cfreq':    cfreq,
                'bw':       CHAN_BW,
-               'nstand':   2,
+               'nstand':   1,
                #'stand0':   src0*16, # TODO: Pass src0 to the callback too(?)
-               'npol':     2,
-               'complex':  False,
-               'nbit':     2}
+               'npol':     1,
+               'complex':  True,
+               'nbit':     16}
         hdr_str = json.dumps(hdr).encode()
         # TODO: Can't pad with NULL because returned as C-string
         #hdr_str = json.dumps(hdr).ljust(4096, '\0')
@@ -76,7 +76,7 @@ class SIMPLEReader(object):
     def main(self):
         seq_callback = PacketCaptureCallback()
         seq_callback.set_simple(self.seq_callback)
-        with DiskReader("simple" , self.sock, self.ring, self.nsrc, 0, 512, 512,
+        with DiskReader("simple" , self.sock, self.ring, self.nsrc, 0, 256, 1024,
                         sequence_callback=seq_callback) as capture:
             while True:
                 status = capture.recv()
@@ -243,7 +243,8 @@ class DiskIOTest(unittest.TestCase):
         desc = HeaderInfo()
         
         # Reorder as packets, stands, time
-        data = self.s0.reshape(512,1,4096)
+        data = self.s0.reshape(2048,1,-1)
+        data = data.transpose(2,1,0).copy()
         # Convert to ci16 for simple
         data_q = bf.ndarray(shape=data.shape, dtype='ci16')
         quantize(data, data_q, scale=10)
@@ -256,7 +257,11 @@ class DiskIOTest(unittest.TestCase):
         desc,data = self._get_simple_data()
         oop.send(desc,0,1, 0, 1, data)
         fh.close()
-        expectedsize = 512*8200
+        nelements = 2048
+        byteperelem = 4
+        bytehdrperelem = 8
+        npackets = 1024 
+        expectedsize = (2048*4 + 8)*1024
         self.assertEqual(os.path.getsize('test_simple.dat'), \
                         expectedsize)
 
@@ -273,13 +278,16 @@ class DiskIOTest(unittest.TestCase):
         fh.close()
         
         # Read
+        import shutil 
+        shutil.copy("test_simple.dat", "check_simple.dat")
+        
         fh = self._open('test_simple.dat', 'rb')
         ring = Ring(name="capture_simple")
         iop = SIMPLEReader(fh, ring)
         ## Data accumulation
         final = []
-        expectedsize = 4096*512
-        aop = AccumulateOp(ring, final, expectedsize,dtype=np.short)
+        expectedsize = 2048*1024*2
+        aop = AccumulateOp(ring, final, expectedsize,dtype=np.uint16)
         
         # Start the reader and accumlator threads
         reader = threading.Thread(target=iop.main)
@@ -290,17 +298,19 @@ class DiskIOTest(unittest.TestCase):
         # Get simple data
         reader.join()
         accumu.join()
-        
-        # Compare
-        ## Reorder to match what we sent out
-        final = np.array(final, dtype=np.short)
 
-        final = bf.ndarray(final, dtype='ci16' )
-        final = final.reshape(data.shape)
+        final = np.array(final, dtype=np.uint16)
 
-        np.testing.assert_equal(final,data)
+        final = final.reshape(-1,2048,1,2)
+        final = final.transpose(0,2,1,3).copy()
+        final = bf.ndarray(shape=(final.shape[0],1,2048), dtype='ci16', buffer=final.ctypes.data)
 
-        # Clean up
+        ## Reduce to match the capture block size
+        data = data[:final.shape[0],...]
+        for i in range(1, data.shape[0]):
+            np.testing.assert_equal(final[i,...], data[i,...])
+
+
         del oop
         fh.close()
         

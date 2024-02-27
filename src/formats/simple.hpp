@@ -88,7 +88,7 @@ public:
 	    otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
 	
 	    int chan = 0;
-            int nelem = 128;
+            int nelem = 256;
 	    for( ; chan<nelem; ++chan ) {
 		    ::memcpy(&out[chan],&in[chan], sizeof(otype));
             }
