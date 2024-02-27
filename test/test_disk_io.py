@@ -278,8 +278,6 @@ class DiskIOTest(unittest.TestCase):
         fh.close()
         
         # Read
-        import shutil 
-        shutil.copy("test_simple.dat", "check_simple.dat")
         
         fh = self._open('test_simple.dat', 'rb')
         ring = Ring(name="capture_simple")
