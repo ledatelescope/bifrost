@@ -31,7 +31,7 @@
 #include "base.hpp"
 
 struct __attribute__((packed)) simple_hdr_type {
-	uint32_t seq; 
+	uint64_t seq; 
 };
 
 class SIMPLEDecoder : virtual public PacketDecoder {

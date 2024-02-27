@@ -191,23 +191,19 @@ BFstatus bfPacketCaptureCallbackSetDRX8(BFpacketcapture_callback obj,
 BFpacketcapture_status BFpacketcapture_impl::recv() {
     _t0 = std::chrono::high_resolution_clock::now();
 	
-        BF_PRINTD("impl, start clock");
 	uint8_t* buf_ptrs[2];
 	// Minor HACK to access the buffers in a 2-element queue
 	buf_ptrs[0] = _bufs.size() > 0 ? (uint8_t*)_bufs.front()->data() : NULL;
 	buf_ptrs[1] = _bufs.size() > 1 ? (uint8_t*)_bufs.back()->data()  : NULL;
-        BF_PRINTD("buff ptrs");
 	
 	size_t* ngood_bytes_ptrs[2];
 	ngood_bytes_ptrs[0] = _buf_ngood_bytes.size() > 0 ? &_buf_ngood_bytes.front() : NULL;
 	ngood_bytes_ptrs[1] = _buf_ngood_bytes.size() > 1 ? &_buf_ngood_bytes.back()  : NULL;
 	
-        BF_PRINTD("ngoodbytes");
 	size_t* src_ngood_bytes_ptrs[2];
 	src_ngood_bytes_ptrs[0] = _buf_src_ngood_bytes.size() > 0 ? &_buf_src_ngood_bytes.front()[0] : NULL;
 	src_ngood_bytes_ptrs[1] = _buf_src_ngood_bytes.size() > 1 ? &_buf_src_ngood_bytes.back()[0]  : NULL;
 	
-        BF_PRINTD("srcngoodbytes");
 	int state = _capture->run(_seq,
 	                          _nseq_per_buf,
 	                          _bufs.size(),
