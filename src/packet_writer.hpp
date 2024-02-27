@@ -571,7 +571,7 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     if(std::string(format).substr(0, 8) == std::string("generic_") ) {
         nsamples = std::atoi((std::string(format).substr(8, std::string(format).length())).c_str());
     } else if( std::string(format).substr(0, 6) == std::string("simple") ) {
-        nsamples = 4096;
+        nsamples = 2048;
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
         nsamples = 32*nchan;
