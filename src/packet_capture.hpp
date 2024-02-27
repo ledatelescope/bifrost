@@ -1306,7 +1306,7 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
             int nchan = 1;
-            max_payload_size = 8192;
+            max_payload_size = 8200;
         }
     } else if( std::string(format).substr(0, 5) == std::string("chips") ) {
         if( backend == BF_IO_DISK ) {
