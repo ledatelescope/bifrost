@@ -342,8 +342,7 @@ public:
 	        size_t*  src_ngood_bytes[],
 	        PDC*     decode,
 	        PPC*     process);
-	inline const char* get_name() {
-        return _method->get_name(); }
+	inline const char* get_name() { return _method->get_name(); }
 	inline const size_t get_max_size() { return _method->get_max_size(); }
 	inline const BFiomethod get_io_method() { return _method->get_io_method(); }
 	inline const int get_core() { return _core; }
