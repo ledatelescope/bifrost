@@ -388,7 +388,8 @@ class tbnUDPIOTest(unittest.TestCase):
                 final = np.array(final, dtype=np.uint8)
                 final = final.reshape(-1,512,32,2)
                 npfinal = final.transpose(0,2,1,3).copy()
-                final = bf.ndarray(shape=(final.shape[0],32,512), dtype='ci8' )
+                print(npfinal.shape,data.shape)
+                final = bf.ndarray(shape=(npfinal.shape[0],32,512), dtype='ci8' )
                 final['re'] = npfinal[:,:,:,0]
                 final['im'] = npfinal[:,:,:,1]
                 ## Reduce to match the capture block size
@@ -642,6 +643,22 @@ class multicastUDPIOTest(unittest.TestCase):
         w = 0.2
         self.s0 = 5*np.cos(w * t, dtype='float32') \
                 + 3j*np.sin(w * t, dtype='float32')
+    def _get_tbn_data(self):
+        # Setup the packet HeaderInfo
+        desc = HeaderInfo()
+        desc.set_tuning(int(round(74e6 / 196e6 * 2**32)))
+        desc.set_gain(20)
+        
+        # Reorder as packets, stands, time
+        data = self.s0.reshape(512,32,-1)
+        data = data.transpose(2,1,0).copy()
+        # Convert to ci8 for TBN
+        data_q = bf.ndarray(shape=data.shape, dtype='ci8')
+        quantize(data, data_q, scale=10)
+       
+        # Update the number of data sources and return
+        desc.set_nsrc(data_q.shape[1])
+        return desc, data_q
         
     def test_write_multicast(self):
         addr = Address('224.0.0.251', 7147)
