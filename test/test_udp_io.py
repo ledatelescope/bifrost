@@ -231,7 +231,7 @@ class AccumulateOp(object):
                     self.output.append(idata)
 
 
-class simpleUDPIOTest(unittest.TestCase):
+class UDPIOTest(unittest.TestCase):
     """Test simple IO for the UDP-based packet reader and writing"""
     def setUp(self):
         """Generate some dummy data to read"""
@@ -280,7 +280,7 @@ class simpleUDPIOTest(unittest.TestCase):
                 iop = SIMPLEReader(isock, ring)
                 ## Data accumulation
                 final = []
-                expectedsize = 2048*1024*2
+                expectedsize = 2048*1024
                 aop = AccumulateOp(ring, final, expectedsize,dtype=np.int16)
                 
                 
@@ -303,8 +303,10 @@ class simpleUDPIOTest(unittest.TestCase):
                 final = np.array(final, dtype=np.uint16)
 
                 final = final.reshape(-1,2048,1,2)
-                final = final.transpose(0,2,1,3).copy()
-                final = bf.ndarray(final, dtype='ci16')
+                npfinal = final.transpose(0,2,1,3).copy()
+                final = bf.ndarray(shape=(npfinal.shape[0],1,2048), dtype='ci8' )
+                final['re'] = npfinal[:,:,:,0]
+                final['im'] = npfinal[:,:,:,1]
 
                 ## Reduce to match the capture block size
                 data = data[:final.shape[0],...]
@@ -313,16 +315,7 @@ class simpleUDPIOTest(unittest.TestCase):
 
         # Clean up
         del oop
-class tbnUDPIOTest(unittest.TestCase):
-    """Test simple IO for the UDP-based packet reader and writing"""
-    def setUp(self):
-        """Generate some dummy data to read"""
-        # Generate test vector and save to file
-        t = np.arange(256*4096*2)
-        w = 0.2
-        self.s0 = 5*np.cos(w * t, dtype='float32') \
-                + 3j*np.sin(w * t, dtype='float32')
-        
+
     def _get_tbn_data(self):
         # Setup the packet HeaderInfo
         desc = HeaderInfo()
@@ -388,7 +381,6 @@ class tbnUDPIOTest(unittest.TestCase):
                 final = np.array(final, dtype=np.uint8)
                 final = final.reshape(-1,512,32,2)
                 npfinal = final.transpose(0,2,1,3).copy()
-                print(npfinal.shape,data.shape)
                 final = bf.ndarray(shape=(npfinal.shape[0],32,512), dtype='ci8' )
                 final['re'] = npfinal[:,:,:,0]
                 final['im'] = npfinal[:,:,:,1]
@@ -401,17 +393,6 @@ class tbnUDPIOTest(unittest.TestCase):
         # Clean up
         del oop
 
-class drxUDPIOTest(unittest.TestCase):
-    """Test simple IO for the UDP-based packet reader and writing"""
-    def setUp(self):
-        """Generate some dummy data to read"""
-        # Generate test vector and save to file
-        t = np.arange(256*4096*2)
-        w = 0.2
-        self.s0 = 5*np.cos(w * t, dtype='float32') \
-                + 3j*np.sin(w * t, dtype='float32')
-        
-        
     def _get_drx_data(self):
         # Setup the packet HeaderInfo
         desc = HeaderInfo()
@@ -549,16 +530,6 @@ class drxUDPIOTest(unittest.TestCase):
         # Clean up
         del oop
         
-class pbeamUDPIOTest(unittest.TestCase):
-    """Test simple IO for the UDP-based packet reader and writing"""
-    def setUp(self):
-        """Generate some dummy data to read"""
-        # Generate test vector and save to file
-        t = np.arange(256*4096*2)
-        w = 0.2
-        self.s0 = 5*np.cos(w * t, dtype='float32') \
-                + 3j*np.sin(w * t, dtype='float32')
-        
         
     def _get_pbeam_data(self):
         # Setup the packet HeaderInfo
@@ -633,32 +604,6 @@ class pbeamUDPIOTest(unittest.TestCase):
             
         # Clean up
         del oop
-        
-class multicastUDPIOTest(unittest.TestCase):
-    """Test simple IO for the UDP-based packet reader and writing"""
-    def setUp(self):
-        """Generate some dummy data to read"""
-        # Generate test vector and save to file
-        t = np.arange(256*4096*2)
-        w = 0.2
-        self.s0 = 5*np.cos(w * t, dtype='float32') \
-                + 3j*np.sin(w * t, dtype='float32')
-    def _get_tbn_data(self):
-        # Setup the packet HeaderInfo
-        desc = HeaderInfo()
-        desc.set_tuning(int(round(74e6 / 196e6 * 2**32)))
-        desc.set_gain(20)
-        
-        # Reorder as packets, stands, time
-        data = self.s0.reshape(512,32,-1)
-        data = data.transpose(2,1,0).copy()
-        # Convert to ci8 for TBN
-        data_q = bf.ndarray(shape=data.shape, dtype='ci8')
-        quantize(data, data_q, scale=10)
-       
-        # Update the number of data sources and return
-        desc.set_nsrc(data_q.shape[1])
-        return desc, data_q
         
     def test_write_multicast(self):
         addr = Address('224.0.0.251', 7147)
