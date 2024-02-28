@@ -32,6 +32,7 @@ import ctypes
 import threading
 import bifrost as bf
 import datetime
+from contextlib import closing
 from bifrost.ring import Ring
 from bifrost.address import Address
 from bifrost.udp_socket import UDPSocket
@@ -230,7 +231,7 @@ class AccumulateOp(object):
                     self.output.append(idata)
 
 
-class UDPIOTest(unittest.TestCase):
+class simpleUDPIOTest(unittest.TestCase):
     """Test simple IO for the UDP-based packet reader and writing"""
     def setUp(self):
         """Generate some dummy data to read"""
@@ -239,7 +240,6 @@ class UDPIOTest(unittest.TestCase):
         w = 0.2
         self.s0 = 5*np.cos(w * t, dtype='float32') \
                 + 3j*np.sin(w * t, dtype='float32')
-
     def _get_simple_data(self):
         desc = HeaderInfo()
         
@@ -254,15 +254,14 @@ class UDPIOTest(unittest.TestCase):
 
     def test_write_simple(self):
         addr = Address('127.0.0.1', 7147)
-        sock = UDPSocket()
-        sock.connect(addr)
-        # Get simple data
-        op = UDPTransmit('simple', sock)
+        with closing(UDPSocket()) as sock:
+            sock.connect(addr)
+            # Get simple data
+            op = UDPTransmit('simple', sock)
 
-        desc, data = self._get_simple_data()
-        # Go!
-        op.send(desc, 0, 1, 0, 1, data)
-        sock.close()
+            desc, data = self._get_simple_data()
+            # Go!
+            op.send(desc, 0, 1, 0, 1, data)
 
     def test_read_simple(self):
         # Setup the ring
@@ -271,51 +270,58 @@ class UDPIOTest(unittest.TestCase):
         # Setup the blocks
         addr = Address('127.0.0.1', 7147)
         ## Output via UDPTransmit
-        osock = UDPSocket()
-        osock.connect(addr)
-        oop = UDPTransmit('simple', osock)
-        ## Input via UDPCapture
-        isock = UDPSocket()
-        isock.bind(addr)
-        isock.timeout = 1.0
-        iop = SIMPLEReader(isock, ring)
-        ## Data accumulation
-        final = []
-        expectedsize = 2048*1024*2
-        aop = AccumulateOp(ring, final, expectedsize,dtype=np.uint16)
-        
-        
-        # Start the reader and accumlator threads
-        reader = threading.Thread(target=iop.main)
-        accumu = threading.Thread(target=aop.main)
-        reader.start()
-        accumu.start()
-        
-        # Get simple data and send it off
-        desc, data = self._get_simple_data()
-        for p in range(data.shape[0]):
-            oop.send(desc, p*1, 1, 0, 1, data[p,...].reshape(1,1,2048))
-            time.sleep(0.001)
-        reader.join()
-        accumu.join()
-        
-        # Compare
-        ## Reorder to match what we sent out
-        final = np.array(final, dtype=np.uint16)
+        with closing(UDPSocket()) as osock:
+            osock.connect(addr)
+            oop = UDPTransmit('simple', osock)
+            ## Input via UDPCapture
+            with closing(UDPSocket()) as isock:
+                isock.bind(addr)
+                isock.timeout = 1.0
+                iop = SIMPLEReader(isock, ring)
+                ## Data accumulation
+                final = []
+                expectedsize = 2048*1024*2
+                aop = AccumulateOp(ring, final, expectedsize,dtype=np.int16)
+                
+                
+                # Start the reader and accumlator threads
+                reader = threading.Thread(target=iop.main)
+                accumu = threading.Thread(target=aop.main)
+                reader.start()
+                accumu.start()
+                
+                # Get simple data and send it off
+                desc, data = self._get_simple_data()
+                for p in range(data.shape[0]):
+                    oop.send(desc, p*1, 1, 0, 1, data[p,...].reshape(1,1,2048))
+                    time.sleep(0.001)
+                reader.join()
+                accumu.join()
+                
+                # Compare
+                ## Reorder to match what we sent out
+                final = np.array(final, dtype=np.uint16)
 
-        final = final.reshape(-1,2048,1,2)
-        final = final.transpose(0,2,1,3).copy()
-        final = bf.ndarray(shape=(final.shape[0],1,2048), dtype='ci16', buffer=final.ctypes.data)
+                final = final.reshape(-1,2048,1,2)
+                final = final.transpose(0,2,1,3).copy()
+                final = bf.ndarray(final, dtype='ci16')
 
-        ## Reduce to match the capture block size
-        data = data[:final.shape[0],...]
-        for i in range(1, data.shape[0]):
-            np.testing.assert_equal(final[i,...], data[i,...])
+                ## Reduce to match the capture block size
+                data = data[:final.shape[0],...]
+                for i in range(1, data.shape[0]):
+                    np.testing.assert_equal(final[i,...], data[i,...])
 
         # Clean up
         del oop
-        isock.close()
-        osock.close()
+class tbnUDPIOTest(unittest.TestCase):
+    """Test simple IO for the UDP-based packet reader and writing"""
+    def setUp(self):
+        """Generate some dummy data to read"""
+        # Generate test vector and save to file
+        t = np.arange(256*4096*2)
+        w = 0.2
+        self.s0 = 5*np.cos(w * t, dtype='float32') \
+                + 3j*np.sin(w * t, dtype='float32')
         
     def _get_tbn_data(self):
         # Setup the packet HeaderInfo
@@ -329,22 +335,21 @@ class UDPIOTest(unittest.TestCase):
         # Convert to ci8 for TBN
         data_q = bf.ndarray(shape=data.shape, dtype='ci8')
         quantize(data, data_q, scale=10)
-        
+       
         # Update the number of data sources and return
         desc.set_nsrc(data_q.shape[1])
         return desc, data_q
     def test_write_tbn(self):
         addr = Address('127.0.0.1', 7147)
-        sock = UDPSocket()
-        sock.connect(addr)
-        op = UDPTransmit('tbn', sock)
-        
-        # Get TBN data
-        desc, data = self._get_tbn_data()
-        
-        # Go!
-        op.send(desc, 0, 1960*512, 0, 1, data)
-        sock.close()
+        with closing(UDPSocket()) as sock:
+            sock.connect(addr)
+            op = UDPTransmit('tbn', sock)
+            
+            # Get TBN data
+            desc, data = self._get_tbn_data()
+            
+            # Go!
+            op.send(desc, 0, 1960*512, 0, 1, data)
     def test_read_tbn(self):
         # Setup the ring
         ring = Ring(name="capture_tbn")
@@ -352,48 +357,59 @@ class UDPIOTest(unittest.TestCase):
         # Setup the blocks
         addr = Address('127.0.0.1', 7147)
         ## Output via UDPTransmit
-        osock = UDPSocket()
-        osock.connect(addr)
-        oop = UDPTransmit('tbn', osock)
-        ## Input via UDPCapture
-        isock = UDPSocket()
-        isock.bind(addr)
-        isock.timeout = 1.0
-        iop = TBNReader(isock, ring)
-        ## Data accumulation
-        final = []
-        aop = AccumulateOp(ring, final, 49*32*512*2)
-        
-        # Start the reader and accumlator threads
-        reader = threading.Thread(target=iop.main)
-        accumu = threading.Thread(target=aop.main)
-        reader.start()
-        accumu.start()
-        
-        # Get TBN data and send it off
-        desc, data = self._get_tbn_data()
-        for p in range(data.shape[0]):
-            oop.send(desc, p*1960*512, 1960*512, 0, 1, data[p,...].reshape(1,32,512))
-            time.sleep(0.001)
-        reader.join()
-        accumu.join()
-        
-        # Compare
-        ## Reorder to match what we sent out
-        final = np.array(final, dtype=np.uint8)
-        final = final.reshape(-1,512,32,2)
-        final = final.transpose(0,2,1,3).copy()
-        final = bf.ndarray(shape=(final.shape[0],32,512), dtype='ci8', buffer=final.ctypes.data)
-        ## Reduce to match the capture block size
-        data = data[:final.shape[0],...]
-        for i in range(2, data.shape[0]):
-            for j in range(data.shape[1]):
-                np.testing.assert_equal(final[i,j,...], data[i,j,...])
+        with closing(UDPSocket()) as osock:
+            osock.connect(addr)
+            oop = UDPTransmit('tbn', osock)
+            ## Input via UDPCapture
+            with closing(UDPSocket()) as isock:
+                isock.bind(addr)
+                isock.timeout = 1.0
+                iop = TBNReader(isock, ring)
+                ## Data accumulation
+                final = []
+                aop = AccumulateOp(ring, final, 49*32*512*2,dtype=np.byte)
+                
+                # Start the reader and accumlator threads
+                reader = threading.Thread(target=iop.main)
+                accumu = threading.Thread(target=aop.main)
+                reader.start()
+                accumu.start()
+                
+                # Get TBN data and send it off
+                desc, data = self._get_tbn_data()
+                for p in range(data.shape[0]):
+                    oop.send(desc, p*1960*512, 1960*512, 0, 1, data[p,...].reshape(1,32,512))
+                    time.sleep(0.001)
+                reader.join()
+                accumu.join()
+                
+                # Compare
+                ## Reorder to match what we sent out
+                final = np.array(final, dtype=np.uint8)
+                final = final.reshape(-1,512,32,2)
+                npfinal = final.transpose(0,2,1,3).copy()
+                final = bf.ndarray(shape=(final.shape[0],32,512), dtype='ci8' )
+                final['re'] = npfinal[:,:,:,0]
+                final['im'] = npfinal[:,:,:,1]
+                ## Reduce to match the capture block size
+                data = data[:final.shape[0],...]
+                for i in range(2, data.shape[0]):
+                    for j in range(data.shape[1]):
+                        np.testing.assert_equal(final[i,j,...], data[i,j,...])
                 
         # Clean up
         del oop
-        isock.close()
-        osock.close()
+
+class drxUDPIOTest(unittest.TestCase):
+    """Test simple IO for the UDP-based packet reader and writing"""
+    def setUp(self):
+        """Generate some dummy data to read"""
+        # Generate test vector and save to file
+        t = np.arange(256*4096*2)
+        w = 0.2
+        self.s0 = 5*np.cos(w * t, dtype='float32') \
+                + 3j*np.sin(w * t, dtype='float32')
+        
         
     def _get_drx_data(self):
         # Setup the packet HeaderInfo
@@ -413,16 +429,15 @@ class UDPIOTest(unittest.TestCase):
         return desc, data_q
     def test_write_drx(self):
         addr = Address('127.0.0.1', 7147)
-        sock = UDPSocket()
-        sock.connect(addr)
-        op = UDPTransmit('drx', sock)
-        
-        # Get TBN data
-        desc, data = self._get_drx_data()
-        
-        # Go!
-        op.send(desc, 0, 10*4096, (1<<3), 128, data)
-        sock.close()
+        with closing(UDPSocket()) as sock:
+            sock.connect(addr)
+            op = UDPTransmit('drx', sock)
+            
+            # Get TBN data
+            desc, data = self._get_drx_data()
+            
+            # Go!
+            op.send(desc, 0, 10*4096, (1<<3), 128, data)
     def test_read_drx(self):
         # Setup the ring
         ring = Ring(name="capture_drx")
@@ -430,49 +445,47 @@ class UDPIOTest(unittest.TestCase):
         # Setup the blocks
         addr = Address('127.0.0.1', 7147)
         ## Output via UDPTransmit
-        osock = UDPSocket()
-        osock.connect(addr)
-        oop = UDPTransmit('drx', osock)
-        ## Input via UDPCapture
-        isock = UDPSocket()
-        isock.bind(addr)
-        isock.timeout = 1.0
-        iop = DRXReader(isock, ring)
-        ## Data accumulation
-        final = []
-        aop = AccumulateOp(ring, final, 49*4*4096*1)
-        
-        # Start the reader
-        reader = threading.Thread(target=iop.main)
-        accumu = threading.Thread(target=aop.main)
-        reader.start()
-        accumu.start()
-        
-        # Get DRX data and send it off
-        desc, data = self._get_drx_data()
-        for p in range(data.shape[0]):
-            oop.send(desc, p*10*4096, 10*4096, (1<<3), 128, data[p,[0,1],...].reshape(1,2,4096))
-            oop.send(desc, p*10*4096, 10*4096, (2<<3), 128, data[p,[2,3],...].reshape(1,2,4096))
-            time.sleep(0.001)
-        reader.join()
-        accumu.join()
-        
-        # Compare
-        ## Reorder to match what we sent out
-        final = np.array(final, dtype=np.uint8)
-        final = final.reshape(-1,4096,4)
-        final = final.transpose(0,2,1).copy()
-        final = bf.ndarray(shape=(final.shape[0],4,4096), dtype='ci4', buffer=final.ctypes.data)
-        ## Reduce to match the capture block size
-        data = data[:final.shape[0],...]
-        for i in range(2, data.shape[0]):
-            for j in range(data.shape[1]):
-                np.testing.assert_equal(final[i,j,...], data[i,j,...])
+        with closing(UDPSocket()) as osock:
+            osock.connect(addr)
+            oop = UDPTransmit('drx', osock)
+            ## Input via UDPCapture
+            with closing(UDPSocket()) as isock:
+                isock.bind(addr)
+                isock.timeout = 1.0
+                iop = DRXReader(isock, ring)
+                ## Data accumulation
+                final = []
+                aop = AccumulateOp(ring, final, 49*4*4096*1)
+                
+                # Start the reader
+                reader = threading.Thread(target=iop.main)
+                accumu = threading.Thread(target=aop.main)
+                reader.start()
+                accumu.start()
+                
+                # Get DRX data and send it off
+                desc, data = self._get_drx_data()
+                for p in range(data.shape[0]):
+                    oop.send(desc, p*10*4096, 10*4096, (1<<3), 128, data[p,[0,1],...].reshape(1,2,4096))
+                    oop.send(desc, p*10*4096, 10*4096, (2<<3), 128, data[p,[2,3],...].reshape(1,2,4096))
+                    time.sleep(0.001)
+                reader.join()
+                accumu.join()
+                
+                # Compare
+                ## Reorder to match what we sent out
+                final = np.array(final, dtype=np.uint8)
+                final = final.reshape(-1,4096,4)
+                final = final.transpose(0,2,1).copy()
+                final = bf.ndarray(final, dtype='ci4')
+                ## Reduce to match the capture block size
+                data = data[:final.shape[0],...]
+                for i in range(2, data.shape[0]):
+                    for j in range(data.shape[1]):
+                        np.testing.assert_equal(final[i,j,...], data[i,j,...])
                 
         # Clean up
         del oop
-        isock.close()
-        osock.close()
     def test_write_drx_single(self):
         addr = Address('127.0.0.1', 7147)
         sock = UDPSocket()
@@ -493,49 +506,58 @@ class UDPIOTest(unittest.TestCase):
         # Setup the blocks
         addr = Address('127.0.0.1', 7147)
         ## Output via UDPTransmit
-        osock = UDPSocket()
-        osock.connect(addr)
-        oop = UDPTransmit('drx', osock)
-        ## Input via UDPCapture
-        isock = UDPSocket()
-        isock.bind(addr)
-        isock.timeout = 1.0
-        iop = DRXReader(isock, ring, nsrc=2)
-        ## Data accumulation
-        final = []
-        aop = AccumulateOp(ring, final, 49*2*4096*1)
-        
-        # Start the reader
-        reader = threading.Thread(target=iop.main)
-        accumu = threading.Thread(target=aop.main)
-        reader.start()
-        accumu.start()
-        
-        # Get DRX data and send it off
-        desc, data = self._get_drx_data()
-        desc.set_nsrc(2)
-        for p in range(data.shape[0]):
-            oop.send(desc, p*10*4096, 10*4096, (1<<3), 128, data[p,[0,1],:].reshape(1,2,4096))
-            time.sleep(0.001)
-        reader.join()
-        accumu.join()
-        
-        # Compare
-        ## Reorder to match what we sent out
-        final = np.array(final, dtype=np.uint8)
-        final = final.reshape(-1,4096,2)
-        final = final.transpose(0,2,1).copy()
-        final = bf.ndarray(shape=(final.shape[0],2,4096), dtype='ci4', buffer=final.ctypes.data)
-        ## Reduce to match the capture block size
-        data = data[:final.shape[0],...]
-        for i in range(1, data.shape[0]):
-            for j in range(2):
-                np.testing.assert_equal(final[i,j,...], data[i,j,...])
+        with closing(UDPSocket()) as osock:
+            osock.connect(addr)
+            oop = UDPTransmit('drx', osock)
+            ## Input via UDPCapture
+            with closing(UDPSocket()) as isock:
+                isock.bind(addr)
+                isock.timeout = 1.0
+                iop = DRXReader(isock, ring, nsrc=2)
+                ## Data accumulation
+                final = []
+                aop = AccumulateOp(ring, final, 49*2*4096*1)
+                
+                # Start the reader
+                reader = threading.Thread(target=iop.main)
+                accumu = threading.Thread(target=aop.main)
+                reader.start()
+                accumu.start()
+                
+                # Get DRX data and send it off
+                desc, data = self._get_drx_data()
+                desc.set_nsrc(2)
+                for p in range(data.shape[0]):
+                    oop.send(desc, p*10*4096, 10*4096, (1<<3), 128, data[p,[0,1],:].reshape(1,2,4096))
+                    time.sleep(0.001)
+                reader.join()
+                accumu.join()
+                
+                # Compare
+                ## Reorder to match what we sent out
+                final = np.array(final, dtype=np.uint8)
+                final = final.reshape(-1,4096,2)
+                final = final.transpose(0,2,1).copy()
+                final = bf.ndarray(final, dtype='ci4')
+                ## Reduce to match the capture block size
+                data = data[:final.shape[0],...]
+                for i in range(1, data.shape[0]):
+                    for j in range(2):
+                        np.testing.assert_equal(final[i,j,...], data[i,j,...])
                 
         # Clean up
         del oop
-        isock.close()
-        osock.close()
+        
+class pbeamUDPIOTest(unittest.TestCase):
+    """Test simple IO for the UDP-based packet reader and writing"""
+    def setUp(self):
+        """Generate some dummy data to read"""
+        # Generate test vector and save to file
+        t = np.arange(256*4096*2)
+        w = 0.2
+        self.s0 = 5*np.cos(w * t, dtype='float32') \
+                + 3j*np.sin(w * t, dtype='float32')
+        
         
     def _get_pbeam_data(self):
         # Setup the packet HeaderInfo
@@ -555,16 +577,15 @@ class UDPIOTest(unittest.TestCase):
         return desc, data
     def test_write_pbeam(self):
         addr = Address('127.0.0.1', 7147)
-        sock = UDPSocket()
-        sock.connect(addr)
-        op = UDPTransmit('pbeam1_128', sock)
-        
-        # Get PBeam data
-        desc, data = self._get_pbeam_data()
-        
-        # Go!
-        op.send(desc, 0, 24, 0, 1, data)
-        sock.close()
+        with closing(UDPSocket()) as sock:
+            sock.connect(addr)
+            op = UDPTransmit('pbeam1_128', sock)
+            
+            # Get PBeam data
+            desc, data = self._get_pbeam_data()
+            
+            # Go!
+            op.send(desc, 0, 24, 0, 1, data)
     def test_read_pbeam(self):
         # Setup the ring
         ring = Ring(name="capture_pbeam")
@@ -573,58 +594,66 @@ class UDPIOTest(unittest.TestCase):
         addr = Address('127.0.0.1', 7147)
         ## Output via UDPTransmit
         osock = UDPSocket()
-        osock.connect(addr)
-        oop = UDPTransmit('pbeam1_128', osock)
-        ## Input via UDPCapture
-        isock = UDPSocket()
-        isock.bind(addr)
-        isock.timeout = 1.0
-        iop = PBeamReader(isock, ring, nsrc=1)
-        ## Data accumulation
-        final = []
-        aop = AccumulateOp(ring, final, 240*128*4, dtype=np.float32)
-        
-        # Start the reader and accumlator threads
-        reader = threading.Thread(target=iop.main)
-        accumu = threading.Thread(target=aop.main)
-        reader.start()
-        accumu.start()
-        
-        # Get PBeam data and send it off
-        desc, data = self._get_pbeam_data()
-        for p in range(data.shape[0]):
-            oop.send(desc, p*24, 24, 0, 1, data[p,...].reshape(1,1,128*4))
-            time.sleep(0.001)
-        reader.join()
-        accumu.join()
-        
-        # Compare
-        ## Reorder to match what we sent out
-        final = np.array(final, dtype=np.float32)
-        final = final.reshape(-1,128*4,1)
-        final = final.transpose(0,2,1).copy()
-        ## Reduce to match the capture block size
-        data = data[:(final.shape[0]//240-1)*240,...]
-        for i in range(2, data.shape[0]):
-            np.testing.assert_equal(final[i,...], data[i,...])
+        with closing(UDPSocket()) as osock:
+            osock.connect(addr)
+            oop = UDPTransmit('pbeam1_128', osock)
+            ## Input via UDPCapture
+            with closing(UDPSocket()) as isock:
+                isock.bind(addr)
+                isock.timeout = 1.0
+                iop = PBeamReader(isock, ring, nsrc=1)
+                ## Data accumulation
+                final = []
+                aop = AccumulateOp(ring, final, 240*128*4, dtype=np.float32)
+                
+                # Start the reader and accumlator threads
+                reader = threading.Thread(target=iop.main)
+                accumu = threading.Thread(target=aop.main)
+                reader.start()
+                accumu.start()
+                
+                # Get PBeam data and send it off
+                desc, data = self._get_pbeam_data()
+                for p in range(data.shape[0]):
+                    oop.send(desc, p*24, 24, 0, 1, data[p,...].reshape(1,1,128*4))
+                    time.sleep(0.001)
+                reader.join()
+                accumu.join()
+                
+                # Compare
+                ## Reorder to match what we sent out
+                final = np.array(final, dtype=np.float32)
+                final = final.reshape(-1,128*4,1)
+                final = final.transpose(0,2,1).copy()
+                ## Reduce to match the capture block size
+                data = data[:(final.shape[0]//240-1)*240,...]
+                for i in range(2, data.shape[0]):
+                    np.testing.assert_equal(final[i,...], data[i,...])
             
         # Clean up
         del oop
-        isock.close()
-        osock.close()
+        
+class multicastUDPIOTest(unittest.TestCase):
+    """Test simple IO for the UDP-based packet reader and writing"""
+    def setUp(self):
+        """Generate some dummy data to read"""
+        # Generate test vector and save to file
+        t = np.arange(256*4096*2)
+        w = 0.2
+        self.s0 = 5*np.cos(w * t, dtype='float32') \
+                + 3j*np.sin(w * t, dtype='float32')
         
     def test_write_multicast(self):
         addr = Address('224.0.0.251', 7147)
-        sock = UDPSocket()
-        sock.connect(addr)
-        op = UDPTransmit('tbn', sock)
-        
-        # Get TBN data
-        desc, data = self._get_tbn_data()
-        
-        # Go!
-        op.send(desc, 0, 1960*512, 0, 1, data)
-        sock.close()
+        with closing(UDPSocket()) as sock:
+            sock.connect(addr)
+            op = UDPTransmit('tbn', sock)
+            
+            # Get TBN data
+            desc, data = self._get_tbn_data()
+            
+            # Go!
+            op.send(desc, 0, 1960*512, 0, 1, data)
     def test_read_multicast(self):
         # Setup the ring
         ring = Ring(name="capture_multi")
@@ -633,44 +662,45 @@ class UDPIOTest(unittest.TestCase):
         addr = Address('224.0.0.251', 7147)
         ## Output via UDPTransmit
         osock = UDPSocket()
-        osock.connect(addr)
-        oop = UDPTransmit('tbn', osock)
-        ## Input via UDPCapture
-        isock = UDPSocket()
-        isock.bind(addr)
-        isock.timeout = 1.0
-        iop = TBNReader(isock, ring)
-        # Data accumulation
-        final = []
-        aop = AccumulateOp(ring, final, 49*32*512*2)
-        
-        # Start the reader and accumlator threads
-        reader = threading.Thread(target=iop.main)
-        accumu = threading.Thread(target=aop.main)
-        reader.start()
-        accumu.start()
-        
-        # Get TBN data and send it off
-        desc, data = self._get_tbn_data()
-        for p in range(data.shape[0]):
-            oop.send(desc, p*1960*512, 1960*512, 0, 1, data[p,...].reshape(1,32,512))
-            time.sleep(0.001)
-        reader.join()
-        accumu.join()
-        
-        # Compare
-        ## Reorder to match what we sent out
-        final = np.array(final, dtype=np.uint8)
-        final = final.reshape(-1,512,32,2)
-        final = final.transpose(0,2,1,3).copy()
-        final = bf.ndarray(shape=(final.shape[0],32,512), dtype='ci8', buffer=final.ctypes.data)
-        ## Reduce to match the capture block size
-        data = data[:final.shape[0],...]
-        for i in range(2, data.shape[0]):
-            for j in range(data.shape[1]):
-                np.testing.assert_equal(final[i,j,...], data[i,j,...])
+        with closing(UDPSocket()) as osock:
+            osock.connect(addr)
+            oop = UDPTransmit('tbn', osock)
+            ## Input via UDPCapture
+            with closing(UDPSocket()) as isock:
+                isock.bind(addr)
+                isock.timeout = 1.0
+                iop = TBNReader(isock, ring)
+                # Data accumulation
+                final = []
+                aop = AccumulateOp(ring, final, 49*32*512*2,dtype=np.byte)
+                
+                # Start the reader and accumlator threads
+                reader = threading.Thread(target=iop.main)
+                accumu = threading.Thread(target=aop.main)
+                reader.start()
+                accumu.start()
+                
+                # Get TBN data and send it off
+                desc, data = self._get_tbn_data()
+                for p in range(data.shape[0]):
+                    oop.send(desc, p*1960*512, 1960*512, 0, 1, data[p,...].reshape(1,32,512))
+                    time.sleep(0.001)
+                reader.join()
+                accumu.join()
+                
+                # Compare
+                ## Reorder to match what we sent out
+                final = np.array(final, dtype=np.uint8)
+                final = final.reshape(-1,512,32,2)
+                npfinal = final.transpose(0,2,1,3).copy()
+                final = bf.ndarray(shape=(final.shape[0],32,512), dtype='ci8' )
+                final['re'] = npfinal[:,:,:,0]
+                final['im'] = npfinal[:,:,:,1]
+                ## Reduce to match the capture block size
+                data = data[:final.shape[0],...]
+                for i in range(2, data.shape[0]):
+                    for j in range(data.shape[1]):
+                        np.testing.assert_equal(final[i,j,...], data[i,j,...])
                 
         # Clean up
         del oop
-        isock.close()
-        osock.close()
