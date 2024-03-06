@@ -120,6 +120,6 @@ public:
         simple_hdr_type* header = reinterpret_cast<simple_hdr_type*>(hdr);
         memset(header, 0, sizeof(simple_hdr_type));
         
-        header->seq      = htobe32(hdr_base->seq);
+        header->seq      = htobe64(hdr_base->seq);
     }
 };
