@@ -49,7 +49,7 @@ public:
 	    const simple_hdr_type* pkt_hdr  = (simple_hdr_type*)pkt_ptr;
 	    const uint8_t*        pkt_pld  = pkt_ptr  + sizeof(simple_hdr_type);
 	    int                   pld_size = pkt_size - sizeof(simple_hdr_type);
-	    pkt->seq =   be32toh(pkt_hdr->seq);
+	    pkt->seq =   be64toh(pkt_hdr->seq);
             pkt->nsrc = 1;
             pkt->src = 0;
 	    pkt->payload_size = pld_size;
