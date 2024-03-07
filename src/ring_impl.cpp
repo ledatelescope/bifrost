@@ -70,16 +70,23 @@ public:
 	inline RingReallocLock(unique_lock_type& lock,
 	                       BFring_impl*      ring)
 		: _lock(lock), _ring(ring) {
+        std::cout<<"herei"<<std::endl;
 		++_ring->_nrealloc_pending;
+        std::cout<<"herej"<<std::endl;
 		_ring->_realloc_condition.wait(_lock, [this]() {
+        std::cout<<"herek"<<std::endl;
 			return (_ring->_nwrite_open == 0 &&
 			        _ring->_nread_open == 0);
 		});
 	}
 	inline ~RingReallocLock() {
+        std::cout<<"herel"<<std::endl;
 		--_ring->_nrealloc_pending;
+        std::cout<<"herem"<<std::endl;
 		_ring->_read_condition.notify_all();
+        std::cout<<"heren"<<std::endl;
 		_ring->_write_condition.notify_all();
+        std::cout<<"hereo"<<std::endl;
 	}
 };
 
@@ -122,7 +129,9 @@ void BFring_impl::resize(BFsize contiguous_span,
 	    nringlet        <= _nringlet) {
 		return;
 	}
+        std::cout<<"here1"<<std::endl;
 	realloc_lock_type realloc_lock(lock, this);
+        std::cout<<"here2"<<std::endl;
 	// Check if reallocation is still actually necessary
 	if( contiguous_span <= _ghost_span &&
 	    total_span      <= _span &&
@@ -148,15 +157,15 @@ void BFring_impl::resize(BFsize contiguous_span,
 	BFsize  new_stride = new_span + new_ghost_span;
 	BFsize  new_nbyte  = new_stride*new_nringlet;
 	//pointer new_buf    = (pointer)bfMalloc(new_nbyte, _space);
-	//std::cout << "new_buf = " << (void*)new_buf << std::endl; // HACK TESTING
+	//std::std::cout << "new_buf = " << (void*)new_buf << std::endl; // HACK TESTING
 	pointer new_buf = nullptr;
-	//std::cout << "contig_span:    " << contiguous_span << std::endl;
-	//std::cout << "total_span:     " << total_span << std::endl;
-	//std::cout << "new_span:       " << new_span << std::endl;
-	//std::cout << "new_ghost_span: " << new_ghost_span << std::endl;
-	//std::cout << "new_nringlet:   " << new_nringlet << std::endl;
-	//std::cout << "new_stride:     " << new_stride << std::endl;
-	//std::cout << "Allocating " << new_nbyte << std::endl;
+	//std::std::cout << "contig_span:    " << contiguous_span << std::endl;
+	//std::std::cout << "total_span:     " << total_span << std::endl;
+	//std::std::cout << "new_span:       " << new_span << std::endl;
+	//std::std::cout << "new_ghost_span: " << new_ghost_span << std::endl;
+	//std::std::cout << "new_nringlet:   " << new_nringlet << std::endl;
+	//std::std::cout << "new_stride:     " << new_stride << std::endl;
+	//std::std::cout << "Allocating " << new_nbyte << std::endl;
 	BF_ASSERT_EXCEPTION(bfMalloc((void**)&new_buf, new_nbyte, _space) == BF_STATUS_SUCCESS,
 	                    BF_STATUS_MEM_ALLOC_FAILED);
 #if BF_HWLOC_ENABLED
@@ -587,7 +596,7 @@ void BFring_impl::commit_span(BFoffset begin, BFsize reserve_size, BFsize commit
 	//         in which case they will block here until they are
 	//         in order (i.e., they will automatically synchronise).
 	//         This is useful for multithreading with OpenMP
-	//std::cout << "(1) begin, head, rhead: " << begin << ", " << _head << ", " << _reserve_head << std::endl;
+	//std::std::cout << "(1) begin, head, rhead: " << begin << ", " << _head << ", " << _reserve_head << std::endl;
 	_write_close_condition.wait(lock, [&]() {
 			return (begin == _head);
 		});
@@ -602,7 +611,7 @@ void BFring_impl::commit_span(BFoffset begin, BFsize reserve_size, BFsize commit
 		// There are reservations in front of this one, so we
 		//   are not allowed to commit less than size.
 		// TODO: How to deal with error here?
-		//std::cout << "BFRING ERROR: Must commit whole wspan when other spans are reserved" << std::endl;
+		//std::std::cout << "BFRING ERROR: Must commit whole wspan when other spans are reserved" << std::endl;
 		//return;
 		BF_ASSERT_EXCEPTION(false, BF_STATUS_INVALID_STATE);
 	}
