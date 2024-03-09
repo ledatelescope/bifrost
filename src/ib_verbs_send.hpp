@@ -410,6 +410,9 @@ class VerbsSend {
         }
         
         if( _verbs.mr_buf ) {
+            if( ::munlock(_verbs.mr_buf, _verbs.mr_size) ) {
+                failures += 1;
+            }
             if( ::munmap(_verbs.mr_buf, _verbs.mr_size) ) {
                 failures += 1;
             }

@@ -172,9 +172,11 @@ public:
                          int   flags=0) {
         if( npackets != _last_count ) {
           if( _mmsg ) {
+            ::munlock(_mmsg, sizeof(struct mmsghdr)*_last_count);
             free(_mmsg);
           }
           if( _iovs ) {
+            ::munlock(_iovs, sizeof(struct iovec)*2*_last_count);
             free(_iovs);
           }
           
