@@ -239,11 +239,10 @@ class UDPVerbsSender : public PacketWriterMethod {
     int             _last_count;
     mmsghdr*        _mmsg;
     iovec*          _iovs;
-    uint32_t        _rate_holder;
 public:
     UDPVerbsSender(int fd, size_t max_burst_size=BF_VERBS_SEND_NPKTBURST)
         : PacketWriterMethod(fd, max_burst_size), _ibv(fd, JUMBO_FRAME_SIZE), _last_size(0),
-          _last_count(0), _mmsg(NULL), _iovs(NULL), _rate_holder(0) {}
+          _last_count(0), _mmsg(NULL), _iovs(NULL) {}
     ~UDPVerbsSender() {
       if( _mmsg ) {
         free(_mmsg);
@@ -260,9 +259,11 @@ public:
                          int   flags=0) {
         if( npackets != _last_count ) {
           if( _mmsg ) {
+            ::munlock(_mmsg, sizeof(struct mmsghdr)*_last_count);
             free(_mmsg);
           }
           if( _iovs ) {
+            ::munlock(_iovs, sizeof(struct iovec)*3*_last_count);
             free(_iovs);
           }
           
@@ -286,8 +287,8 @@ public:
             _ibv.get_ipv4_header(&(_udp_hdr.ipv4), _last_size);
             _ibv.get_udp_header(&(_udp_hdr.udp), _last_size);
             
-            if( _rate_holder > 0 ) {
-                _ibv.set_rate_limit(_rate_holder*_last_size, _last_size, _max_burst_size);
+            if( _limiter.get_rate() > 0 ) {
+                _ibv.set_rate_limit(_limiter.get_rate()*_last_size, _last_size, _max_burst_size);
             }
         }
         
@@ -310,8 +311,6 @@ public:
         return nsent;
     }
     inline const char* get_name() { return "udp_verbs_transmit"; }
-    inline void set_rate(uint32_t rate_limit) { _rate_holder = rate_limit; }
-    inline uint32_t get_rate() { return _rate_holder; }
 };
 #endif // BF_VERBS_ENABLED
 
