@@ -96,7 +96,7 @@ struct bf_ibv_send {
     int               nqueued;
     
     uint8_t           offload_csum;
-    uint32_t          hardware_pacing;
+    uint32_t          hardware_pacing[2];
 };
 
 struct __attribute__((packed)) bf_ethernet_hdr {
@@ -337,12 +337,13 @@ class VerbsSend {
                         #endif
                         std::cout << "_verbs.offload_csum: " << (int) _verbs.offload_csum << std::endl;
                         
-                        _verbs.hardware_pacing = 0;
+                        _verbs.hardware_pacing = {0};
                         #if defined BF_VERBS_SEND_PACING && BF_VERBS_SEND_PACING
                         if( ibv_is_qpt_supported(ibv_dev_attr.packet_pacing_caps.supported_qpts, IBV_QPT_RAW_PACKET) ) {
-                          _verbs.hardware_pacing = ibv_dev_attr.packet_pacing_caps.qp_rate_limit_max;  
+                          _verbs.hardware_pacing[0] = ibv_dev_attr.packet_pacing_caps.qp_rate_limit_min;  
+                          _verbs.hardware_pacing[1] = ibv_dev_attr.packet_pacing_caps.qp_rate_limit_max;  
                         }
-                        std::cout << "_verbs.hardware_pacing: " << (int) _verbs.hardware_pacing << std::endl;
+                        std::cout << "_verbs.hardware_pacing: " << (int) _verbs.hardware_pacing[0] << ", " << (int) _verbs.hardware_pacing[1] << std::endl;
                         #endif
                         break;
                     }
@@ -732,9 +733,9 @@ public:
       
       // Verify that this rate limit is valid
       if( rate_limit == 0 ) {
-        rate_limit = _verbs.hardware_pacing;
+        rate_limit = _verbs.hardware_pacing[1];
       }
-      if( rate_limit > _verbs.hardware_pacing ) {
+      if( rate_limit < _verbs.hardware_pacing[0] || rate_limit > _verbs.hardware_pacing[1] ) {
         throw VerbsSend::Error("Failed to set rate limit, specified rate limit is out of range");
       }
       
