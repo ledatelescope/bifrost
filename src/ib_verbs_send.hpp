@@ -723,7 +723,7 @@ public:
         destroy_buffers();
         destroy_context();
     }
-    inline void set_rate_limit(uint32_t rate_limit, size_t udp_length=1, size_t max_burst_size=BF_VERBS_SEND_NPKTBURST) {
+    inline void set_rate_limit(uint32_t rate_limit, size_t udp_length, size_t max_burst_size=BF_VERBS_SEND_NPKTBURST) {
       int i;
       
       // Converts to B/s to kb/s assuming a packet size
