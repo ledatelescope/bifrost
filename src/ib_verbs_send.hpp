@@ -337,7 +337,7 @@ class VerbsSend {
                         #endif
                         std::cout << "_verbs.offload_csum: " << (int) _verbs.offload_csum << std::endl;
                         
-                        _verbs.hardware_pacing = {0};
+                        _verbs.hardware_pacing[0] = _verbs.hardware_pacing[1] = 0;
                         #if defined BF_VERBS_SEND_PACING && BF_VERBS_SEND_PACING
                         if( ibv_is_qpt_supported(ibv_dev_attr.packet_pacing_caps.supported_qpts, IBV_QPT_RAW_PACKET) ) {
                           _verbs.hardware_pacing[0] = ibv_dev_attr.packet_pacing_caps.qp_rate_limit_min;  
