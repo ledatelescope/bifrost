@@ -243,6 +243,11 @@ void launch_reduce_loop_kernel(IType const* in,
 		BF_STATUS_INTERNAL_ERROR);
 }
 
+inline bool is_reduce_vector_aligned(BFarray const* in,
+	                            long reduce_size) {
+	return ((((uint64_t) in->data) / BF_DTYPE_NBYTE(in->dtype) % reduce_size) == 0);
+}
+
 template<typename IType, typename OType>
 BFstatus reduce_itype_otype(BFarray const* in,
                                  BFarray const* out,
@@ -290,23 +295,27 @@ BFstatus reduce_itype_otype(BFarray const* in,
 	bool use_vec2_kernel = (
 		istride_reduce == 1 &&
 		reduce_size == 2 &&
-		istrides.x % 2 == 0 && istrides.y % 2 == 0 && istrides.z % 2 == 0);
+		istrides.x % 2 == 0 && istrides.y % 2 == 0 && istrides.z % 2 == 0 &&
+		is_reduce_vector_aligned(in, reduce_size));
 	//std::cout << istride_reduce << ", " << reduce_size << ", " << istrides.x << ", " << istrides.y << ", " << istrides.z << std::endl;
 	bool use_vec4_kernel = (
 		istride_reduce == 1 &&
 		reduce_size == 4 &&
-		istrides.x % 4 == 0 && istrides.y % 4 == 0 && istrides.z % 4 == 0);
+		istrides.x % 4 == 0 && istrides.y % 4 == 0 && istrides.z % 4 == 0 &&
+		is_reduce_vector_aligned(in, reduce_size));
 	bool use_vec8_kernel = (
 		sizeof(IType) <= 2 &&
 		istride_reduce == 1 &&
 		reduce_size == 8 &&
-		istrides.x % 8 == 0 && istrides.y % 8 == 0 && istrides.z % 8 == 0);
+		istrides.x % 8 == 0 && istrides.y % 8 == 0 && istrides.z % 8 == 0 &&
+		is_reduce_vector_aligned(in, reduce_size));
 	bool use_vec16_kernel = (
 		sizeof(IType) == 1 &&
 		istride_reduce == 1 &&
 		reduce_size == 16 &&
-		istrides.x % 16 == 0 && istrides.y % 16 == 0 && istrides.z % 16 == 0);
-	
+		istrides.x % 16 == 0 && istrides.y % 16 == 0 && istrides.z % 16 == 0 &&
+		is_reduce_vector_aligned(in, reduce_size));
+
 	if( use_vec2_kernel ) {
 		BF_TRY_RETURN(
 			launch_reduce_vector_kernel<2>((IType*)in->data, (OType*)out->data,
@@ -553,17 +562,20 @@ BFstatus reduce_complex_standard_itype_otype(BFarray const* in,
 	bool use_vec2_kernel = (
 		istride_reduce == 1 &&
 		reduce_size == 2 &&
-		istrides.x % 2 == 0 && istrides.y % 2 == 0 && istrides.z % 2 == 0);
+		istrides.x % 2 == 0 && istrides.y % 2 == 0 && istrides.z % 2 == 0 &&
+		is_reduce_vector_aligned(in, reduce_size));
 	//std::cout << istride_reduce << ", " << reduce_size << ", " << istrides.x << ", " << istrides.y << ", " << istrides.z << std::endl;
 	bool use_vec4_kernel = (
 		istride_reduce == 1 &&
 		reduce_size == 4 &&
-		istrides.x % 4 == 0 && istrides.y % 4 == 0 && istrides.z % 4 == 0);
+		istrides.x % 4 == 0 && istrides.y % 4 == 0 && istrides.z % 4 == 0 &&
+		is_reduce_vector_aligned(in, reduce_size));
 	bool use_vec8_kernel = (
 		sizeof(IType) <= 2 &&
 		istride_reduce == 1 &&
 		reduce_size == 8 &&
-		istrides.x % 8 == 0 && istrides.y % 8 == 0 && istrides.z % 8 == 0);
+		istrides.x % 8 == 0 && istrides.y % 8 == 0 && istrides.z % 8 == 0 &&
+		is_reduce_vector_aligned(in, reduce_size));
 	
 	if( use_vec2_kernel ) {
 		BF_TRY_RETURN(
@@ -796,17 +808,20 @@ BFstatus reduce_complex_power_itype_otype(BFarray const* in,
     bool use_vec2_kernel = (
         istride_reduce == 1 &&
         reduce_size == 2 &&
-        istrides.x % 2 == 0 && istrides.y % 2 == 0 && istrides.z % 2 == 0);
+        istrides.x % 2 == 0 && istrides.y % 2 == 0 && istrides.z % 2 == 0 &&
+        is_reduce_vector_aligned(in, reduce_size));
     //std::cout << istride_reduce << ", " << reduce_size << ", " << istrides.x << ", " << istrides.y << ", " << istrides.z << std::endl;
     bool use_vec4_kernel = (
         istride_reduce == 1 &&
         reduce_size == 4 &&
-        istrides.x % 4 == 0 && istrides.y % 4 == 0 && istrides.z % 4 == 0);
+        istrides.x % 4 == 0 && istrides.y % 4 == 0 && istrides.z % 4 == 0 &&
+        is_reduce_vector_aligned(in, reduce_size));
     bool use_vec8_kernel = (
         sizeof(IType) <= 2 &&
         istride_reduce == 1 &&
         reduce_size == 8 &&
-        istrides.x % 8 == 0 && istrides.y % 8 == 0 && istrides.z % 8 == 0);
+        istrides.x % 8 == 0 && istrides.y % 8 == 0 && istrides.z % 8 == 0 &&
+        is_reduce_vector_aligned(in, reduce_size));
     
     if( use_vec2_kernel ) {
         BF_TRY_RETURN(

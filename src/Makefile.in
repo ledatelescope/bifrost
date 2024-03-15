@@ -14,8 +14,6 @@ DOXYGEN        ?= @DX_DOXYGEN@
 PYBUILDFLAGS   ?= @PYBUILDFLAGS@
 PYINSTALLFLAGS ?= @PYINSTALLFLAGS@
 
-HAVE_CXX14    ?= @HAVE_CXX14@
-
 HAVE_RECVMSG  ?= @HAVE_RECVMSG@
 
 HAVE_CUDA     ?= @HAVE_CUDA@
@@ -36,6 +34,7 @@ LIBBIFROST_OBJS = \
   testsuite.o \
   ring.o \
   ring_impl.o \
+  Socket.o \
   array.o \
   unpack.o \
   quantize.o \

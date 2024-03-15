@@ -1,5 +1,6 @@
+---
 name: "Build and Test"
-on: [push, pull_request]
+"on": [push, pull_request]
 jobs:
   pre_build:
     runs-on: ubuntu-latest
@@ -7,7 +8,7 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v3.4.1
+        uses: fkirc/skip-duplicate-actions@v5
         with:
           concurrent_skipping: 'same_content'
           skip_after_successful_duplicate: 'true'
@@ -19,14 +20,16 @@ jobs:
     strategy:
       matrix:
         os: [self-hosted, ubuntu-latest, macos-latest]
-        python-version: ['2.7', '3.6', '3.8']
-        exclude:
+        python-version: ['3.8', '3.10']
+        include:
+          - os: ubuntu-20.04
+            python-version: '3.6'
           - os: macos-latest
-            python-version: 2.7
+            python-version: '3.6'
       fail-fast: false
     steps:
       - name: "Software Install - Ubuntu"
-        if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'self-hosted' }}
+        if: ${{ matrix.os == 'ubuntu-latest' || matrix.os == 'ubuntu-20.04' || matrix.os == 'self-hosted' }}
         run: |
           sudo apt-get update && \
           sudo apt-get install -y \
@@ -48,10 +51,9 @@ jobs:
             gawk \
             gnu-sed \
             pkg-config
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v5.0.0
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: actions/checkout@v2
       - name: "Software Install - Python"
         run: python -m pip install \
                setuptools \
@@ -62,12 +64,25 @@ jobs:
                pint \
                graphviz \
                ctypesgen==1.0.2 \
+               pylint \
                coverage
       - name: "Software Install - Python, part 2"
-        if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
+        if: ${{ matrix.os == 'self-hosted' }}
+        # Setting CPLUS_INCLUDE_PATH helps pycuda find the right
+        # Python header files <pyconfig.h> to use with its embedded
+        # subset of Boost.
+        env:
+          CPLUS_INCLUDE_PATH: "${{ env.pythonLocation }}/include/python\
+            ${{ matrix.python-version }}"
         run: python -m pip install \
-               cupy \
-               pycuda
+               cupy-cuda12x \
+               pycuda \
+               numba \
+               jupyterlab \
+               jupyter_client \
+               nbformat \
+               nbconvert
+      - uses: actions/checkout@v3
       - name: "Build and Install"
         run: |
           ./configure
@@ -81,16 +96,32 @@ jobs:
           cd test
           bash ./download_test_data.sh
           python -c "from bifrost import telemetry; telemetry.disable()"
-          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline -m unittest discover
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline \
+            -m unittest discover
+          coverage xml
+      - name: "Test, part 2"
+        if: ${{ matrix.os == 'self-hosted' }}
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib:${{ env.LD_LIBRARY_PATH }}
+        run: |
+          cd testbench
+          python generate_test_data.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_file_read_write.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_fft.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline your_first_block.py
+          python download_breakthrough_listen_data.py -y
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_guppi.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_guppi_reader.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_fdmt.py ./testdata/pulsars/blc0_guppi_57407_61054_PSR_J1840%2B5640_0004.fil
           coverage xml
       - name: "Upload Coverage"
         env:
-           UNITTEST_OS: ${{ matrix.os }}
-           UNITTEST_PY: ${{ matrix.python-version }}
+          UNITTEST_OS: ${{ matrix.os }}
+          UNITTEST_PY: ${{ matrix.python-version }}
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version == '3.8' }}
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v4
         with:
-          directory: ./test/
+          files: ./test/coverage.xml, ./testbench/coverage.xml
           env_vars: UNITTEST_OS,UNITTEST_PY
           fail_ci_if_error: false
           verbose: true

@@ -194,3 +194,14 @@ class NDArrayTest(unittest.TestCase):
     @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
     def test_space_type_conversion(self):
         self.run_type_conversion(space='cuda')
+    def test_BFarray(self):
+        """ Test ndarray.as_BFarray() roundtrip """
+        a = bf.ndarray(np.arange(100), dtype='i32')
+        aa = a.as_BFarray()
+        b = bf.ndarray(aa)
+        np.testing.assert_equal(a, b)
+
+        a = bf.ndarray(np.arange(100), dtype='cf32')
+        aa = a.as_BFarray()
+        b = bf.ndarray(aa)
+    np.testing.assert_equal(a, b)

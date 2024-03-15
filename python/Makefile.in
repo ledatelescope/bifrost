@@ -34,6 +34,11 @@ define run_ctypesgen
 	@SED@ -i.orig -e '/errcheck = ReturnString/s/^/#/' $@
 endef
 
+define run_typehinting
+        # Build the libbifrost typing hinting
+  @PYTHON@ -c 'from typehinting import build_typehinting; build_typehinting("$@")'
+endef
+
 ifeq "$(wildcard $(PSRDADA_HEADERS))" ""
 PSRDADA_PYTHON_BINDINGS_FILE =
 endif
@@ -46,6 +51,7 @@ $(PSRDADA_PYTHON_BINDINGS_FILE): $(PSRDADA_HEADERS)
 
 $(BIFROST_PYTHON_BINDINGS_FILE): $(INC_DIR)/bifrost/*.h
 	$(call run_ctypesgen,$(BIFROST_NAME),$(INC_DIR))
+	$(call run_typehinting,$(BIFROST_NAME),$(INC_DIR))
 
 build: bifrost/*.py Makefile $(BIFROST_PYTHON_VERSION_FILE) $(BIFROST_PYTHON_BINDINGS_FILE) $(PSRDADA_PYTHON_BINDINGS_FILE)
 	@PYTHON@ setup.py build @PYBUILDFLAGS@

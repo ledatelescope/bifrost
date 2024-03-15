@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,24 +36,15 @@ TODO: Some calls result in segfault with space=cuda (e.g., __getitem__
 
 """
 
-# Python2 compatibility
-from __future__ import absolute_import
 import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 import ctypes
 import numpy as np
 from bifrost.memory import raw_malloc, raw_free, raw_get_space, space_accessible
-from bifrost.libbifrost import _bf, _check, _array
+from bifrost.libbifrost import _bf, _th, _check, _array, _space2string
 from bifrost import device
 from bifrost.DataType import DataType
 from bifrost.Space import Space
-
-try:
-    from bifrost._pypy3_compat import PyMemoryView_FromMemory
-except ImportError:
-    pass
+from bifrost.libbifrost_generated import struct_BFarray_
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -73,23 +64,11 @@ def _address_as_buffer(address, nbyte, readonly=False):
     # Note: This works as a buffer in regular python and pypy
     # Note: int_asbuffer is undocumented; see here:
     # https://mail.scipy.org/pipermail/numpy-discussion/2008-January/030938.html
-    try:
-        int_asbuffer = ctypes.pythonapi.PyMemoryView_FromMemory
-        int_asbuffer.restype = ctypes.py_object
-        int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
-        return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
-    except AttributeError:
-        try:
-            # Python2 catch
-            return np.core.multiarray.int_asbuffer(address,
-                                                   nbyte,
-                                                   readonly=readonly,
-                                                   check=False)
-        except AttributeError:
-            # PyPy3 catch
-            int_asbuffer = PyMemoryView_FromMemory
-            return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
-
+    int_asbuffer = ctypes.pythonapi.PyMemoryView_FromMemory
+    int_asbuffer.restype = ctypes.py_object
+    int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
+    return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
+        
 def asarray(arr, space=None):
     if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
         return arr
@@ -185,6 +164,22 @@ class ndarray(np.ndarray):
                                            dtype=base.dtype,
                                            strides=base.strides,
                                            native=np.dtype(base.dtype).isnative)
+            # Check if a BFarray ctypes struct is passed
+            if isinstance(base, struct_BFarray_):
+                ndim = base.ndim
+                shape = list(base.shape)[:ndim]
+                strides = list(base.strides)[:ndim]
+                space = _space2string(base.space)
+                dtype = _th.BFdtype_enum(base.dtype)
+
+                return ndarray.__new__(cls,
+                    space=space,
+                    buffer=int(base.data),
+                    shape=shape,
+                    dtype=dtype,
+                    strides=strides
+                    )
+                
             if dtype is not None:
                 dtype = DataType(dtype)
             if space is None and dtype is None:
@@ -209,9 +204,8 @@ class ndarray(np.ndarray):
                     base = base.astype(dtype.as_numpy_dtype())
                 base = ndarray(base) # View base as bf.ndarray
                 if dtype is not None and base.bf.dtype != dtype:
-                    raise TypeError('Unable to convert type %s to %s during '
-                                    'array construction' %
-                                    (base.bf.dtype, dtype))
+                    raise TypeError(f"Unable to convert type {base.bf.dtype} to {dtype} during "
+                                    "array construction")
                 #base = base.view(cls
                 #if dtype is not None:
                 #    base = base.astype(DataType(dtype).as_numpy_dtype())
