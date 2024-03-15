@@ -204,4 +204,4 @@ class NDArrayTest(unittest.TestCase):
         a = bf.ndarray(np.arange(100), dtype='cf32')
         aa = a.as_BFarray()
         b = bf.ndarray(aa)
-    np.testing.assert_equal(a, b)
+        np.testing.assert_equal(a, b)
