@@ -181,7 +181,7 @@ class AccumulateOp(object):
             while not self.ring.writing_ended():
                 for ispan in iseq_spans:
                     idata = ispan.data_view(self.dtype)
-                    self.output.append(idata)
+                    self.output.append(idata.copy())
 
 
 class UDPIOTest(unittest.TestCase):
