@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2019-2024, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,6 +36,43 @@ from bifrost.packet_capture import PacketCaptureCallback, DiskReader
 from bifrost.quantize import quantize
 from bifrost.pipeline import SourceBlock, SinkBlock
 import numpy as np
+
+class AccumulateOp(object):
+    def __init__(self, ring, output, size, dtype=np.uint8):
+        self.ring = ring
+        self.output = output
+        self.size = size*(dtype().nbytes)
+        self.dtype = dtype
+        
+        self.ring.resize(self.size*10)
+        
+    def main(self):
+        for iseq in self.ring.read(guarantee=True):
+            iseq_spans = iseq.read(self.size)
+            while not self.ring.writing_ended():
+                for ispan in iseq_spans:
+                    idata = ispan.data_view(self.dtype)
+                    self.output.append(idata.copy())
+
+class BaseDiskIOTest(object):
+    class BaseDiskIOTestCase(unittest.TestCase):
+        def setUp(self):
+            """Generate some dummy data to read"""
+            # Generate test vector and save to file
+            t = np.arange(256*4096*2)
+            w = 0.2
+            self.s0 = 5*np.cos(w * t, dtype='float32') \
+                    + 3j*np.sin(w * t, dtype='float32')
+            # Filename cache so we can cleanup later
+            self._cache = []
+        def _open(self, filename, mode):
+            fh = open(filename, mode)
+            if filename not in self._cache:
+                self._cache.append(filename)
+            return fh
+        def tearDown(self):
+            for filename in self._cache:
+                os.unlink(filename)
 
 
 class TBNReader(object):
@@ -77,131 +114,9 @@ class TBNReader(object):
                 if status in (1,4,5,6):
                     break
         del capture
-
-
-class DRXReader(object):
-    def __init__(self, sock, ring, nsrc=4):
-        self.sock = sock
-        self.ring = ring
-        self.nsrc = nsrc
-    def callback(self, seq0, time_tag, decim, chan0, chan1, nsrc, hdr_ptr, hdr_size_ptr):
-        #print "++++++++++++++++ seq0     =", seq0
-        #print "                 time_tag =", time_tag
-        hdr = {'time_tag': time_tag,
-               'seq0':     seq0, 
-               'chan0':    chan0,
-               'chan1':    chan1,
-               'cfreq0':   196e6 * chan0/2.**32,
-               'cfreq1':   196e6 * chan1/2.**32,
-               'bw':       196e6/decim,
-               'nstand':   nsrc/2,
-               'npol':     2,
-               'complex':  True,
-               'nbit':     4}
-        #print "******** CFREQ:", hdr['cfreq']
-        try:
-            hdr_str = json.dumps(hdr).encode()
-        except AttributeError:
-            # Python2 catch
-            pass
-        # TODO: Can't pad with NULL because returned as C-string
-        #hdr_str = json.dumps(hdr).ljust(4096, '\0')
-        #hdr_str = json.dumps(hdr).ljust(4096, ' ')
-        header_buf = ctypes.create_string_buffer(hdr_str)
-        hdr_ptr[0]      = ctypes.cast(header_buf, ctypes.c_void_p)
-        hdr_size_ptr[0] = len(hdr_str)
-        return 0
-    def main(self):
-        seq_callback = PacketCaptureCallback()
-        seq_callback.set_drx(self.callback)
-        with DiskReader("drx", self.sock, self.ring, self.nsrc, 0, 49, 49,
-                        sequence_callback=seq_callback) as capture:
-            while True:
-                status = capture.recv()
-                if status in (1,4,5,6):
-                    break
-        del capture
-
-
-class PBeamReader(object):
-    def __init__(self, sock, ring, nchan, nsrc=1):
-        self.sock = sock
-        self.ring = ring
-        self.nchan = nchan
-        self.nsrc = nsrc
-    def callback(self, seq0, time_tag, navg, chan0, nchan, nbeam, hdr_ptr, hdr_size_ptr):
-        #print "++++++++++++++++ seq0     =", seq0
-        #print "                 time_tag =", time_tag
-        hdr = {'time_tag': time_tag,
-               'seq0':     seq0, 
-               'chan0':    chan0,
-               'cfreq0':   chan0*(196e6/8192),
-               'bw':       nchan*(196e6/8192),
-               'navg':     navg,
-               'nbeam':    nbeam,
-               'npol':     4,
-               'complex':  False,
-               'nbit':     32}
-        #print("******** HDR:", hdr)
-        try:
-            hdr_str = json.dumps(hdr).encode()
-        except AttributeError:
-            # Python2 catch
-            pass
-        # TODO: Can't pad with NULL because returned as C-string
-        #hdr_str = json.dumps(hdr).ljust(4096, '\0')
-        #hdr_str = json.dumps(hdr).ljust(4096, ' ')
-        header_buf = ctypes.create_string_buffer(hdr_str)
-        hdr_ptr[0]      = ctypes.cast(header_buf, ctypes.c_void_p)
-        hdr_size_ptr[0] = len(hdr_str)
-        return 0
-    def main(self):
-        seq_callback = PacketCaptureCallback()
-        seq_callback.set_pbeam(self.callback)
-        with DiskReader("pbeam_%i" % self.nchan, self.sock, self.ring, self.nsrc, 1, 240, 240,
-                        sequence_callback=seq_callback) as capture:
-            while True:
-                status = capture.recv()
-                if status in (1,4,5,6):
-                    break
-        del capture
-
-
-class AccumulateOp(object):
-    def __init__(self, ring, output, size, dtype=np.uint8):
-        self.ring = ring
-        self.output = output
-        self.size = size*(dtype().nbytes)
-        self.dtype = dtype
         
-        self.ring.resize(self.size*10)
-        
-    def main(self):
-        for iseq in self.ring.read(guarantee=True):
-            iseq_spans = iseq.read(self.size)
-            while not self.ring.writing_ended():
-                for ispan in iseq_spans:
-                    idata = ispan.data_view(self.dtype)
-                    self.output.append(idata.copy())
-
-            
-class DiskIOTest(unittest.TestCase):
-    """Test simple IO for the disk-based packet reader and writing"""
-    def setUp(self):
-        """Generate some dummy data to read"""
-        # Generate test vector and save to file
-        t = np.arange(256*4096*2)
-        w = 0.2
-        self.s0 = 5*np.cos(w * t, dtype='float32') \
-                + 3j*np.sin(w * t, dtype='float32')
-        # Filename cache so we can cleanup later
-        self._cache = []
-    def _open(self, filename, mode):
-        fh = open(filename, mode)
-        if filename not in self._cache:
-            self._cache.append(filename)
-        return fh
-        
+class TBNDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
+    """Test simple IO for the disk-based TBN packet reader and writing"""
     def _get_tbn_data(self):
         # Setup the packet HeaderInfo
         desc = HeaderInfo()
@@ -275,7 +190,53 @@ class DiskIOTest(unittest.TestCase):
         # Clean up
         del oop
         fh.close()
-        
+
+
+class DRXReader(object):
+    def __init__(self, sock, ring, nsrc=4):
+        self.sock = sock
+        self.ring = ring
+        self.nsrc = nsrc
+    def callback(self, seq0, time_tag, decim, chan0, chan1, nsrc, hdr_ptr, hdr_size_ptr):
+        #print "++++++++++++++++ seq0     =", seq0
+        #print "                 time_tag =", time_tag
+        hdr = {'time_tag': time_tag,
+               'seq0':     seq0, 
+               'chan0':    chan0,
+               'chan1':    chan1,
+               'cfreq0':   196e6 * chan0/2.**32,
+               'cfreq1':   196e6 * chan1/2.**32,
+               'bw':       196e6/decim,
+               'nstand':   nsrc/2,
+               'npol':     2,
+               'complex':  True,
+               'nbit':     4}
+        #print "******** CFREQ:", hdr['cfreq']
+        try:
+            hdr_str = json.dumps(hdr).encode()
+        except AttributeError:
+            # Python2 catch
+            pass
+        # TODO: Can't pad with NULL because returned as C-string
+        #hdr_str = json.dumps(hdr).ljust(4096, '\0')
+        #hdr_str = json.dumps(hdr).ljust(4096, ' ')
+        header_buf = ctypes.create_string_buffer(hdr_str)
+        hdr_ptr[0]      = ctypes.cast(header_buf, ctypes.c_void_p)
+        hdr_size_ptr[0] = len(hdr_str)
+        return 0
+    def main(self):
+        seq_callback = PacketCaptureCallback()
+        seq_callback.set_drx(self.callback)
+        with DiskReader("drx", self.sock, self.ring, self.nsrc, 0, 49, 49,
+                        sequence_callback=seq_callback) as capture:
+            while True:
+                status = capture.recv()
+                if status in (1,4,5,6):
+                    break
+        del capture
+
+class DRXDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
+    """Test simple IO for the disk-based DRX packet reader and writing"""
     def _get_drx_data(self):
         # Setup the packet HeaderInfo
         desc = HeaderInfo()
@@ -407,7 +368,53 @@ class DiskIOTest(unittest.TestCase):
         # Clean up
         del oop
         fh.close()
-        
+
+
+class PBeamReader(object):
+    def __init__(self, sock, ring, nchan, nsrc=1):
+        self.sock = sock
+        self.ring = ring
+        self.nchan = nchan
+        self.nsrc = nsrc
+    def callback(self, seq0, time_tag, navg, chan0, nchan, nbeam, hdr_ptr, hdr_size_ptr):
+        #print "++++++++++++++++ seq0     =", seq0
+        #print "                 time_tag =", time_tag
+        hdr = {'time_tag': time_tag,
+               'seq0':     seq0, 
+               'chan0':    chan0,
+               'cfreq0':   chan0*(196e6/8192),
+               'bw':       nchan*(196e6/8192),
+               'navg':     navg,
+               'nbeam':    nbeam,
+               'npol':     4,
+               'complex':  False,
+               'nbit':     32}
+        #print("******** HDR:", hdr)
+        try:
+            hdr_str = json.dumps(hdr).encode()
+        except AttributeError:
+            # Python2 catch
+            pass
+        # TODO: Can't pad with NULL because returned as C-string
+        #hdr_str = json.dumps(hdr).ljust(4096, '\0')
+        #hdr_str = json.dumps(hdr).ljust(4096, ' ')
+        header_buf = ctypes.create_string_buffer(hdr_str)
+        hdr_ptr[0]      = ctypes.cast(header_buf, ctypes.c_void_p)
+        hdr_size_ptr[0] = len(hdr_str)
+        return 0
+    def main(self):
+        seq_callback = PacketCaptureCallback()
+        seq_callback.set_pbeam(self.callback)
+        with DiskReader("pbeam_%i" % self.nchan, self.sock, self.ring, self.nsrc, 1, 240, 240,
+                        sequence_callback=seq_callback) as capture:
+            while True:
+                status = capture.recv()
+                if status in (1,4,5,6):
+                    break
+        del capture
+
+class PBeamDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
+    """Test simple IO for the disk-based PBeam packet reader and writing"""
     def _get_pbeam_data(self):
         # Setup the packet HeaderInfo
         desc = HeaderInfo()
@@ -480,7 +487,3 @@ class DiskIOTest(unittest.TestCase):
         # Clean up
         del oop
         fh.close()
-        
-    def tearDown(self):
-        for filename in self._cache:
-            os.unlink(filename)
