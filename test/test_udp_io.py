@@ -132,16 +132,15 @@ class TBNUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         return 1, hdr_desc, data_q
     def test_write(self):
         addr = Address('127.0.0.1', 7147)
-        sock = UDPSocket()
-        sock.connect(addr)
-        op = UDPTransmit('tbn', sock)
-        
-        # Get TBN data
-        timetag0, hdr_desc, data = self._get_data()
-        
-        # Go!
-        op.send(hdr_desc, timetag0, 1960*512, 0, 1, data)
-        sock.close()
+        with closing(UDPSocket()) as sock:
+            sock.connect(addr)
+            op = UDPTransmit('tbn', sock)
+            
+            # Get TBN data
+            timetag0, hdr_desc, data = self._get_data()
+            
+            # Go!
+            op.send(hdr_desc, timetag0, 1960*512, 0, 1, data)
     def test_read(self):
         # Setup the ring
         ring = Ring(name="capture_tbn")
@@ -149,61 +148,58 @@ class TBNUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Setup the blocks
         addr = Address('127.0.0.1', 7147)
         ## Output via UDPTransmit
-        osock = UDPSocket()
-        osock.connect(addr)
-        oop = UDPTransmit('tbn', osock)
-        ## Input via UDPCapture
-        isock = UDPSocket()
-        isock.bind(addr)
-        isock.timeout = 0.1
-        iop = TBNReader(isock, ring, nsrc=32)
-        ## Data accumulation
-        times = []
-        final = []
-        aop = AccumulateOp(ring, times, final, 32*512*2)
-        
-        # Start the reader and accumlator threads
-        reader = threading.Thread(target=iop.main)
-        accumu = threading.Thread(target=aop.main)
-        reader.start()
-        accumu.start()
-        
-        # Get TBN data and send it off
-        timetag0, hdr_desc, data = self._get_data()
-        for p in range(data.shape[0]):
-            oop.send(hdr_desc, timetag0+p*1960*512, 1960*512, 0, 1, data[[p],...])
-            time.sleep(0.001)
-        reader.join()
-        accumu.join()
-        
-        # Compare
-        for seq_timetag,seq_data in zip(times, final):
-            ## Loop over sequences
-            seq_data = np.array(seq_data, dtype=np.uint8)
-            seq_data = seq_data.reshape(-1,512,32,2)
-            seq_data = seq_data.transpose(0,2,1,3).copy()
-            ## Drop the last axis (complexity) since we are going to ci8
-            seq_data = bf.ndarray(shape=seq_data.shape[:-1], dtype='ci8', buffer=seq_data.ctypes.data)
-            
-            ## Ignore the first set of packets
-            np.testing.assert_equal(seq_data[1:,...], data[1:,...])
-            
-        # Clean up
-        del oop
-        isock.close()
-        osock.close()
+        with closing(UDPSocket()) as osock:
+            osock.connect(addr)
+            oop = UDPTransmit('tbn', osock)
+            ## Input via UDPCapture
+            with closing(UDPSocket()) as isock:
+                isock.bind(addr)
+                isock.timeout = 0.1
+                iop = TBNReader(isock, ring, nsrc=32)
+                ## Data accumulation
+                times = []
+                final = []
+                aop = AccumulateOp(ring, times, final, 32*512*2)
+                
+                # Start the reader and accumlator threads
+                reader = threading.Thread(target=iop.main)
+                accumu = threading.Thread(target=aop.main)
+                reader.start()
+                accumu.start()
+                
+                # Get TBN data and send it off
+                timetag0, hdr_desc, data = self._get_data()
+                for p in range(data.shape[0]):
+                    oop.send(hdr_desc, timetag0+p*1960*512, 1960*512, 0, 1, data[[p],...])
+                    time.sleep(0.001)
+                reader.join()
+                accumu.join()
+                
+                # Compare
+                for seq_timetag,seq_data in zip(times, final):
+                    ## Loop over sequences
+                    seq_data = np.array(seq_data, dtype=np.uint8)
+                    seq_data = seq_data.reshape(-1,512,32,2)
+                    seq_data = seq_data.transpose(0,2,1,3).copy()
+                    ## Drop the last axis (complexity) since we are going to ci8
+                    seq_data = bf.ndarray(shape=seq_data.shape[:-1], dtype='ci8', buffer=seq_data.ctypes.data)
+                    
+                    ## Ignore the first set of packets
+                    np.testing.assert_equal(seq_data[1:,...], data[1:,...])
+                    
+            # Clean up
+            del oop
     def test_write_multicast(self):
         addr = Address('224.0.0.251', 7147)
-        sock = UDPSocket()
-        sock.connect(addr)
-        op = UDPTransmit('tbn', sock)
-        
-        # Get TBN data
-        timetag0, hdr_desc, data = self._get_data()
-        
-        # Go!
-        op.send(hdr_desc, timetag0, 1960*512, 0, 1, data)
-        sock.close()
+        with closing(UDPSocket()) as sock:
+            sock.connect(addr)
+            op = UDPTransmit('tbn', sock)
+            
+            # Get TBN data
+            timetag0, hdr_desc, data = self._get_data()
+            
+            # Go!
+            op.send(hdr_desc, timetag0, 1960*512, 0, 1, data)
     def test_read_multicast(self):
         # Setup the ring
         ring = Ring(name="capture_multi")
@@ -211,49 +207,47 @@ class TBNUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Setup the blocks
         addr = Address('224.0.0.251', 7147)
         ## Output via UDPTransmit
-        osock = UDPSocket()
-        osock.connect(addr)
-        oop = UDPTransmit('tbn', osock)
-        ## Input via UDPCapture
-        isock = UDPSocket()
-        isock.bind(addr)
-        isock.timeout = 0.1
-        iop = TBNReader(isock, ring, nsrc=32)
-        # Data accumulation
-        times = []
-        final = []
-        aop = AccumulateOp(ring, times, final, 32*512*2)
-        
-        # Start the reader and accumlator threads
-        reader = threading.Thread(target=iop.main)
-        accumu = threading.Thread(target=aop.main)
-        reader.start()
-        accumu.start()
-        
-        # Get TBN data and send it off
-        timetag0, hdr_desc, data = self._get_data()
-        for p in range(data.shape[0]):
-            oop.send(hdr_desc, timetag0+p*1960*512, 1960*512, 0, 1, data[[p],...])
-            time.sleep(0.001)
-        reader.join()
-        accumu.join()
-        
-        # Compare
-        for seq_timetag,seq_data in zip(times, final):
-            ## Loop over sequences
-            seq_data = np.array(seq_data, dtype=np.uint8)
-            seq_data = seq_data.reshape(-1,512,32,2)
-            seq_data = seq_data.transpose(0,2,1,3).copy()
-            ## Drop the last axis (complexity) since we are going to ci8
-            seq_data = bf.ndarray(shape=seq_data.shape[:-1], dtype='ci8', buffer=seq_data.ctypes.data)
-            
-            ## Ignore the first set of packets
-            np.testing.assert_equal(seq_data[1:,...], data[1:,...])
-            
-        # Clean up
-        del oop
-        isock.close()
-        osock.close()
+        with closing(UDPSocket()) as osock:
+            osock.connect(addr)
+            oop = UDPTransmit('tbn', osock)
+            ## Input via UDPCapture
+            with closing(UDPSocket()) as isock:
+                isock.bind(addr)
+                isock.timeout = 0.1
+                iop = TBNReader(isock, ring, nsrc=32)
+                # Data accumulation
+                times = []
+                final = []
+                aop = AccumulateOp(ring, times, final, 32*512*2)
+                
+                # Start the reader and accumlator threads
+                reader = threading.Thread(target=iop.main)
+                accumu = threading.Thread(target=aop.main)
+                reader.start()
+                accumu.start()
+                
+                # Get TBN data and send it off
+                timetag0, hdr_desc, data = self._get_data()
+                for p in range(data.shape[0]):
+                    oop.send(hdr_desc, timetag0+p*1960*512, 1960*512, 0, 1, data[[p],...])
+                    time.sleep(0.001)
+                reader.join()
+                accumu.join()
+                
+                # Compare
+                for seq_timetag,seq_data in zip(times, final):
+                    ## Loop over sequences
+                    seq_data = np.array(seq_data, dtype=np.uint8)
+                    seq_data = seq_data.reshape(-1,512,32,2)
+                    seq_data = seq_data.transpose(0,2,1,3).copy()
+                    ## Drop the last axis (complexity) since we are going to ci8
+                    seq_data = bf.ndarray(shape=seq_data.shape[:-1], dtype='ci8', buffer=seq_data.ctypes.data)
+                    
+                    ## Ignore the first set of packets
+                    np.testing.assert_equal(seq_data[1:,...], data[1:,...])
+                    
+            # Clean up
+            del oop
 
 
 class DRXReader(object):
@@ -319,16 +313,15 @@ class DRXUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         return 1, hdr_desc, data_q
     def test_write(self):
         addr = Address('127.0.0.1', 7147)
-        sock = UDPSocket()
-        sock.connect(addr)
-        op = UDPTransmit('drx', sock)
-        
-        # Get TBN data
-        timetag0, hdr_desc, data = self._get_data()
-        
-        # Go!
-        op.send(hdr_desc, timetag0, 10*4096, (1<<3), 128, data)
-        sock.close()
+        with closing(UDPSocket()) as sock:
+            sock.connect(addr)
+            op = UDPTransmit('drx', sock)
+            
+            # Get TBN data
+            timetag0, hdr_desc, data = self._get_data()
+            
+            # Go!
+            op.send(hdr_desc, timetag0, 10*4096, (1<<3), 128, data)
     def test_read(self):
         # Setup the ring
         ring = Ring(name="capture_drx")
@@ -336,62 +329,59 @@ class DRXUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Setup the blocks
         addr = Address('127.0.0.1', 7147)
         ## Output via UDPTransmit
-        osock = UDPSocket()
-        osock.connect(addr)
-        oop = UDPTransmit('drx', osock)
-        ## Input via UDPCapture
-        isock = UDPSocket()
-        isock.bind(addr)
-        isock.timeout = 0.1
-        iop = DRXReader(isock, ring, nsrc=4)
-        ## Data accumulation
-        times = []
-        final = []
-        aop = AccumulateOp(ring, times, final, 4*4096*1)
-        
-        # Start the reader
-        reader = threading.Thread(target=iop.main)
-        accumu = threading.Thread(target=aop.main)
-        reader.start()
-        accumu.start()
-        
-        # Get DRX data and send it off
-        timetag0, hdr_desc, data = self._get_data()
-        for p in range(data.shape[0]):
-            oop.send(hdr_desc, timetag0+p*10*4096, 10*4096, (1<<3), 128, data[p,[0,1],...].reshape(1,2,4096))
-            oop.send(hdr_desc, timetag0+p*10*4096, 10*4096, (2<<3), 128, data[p,[2,3],...].reshape(1,2,4096))
-            time.sleep(0.001)
-        reader.join()
-        accumu.join()
-        
-        # Compare
-        for seq_timetag,seq_data in zip(times, final):
-            ## Reorder to match what we sent out
-            seq_data = np.array(seq_data, dtype=np.uint8)
-            seq_data = seq_data.reshape(-1,4096,4)
-            seq_data = seq_data.transpose(0,2,1).copy()
-            seq_data = bf.ndarray(shape=seq_data.shape, dtype='ci4', buffer=seq_data.ctypes.data)
-            
-            np.testing.assert_equal(seq_data[1:,...], data[1:,...])
-            
-        # Clean up
-        del oop
-        isock.close()
-        osock.close()
+        with closing(UDPSocket()) as osock:
+            osock.connect(addr)
+            oop = UDPTransmit('drx', osock)
+            ## Input via UDPCapture
+            with closing(UDPSocket()) as isock:
+                isock.bind(addr)
+                isock.timeout = 0.1
+                iop = DRXReader(isock, ring, nsrc=4)
+                ## Data accumulation
+                times = []
+                final = []
+                aop = AccumulateOp(ring, times, final, 4*4096*1)
+                
+                # Start the reader
+                reader = threading.Thread(target=iop.main)
+                accumu = threading.Thread(target=aop.main)
+                reader.start()
+                accumu.start()
+                
+                # Get DRX data and send it off
+                timetag0, hdr_desc, data = self._get_data()
+                for p in range(data.shape[0]):
+                    oop.send(hdr_desc, timetag0+p*10*4096, 10*4096, (1<<3), 128, data[p,[0,1],...].reshape(1,2,4096))
+                    oop.send(hdr_desc, timetag0+p*10*4096, 10*4096, (2<<3), 128, data[p,[2,3],...].reshape(1,2,4096))
+                    time.sleep(0.001)
+                reader.join()
+                accumu.join()
+                
+                # Compare
+                for seq_timetag,seq_data in zip(times, final):
+                    ## Reorder to match what we sent out
+                    seq_data = np.array(seq_data, dtype=np.uint8)
+                    seq_data = seq_data.reshape(-1,4096,4)
+                    seq_data = seq_data.transpose(0,2,1).copy()
+                    seq_data = bf.ndarray(shape=seq_data.shape, dtype='ci4', buffer=seq_data.ctypes.data)
+                    
+                    np.testing.assert_equal(seq_data[1:,...], data[1:,...])
+                    
+            # Clean up
+            del oop
     def test_write_single(self):
         addr = Address('127.0.0.1', 7147)
-        sock = UDPSocket()
-        sock.connect(addr)
-        op = UDPTransmit('drx', sock)
-        
-        # Get DRX data
-        timetag0, hdr_desc, data = self._get_data()
-        hdr_desc.set_nsrc(2)
-        data = data[:,[0,1],:].copy()
-        
-        # Go!
-        op.send(hdr_desc, timetag0, 10*4096, (1<<3), 128, data)
-        sock.close()
+        with closing(UDPSocket()) as sock:
+            sock.connect(addr)
+            op = UDPTransmit('drx', sock)
+            
+            # Get DRX data
+            timetag0, hdr_desc, data = self._get_data()
+            hdr_desc.set_nsrc(2)
+            data = data[:,[0,1],:].copy()
+            
+            # Go!
+            op.send(hdr_desc, timetag0, 10*4096, (1<<3), 128, data)
     def test_read_single(self):
         # Setup the ring
         ring = Ring(name="capture_drx_single")
@@ -399,48 +389,46 @@ class DRXUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Setup the blocks
         addr = Address('127.0.0.1', 7147)
         ## Output via UDPTransmit
-        osock = UDPSocket()
-        osock.connect(addr)
-        oop = UDPTransmit('drx', osock)
-        ## Input via UDPCapture
-        isock = UDPSocket()
-        isock.bind(addr)
-        isock.timeout = 0.1
-        iop = DRXReader(isock, ring, nsrc=2)
-        ## Data accumulation
-        times = []
-        final = []
-        aop = AccumulateOp(ring, times, final, 2*4096*1)
-        
-        # Start the reader
-        reader = threading.Thread(target=iop.main)
-        accumu = threading.Thread(target=aop.main)
-        reader.start()
-        accumu.start()
-        
-        # Get DRX data and send it off
-        timetag0, hdr_desc, data = self._get_data()
-        data = data[:,[0,1],:].copy()
-        for p in range(data.shape[0]):
-            oop.send(hdr_desc, timetag0+p*10*4096, 10*4096, (1<<3), 128, data[[p],...])
-            time.sleep(0.001)
-        reader.join()
-        accumu.join()
-        
-        # Compare
-        for seq_timetag,seq_data in zip(times, final):
-            ## Reorder to match what we sent out
-            seq_data = np.array(seq_data, dtype=np.uint8)
-            seq_data = seq_data.reshape(-1,4096,2)
-            seq_data = seq_data.transpose(0,2,1).copy()
-            seq_data = bf.ndarray(shape=seq_data.shape, dtype='ci4', buffer=seq_data.ctypes.data)
-            
-            np.testing.assert_equal(seq_data[1:,...], data[1:,...])
-            
-        # Clean up
-        del oop
-        isock.close()
-        osock.close()
+        with closing(UDPSocket()) as osock:
+            osock.connect(addr)
+            oop = UDPTransmit('drx', osock)
+            ## Input via UDPCapture
+            with closing(UDPSocket()) as isock:
+                isock.bind(addr)
+                isock.timeout = 0.1
+                iop = DRXReader(isock, ring, nsrc=2)
+                ## Data accumulation
+                times = []
+                final = []
+                aop = AccumulateOp(ring, times, final, 2*4096*1)
+                
+                # Start the reader
+                reader = threading.Thread(target=iop.main)
+                accumu = threading.Thread(target=aop.main)
+                reader.start()
+                accumu.start()
+                
+                # Get DRX data and send it off
+                timetag0, hdr_desc, data = self._get_data()
+                data = data[:,[0,1],:].copy()
+                for p in range(data.shape[0]):
+                    oop.send(hdr_desc, timetag0+p*10*4096, 10*4096, (1<<3), 128, data[[p],...])
+                    time.sleep(0.001)
+                reader.join()
+                accumu.join()
+                
+                # Compare
+                for seq_timetag,seq_data in zip(times, final):
+                    ## Reorder to match what we sent out
+                    seq_data = np.array(seq_data, dtype=np.uint8)
+                    seq_data = seq_data.reshape(-1,4096,2)
+                    seq_data = seq_data.transpose(0,2,1).copy()
+                    seq_data = bf.ndarray(shape=seq_data.shape, dtype='ci4', buffer=seq_data.ctypes.data)
+                    
+                    np.testing.assert_equal(seq_data[1:,...], data[1:,...])
+                    
+            # Clean up
+            del oop
 
 
 class PBeamReader(object):
@@ -505,16 +493,15 @@ class PBeamUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         return 1, hdr_desc, data
     def test_write(self):
         addr = Address('127.0.0.1', 7147)
-        sock = UDPSocket()
-        sock.connect(addr)
-        op = UDPTransmit('pbeam1_128', sock)
-        
-        # Get PBeam data
-        timetag0, hdr_desc, data = self._get_data()
-        
-        # Go!
-        op.send(hdr_desc, timetag0, 24, 0, 1, data)
-        sock.close()
+        with closing(UDPSocket()) as sock:
+            sock.connect(addr)
+            op = UDPTransmit('pbeam1_128', sock)
+            
+            # Get PBeam data
+            timetag0, hdr_desc, data = self._get_data()
+            
+            # Go!
+            op.send(hdr_desc, timetag0, 24, 0, 1, data)
     def test_read(self):
         # Setup the ring
         ring = Ring(name="capture_pbeam")
@@ -522,46 +509,44 @@ class PBeamUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Setup the blocks
         addr = Address('127.0.0.1', 7147)
         ## Output via UDPTransmit
-        osock = UDPSocket()
-        osock.connect(addr)
-        oop = UDPTransmit('pbeam1_128', osock)
-        ## Input via UDPCapture
-        isock = UDPSocket()
-        isock.bind(addr)
-        isock.timeout = 0.1
-        iop = PBeamReader(isock, ring, nsrc=1)
-        ## Data accumulation
-        times = []
-        final = []
-        aop = AccumulateOp(ring, times, final, 1*128*4, dtype=np.float32)
-        
-        # Start the reader and accumlator threads
-        reader = threading.Thread(target=iop.main)
-        accumu = threading.Thread(target=aop.main)
-        reader.start()
-        accumu.start()
-        
-        # Get PBeam data and send it off
-        timetag0, hdr_desc, data = self._get_data()
-        for p in range(data.shape[0]):
-            oop.send(hdr_desc, timetag0+p*24, 24, 0, 1, data[[p],...])
-            time.sleep(0.001)
-        reader.join()
-        accumu.join()
-        
-        # Compare
-        for seq_timetag,seq_data in zip(times, final):
-            ## Reorder to match what we sent out
-            seq_data = np.array(seq_data, dtype=np.float32)
-            seq_data = seq_data.reshape(-1,128*4,1)
-            seq_data = seq_data.transpose(0,2,1).copy()
-            
-            np.testing.assert_equal(seq_data[1:,...], data[1:,...])
-            
-        # Clean up
-        del oop
-        isock.close()
-        osock.close()
+        with closing(UDPSocket()) as osock:
+            osock.connect(addr)
+            oop = UDPTransmit('pbeam1_128', osock)
+            ## Input via UDPCapture
+            with closing(UDPSocket()) as isock:
+                isock.bind(addr)
+                isock.timeout = 0.1
+                iop = PBeamReader(isock, ring, nsrc=1)
+                ## Data accumulation
+                times = []
+                final = []
+                aop = AccumulateOp(ring, times, final, 1*128*4, dtype=np.float32)
+                
+                # Start the reader and accumlator threads
+                reader = threading.Thread(target=iop.main)
+                accumu = threading.Thread(target=aop.main)
+                reader.start()
+                accumu.start()
+                
+                # Get PBeam data and send it off
+                timetag0, hdr_desc, data = self._get_data()
+                for p in range(data.shape[0]):
+                    oop.send(hdr_desc, timetag0+p*24, 24, 0, 1, data[[p],...])
+                    time.sleep(0.001)
+                reader.join()
+                accumu.join()
+                
+                # Compare
+                for seq_timetag,seq_data in zip(times, final):
+                    ## Reorder to match what we sent out
+                    seq_data = np.array(seq_data, dtype=np.float32)
+                    seq_data = seq_data.reshape(-1,128*4,1)
+                    seq_data = seq_data.transpose(0,2,1).copy()
+                    
+                    np.testing.assert_equal(seq_data[1:,...], data[1:,...])
+                    
+            # Clean up
+            del oop
 
 
 start_pipeline = datetime.datetime.now()
