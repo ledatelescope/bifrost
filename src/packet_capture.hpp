@@ -642,12 +642,12 @@ class BFpacketcapture_simple_impl : public BFpacketcapture_impl {
     }
 public:
 	inline BFpacketcapture_simple_impl(PacketCaptureThread* capture,
-	                                  BFring               ring,
-	                                  int                  nsrc,
-	                                  int                  src0,
-	                                  int                  buffer_ntime,
-	                                  int                  slot_ntime,
-	                                  BFpacketcapture_callback sequence_callback)
+	                                   BFring               ring,
+	                                   int                  nsrc,
+	                                   int                  src0,
+	                                   int                  buffer_ntime,
+	                                   int                  slot_ntime,
+	                                   BFpacketcapture_callback sequence_callback)
 		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
 		  _type_log((std::string(capture->get_name())+"/type").c_str()),
 		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
@@ -685,9 +685,9 @@ class BFpacketcapture_chips_impl : public BFpacketcapture_impl {
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
-        _chan0 = pkt->chan0;
-        _nchan = pkt->nchan;
-        _payload_size = pkt->payload_size;
+	    _chan0 = pkt->chan0;
+	    _nchan = pkt->nchan;
+	    _payload_size = pkt->payload_size;
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
