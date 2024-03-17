@@ -133,7 +133,7 @@ class TBNDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
         # Update the number of data sources and return
         desc.set_nsrc(data_q.shape[1])
         return desc, data_q
-    def test_write_tbn(self):
+    def test_write(self):
         fh = self._open('test_tbn.dat', 'wb')
         oop = DiskWriter('tbn', fh)
         
@@ -146,7 +146,7 @@ class TBNDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
         
         self.assertEqual(os.path.getsize('test_tbn.dat'), \
                         1048*data.shape[0]*data.shape[1])
-    def test_read_tbn(self):
+    def test_read(self):
         # Write
         fh = self._open('test_tbn.dat', 'wb')
         oop = DiskWriter('tbn', fh)
@@ -253,7 +253,7 @@ class DRXDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
         # Update the number of data sources and return
         desc.set_nsrc(data_q.shape[1])
         return desc, data_q
-    def test_write_drx(self):
+    def test_write(self):
         fh = self._open('test_drx.dat', 'wb')
         oop = DiskWriter('drx', fh)
         
@@ -266,7 +266,7 @@ class DRXDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
         
         self.assertEqual(os.path.getsize('test_drx.dat'), \
                         4128*data.shape[0]*data.shape[1])
-    def test_read_drx(self):
+    def test_read(self):
         # Write
         fh = self._open('test_drx.dat', 'wb')
         oop = DiskWriter('drx', fh)
@@ -310,7 +310,7 @@ class DRXDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
         # Clean up
         del oop
         fh.close()
-    def test_write_drx_single(self):
+    def test_write_single(self):
         fh = self._open('test_drx_single.dat', 'wb')
         oop = DiskWriter('drx', fh)
         
@@ -324,7 +324,7 @@ class DRXDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
         
         self.assertEqual(os.path.getsize('test_drx_single.dat'), \
                         4128*data.shape[0]*data.shape[1]/2)
-    def test_read_drx_single(self):
+    def test_read_single(self):
         # Write
         fh = self._open('test_drx_single.dat', 'wb')
         oop = DiskWriter('drx', fh)
@@ -431,7 +431,7 @@ class PBeamDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
         # Update the number of data sources and return
         desc.set_nsrc(data.shape[1])
         return desc, data
-    def test_write_pbeam(self):
+    def test_write(self):
        fh = self._open('test_pbeam.dat', 'wb')
        oop = DiskWriter('pbeam1_128', fh)
        
@@ -444,7 +444,7 @@ class PBeamDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
        
        self.assertEqual(os.path.getsize('test_pbeam.dat'), \
                        (18+128*4*4)*data.shape[0]*data.shape[1])
-    def test_read_pbeam(self):
+    def test_read(self):
         # Write
         fh = self._open('test_pbeam.dat', 'wb')
         oop = DiskWriter('pbeam1_128', fh)

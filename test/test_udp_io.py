@@ -123,7 +123,7 @@ class TBNUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Update the number of data sources and return
         desc.set_nsrc(data_q.shape[1])
         return desc, data_q
-    def test_write_tbn(self):
+    def test_write(self):
         addr = Address('127.0.0.1', 7147)
         sock = UDPSocket()
         sock.connect(addr)
@@ -135,7 +135,7 @@ class TBNUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Go!
         op.send(desc, 0, 1960*512, 0, 1, data)
         sock.close()
-    def test_read_tbn(self):
+    def test_read(self):
         # Setup the ring
         ring = Ring(name="capture_tbn")
         
@@ -308,7 +308,7 @@ class DRXUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Update the number of data sources and return
         desc.set_nsrc(data_q.shape[1])
         return desc, data_q
-    def test_write_drx(self):
+    def test_write(self):
         addr = Address('127.0.0.1', 7147)
         sock = UDPSocket()
         sock.connect(addr)
@@ -320,7 +320,7 @@ class DRXUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Go!
         op.send(desc, 0, 10*4096, (1<<3), 128, data)
         sock.close()
-    def test_read_drx(self):
+    def test_read(self):
         # Setup the ring
         ring = Ring(name="capture_drx")
         
@@ -370,7 +370,7 @@ class DRXUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         del oop
         isock.close()
         osock.close()
-    def test_write_drx_single(self):
+    def test_write_single(self):
         addr = Address('127.0.0.1', 7147)
         sock = UDPSocket()
         sock.connect(addr)
@@ -383,7 +383,7 @@ class DRXUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Go!
         op.send(desc, 0, 10*4096, (1<<3), 128, data[:,[0,1],:].copy())
         sock.close()
-    def test_read_drx_single(self):
+    def test_read_single(self):
         # Setup the ring
         ring = Ring(name="capture_drx_single")
         
@@ -495,7 +495,7 @@ class PBeamUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Update the number of data sources and return
         desc.set_nsrc(data.shape[1])
         return desc, data
-    def test_write_pbeam(self):
+    def test_write(self):
         addr = Address('127.0.0.1', 7147)
         sock = UDPSocket()
         sock.connect(addr)
@@ -507,7 +507,7 @@ class PBeamUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         # Go!
         op.send(desc, 0, 24, 0, 1, data)
         sock.close()
-    def test_read_pbeam(self):
+    def test_read(self):
         # Setup the ring
         ring = Ring(name="capture_pbeam")
         
