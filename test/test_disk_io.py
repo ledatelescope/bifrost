@@ -531,7 +531,7 @@ class SIMPLEReader(object):
     def main(self):
         seq_callback = PacketCaptureCallback()
         seq_callback.set_simple(self.seq_callback)
-        with DiskReader("simple" , self.sock, self.ring, self.nsrc, 0, 256, 1024,
+        with DiskReader("simple" , self.sock, self.ring, self.nsrc, 0, 16, 128,
                         sequence_callback=seq_callback) as capture:
             while True:
                 status = capture.recv()
@@ -551,7 +551,7 @@ class SimpleDiskIOTest(BaseDiskIOTest.BaseDiskIOTestCase):
         data_q = bf.ndarray(shape=data.shape, dtype='ci16')
         quantize(data, data_q, scale=10)
         
-        return 1, hdr_desc, data_q
+        return 128, hdr_desc, data_q
 
     def test_write_simple(self):
         fh = self._open('test_simple.dat','wb')

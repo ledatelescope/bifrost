@@ -587,7 +587,7 @@ class SIMPLEReader(object):
     def main(self):
         seq_callback = PacketCaptureCallback()
         seq_callback.set_simple(self.seq_callback)
-        with UDPCapture("simple" , self.sock, self.ring, self.nsrc, 0, 9000,512, 512,
+        with UDPCapture("simple" , self.sock, self.ring, self.nsrc, 0, 9000, 16, 128,
                         sequence_callback=seq_callback) as capture:
             while True:
                 status = capture.recv()
@@ -598,7 +598,7 @@ class SIMPLEReader(object):
 
 class SimpleUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
     """Test simple IO for the UDP-based Simple packet reader and writing"""
-    def _get_simple_data(self):
+    def _get_data(self):
         hdr_desc = HeaderInfo()
         
         # Reorder as packets, stands, time
@@ -608,20 +608,20 @@ class SimpleUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
         data_q = bf.ndarray(shape=data.shape, dtype='ci16')
         quantize(data, data_q, scale=10)
         
-        return 1, hdr_desc, data_q
+        return 128, hdr_desc, data_q
 
-    def test_write_simple(self):
+    def test_write(self):
         addr = Address('127.0.0.1', 7147)
         with closing(UDPSocket()) as sock:
             sock.connect(addr)
             # Get simple data
             op = UDPTransmit('simple', sock)
 
-            timetag0, hdr_desc, data = self._get_simple_data()
+            timetag0, hdr_desc, data = self._get_data()
             # Go!
             op.send(hdr_desc, timetag0, 1, 0, 1, data)
 
-    def test_read_simple(self):
+    def test_read(self):
         # Setup the ring
         ring = Ring(name="capture_simple")
         
@@ -650,7 +650,7 @@ class SimpleUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
                 accumu.start()
                 
                 # Get simple data and send it off
-                timetag0, hdr_desc, data = self._get_simple_data()
+                timetag0, hdr_desc, data = self._get_data()
                 for p in range(data.shape[0]):
                     oop.send(hdr_desc, timetag0+p*1, 1, 0, 1, data[[p],...])
                     time.sleep(0.001)
@@ -659,7 +659,6 @@ class SimpleUDPIOTest(BaseUDPIOTest.BaseUDPIOTestCase):
                 
                 # Compare
                 for seq_timetag,seq_data in zip(times, final):
-                    print(seq_timetag)
                     seq_data = np.array(seq_data, dtype=np.uint16)
                     seq_data = seq_data.reshape(-1,2048,1,2)
                     seq_data = seq_data.transpose(0,2,1,3).copy()
