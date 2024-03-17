@@ -49,13 +49,13 @@ public:
 	    const simple_hdr_type* pkt_hdr  = (simple_hdr_type*)pkt_ptr;
 	    const uint8_t*        pkt_pld  = pkt_ptr  + sizeof(simple_hdr_type);
 	    int                   pld_size = pkt_size - sizeof(simple_hdr_type);
-	    pkt->seq =   be64toh(pkt_hdr->seq);
-            pkt->nsrc = 1;
-            pkt->src = 0;
+	    pkt->seq =  be64toh(pkt_hdr->seq);
+	    pkt->nsrc = 1;
+	    pkt->src =  0;
 	    pkt->payload_size = pld_size;
 	    pkt->payload_ptr  = pkt_pld;
-	    pkt->nchan =         1;
-	    pkt->chan0 =   0;
+	    pkt->nchan = 1;
+	    pkt->chan0 = 0;
 	    return this->valid_packet(pkt);
     }
 };
@@ -88,10 +88,10 @@ public:
 	    otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
 	
 	    int chan = 0;
-            int nelem = 256;
+	    int nelem = 256;
 	    for( ; chan<nelem; ++chan ) {
 		    ::memcpy(&out[chan],&in[chan], sizeof(otype));
-            }
+	    }
     }
 
     inline void blank_out_source(uint8_t* data,
@@ -100,7 +100,7 @@ public:
 	                             int      nchan, 
 	                             int      nseq) {
 	    typedef aligned256_type otype;
-            int nelem = 256;
+	    int nelem = 256;
 	    otype* __restrict__ aligned_data = (otype*)data;
 	    for( int t=0; t<nseq; ++t ) {
 		    for( int c=0; c<nelem; ++c ) {
