@@ -392,7 +392,7 @@ class ndarray(np.ndarray):
             _check(_bf.bfMap(0, _array(None, dtype=ctypes.c_long), _array(None),
                      2, _array([a.as_BFarray(), self.as_BFarray()]), _array(['a', 'b']),
                      None, func_string, None, _array(None), _array(None)))
-       return a
+        return a
     def _system_accessible_copy(self):
         if space_accessible(self.bf.space, ['system']):
             return self
