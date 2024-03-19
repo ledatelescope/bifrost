@@ -32,6 +32,7 @@
 
 #include <cublas_v2.h>
 
+#include <bifrost/config.h>
 #include <bifrost/array.h>
 
 inline const char* _cublasGetErrorString(cublasStatus_t status) {

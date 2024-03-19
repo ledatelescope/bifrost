@@ -13,13 +13,9 @@ handles all the behind-the-scenes pipeline construction,
 giving you a high-level view at arranging a series of
 blocks.
 
-We would like to construct the following pipeline,
-which will serve to calculate the beats per minute
-of a song. As we will soon see, some intermediate
-operations will be required to get the bpm, and
-we can then write our own block.
+We would like to construct a pipeline to perform the following:
 
-1. Read in a ``.wav`` file to a ring buffer.
+1. Read in a ``.wav`` audio file to a ring buffer.
 #. Channelize it with a GPU FFT.
 #. Write it back to disk as a filterbank file.
 
@@ -39,7 +35,7 @@ This setup will require bifrost blocks which:
 #. Write this data to a filterbank file.
 
 This file could then be used to do things like calculating
-the beats per minute of the song at different points of time, or
+the beats per minute (bpm) of the song at different points of time, or
 could be used to just view the frequency components of the song with time.
 
 First, ensure you have a working Bifrost installation. You should
@@ -60,12 +56,23 @@ library as ``bf``:
 Next, let's load in some function libraries. We want ``blocks``,
 which is the block module in Bifrost, which is a collection of
 previously-written blocks for various functionality,and
-``views``, which is a library for manipulations of ring headers.
+``views``, which is a library for manipulations of ring headers. 
+We'll also import the ``Pipeline`` class from bifrost to
+improve readability:
 
 .. code:: python
 
     import bifrost.blocks as blocks
     import bifrost.views as views
+    from bifrost import Pipeline
+
+Before we start working with the data we want to initialize an
+instance of the pipeline class with the default parameters:
+
+.. code:: python
+
+    pipeline = Pipeline()
+    pipeline.as_default()
 
 Now, let's create our data "source," our source block. This is the
 block that feeds our pipeline with data. In this example,
@@ -201,9 +208,17 @@ the header information, which contains the name of the original
 is the `channelized` version of the original music file. It
 is the frequency decomposition of the audio.
 
+In order to tell the pipeline when to shutdown and to run:
+
+.. code:: python
+
+    pipeline.shutdown_on_signals()
+    pipeline.run()
+
 So, what have we done? We:
 
-1. Read in the ``.wav`` file.
+1. Initialized the pipeline.
+#. Read in the ``.wav`` file.
 #. Copied the raw data to the GPU.
 #. Split the time axis into chunks which we could FFT over.
 #. FFT'd along this new axis.
@@ -212,8 +227,9 @@ So, what have we done? We:
 #. Copied the data back to the CPU.
 #. Converted the data into integer data types.
 #. Wrote this data to a filterbank file.
+#. Ran the pipeline
 
-All the Code
+All the Code for Your Pipeline
 ------------
 
 For ease of reference, here is all the code at once:
@@ -223,7 +239,10 @@ For ease of reference, here is all the code at once:
     import bifrost as bf
     import bifrost.blocks as blocks
     import bifrost.views as views
+    from bifrost import Pipeline
 
+    pipeline = Pipeline()
+    pipeline.as_default()
     raw_data = blocks.read_wav(['heyjude.wav'], gulp_nframe=4096)
     gpu_raw_data = blocks.copy(raw_data, space='cuda')
     chunked_data = views.split_axis(gpu_raw_data, 'time', 256, label='fine_time')
@@ -234,6 +253,104 @@ For ease of reference, here is all the code at once:
     quantized = bf.blocks.quantize(host_transposed, 'i8')
     blocks.write_sigproc(quantized)
 
-    pipeline = bf.get_default_pipeline()
     pipeline.shutdown_on_signals()
     pipeline.run()
+
+Reading Back a Filterbank File
+------------
+
+In order to see what we have done, we can also read back the
+file we just wrote. For this we will only need ``blocks``:
+
+.. code:: python
+
+    import bifrost.blocks as blocks
+
+To visualize the results, we will import ``numpy`` 
+and ``matplotlib.pyplot``:
+
+.. code:: python
+    
+    import numpy as np 
+    import matplotlib.pyplot as plt
+
+First, we will create a source block that will return the data from
+the filterbank file:
+
+.. code:: python
+
+    myfile = 'heyjude.wav.fil'
+    sigprocsource = blocks.read_sigproc(myfile, gulp_nframe=4096)
+
+Now we will create a file reader to read the file and use it to read
+in all of the frames present in the file in order to get the data 
+and some header information from the filterbank file:
+
+.. code:: python 
+
+    filereader = sigprocsource.create_reader(myfile)
+    data = filereader.read(filereader.nframe())
+    duration = filereader.duration()
+
+Making a Spectrograph/Waterfall Plot of the Results
+------------
+
+If we know the sample rate of the wav file we could set the x-axis
+to correspond to frequencies, but for now we will just leave these
+as channel numbers. For, the y-axis, however, we now know the duration
+so we can label this axis in seconds. We store these values as numpy
+arrays:
+
+.. code:: python
+
+    freqaxis = np.arange(len(data[0,0,:])
+    timeaxis = np.linspace(0,duration,len(date[:,0,0]))
+
+We now can prepare for plotting by making all of our data the same
+shape with meshgrid and plotting the first channel with matplotlib:
+
+.. code:: python
+    
+    X,Y = np.meshgrid(freqaxis, timeaxis)
+    Z = data[:,0,:] # plot only one channel/polarization
+    fig = plt.figure()
+    lev = np.linspace(Z.min(), Z.max(), num=50)
+    cont = plt.contourf(X,Y,Z, levels=lev)
+    ax = plt.gca()
+    ax.set_xlabel('Frequency Channels')
+    ax.set_ylabel('Time (s)')
+    plt.colorbar(cont)
+    plt.show()
+    plt.close()
+
+If everything goes well we should see a figure similar to this one:
+
+.. image:: spectrum.png
+    
+All the Code for Reading and Plotting the Results:
+------------
+
+.. code:: python
+
+    import bifrost.blocks as blocks
+    import numpy as np 
+    import matplotlib.pyplot as plt
+    myfile = 'heyjude.wav.fil'
+    sigprocsource = blocks.read_sigproc(myfile, gulp_nframe=4096)
+    filereader = sigprocsource.create_reader(myfile)
+    data = filereader.read(filereader.nframe())
+    duration = filereader.duration()
+    freqaxis = np.arange(len(data[0,0,:])
+    timeaxis = np.linspace(0,duration,len(date[:,0,0]))
+    X,Y = np.meshgrid(freqaxis, timeaxis)
+    Z = data[:,0,:] # plot only one channel/polarization
+    fig = plt.figure()
+    lev = np.linspace(Z.min(), Z.max(), num=50)
+    cont = plt.contourf(X,Y,Z, levels=lev)
+    ax = plt.gca()
+    ax.set_xlabel('Frequency Channels')
+    ax.set_ylabel('Time (s)')
+    plt.colorbar(cont)
+    plt.show()
+    plt.close()
+

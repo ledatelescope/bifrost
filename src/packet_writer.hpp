@@ -172,9 +172,11 @@ public:
                          int   flags=0) {
         if( npackets != _last_count ) {
           if( _mmsg ) {
+            ::munlock(_mmsg, sizeof(struct mmsghdr)*_last_count);
             free(_mmsg);
           }
           if( _iovs ) {
+            ::munlock(_iovs, sizeof(struct iovec)*2*_last_count);
             free(_iovs);
           }
           
@@ -237,11 +239,10 @@ class UDPVerbsSender : public PacketWriterMethod {
     int             _last_count;
     mmsghdr*        _mmsg;
     iovec*          _iovs;
-    uint32_t        _rate_holder;
 public:
     UDPVerbsSender(int fd, size_t max_burst_size=BF_VERBS_SEND_NPKTBURST)
         : PacketWriterMethod(fd, max_burst_size), _ibv(fd, JUMBO_FRAME_SIZE), _last_size(0),
-          _last_count(0), _mmsg(NULL), _iovs(NULL), _rate_holder(0) {}
+          _last_count(0), _mmsg(NULL), _iovs(NULL) {}
     ~UDPVerbsSender() {
       if( _mmsg ) {
         free(_mmsg);
@@ -258,9 +259,11 @@ public:
                          int   flags=0) {
         if( npackets != _last_count ) {
           if( _mmsg ) {
+            ::munlock(_mmsg, sizeof(struct mmsghdr)*_last_count);
             free(_mmsg);
           }
           if( _iovs ) {
+            ::munlock(_iovs, sizeof(struct iovec)*3*_last_count);
             free(_iovs);
           }
           
@@ -284,8 +287,8 @@ public:
             _ibv.get_ipv4_header(&(_udp_hdr.ipv4), _last_size);
             _ibv.get_udp_header(&(_udp_hdr.udp), _last_size);
             
-            if( _rate_holder > 0 ) {
-                _ibv.set_rate_limit(_rate_holder*_last_size, _last_size, _max_burst_size);
+            if( _limiter.get_rate() > 0 ) {
+                _ibv.set_rate_limit(_limiter.get_rate()*_last_size, _last_size, _max_burst_size);
             }
         }
         
@@ -308,8 +311,6 @@ public:
         return nsent;
     }
     inline const char* get_name() { return "udp_verbs_transmit"; }
-    inline void set_rate(uint32_t rate_limit) { _rate_holder = rate_limit; }
-    inline uint32_t get_rate() { return _rate_holder; }
 };
 #endif // BF_VERBS_ENABLED
 
@@ -446,6 +447,18 @@ public:
     }
 };
 
+class BFpacketwriter_simple_impl : public BFpacketwriter_impl {
+    ProcLog            _type_log;
+public:
+    inline BFpacketwriter_simple_impl(PacketWriterThread* writer,
+                                     int                 nsamples)
+        : BFpacketwriter_impl(writer, nullptr, nsamples, BF_DTYPE_CI16),
+          _type_log((std::string(writer->get_name())+"/type").c_str()) {
+        _filler = new SIMPLEHeaderFiller();
+        _type_log.update("type : %s\n", "simple");
+    }
+};
+
 class BFpacketwriter_chips_impl : public BFpacketwriter_impl {
     ProcLog            _type_log;
 public:
@@ -570,6 +583,8 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     int nsamples = 0;
     if(std::string(format).substr(0, 8) == std::string("generic_") ) {
         nsamples = std::atoi((std::string(format).substr(8, std::string(format).length())).c_str());
+    } else if( std::string(format).substr(0, 6) == std::string("simple") ) {
+        nsamples = 2048;
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
         nsamples = 32*nchan;
@@ -613,6 +628,9 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     
     if( std::string(format).substr(0, 8) == std::string("generic_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_generic_impl(writer, nsamples),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 6) == std::string("simple") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_simple_impl(writer, nsamples),
                            *obj = 0);
     } else if( std::string(format).substr(0, 6) == std::string("chips_") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketwriter_chips_impl(writer, nsamples),

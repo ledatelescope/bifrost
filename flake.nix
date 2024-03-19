@@ -349,6 +349,7 @@
               pkgs.python3.pkgs.breathe
               pkgs.python3.pkgs.sphinx
               pkgs.yamllint
+              pkgs.autoconf
             ];
         };
       });

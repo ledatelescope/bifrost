@@ -3,7 +3,7 @@ name: "Build and Test"
 "on": [push, pull_request]
 jobs:
   pre_build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
@@ -20,10 +20,8 @@ jobs:
     strategy:
       matrix:
         os: [self-hosted, ubuntu-latest, macos-latest]
-        python-version: ['3.8', '3.10']
+        python-version: ['3.8', '3.10', '3.12']
         include:
-          - os: ubuntu-20.04
-            python-version: '2.7'
           - os: ubuntu-20.04
             python-version: '3.6'
           - os: macos-latest
@@ -55,7 +53,7 @@ jobs:
             gnu-sed \
             hwloc \
             pkg-config
-      - uses: actions/setup-python@v4.3.0
+      - uses: actions/setup-python@v5.0.0
         with:
           python-version: ${{ matrix.python-version }}
       - name: "Software Install - Python"
@@ -68,9 +66,10 @@ jobs:
                pint \
                graphviz \
                ctypesgen==1.0.2 \
+               pylint \
                coverage
       - name: "Software Install - Python, part 2"
-        if: ${{ matrix.os == 'self-hosted' && matrix.python-version != '2.7' }}
+        if: ${{ matrix.os == 'self-hosted' }}
         # Setting CPLUS_INCLUDE_PATH helps pycuda find the right
         # Python header files <pyconfig.h> to use with its embedded
         # subset of Boost.
@@ -102,6 +101,19 @@ jobs:
           coverage run --source=bifrost.ring,bifrost,bifrost.pipeline \
             -m unittest discover
           coverage xml
+      - name: "Test, part 2"
+        if: ${{ matrix.os == 'self-hosted' }}
+        env:
+          LD_LIBRARY_PATH: /usr/local/lib:${{ env.LD_LIBRARY_PATH }}
+        run: |
+          cd testbench
+          python generate_test_data.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_file_read_write.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_fft.py
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline your_first_block.py
+          python download_breakthrough_listen_data.py -y
+          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_fdmt.py ./testdata/pulsars/blc0_guppi_57407_61054_PSR_J1840%2B5640_0004.fil
+          coverage xml
       - name: "Upload Coverage"
         env:
           UNITTEST_OS: ${{ matrix.os }}
@@ -109,7 +121,7 @@ jobs:
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version == '3.8' }}
         uses: codecov/codecov-action@v2
         with:
-          directory: ./test/
+          files: ./test/coverage.xml, ./testbench/coverage.xml
           env_vars: UNITTEST_OS,UNITTEST_PY
           fail_ci_if_error: false
           verbose: true

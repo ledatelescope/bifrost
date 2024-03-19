@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2017-2022, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2022, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,9 +27,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import print_function
-
 import os
 import sys
 import glob
@@ -39,10 +36,7 @@ import socket
 import argparse
 import traceback
 from datetime import datetime
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
 
 os.environ['VMA_TRACELEVEL'] = '0'
 from bifrost.proclog import PROCLOG_DIR, load_by_pid
@@ -85,11 +79,11 @@ def get_transmit_receive():
             except KeyError:
                 good, missing, invalid, late, nvalid = 0, 0, 0, 0, 0
 
-            blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 
-                                          'time':t, 
-                                          'good': good, 'missing': missing, 
-                                          'invalid': invalid, 'late': late, 
-                                          'nvalid': nvalid}
+            blockList[f"{pid}-{block}"] = {'pid': pid, 'name':block, 
+                                           'time':t, 
+                                           'good': good, 'missing': missing, 
+                                           'invalid': invalid, 'late': late, 
+                                           'nvalid': nvalid}
     return blockList
 
 
@@ -103,10 +97,9 @@ def get_command_line(pid):
     cmd = ''
 
     try:
-        with open('/proc/%i/cmdline' % pid, 'r') as fh:
+        with open(f"/proc/{pid}/cmdline", 'r') as fh:
             cmd = fh.read()
             cmd = cmd.replace('\0', ' ')
-            fh.close()
     except IOError:
         pass
     return cmd
@@ -421,4 +414,3 @@ if __name__ == "__main__":
         )
     args = parser.parse_args()
     main(args)
-    

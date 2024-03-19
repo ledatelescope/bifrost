@@ -228,15 +228,6 @@ AS_IF([test x$HAVE_RDMA = x0],
 
 AX_CHECK_CUDA
 
-AC_ARG_WITH([shared_mem],
-           [AS_HELP_STRING([--with-shared-mem=N],
-                           [default GPU shared memory in bytes (default=16384)])],
-           [],
-           [with_shared_mem=16384])
-AC_SUBST([GPU_SHAREDMEM], [$with_shared_mem])
-AS_IF([test x$HAVE_CUDA = x0],
-      [AC_SUBST([GPU_SHAREDMEM], [0])])
-
 #
 # Bifrost memory alignment
 #
@@ -318,6 +309,13 @@ AS_IF([test x$enable_python != xno],
              [AC_PATH_PROG(PYTHON3, python3, no, $PATH)
               AS_IF([test x${PYTHON3} != xno],
                     [AC_SUBST([PYTHON], [$PYTHON3])])])
+       AS_IF([test x${PYTHON} != xno],
+             [AC_MSG_CHECKING([if $PYTHON is version 3.6 or later])
+              AS_IF([! ${PYTHON} -c "import sys; assert(sys.version_info >= (3,6,0))" 2>/dev/null],
+                    [AC_MSG_RESULT([no])
+                     AC_MSG_WARN([python module will not be built])
+                     AC_SUBST([PYTHON], [no])],
+                    [AC_MSG_RESULT([yes])])])
        AS_IF([test x${PYTHON} != xno],
              [AC_MSG_CHECKING([whether $PYTHON as ctypesgen])
               AS_IF([! ${PYTHON} -c "import ctypesgen" 2>/dev/null],

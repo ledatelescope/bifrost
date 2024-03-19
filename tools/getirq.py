@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2017-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,9 +26,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import print_function
-
 import argparse
 
 from bifrost import telemetry
@@ -36,9 +33,8 @@ telemetry.track_script()
 
 
 def main(args):
-    fh = open('/proc/interrupts', 'r')
-    lines = fh.read()
-    fh.close()
+    with open('/proc/interrupts', 'r') as fh:
+        lines = fh.read()
 
     irqs = {}
     for line in lines.split('\n'):
@@ -54,7 +50,7 @@ def main(args):
             irqs[irq] = {'cpu':mi, 'type':type, 'name':name, 'count':mv}
     total = sum([irqs[irq]['count'] for irq in irqs])
 
-    print("Interface: %s" % args.interface)
+    print(f"Interface: {args.interface}")
     print("%4s  %16s  %16s  %4s  %6s" % ('IRQ', 'Name', 'Type', 'CPU', 'Usage'))
     for irq in sorted(irqs.keys()):
         print("%4i  %16s  %16s  %4i  %5.1f%%" % (irq, irqs[irq]['name'], irqs[irq]['type'], irqs[irq]['cpu'], 100.0*irqs[irq]['count']/total))
@@ -69,4 +65,3 @@ if __name__ == "__main__":
                         help='interface to query')
     args = parser.parse_args()
     main(args)
-    
