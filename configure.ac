@@ -139,14 +139,6 @@ AS_IF([test x$enable_verbs != xno],
                     [AC_SUBST([HAVE_VERBS], [1])
                      LIBS="$LIBS -libverbs"])])
 
-<<<<<<< HEAD
-AC_ARG_WITH([verbs_npktbuf],
-           [AS_HELP_STRING([--with-verbs-npktbuf=N],
-                           [default Infiniband verbs buffer size in packets (default=8192)])],
-           [],
-           [with_verbs_npktbuf=8192])
-AC_SUBST([VERBS_NPKTBUF], [$with_verbs_npktbuf])
-=======
  AC_ARG_WITH([rx-buffer-size],
             [AS_HELP_STRING([--with-rx-buffer-size=N],
                             [default Infiniband verbs receive buffer size in packets (default=8192)])],
@@ -188,7 +180,6 @@ AC_SUBST([VERBS_NPKTBUF], [$with_verbs_npktbuf])
           [AC_SUBST([VERBS_SEND_PACING], [0])
            AC_MSG_RESULT([no])])
        ])
->>>>>>> upstream/ibverb-support
 
 #
 # RDMA
