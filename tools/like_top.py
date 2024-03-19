@@ -72,7 +72,6 @@ def get_load_average():
         data['lastPID'] = fields[4]
     return data
 
-_CPU_STATE
 _CPU_STATE = {}
 def get_processor_usage():
     """
