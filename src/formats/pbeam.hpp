@@ -64,7 +64,7 @@ public:
 	    int                   pld_size = pkt_size - sizeof(pbeam_hdr_type);
 	    pkt->decimation =    be16toh(pkt_hdr->navg);
 	    pkt->time_tag   =    be64toh(pkt_hdr->seq);
-	    pkt->seq   =         (pkt->time_tag - 1) / pkt->decimation;
+	    pkt->seq   =         pkt->time_tag / pkt->decimation;
 	    //pkt->nsrc  =         pkt_hdr->nserver;
 	    pkt->nsrc  =         _nsrc;
 	    pkt->src   =         (pkt_hdr->beam - _src0) * pkt_hdr->nserver + (pkt_hdr->server - 1);
