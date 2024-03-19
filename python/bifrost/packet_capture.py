@@ -46,6 +46,12 @@ class PacketCaptureCallback(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(
             self, _bf.bfPacketCaptureCallbackCreate, _bf.bfPacketCaptureCallbackDestroy)
+
+    def set_simple(self, fnc):
+        self._ref_cache['simple'] = _bf.BFpacketcapture_simple_sequence_callback(fnc)
+        _check(_bf.bfPacketCaptureCallbackSetSIMPLE(
+               self.obj, self._ref_cache['simple']))
+
     def set_chips(self, fnc: _bf.BFpacketcapture_chips_sequence_callback):
         self._ref_cache['chips'] = _bf.BFpacketcapture_chips_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetCHIPS(

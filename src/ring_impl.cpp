@@ -148,15 +148,15 @@ void BFring_impl::resize(BFsize contiguous_span,
 	BFsize  new_stride = new_span + new_ghost_span;
 	BFsize  new_nbyte  = new_stride*new_nringlet;
 	//pointer new_buf    = (pointer)bfMalloc(new_nbyte, _space);
-	//std::cout << "new_buf = " << (void*)new_buf << std::endl; // HACK TESTING
+	//std::std::cout << "new_buf = " << (void*)new_buf << std::endl; // HACK TESTING
 	pointer new_buf = nullptr;
-	//std::cout << "contig_span:    " << contiguous_span << std::endl;
-	//std::cout << "total_span:     " << total_span << std::endl;
-	//std::cout << "new_span:       " << new_span << std::endl;
-	//std::cout << "new_ghost_span: " << new_ghost_span << std::endl;
-	//std::cout << "new_nringlet:   " << new_nringlet << std::endl;
-	//std::cout << "new_stride:     " << new_stride << std::endl;
-	//std::cout << "Allocating " << new_nbyte << std::endl;
+	//std::std::cout << "contig_span:    " << contiguous_span << std::endl;
+	//std::std::cout << "total_span:     " << total_span << std::endl;
+	//std::std::cout << "new_span:       " << new_span << std::endl;
+	//std::std::cout << "new_ghost_span: " << new_ghost_span << std::endl;
+	//std::std::cout << "new_nringlet:   " << new_nringlet << std::endl;
+	//std::std::cout << "new_stride:     " << new_stride << std::endl;
+	//std::std::cout << "Allocating " << new_nbyte << std::endl;
 	BF_ASSERT_EXCEPTION(bfMalloc((void**)&new_buf, new_nbyte, _space) == BF_STATUS_SUCCESS,
 	                    BF_STATUS_MEM_ALLOC_FAILED);
 #if BF_HWLOC_ENABLED
@@ -587,7 +587,7 @@ void BFring_impl::commit_span(BFoffset begin, BFsize reserve_size, BFsize commit
 	//         in which case they will block here until they are
 	//         in order (i.e., they will automatically synchronise).
 	//         This is useful for multithreading with OpenMP
-	//std::cout << "(1) begin, head, rhead: " << begin << ", " << _head << ", " << _reserve_head << std::endl;
+	//std::std::cout << "(1) begin, head, rhead: " << begin << ", " << _head << ", " << _reserve_head << std::endl;
 	_write_close_condition.wait(lock, [&]() {
 			return (begin == _head);
 		});
@@ -602,7 +602,7 @@ void BFring_impl::commit_span(BFoffset begin, BFsize reserve_size, BFsize commit
 		// There are reservations in front of this one, so we
 		//   are not allowed to commit less than size.
 		// TODO: How to deal with error here?
-		//std::cout << "BFRING ERROR: Must commit whole wspan when other spans are reserved" << std::endl;
+		//std::std::cout << "BFRING ERROR: Must commit whole wspan when other spans are reserved" << std::endl;
 		//return;
 		BF_ASSERT_EXCEPTION(false, BF_STATUS_INVALID_STATE);
 	}
