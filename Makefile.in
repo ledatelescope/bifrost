@@ -21,7 +21,7 @@ libbifrost:
 test:
 	#$(MAKE) -C $(SRC_DIR) test
 ifeq ($(HAVE_PYTHON),1)
-	cd test && ./download_test_data.sh ; python -m unittest discover
+	cd test && ./download_test_data.sh ; python -m unittest discover -v
 endif
 .PHONY: test
 clean:

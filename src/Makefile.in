@@ -15,6 +15,7 @@ PYBUILDFLAGS   ?= @PYBUILDFLAGS@
 PYINSTALLFLAGS ?= @PYINSTALLFLAGS@
 
 HAVE_RECVMSG  ?= @HAVE_RECVMSG@
+HAVE_RDMA     ?= @HAVE_RDMA@
 
 HAVE_CUDA     ?= @HAVE_CUDA@
 
@@ -25,10 +26,13 @@ CUDA_LIBDIR   ?= $(CUDA_HOME)/lib
 CUDA_LIBDIR64 ?= $(CUDA_HOME)/lib64
 CUDA_INCDIR   ?= $(CUDA_HOME)/include
 
+NVCC_GENCODE ?= @NVCC_GENCODE@
+
 LIBBIFROST_OBJS = \
   common.o \
   memory.o \
   affinity.o \
+  hw_locality.o \
   cuda.o \
   fileutils.o \
   testsuite.o \
@@ -44,8 +48,12 @@ ifeq ($(HAVE_RECVMSG),1)
   LIBBIFROST_OBJS += \
   address.o \
   udp_socket.o \
-  udp_capture.o \
-  udp_transmit.o
+  packet_capture.o \
+  packet_writer.o
+endif
+ifeq ($(HAVE_RDMA),1)
+  LIBBIFROST_OBJS += \
+  rdma.o
 endif
 ifeq ($(HAVE_CUDA),1)
   # These files require the CUDA Toolkit to compile
@@ -76,28 +84,12 @@ JIT_SOURCES ?= \
 
 MAKEFILES = ../config.mk Makefile
 
-ifeq ($(HAVE_CUDA),1)
-# All CUDA archs supported by this version of nvcc
-GPU_ARCHS_SUPPORTED := $(shell $(NVCC) -h | grep -Po "compute_[0-9]{2}" | cut -d_ -f2 | sort | uniq)
-# Intersection of user-specified archs and supported archs
-GPU_ARCHS_VALID     := $(shell echo $(GPU_ARCHS) $(GPU_ARCHS_SUPPORTED) | xargs -n1 | sort | uniq -d | xargs)
-# Latest valid arch
-GPU_ARCH_LATEST     := $(shell echo $(GPU_ARCHS_VALID) | rev | cut -d' ' -f1 | rev)
-
-# This creates SASS for all valid requested archs, and PTX for the latest one
-NVCC_GENCODE  ?= $(foreach arch, $(GPU_ARCHS_VALID), \
-  -gencode arch=compute_$(arch),\"code=sm_$(arch)\") \
-  -gencode arch=compute_$(GPU_ARCH_LATEST),\"code=compute_$(GPU_ARCH_LATEST)\"
-endif
-
-NVCCFLAGS += $(NVCC_GENCODE)
-
 #NVCCFLAGS += -Xcudafe "--diag_suppress=unrecognized_gcc_pragma"
 #NVCCFLAGS += --expt-relaxed-constexpr
 
 LIB_DIR = ../lib
 INC_DIR = .
-CPPFLAGS += -I. -I$(INC_DIR) -I$(CUDA_INCDIR)
+CPPFLAGS += -I. -I$(INC_DIR)
 
 LIBBIFROST_VERSION_FILE = $(LIBBIFROST_NAME).version
 LIBBIFROST_SO_STEM      = $(LIB_DIR)/$(LIBBIFROST_NAME)$(SO_EXT)
