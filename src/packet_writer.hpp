@@ -170,7 +170,7 @@ public:
                          int   data_size, 
                          int   npackets,
                          int   flags=0) {
-        if( npackets != _last_count ) {
+        if( npackets > _last_count ) {
           if( _mmsg ) {
             ::munlock(_mmsg, sizeof(struct mmsghdr)*_last_count);
             free(_mmsg);
@@ -257,7 +257,7 @@ public:
                          int   data_size, 
                          int   npackets,
                          int   flags=0) {
-        if( npackets != _last_count ) {
+        if( npackets > _last_count ) {
           if( _mmsg ) {
             ::munlock(_mmsg, sizeof(struct mmsghdr)*_last_count);
             free(_mmsg);

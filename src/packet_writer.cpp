@@ -59,7 +59,7 @@ BFstatus BFpacketwriter_impl::send(BFheaderinfo   info,
     int data_size = (BF_DTYPE_NBIT(in->dtype)/8) * _nsamples;
     int npackets = in->shape[0]*in->shape[1];
     
-    if( hdr_size != _last_size || npackets != _last_count ) {
+    if( hdr_size != _last_size || npackets > _last_count ) {
       if( _pkt_hdrs ) {
         ::munlock(_pkt_hdrs, _last_count*_last_size*sizeof(char));
         free(_pkt_hdrs);
