@@ -143,13 +143,13 @@ public:
 #if defined BF_AVX_ENABLED && BF_AVX_ENABLED
 			    aligned256_type* ddst = (aligned156_type*) &aligned_data[src + nsrc*(c + nchan*t)];
 					
-					_m256i mtemp = _mm256_setzero_si256()
+					__m256i mtemp = _mm256_setzero_si256()
 			    _mm256_stream_si256(reinterpret_cast<__m256i*>(ddst), mtemp);
 #else
 #if defined BF_SSE_ENABLED && BF_SSE_ENABLED
 			    aligned128_type* ddst = (aligned128_type*) &aligned_data[src + nsrc*(c + nchan*t)];
 					
-					_m128i mtemp = _mm_setzero_si128();
+					__m128i mtemp = _mm_setzero_si128();
 					_mm_stream_si128(reinterpret_cast<__m128i*>(ddst), mtemp);
 					_mm_stream_si128(reinterpret_cast<__m128i*>(ddst+1), mtemp);
 #else

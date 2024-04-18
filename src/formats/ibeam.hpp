@@ -114,7 +114,7 @@ public:
 		    for(beam=0; beam<_nbeam; ++beam) {
 #if defined BF_SSE_ENABLED && BF_SSE_ENABLED
 			    const unaligned128_type* dsrc = (const unaligned128_type*) &in[chan*_nbeam + beam];
-			    aligned128_type* ddst = (aligned128_type*) &out[pkt->src*pkt->nchan*_beam + chan*_nbeam + beam];
+			    aligned128_type* ddst = (aligned128_type*) &out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam];
 			    
 			    __m128i mtemp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc));
 			    _mm_stream_si128(reinterpret_cast<__m128i*>(ddst), mtemp);

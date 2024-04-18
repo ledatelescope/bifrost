@@ -143,7 +143,7 @@ public:
 	                             int      nsrc,
 	                             int      nchan,
 	                             int      nseq) {
-	    uint8_t* __restrict__ aligned_data = (uint16_t*)data;
+	    uint16_t* __restrict__ aligned_data = (uint16_t*)data;
 	    for( int t=0; t<nseq; ++t ) {
 		    for( int c=0; c<512; ++c ) {
 			    aligned_data[t*512*nsrc + c*nsrc + src] = 0;
