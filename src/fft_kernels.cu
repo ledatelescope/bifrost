@@ -38,7 +38,7 @@ inline size_t pre_fftshift(size_t        offset,
 		for( int d=0; d<cb->ndim; ++d ) {
 			// Compute the index of this element along dimension d
 			// **TODO: 64-bit indexing support
-			int  size    = cb->shape[d];
+			size_t size  = cb->shape[d];
 			auto stride  = cb->istrides[d];
 			auto inembed = cb->inembed[d];
 			int i = (int)offset / stride % inembed;
@@ -59,7 +59,7 @@ inline Complex post_fftshift(size_t        offset,
 		for( int d=0; d<cb->ndim; ++d ) {
 			// Compute the index of this element along dimension d
 			// **TODO: 64-bit indexing support
-			int  size    = cb->shape[d];
+			size_t size  = cb->shape[d];
 			auto stride  = cb->istrides[d];
 			auto inembed = cb->inembed[d];
 			int i = (int)offset / stride % inembed;
