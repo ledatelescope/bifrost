@@ -129,13 +129,12 @@ public:
 	
 	    // Note: Using these SSE types allows the compiler to use SSE instructions
 	    //         However, they require aligned memory (otherwise segfault)
-	    uint8_t const* __restrict__ in  = (uint8_t const*)pkt->payload_ptr;
-	    uint8_t*       __restrict__ out = (uint8_t*      )&obufs[obuf_idx][obuf_offset];
+	    uint16_t const* __restrict__ in  = (uint16_t const*)pkt->payload_ptr;
+	    uint16_t*       __restrict__ out = (uint16_t*      )&obufs[obuf_idx][obuf_offset];
 	
 	    int samp = 0;
 	    for( ; samp<512; ++samp ) { // HACK TESTING
-		    out[samp*pkt->nsrc*2 + pkt->src*2 + 0] = in[2*samp+0];
-		    out[samp*pkt->nsrc*2 + pkt->src*2 + 1] = in[2*samp+1];
+		    out[samp*pkt->nsrc + pkt->src] = in[samp];
 	    }
     }
 	
@@ -144,11 +143,10 @@ public:
 	                             int      nsrc,
 	                             int      nchan,
 	                             int      nseq) {
-	    uint8_t* __restrict__ aligned_data = (uint8_t*)data;
+	    uint8_t* __restrict__ aligned_data = (uint16_t*)data;
 	    for( int t=0; t<nseq; ++t ) {
 		    for( int c=0; c<512; ++c ) {
-			    aligned_data[t*512*nsrc*2 + c*nsrc*2 + src*2 + 0] = 0;
-			    aligned_data[t*512*nsrc*2 + c*nsrc*2 + src*2 + 1] = 0;
+			    aligned_data[t*512*nsrc + c*nsrc + src] = 0;
 		    }
 	    }
     }
