@@ -33,18 +33,18 @@ from bifrost.ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 from copy import deepcopy
 import numpy as np
 
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict
 
 from bifrost import telemetry
 telemetry.track_module()
 
 class QuantizeBlock(TransformBlock):
-    def __init__(self, iring: Ring, dtype: Union[str,np.dtype], scale: float=1.,
+    def __init__(self, iring: Ring, dtype: str|np.dtype, scale: float=1.,
                  *args, **kwargs):
         super(QuantizeBlock, self).__init__(iring, *args, **kwargs)
         self.dtype = dtype
         self.scale = scale
-    def define_valid_input_spaces(self) -> Tuple[str]:
+    def define_valid_input_spaces(self) -> tuple[str]:
         """Return set of valid spaces (or 'any') for each input"""
         return ('any',)
     def on_sequence(self, iseq: ReadSequence) -> Dict[str,Any]:
@@ -65,7 +65,7 @@ class QuantizeBlock(TransformBlock):
         odata = ospan.data
         bf_quantize(idata, odata, self.scale)
 
-def quantize(iring: Ring, dtype: Union[str,np.dtype], scale: float=1., *args, **kwargs) -> QuantizeBlock:
+def quantize(iring: Ring, dtype: str|np.dtype, scale: float=1., *args, **kwargs) -> QuantizeBlock:
     """Apply a requantization of bit depth for the data.
 
     Args:

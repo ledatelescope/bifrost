@@ -33,18 +33,18 @@ from bifrost.ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 from copy import deepcopy
 import numpy as np
 
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict
 
 from bifrost import telemetry
 telemetry.track_module()
 
 class UnpackBlock(TransformBlock):
-    def __init__(self, iring: Ring, dtype: Union[str,np.dtype], align_msb: bool=False,
+    def __init__(self, iring: Ring, dtype: str|np.dtype, align_msb: bool=False,
                  *args, **kwargs):
         super(UnpackBlock, self).__init__(iring, *args, **kwargs)
         self.dtype     = dtype
         self.align_msb = align_msb
-    def define_valid_input_spaces(self) -> Tuple[str]:
+    def define_valid_input_spaces(self) -> tuple[str]:
         """Return set of valid spaces (or 'any') for each input"""
         return ('any',)
     def on_sequence(self, iseq: ReadSequence) -> Dict[str,Any]:
@@ -65,7 +65,7 @@ class UnpackBlock(TransformBlock):
         odata = ospan.data
         bf_unpack(idata, odata, self.align_msb)
 
-def unpack(iring: Ring, dtype: Union[str,np.dtype], *args, **kwargs) -> UnpackBlock:
+def unpack(iring: Ring, dtype: str|np.dtype, *args, **kwargs) -> UnpackBlock:
     """Unpack data to a larger data type.
 
     Args:

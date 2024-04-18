@@ -30,12 +30,13 @@ from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
 
 from copy import deepcopy
+from typing import Optional
 
 from bifrost import telemetry
 telemetry.track_module()
 
 class DetectBlock(TransformBlock):
-    def __init__(self, iring, mode, axis=None,
+    def __init__(self, iring, mode: str, axis: Optional[int|str] = None,
                  *args, **kwargs):
         super(DetectBlock, self).__init__(iring, *args, **kwargs)
         self.specified_axis = axis
@@ -136,7 +137,7 @@ class DetectBlock(TransformBlock):
             bf_map(func, shape=shape, axis_names=inds,
                    data={'a': ispan.data, 'b': ospan.data})
 
-def detect(iring, mode, axis=None, *args, **kwargs):
+def detect(iring, mode: str, axis: Optional[int|str] = None, *args, **kwargs):
     """Apply square-law detection to create polarization products.
     Args:
         iring (Ring or Block): Input data source.
