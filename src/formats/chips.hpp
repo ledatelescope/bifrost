@@ -112,7 +112,7 @@ public:
            const unaligned256_type* dsrc = (const unaligned256_type*) &in[chan];
            aligned256_type* ddst = (aligned256_type*) &out[pkt->src + pkt->nsrc*chan];
            
-           __m256 mtemp = _mm256_loadu_si256(dsrc);
+           __m256 mtemp = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(dsrc));
            _mm256_stream_si256(reinterpret_cast<__m256i*>(ddst), mtemp);
 #else
 #if defined BF_SSE_ENABLED && BF_SSE_ENABLED
