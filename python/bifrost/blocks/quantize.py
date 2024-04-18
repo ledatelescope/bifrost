@@ -46,7 +46,7 @@ class QuantizeBlock(TransformBlock):
         self.scale = scale
     def define_valid_input_spaces(self) -> Tuple[str]:
         """Return set of valid spaces (or 'any') for each input"""
-        return ('any')
+        return ('any',)
     def on_sequence(self, iseq: ReadSequence) -> Dict[str,Any]:
         ihdr = iseq.header
         ohdr = deepcopy(ihdr)

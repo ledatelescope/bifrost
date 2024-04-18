@@ -259,7 +259,7 @@ def pack(data: np.ndarray, nbit: int) -> np.ndarray:
         outdata += data[index::8 // nbit] // (2**nbit)**index
     return outdata
 
-def _write_data(data: np.ndarray, nbit: int, file_object: IO[bytes]) -> np.ndarray:
+def _write_data(data: np.ndarray, nbit: int, file_object: IO[bytes]):
     """Writes given data to an open file, also packing if needed"""
     file_object.seek(0, 2)
     if nbit < 8:
