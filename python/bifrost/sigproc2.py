@@ -306,7 +306,7 @@ class SigprocFile(object):
             #self.frame_shape = (self.frame_shape[0],
             #                    self.frame_shape[1]//pack_factor)
             ##self.frame_shape[-1] //= pack_factor
-            self.dtype = None
+            raise IOError("Currently unsupported: nbits < 8")
         self.frame_size = self.frame_shape[0] * self.frame_shape[1]
         #self.frame_nbyte = self.frame_size*self.dtype().itemsize
         self.buf = np.empty(4096, np.uint8)
@@ -362,7 +362,7 @@ class SigprocFile(object):
             requested_nbyte = nframe * self.frame_nbyte * self.nbit // 8
             if self.buf.nbytes != requested_nbyte:
                 self.buf.resize(requested_nbyte)
-            nbyte = self.f.readinto(self.buf)
+            nbyte = self.f.readinto(self.buf.data)
             if nbyte * 8 % self.frame_nbit != 0:
                 raise IOError("File read returned incomplete frame (truncated file?)")
             if nbyte < self.buf.nbytes:
