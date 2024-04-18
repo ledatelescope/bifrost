@@ -109,17 +109,20 @@ public:
 		  //cout << pkt->nchan << endl;
 			for( ; chan<pkt->nchan; ++chan ) {
 #if defined BF_AVX_ENABLED && BF_AVX_ENABLED
-           _mm256_store_si256(reinterpret_cast<__m256i*>(&out[pkt->src + pkt->nsrc*chan]),
-					                    _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&in[chan])));
+           const unaligned256_type* dsrc = (const unaligned256_type*) &in[chan];
+           aligned256_type* ddst = (aligned256_type*) &out[pkt->src + pkt->nsrc*chan];
+           
+           __m256 mtemp = _mm256_loadu_si256(dsrc);
+           _mm256_stream_si256(reinterpret_cast<__m256i*>(ddst), mtemp);
 #else
 #if defined BF_SSE_ENABLED && BF_SSE_ENABLED
            const unaligned128_type* dsrc = (const unaligned128_type*) &in[chan];
            aligned128_type* ddst = (aligned128_type*) &out[pkt->src + pkt->nsrc*chan];
            
-           _mm_store_si128(reinterpret_cast<__m128i*>(ddst),
-					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc)));
-           _mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
-					                 _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1)));
+					 __m128i mtemp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc));
+           _mm_stream_si128(reinterpret_cast<__m128i*>(ddst), mtemp);
+					 mtemp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1));
+           _mm_stream_si128(reinterpret_cast<__m128i*>(ddst+1), mtemp);
 #else
 						::memcpy(&out[pkt->src + pkt->nsrc*chan],
 						      	 &in[chan], sizeof(otype));
@@ -138,16 +141,17 @@ public:
 	    for( int t=0; t<nseq; ++t ) {
 		    for( int c=0; c<nchan; ++c ) {
 #if defined BF_AVX_ENABLED && BF_AVX_ENABLED
-			    _mm256_store_si256(reinterpret_cast<__m256i*>(&aligned_data[src + nsrc*(c + nchan*t)]),
-					                   _mm256_setzero_si256());
+			    aligned256_type* ddst = (aligned156_type*) &aligned_data[src + nsrc*(c + nchan*t)];
+					
+					_m256i mtemp = _mm256_setzero_si256()
+			    _mm256_stream_si256(reinterpret_cast<__m256i*>(ddst), mtemp);
 #else
 #if defined BF_SSE_ENABLED && BF_SSE_ENABLED
 			    aligned128_type* ddst = (aligned128_type*) &aligned_data[src + nsrc*(c + nchan*t)];
 					
-					_mm_store_si128(reinterpret_cast<__m128i*>(ddst),
-					                _mm_setzero_si128());
-					_mm_store_si128(reinterpret_cast<__m128i*>(ddst+1),
-					                _mm_setzero_si128());
+					_m128i mtemp = _mm_setzero_si128();
+					_mm_stream_si128(reinterpret_cast<__m128i*>(ddst), mtemp);
+					_mm_stream_si128(reinterpret_cast<__m128i*>(ddst+1), mtemp);
 #else
 			    ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
 			             0, sizeof(otype));
