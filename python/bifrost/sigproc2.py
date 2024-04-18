@@ -283,10 +283,11 @@ class SigprocFile(object):
         self.signed = bool(self.header['signed'])
         if self.nbit >= 8:
             if self.signed:
-                self.dtype  = { 8: np.int8,
-                               16: np.int16,
-                               32: np.float32,
-                               64: np.float64}[self.nbit]
+                self.dtype : Optional[type] = {
+                    8: np.int8,
+                    16: np.int16,
+                    32: np.float32,
+                    64: np.float64}[self.nbit]
             else:
                 self.dtype  = { 8: np.uint8,
                                16: np.uint16,
@@ -306,7 +307,7 @@ class SigprocFile(object):
             #self.frame_shape = (self.frame_shape[0],
             #                    self.frame_shape[1]//pack_factor)
             ##self.frame_shape[-1] //= pack_factor
-            raise IOError("Currently unsupported: nbits < 8")
+            self.dtype = None
         self.frame_size = self.frame_shape[0] * self.frame_shape[1]
         #self.frame_nbyte = self.frame_size*self.dtype().itemsize
         self.buf = np.empty(4096, np.uint8)
