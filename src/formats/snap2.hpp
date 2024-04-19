@@ -92,7 +92,7 @@ public:
         int npol_blocks  = (be16toh(pkt_hdr->npol_tot) / be16toh(pkt_hdr->npol));
         int nchan_blocks = (be16toh(pkt_hdr->nchan_tot) / be16toh(pkt_hdr->nchan));
 
-	pkt->tuning = be32toh(pkt_hdr->chan0); // Abuse this so we can use chan0 to reference channel within pipeline
+        pkt->tuning = be32toh(pkt_hdr->chan0); // Abuse this so we can use chan0 to reference channel within pipeline
         pkt->nsrc = npol_blocks * nchan_blocks;// _nsrc;
         pkt->nchan  = be16toh(pkt_hdr->nchan);
         pkt->chan0  = be32toh(pkt_hdr->chan_block_id) * be16toh(pkt_hdr->nchan);
