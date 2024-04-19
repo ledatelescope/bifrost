@@ -533,7 +533,9 @@ void bf_cherk_N(int N, int K, int nbatch,
 	int A_offset = A_byte_offset / element_bytes;
 	
 	size_t A_nelement_total =
-		std::max(A_stride * K, A_batchstride * nbatch) + A_offset;
+   		 (A_offset + N)                  // the elements in the first row of first batch
+    		+ (K - 1) * A_stride            // the elements in the rest of the first batch
+    		+ (nbatch - 1) * A_batchstride; // the elements for the remaining batches
 	size_t texture_element_limit = 1 << 27;
 	BF_ASSERT_EXCEPTION(A_nelement_total <= texture_element_limit,
 	                    BF_STATUS_UNSUPPORTED_SHAPE);
