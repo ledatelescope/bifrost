@@ -42,6 +42,8 @@ typedef int (*BFpacketcapture_simple_sequence_callback)(BFoffset, int, int, int,
                                                        BFoffset*, void const**, size_t*);
 typedef int (*BFpacketcapture_chips_sequence_callback)(BFoffset, int, int, int,
                                                        BFoffset*, void const**, size_t*);
+typedef int (*BFpacketcapture_snap2_sequence_callback)(BFoffset, int, int, int,
+                                                       BFoffset*, void const**, size_t*);
 typedef int (*BFpacketcapture_ibeam_sequence_callback)(BFoffset, int, int, int,
                                                        BFoffset*, void const**, size_t*);
 typedef int (*BFpacketcapture_pbeam_sequence_callback)(BFoffset, BFoffset, int, int, int,
@@ -65,6 +67,8 @@ BFstatus bfPacketCaptureCallbackSetSIMPLE(BFpacketcapture_callback obj,
                                          BFpacketcapture_simple_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
                                          BFpacketcapture_chips_sequence_callback callback);
+BFstatus bfPacketCaptureCallbackSetSNAP2(BFpacketcapture_callback obj,
+                                         BFpacketcapture_snap2_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetIBeam(BFpacketcapture_callback obj,
                                          BFpacketcapture_ibeam_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetPBeam(BFpacketcapture_callback obj,

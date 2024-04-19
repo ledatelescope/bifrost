@@ -56,6 +56,10 @@ class PacketCaptureCallback(BifrostObject):
         self._ref_cache['chips'] = _bf.BFpacketcapture_chips_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetCHIPS(
                self.obj, self._ref_cache['chips']))
+    def set_snap2(self, fnc: _bf.BFpacketcapture_snap2_sequence_callback):
+        self._ref_cache['snap2'] = _bf.BFpacketcapture_snap2_sequence_callback(fnc)
+        _check(_bf.bfPacketCaptureCallbackSetSNAP2(
+               self.obj, self._ref_cache['snap2']))
     def set_ibeam(self, fnc: _bf.BFpacketcapture_ibeam_sequence_callback):
         self._ref_cache['ibeam'] = _bf.BFpacketcapture_ibeam_sequence_callback(fnc)
         _check(_bf.bfPacketCaptureCallbackSetIBeam(
