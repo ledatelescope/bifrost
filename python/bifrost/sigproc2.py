@@ -113,11 +113,17 @@ _telescopes = defaultdict(lambda: 'unknown',
                            6:  'GBT',
                            7:  'GMRT',
                            8:  'Effelsberg',
-                           9:  'ATA',
+                           9:  'Effelsberg LOFAR',
+                           11: 'Unknown',
+                           12: 'MWA',
+                           20: 'CHIME',
                            10: 'UTR-2',
                            11: 'LOFAR',
                            52: 'LWA-OV',
-                           53: 'LWA-SV'})
+                           53: 'LWA-SV',
+                           64: 'MeerKAT',
+                           65: 'KAT-7',
+                           82: 'eMerlin'})
 _machines   = defaultdict(lambda: 'unknown',
                           {0:  'FAKE',
                            1:  'PSPM',
@@ -128,6 +134,8 @@ _machines   = defaultdict(lambda: 'unknown',
                            6:  'SCAMP',
                            7:  'GMRTFB', # aka GBT Pulsar Spigot, SPIGOT
                            8:  'PULSAR2000',
+                           9:  'UNKNOWN',
+                           20: 'CHIME',
                            11: 'BG/P',
                            12: "PDEV",
                            20: 'GUPPI',
@@ -275,10 +283,11 @@ class SigprocFile(object):
         self.signed = bool(self.header['signed'])
         if self.nbit >= 8:
             if self.signed:
-                self.dtype  = { 8: np.int8,
-                               16: np.int16,
-                               32: np.float32,
-                               64: np.float64}[self.nbit]
+                self.dtype : Optional[type] = {
+                    8: np.int8,
+                    16: np.int16,
+                    32: np.float32,
+                    64: np.float64}[self.nbit]
             else:
                 self.dtype  = { 8: np.uint8,
                                16: np.uint16,

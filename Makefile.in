@@ -18,6 +18,19 @@ libbifrost:
 	$(MAKE) -C $(SRC_DIR) all
 .PHONY: libbifrost
 
+check:
+ifeq ($(HAVE_PYTHON),1)
+	MYPYPATH=$(BIFROST_PYTHON_DIR) mypy --follow-imports=silent \
+	    python/bifrost/blocks/detect.py \
+	    python/bifrost/blocks/quantize.py \
+	    python/bifrost/blocks/unpack.py \
+	    python/bifrost/sigproc.py \
+	    python/bifrost/sigproc2.py \
+	    test/test_sigproc.py \
+	    testbench/test_fft_detect.py
+endif
+.PHONY: check
+
 test:
 	#$(MAKE) -C $(SRC_DIR) test
 ifeq ($(HAVE_PYTHON),1)
