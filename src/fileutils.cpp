@@ -28,6 +28,7 @@
 
 #include "fileutils.hpp"
 #include <sstream>
+#include <iostream>
 
 #if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
 #include <filesystem>
@@ -193,6 +194,9 @@ std::string get_dirname(std::string filename) {
    potentially write the PID into the lock file to help with tracking whether
    the process died. */
 LockFile::LockFile(std::string lockfile) : _lockfile(lockfile) {
+	time_t start = time(NULL), elapsed = 0;
+	int busycount = 0;
+	int busyinterval = 1 << 17;
 	while( true ) {
 		_fd = open(_lockfile.c_str(), O_CREAT, 600);
 		flock(_fd, LOCK_EX);
@@ -202,9 +206,22 @@ LockFile::LockFile(std::string lockfile) : _lockfile(lockfile) {
 		// Compare inodes
 		if( fd_stat.st_ino == lockfile_stat.st_ino ) {
 			// Got the lock
+			if(elapsed > 0) {
+				std::cerr << "NOTE: acquired " << lockfile
+				          << std::endl;
+			}
 			break;
 		}
+		busycount++;
 		close(_fd);
+		if(busycount % busyinterval == 0) {
+			elapsed = time(NULL) - start;
+			if(elapsed >= 5) {
+				std::cerr << "NOTE: waiting " << elapsed
+				          << "s for " << lockfile << std::endl;
+				busyinterval = busycount;
+			}
+		}
 	}
 }
 
@@ -212,3 +229,25 @@ LockFile::~LockFile() {
 	unlink(_lockfile.c_str());
 	flock(_fd, LOCK_UN);
 }
+
+
+#ifdef FILEUTILS_LOCKFILE_TEST
+// This is a little test program for LockFile, to simulate
+// a leftover lock file. It should look something like this:
+
+//    Initiating lock...
+//    NOTE: waiting 5s for ./myfile.lock
+//    NOTE: waiting 9s for ./myfile.lock
+//    NOTE: waiting 17s for ./myfile.lock
+//    NOTE: waiting 34s for ./myfile.lock
+//    [Delete the file from another terminal]
+//    NOTE: acquired ./myfile.lock
+//    Lock acquired... exiting
+int main() {
+  int fd = open("./myfile.lock", O_CREAT, 600);
+  std::cerr << "Initiating lock..." << std::endl;
+  LockFile("./myfile.lock");
+  std::cerr << "Lock acquired... exiting" << std::endl;
+  return 0;
+}
+#endif
