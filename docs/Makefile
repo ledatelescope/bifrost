@@ -29,6 +29,6 @@ generate_python_reference:
 .PHONY: generate_python_reference
 
 generate_cpp_reference:
-	breathe-apidoc -o source -p bifrost  --force ./doxygen/xml/
+	breathe-apidoc -o source -p bifrost --force ./doxygen/xml/
 	rm -rf source/file
 .PHONY: generate_cpp_reference
