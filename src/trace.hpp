@@ -39,6 +39,7 @@
 #include <queue>
 #include <string>
 #include <cstring>
+#include <cstdint>
 
 #if BF_TRACE_ENABLED
 // Note: __PRETTY_FUNCTION__ is GCC-specific

@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <cstring> // For ::memcpy
+#include <cstdint>
 #include <cassert>
 
 #define BF_DTYPE_IS_COMPLEX(dtype) bool((dtype) & BF_DTYPE_COMPLEX_BIT)
