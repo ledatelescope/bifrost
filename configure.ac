@@ -294,10 +294,12 @@ AS_IF([test x${DX_DOXYGEN} == x],
       [AC_SUBST(HAVE_CXX_DOCS, 1)
        AS_IF([test x${PYTHON} != xno],
              [AS_IF([test x${PYTHON_SPHINXB} = x],
-                    [AC_MSG_WARN([missing the sphinx module, python documentation cannot not be built])],
-                    [AS_IF([test x${PYTHON_BREATHE} = x],
-                            [AC_MSG_WARN([missing the breathe module, python documentation cannot not be built])],
-                            [AC_SUBST(HAVE_PYTHON_DOCS, 1)])])])])
+                    [AC_MSG_WARN([missing the sphinx-build, python documentation cannot not be built])],
+                    [AS_IF([test x${PYTHON_SPHINXA} = x],
+                            [AC_MSG_WARN([missing the sphinx-apidoc, python documentation cannot not be built])],
+                            [AS_IF([test x${PYTHON_BREATHE} = x],
+                                   [AC_MSG_WARN([missing the breathe-apidoc, python documentation cannot not be built])],
+                                   [AC_SUBST(HAVE_PYTHON_DOCS, 1)])])])])])
 
 
 # Version splitting
