@@ -293,13 +293,17 @@ DX_XML_FEATURE(OFF)
 DX_PDF_FEATURE(ON)
 DX_PS_FEATURE(ON)
 
+AC_SUBST(HAVE_CXX_DOCS, 0)
+AC_SUBST(HAVE_PYTHON_DOCS, 0)
 AS_IF([test x${DX_DOXYGEN} == x],
       [AC_MSG_WARN([missing doxygen, documentation cannot be built])],
-      [AS_IF([test x${PYTHON} != xno],
+      [AC_SUBST(HAVE_CXX_DOCS, 1)
+       AS_IF([test x${PYTHON} != xno],
              [AS_IF([test x${HAVE_PYTHON_SPHINX} != x1],
                     [AC_MSG_WARN([missing the sphinx module, python documentation cannot not be built])],
                     [AS_IF([test x${HAVE_PYTHON_BREATHE} != x1],
-                            [AC_MSG_WARN([missing the breathe module, python documentation cannot not be built])])])])])
+                            [AC_MSG_WARN([missing the breathe module, python documentation cannot not be built])],
+                            [AC_SUBST(HAVE_PYTHON_DOCS, 1)])])])])
 
 
 # Version splitting
