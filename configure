@@ -663,6 +663,8 @@ MAP_KERNEL_STDCXX
 PACKAGE_VERSION_MICRO
 PACKAGE_VERSION_MINOR
 PACKAGE_VERSION_MAJOR
+HAVE_PYTHON_DOCS
+HAVE_CXX_DOCS
 DX_RULES
 PAPER_SIZE
 DOXYGEN_PAPER_SIZE
@@ -706,6 +708,8 @@ HAVE_DOCKER
 DOCKER
 PYINSTALLFLAGS
 PYBUILDFLAGS
+HAVE_PYTHON_BREATHE
+HAVE_PYTHON_SPHINX
 PYTHON3
 PYTHON
 HAVE_PYTHON
@@ -1535,7 +1539,7 @@ Optional Features:
   --disable-python        disable building the Python bindings (default=no)
   --disable-doxygen-doc   don't generate any doxygen documentation
   --enable-doxygen-dot    generate graphics for doxygen documentation
-  --disable-doxygen-man   don't generate doxygen manual pages
+  --enable-doxygen-man    generate doxygen manual pages
   --enable-doxygen-rtf    generate doxygen RTF documentation
   --enable-doxygen-xml    generate doxygen XML documentation
   --enable-doxygen-chm    generate doxygen compressed HTML help documentation
@@ -22341,6 +22345,32 @@ printf "%s\n" "yes" >&6; }
                      HAVE_PYTHON=1
 
 fi
+              { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether $PYTHON as sphinx" >&5
+printf %s "checking whether $PYTHON as sphinx... " >&6; }
+              if ! ${PYTHON} -c "import sphinx" 2>/dev/null
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+                     HAVE_PYTHON_SPHINX=1
+
+fi
+              { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether $PYTHON as breathe" >&5
+printf %s "checking whether $PYTHON as breathe... " >&6; }
+              if ! ${PYTHON} -c "import breathe" 2>/dev/null
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+                     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: python documentation cannot not be built" >&5
+printf "%s\n" "$as_me: WARNING: python documentation cannot not be built" >&2;}
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+                     HAVE_PYTHON_BREATHE=1
+
+fi
 fi
 fi
 
@@ -22523,15 +22553,6 @@ fi
 #
 # Documentation
 #
-
-
-
-
-
-
-
-
-
 
 
 
@@ -23033,7 +23054,7 @@ esac
 
 else $as_nop
 
-DX_FLAG_man=1
+DX_FLAG_man=0
 
 
 test "$DX_FLAG_doc" = "1" || DX_FLAG_man=0
@@ -24623,7 +24644,46 @@ DX_RULES="${DX_SNIPPET_doc}"
 #echo DX_ENV=$DX_ENV
 
 
-#
+
+
+
+
+
+
+
+
+
+HAVE_CXX_DOCS=0
+
+HAVE_PYTHON_DOCS=0
+
+if test x${DX_DOXYGEN} == x
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: missing doxygen, documentation cannot be built" >&5
+printf "%s\n" "$as_me: WARNING: missing doxygen, documentation cannot be built" >&2;}
+else $as_nop
+  HAVE_CXX_DOCS=1
+
+       if test x${PYTHON} != xno
+then :
+  if test x${HAVE_PYTHON_SPHINX} != x1
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: missing the sphinx module, python documentation cannot not be built" >&5
+printf "%s\n" "$as_me: WARNING: missing the sphinx module, python documentation cannot not be built" >&2;}
+else $as_nop
+  if test x${HAVE_PYTHON_BREATHE} != x1
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: missing the breathe module, python documentation cannot not be built" >&5
+printf "%s\n" "$as_me: WARNING: missing the breathe module, python documentation cannot not be built" >&2;}
+else $as_nop
+  HAVE_PYTHON_DOCS=1
+
+fi
+fi
+fi
+fi
+
+
 # Version splitting
 #
 
