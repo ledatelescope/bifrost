@@ -244,7 +244,18 @@ AS_IF([test x$enable_python != xno],
                     [AC_MSG_RESULT([no])
                      AC_MSG_WARN([python module will not be built])],
                     [AC_MSG_RESULT([yes])
-                     AC_SUBST(HAVE_PYTHON, 1)])])])
+                     AC_SUBST(HAVE_PYTHON, 1)])
+              AC_MSG_CHECKING([whether $PYTHON as sphinx])
+              AS_IF([! ${PYTHON} -c "import sphinx" 2>/dev/null],
+                    [AC_MSG_RESULT([no])],
+                    [AC_MSG_RESULT([yes])
+                     AC_SUBST(HAVE_PYTHON_SPHINX, 1)])
+              AC_MSG_CHECKING([whether $PYTHON as breathe])
+              AS_IF([! ${PYTHON} -c "import breathe" 2>/dev/null],
+                    [AC_MSG_RESULT([no])
+                     AC_MSG_WARN([python documentation cannot not be built])],
+                    [AC_MSG_RESULT([yes])
+                     AC_SUBST(HAVE_PYTHON_BREATHE, 1)])])])
 AC_ARG_WITH([pybuild_flags],
             [AS_HELP_STRING([--with-pybuild-flags],
                             [build flags for python (default='')])],
@@ -271,6 +282,7 @@ AS_IF([test x${DOCKER} != xno],
 # Documentation
 #
 
+DX_INIT_DOXYGEN([bifrost])
 DX_DOT_FEATURE(OFF)
 DX_HTML_FEATURE(ON)
 DX_CHM_FEATURE(OFF)
@@ -280,9 +292,16 @@ DX_RTF_FEATURE(OFF)
 DX_XML_FEATURE(OFF)
 DX_PDF_FEATURE(ON)
 DX_PS_FEATURE(ON)
-DX_INIT_DOXYGEN([bifrost])
 
-#
+AS_IF([test x${DX_DOXYGEN} == x],
+      [AC_MSG_WARN([missing doxygen, documentation cannot be built])],
+      [AS_IF([test x${PYTHON} != xno],
+             [AS_IF([test x${HAVE_PYTHON_SPHINX} != x1],
+                    [AC_MSG_WARN([missing the sphinx module, python documentation cannot not be built])],
+                    [AS_IF([test x${HAVE_PYTHON_BREATHE} != x1],
+                            [AC_MSG_WARN([missing the breathe module, python documentation cannot not be built])])])])])
+
+
 # Version splitting
 #
 
