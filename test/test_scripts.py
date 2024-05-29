@@ -53,7 +53,7 @@ except ImportError:
     pass
 run_scripts_tests &= (sys.version_info[0] >= 3)
 
-_LINT_RE = re.compile('(?P<module>.*?)\:(?P<line>\d+)\: \[(?P<type>.*?)\] (?P<info>.*)')
+_LINT_RE = re.compile(r'(?P<module>.*?)\:(?P<line>\d+)\: \[(?P<type>.*?)\] (?P<info>.*)')
 
 @unittest.skipUnless(run_scripts_tests, "requires the 'pylint' module")
 class ScriptTest(unittest.TestCase):
