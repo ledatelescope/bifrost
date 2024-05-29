@@ -244,18 +244,7 @@ AS_IF([test x$enable_python != xno],
                     [AC_MSG_RESULT([no])
                      AC_MSG_WARN([python module will not be built])],
                     [AC_MSG_RESULT([yes])
-                     AC_SUBST(HAVE_PYTHON, 1)])
-              AC_MSG_CHECKING([whether $PYTHON as sphinx])
-              AS_IF([! ${PYTHON} -c "import sphinx" 2>/dev/null],
-                    [AC_MSG_RESULT([no])],
-                    [AC_MSG_RESULT([yes])
-                     AC_SUBST(HAVE_PYTHON_SPHINX, 1)])
-              AC_MSG_CHECKING([whether $PYTHON as breathe])
-              AS_IF([! ${PYTHON} -c "import breathe" 2>/dev/null],
-                    [AC_MSG_RESULT([no])
-                     AC_MSG_WARN([python documentation cannot not be built])],
-                    [AC_MSG_RESULT([yes])
-                     AC_SUBST(HAVE_PYTHON_BREATHE, 1)])])])
+                     AC_SUBST(HAVE_PYTHON, 1)])])])
 AC_ARG_WITH([pybuild_flags],
             [AS_HELP_STRING([--with-pybuild-flags],
                             [build flags for python (default='')])],
@@ -293,15 +282,20 @@ DX_XML_FEATURE(OFF)
 DX_PDF_FEATURE(ON)
 DX_PS_FEATURE(ON)
 
+AS_IF([test x${HAVE_PYTHON} == x1],
+      [AX_WITH_PROG(PYTHON_SPHINXB, sphinx-build)
+       AX_WITH_PROG(PYTHON_SPHINXA, sphinx-apidoc)
+       AX_WITH_PROG(PYTHON_BREATHE, breathe-apidoc)])
+
 AC_SUBST(HAVE_CXX_DOCS, 0)
 AC_SUBST(HAVE_PYTHON_DOCS, 0)
 AS_IF([test x${DX_DOXYGEN} == x],
       [AC_MSG_WARN([missing doxygen, documentation cannot be built])],
       [AC_SUBST(HAVE_CXX_DOCS, 1)
        AS_IF([test x${PYTHON} != xno],
-             [AS_IF([test x${HAVE_PYTHON_SPHINX} != x1],
+             [AS_IF([test x${PYTHON_SPHINXB} = x],
                     [AC_MSG_WARN([missing the sphinx module, python documentation cannot not be built])],
-                    [AS_IF([test x${HAVE_PYTHON_BREATHE} != x1],
+                    [AS_IF([test x${PYTHON_BREATHE} = x],
                             [AC_MSG_WARN([missing the breathe module, python documentation cannot not be built])],
                             [AC_SUBST(HAVE_PYTHON_DOCS, 1)])])])])
 
@@ -370,7 +364,7 @@ AS_IF([test x$STDCXX_IS_SET != x1],
 CXXFLAGS="$CXXFLAGS $lt_prog_compiler_pic_CXX"
 NVCCFLAGS="$NVCCFLAGS -Xcompiler \"$lt_prog_compiler_pic_CXX\""
 
-AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h])
+AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile docs/Makefile share/bifrost.pc src/bifrost/config.h])
 
 AC_OUTPUT
 
