@@ -32,7 +32,6 @@ Unit tests for the various Bifrost tutorial notebooks.
 import unittest
 import glob
 import sys
-import re
 import os
 from tempfile import mkdtemp
 from shutil import rmtree
