@@ -92,7 +92,7 @@ def main(args):
         raise RuntimeError("Cannot find NUMA memory info for PID: %i" % args.pid)
         
     # Parse out the anonymous entries in this file
-    _numaRE = re.compile(r'(?P<addr>[0-9a-f]+).*[(anon)|(mapped)]=(?P<size>\d+).*(swapcache=(?P<swap>\d+))?.*N(?P<binding>\d+)=(?P<size2>\d+)')
+    _numaRE = re.compile('(?P<addr>[0-9a-f]+).*[(anon)|(mapped)]=(?P<size>\d+).*(swapcache=(?P<swap>\d+))?.*N(?P<binding>\d+)=(?P<size2>\d+)')
     areas = {}
     files = {}
     for line in numaInfo.split('\n'):
