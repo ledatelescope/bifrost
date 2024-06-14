@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +32,7 @@
 #include <bifrost/ring.h>
 #include "assert.hpp"
 #include "proclog.hpp"
+#include "hw_locality.hpp"
 
 #include <stdexcept>
 #include <vector>
@@ -96,8 +97,11 @@ class BFring_impl {
 	BFsize         _nwrite_open;
 	BFsize         _nrealloc_pending;
 
-	int            _core;    	
-	ProcLog        _size_log;
+#if BF_HWLOC_ENABLED
+  HardwareLocality _hwloc;
+#endif
+	int              _core;    	
+	ProcLog          _size_log;
 	
 	std::queue<BFsequence_sptr>           _sequence_queue;
 	std::map<std::string,BFsequence_sptr> _sequence_map;

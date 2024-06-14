@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,32 +26,31 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_ADDRESS_H_INCLUDE_GUARD_
-#define BF_ADDRESS_H_INCLUDE_GUARD_
+#ifndef BF_IO_H_INCLUDE_GUARD_
+#define BF_IO_H_INCLUDE_GUARD_
 
-#include <bifrost/common.h>
+#include <unistd.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct sockaddr* BFaddress;
+typedef enum BFiomethod_ {
+    BF_IO_GENERIC = 0,
+    BF_IO_DISK    = 1,
+    BF_IO_UDP     = 2,
+    BF_IO_SNIFFER = 3,
+    BF_IO_VERBS   = 4
+} BFiomethod;
 
-BFstatus bfAddressCreate(BFaddress*  addr,
-                         const char* addr_string,
-                         int         port,
-                         unsigned    family);
-BFstatus bfAddressDestroy(BFaddress addr);
-BFstatus bfAddressGetFamily(BFaddress addr, unsigned* family);
-BFstatus bfAddressGetPort(BFaddress addr, int* port);
-BFstatus bfAddressIsMulticast(BFaddress addr, int* multicast);
-BFstatus bfAddressGetMTU(BFaddress addr, int* mtu);
-BFstatus bfAddressGetString(BFaddress addr,
-                            BFsize    bufsize, // 128 should always be enough
-                            char*     buf);
+typedef enum BFiowhence_ {
+    BF_WHENCE_SET = SEEK_SET,
+    BF_WHENCE_CUR = SEEK_CUR,
+    BF_WHENCE_END = SEEK_END
+} BFiowhence;
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif // BF_ADDRESS_H_INCLUDE_GUARD_
+#endif // BF_IO_H_INCLUDE_GUARD_

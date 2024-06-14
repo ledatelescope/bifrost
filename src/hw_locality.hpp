@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,32 +26,40 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_ADDRESS_H_INCLUDE_GUARD_
-#define BF_ADDRESS_H_INCLUDE_GUARD_
+#pragma once
 
-#include <bifrost/common.h>
+#include <bifrost/affinity.h>
+#include <bifrost/config.h>
 
-#ifdef __cplusplus
-extern "C" {
+#if BF_HWLOC_ENABLED
+#include <hwloc.h>
+class HardwareLocality {
+    hwloc_topology_t _topo;
+    HardwareLocality(HardwareLocality const&);
+    HardwareLocality& operator=(HardwareLocality const&);
+public:
+    HardwareLocality() {
+        hwloc_topology_init(&_topo);
+        hwloc_topology_load(_topo);
+    }
+    ~HardwareLocality() {
+        hwloc_topology_destroy(_topo);
+    }
+    int get_numa_node_of_core(int core);
+    int bind_thread_memory_to_core(int core);
+    int bind_memory_area_to_numa_node(const void* addr, size_t size, int node);
+};
+#endif // BF_HWLOC_ENABLED
+
+class BoundThread {
+#if BF_HWLOC_ENABLED
+    HardwareLocality _hwloc;
 #endif
-
-typedef struct sockaddr* BFaddress;
-
-BFstatus bfAddressCreate(BFaddress*  addr,
-                         const char* addr_string,
-                         int         port,
-                         unsigned    family);
-BFstatus bfAddressDestroy(BFaddress addr);
-BFstatus bfAddressGetFamily(BFaddress addr, unsigned* family);
-BFstatus bfAddressGetPort(BFaddress addr, int* port);
-BFstatus bfAddressIsMulticast(BFaddress addr, int* multicast);
-BFstatus bfAddressGetMTU(BFaddress addr, int* mtu);
-BFstatus bfAddressGetString(BFaddress addr,
-                            BFsize    bufsize, // 128 should always be enough
-                            char*     buf);
-
-#ifdef __cplusplus
-} // extern "C"
+public:
+    BoundThread(int core) {
+        bfAffinitySetCore(core);
+#if BF_HWLOC_ENABLED
+        assert(_hwloc.bind_thread_memory_to_core(core) == 0);
 #endif
-
-#endif // BF_ADDRESS_H_INCLUDE_GUARD_
+    }
+};
