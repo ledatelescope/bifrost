@@ -140,7 +140,8 @@ public:
 	}
 };
 
-class BFudptransmit_impl {
+struct BFudptransmit_impl {
+private:
 	UDPTransmitThread  _transmit;
 	ProcLog            _type_log;
 	ProcLog            _bind_log;

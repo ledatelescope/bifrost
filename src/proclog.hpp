@@ -48,7 +48,8 @@ public:
 	}
 };
 
-class BFproclog_impl {
+struct BFproclog_impl {
+private:
 	friend class ProcLogStream;
 	std::string _filename;
 public:
