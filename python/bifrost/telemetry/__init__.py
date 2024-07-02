@@ -27,6 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
+import sys
 import time
 import uuid
 import atexit
@@ -92,6 +93,7 @@ class _TelemetryClient(object):
         # Setup
         self.key = key
         self.version = version
+        self.py_version = "%i.%i" % (sys.version_info.major, sys.version_info.minor)
         
         # Session reference
         self._session_start = time.time()
@@ -147,6 +149,7 @@ class _TelemetryClient(object):
                     payload = urlencode({'timestamp'   : int(tNow),
                                          'key'         : self.key, 
                                          'version'     : self.version,
+                                         'py_version'  : self.py_version,
                                          'session_time': "%.6f" % ((tNow-self._session_start) if final else 0.0,),
                                          'payload'     : payload})
                     uh = urlopen('https://fornax.phys.unm.edu/telemetry/bifrost.php', payload.encode(), 
