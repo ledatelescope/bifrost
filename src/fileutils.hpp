@@ -36,6 +36,7 @@
 #include <unistd.h>    // For getpid
 #include <pwd.h>       // For getpwuid
 #include <system_error>
+#include <string>
 
 #if defined(__APPLE__) && __APPLE__
 #include <sys/sysctl.h>
