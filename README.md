@@ -97,6 +97,8 @@ go to the following [link](https://colab.research.google.com/github/ledatelescop
 
 ### C Dependencies
 
+If using Ubuntu or another Debian-based linux distribution:
+    
     $ sudo apt-get install exuberant-ctags
 
 ### Python Dependencies
