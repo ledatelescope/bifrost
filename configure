@@ -664,6 +664,11 @@ MAP_KERNEL_STDCXX
 PACKAGE_VERSION_MICRO
 PACKAGE_VERSION_MINOR
 PACKAGE_VERSION_MAJOR
+HAVE_PYTHON_DOCS
+HAVE_CXX_DOCS
+PYTHON_BREATHE
+PYTHON_SPHINXA
+PYTHON_SPHINXB
 DX_RULES
 PAPER_SIZE
 DOXYGEN_PAPER_SIZE
@@ -894,6 +899,9 @@ enable_doxygen_chi
 enable_doxygen_html
 enable_doxygen_ps
 enable_doxygen_pdf
+with_sphinx_build
+with_sphinx_apidoc
+with_breathe_apidoc
 '
       ac_precious_vars='build_alias
 host_alias
@@ -911,7 +919,10 @@ CXXCPP
 CTAGS
 PYTHON
 DOCKER
-DOXYGEN_PAPER_SIZE'
+DOXYGEN_PAPER_SIZE
+PYTHON_SPHINXB
+PYTHON_SPHINXA
+PYTHON_BREATHE'
 
 
 # Initialize some variables set by options.
@@ -1555,7 +1566,7 @@ Optional Features:
   --disable-python        disable building the Python bindings (default=no)
   --disable-doxygen-doc   don't generate any doxygen documentation
   --enable-doxygen-dot    generate graphics for doxygen documentation
-  --disable-doxygen-man   don't generate doxygen manual pages
+  --enable-doxygen-man    generate doxygen manual pages
   --enable-doxygen-rtf    generate doxygen RTF documentation
   --enable-doxygen-xml    generate doxygen XML documentation
   --enable-doxygen-chm    generate doxygen compressed HTML help documentation
@@ -1598,6 +1609,12 @@ Optional Packages:
   --with-pybuild-flags    build flags for python (default='')
   --with-pyinstall-flags  install flags for python (default='')
   --with-docker=[PATH]  absolute path to docker executable
+  --with-sphinx-build=[PATH]
+                          absolute path to sphinx-build executable
+  --with-sphinx-apidoc=[PATH]
+                          absolute path to sphinx-apidoc executable
+  --with-breathe-apidoc=[PATH]
+                          absolute path to breathe-apidoc executable
 
 Some influential environment variables:
   CC          C compiler command
@@ -1617,6 +1634,12 @@ Some influential environment variables:
   DOCKER      Absolute path to docker executable
   DOXYGEN_PAPER_SIZE
               a4wide (default), a4, letter, legal or executive
+  PYTHON_SPHINXB
+              Absolute path to sphinx-build executable
+  PYTHON_SPHINXA
+              Absolute path to sphinx-apidoc executable
+  PYTHON_BREATHE
+              Absolute path to breathe-apidoc executable
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -22951,15 +22974,6 @@ fi
 
 
 
-
-
-
-
-
-
-
-
-
 # Files:
 DX_PROJECT=bifrost
 
@@ -23458,7 +23472,7 @@ esac
 
 else $as_nop
 
-DX_FLAG_man=1
+DX_FLAG_man=0
 
 
 test "$DX_FLAG_doc" = "1" || DX_FLAG_man=0
@@ -25048,7 +25062,491 @@ DX_RULES="${DX_SNIPPET_doc}"
 #echo DX_ENV=$DX_ENV
 
 
-#
+
+
+
+
+
+
+
+
+
+if test x${HAVE_PYTHON} == x1
+then :
+
+
+
+
+
+
+
+
+
+
+    if test -z "$PYTHON_SPHINXB"
+then :
+
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether sphinx-build executable path has been provided" >&5
+printf %s "checking whether sphinx-build executable path has been provided... " >&6; }
+
+# Check whether --with-sphinx-build was given.
+if test ${with_sphinx_build+y}
+then :
+  withval=$with_sphinx_build;
+            if test "$withval" != yes && test "$withval" != no
+then :
+
+                PYTHON_SPHINXB="$withval"
+                { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PYTHON_SPHINXB" >&5
+printf "%s\n" "$PYTHON_SPHINXB" >&6; }
+
+else $as_nop
+
+                PYTHON_SPHINXB=""
+                { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+                if test "$withval" != no
+then :
+
+                  # Extract the first word of "sphinx-build", so it can be a program name with args.
+set dummy sphinx-build; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_PYTHON_SPHINXB+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $PYTHON_SPHINXB in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PYTHON_SPHINXB="$PYTHON_SPHINXB" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_PYTHON_SPHINXB="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PYTHON_SPHINXB=$ac_cv_path_PYTHON_SPHINXB
+if test -n "$PYTHON_SPHINXB"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PYTHON_SPHINXB" >&5
+printf "%s\n" "$PYTHON_SPHINXB" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+
+fi
+
+fi
+
+else $as_nop
+
+            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+            # Extract the first word of "sphinx-build", so it can be a program name with args.
+set dummy sphinx-build; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_PYTHON_SPHINXB+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $PYTHON_SPHINXB in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PYTHON_SPHINXB="$PYTHON_SPHINXB" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_PYTHON_SPHINXB="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PYTHON_SPHINXB=$ac_cv_path_PYTHON_SPHINXB
+if test -n "$PYTHON_SPHINXB"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PYTHON_SPHINXB" >&5
+printf "%s\n" "$PYTHON_SPHINXB" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+
+fi
+
+
+fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if test -z "$PYTHON_SPHINXA"
+then :
+
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether sphinx-apidoc executable path has been provided" >&5
+printf %s "checking whether sphinx-apidoc executable path has been provided... " >&6; }
+
+# Check whether --with-sphinx-apidoc was given.
+if test ${with_sphinx_apidoc+y}
+then :
+  withval=$with_sphinx_apidoc;
+            if test "$withval" != yes && test "$withval" != no
+then :
+
+                PYTHON_SPHINXA="$withval"
+                { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PYTHON_SPHINXA" >&5
+printf "%s\n" "$PYTHON_SPHINXA" >&6; }
+
+else $as_nop
+
+                PYTHON_SPHINXA=""
+                { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+                if test "$withval" != no
+then :
+
+                  # Extract the first word of "sphinx-apidoc", so it can be a program name with args.
+set dummy sphinx-apidoc; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_PYTHON_SPHINXA+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $PYTHON_SPHINXA in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PYTHON_SPHINXA="$PYTHON_SPHINXA" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_PYTHON_SPHINXA="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PYTHON_SPHINXA=$ac_cv_path_PYTHON_SPHINXA
+if test -n "$PYTHON_SPHINXA"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PYTHON_SPHINXA" >&5
+printf "%s\n" "$PYTHON_SPHINXA" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+
+fi
+
+fi
+
+else $as_nop
+
+            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+            # Extract the first word of "sphinx-apidoc", so it can be a program name with args.
+set dummy sphinx-apidoc; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_PYTHON_SPHINXA+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $PYTHON_SPHINXA in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PYTHON_SPHINXA="$PYTHON_SPHINXA" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_PYTHON_SPHINXA="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PYTHON_SPHINXA=$ac_cv_path_PYTHON_SPHINXA
+if test -n "$PYTHON_SPHINXA"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PYTHON_SPHINXA" >&5
+printf "%s\n" "$PYTHON_SPHINXA" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+
+fi
+
+
+fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    if test -z "$PYTHON_BREATHE"
+then :
+
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether breathe-apidoc executable path has been provided" >&5
+printf %s "checking whether breathe-apidoc executable path has been provided... " >&6; }
+
+# Check whether --with-breathe-apidoc was given.
+if test ${with_breathe_apidoc+y}
+then :
+  withval=$with_breathe_apidoc;
+            if test "$withval" != yes && test "$withval" != no
+then :
+
+                PYTHON_BREATHE="$withval"
+                { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PYTHON_BREATHE" >&5
+printf "%s\n" "$PYTHON_BREATHE" >&6; }
+
+else $as_nop
+
+                PYTHON_BREATHE=""
+                { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+                if test "$withval" != no
+then :
+
+                  # Extract the first word of "breathe-apidoc", so it can be a program name with args.
+set dummy breathe-apidoc; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_PYTHON_BREATHE+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $PYTHON_BREATHE in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PYTHON_BREATHE="$PYTHON_BREATHE" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_PYTHON_BREATHE="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PYTHON_BREATHE=$ac_cv_path_PYTHON_BREATHE
+if test -n "$PYTHON_BREATHE"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PYTHON_BREATHE" >&5
+printf "%s\n" "$PYTHON_BREATHE" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+
+fi
+
+fi
+
+else $as_nop
+
+            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+            # Extract the first word of "breathe-apidoc", so it can be a program name with args.
+set dummy breathe-apidoc; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_PYTHON_BREATHE+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $PYTHON_BREATHE in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PYTHON_BREATHE="$PYTHON_BREATHE" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_PYTHON_BREATHE="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PYTHON_BREATHE=$ac_cv_path_PYTHON_BREATHE
+if test -n "$PYTHON_BREATHE"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PYTHON_BREATHE" >&5
+printf "%s\n" "$PYTHON_BREATHE" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+
+fi
+
+
+fi
+
+
+
+
+
+
+fi
+
+HAVE_CXX_DOCS=0
+
+HAVE_PYTHON_DOCS=0
+
+if test x${DX_DOXYGEN} == x
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: missing doxygen, documentation cannot be built" >&5
+printf "%s\n" "$as_me: WARNING: missing doxygen, documentation cannot be built" >&2;}
+else $as_nop
+  HAVE_CXX_DOCS=1
+
+       if test x${PYTHON} != xno
+then :
+  if test x${PYTHON_SPHINXB} = x
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: missing the sphinx-build, python documentation cannot not be built" >&5
+printf "%s\n" "$as_me: WARNING: missing the sphinx-build, python documentation cannot not be built" >&2;}
+else $as_nop
+  if test x${PYTHON_SPHINXA} = x
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: missing the sphinx-apidoc, python documentation cannot not be built" >&5
+printf "%s\n" "$as_me: WARNING: missing the sphinx-apidoc, python documentation cannot not be built" >&2;}
+else $as_nop
+  if test x${PYTHON_BREATHE} = x
+then :
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: missing the breathe-apidoc, python documentation cannot not be built" >&5
+printf "%s\n" "$as_me: WARNING: missing the breathe-apidoc, python documentation cannot not be built" >&2;}
+else $as_nop
+  HAVE_PYTHON_DOCS=1
+
+fi
+fi
+fi
+fi
+fi
+
+
 # Version splitting
 #
 
@@ -25180,7 +25678,7 @@ then :
 
 fi
 
-ac_config_files="$ac_config_files config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h"
+ac_config_files="$ac_config_files config.mk Makefile src/Makefile python/Makefile docs/Makefile share/bifrost.pc src/bifrost/config.h"
 
 
 cat >confcache <<\_ACEOF
@@ -26280,6 +26778,7 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "python/Makefile") CONFIG_FILES="$CONFIG_FILES python/Makefile" ;;
+    "docs/Makefile") CONFIG_FILES="$CONFIG_FILES docs/Makefile" ;;
     "share/bifrost.pc") CONFIG_FILES="$CONFIG_FILES share/bifrost.pc" ;;
     "src/bifrost/config.h") CONFIG_FILES="$CONFIG_FILES src/bifrost/config.h" ;;
 

@@ -340,6 +340,7 @@ AS_IF([test x${DOCKER} != xno],
 # Documentation
 #
 
+DX_INIT_DOXYGEN([bifrost])
 DX_DOT_FEATURE(OFF)
 DX_HTML_FEATURE(ON)
 DX_CHM_FEATURE(OFF)
@@ -349,9 +350,27 @@ DX_RTF_FEATURE(OFF)
 DX_XML_FEATURE(OFF)
 DX_PDF_FEATURE(ON)
 DX_PS_FEATURE(ON)
-DX_INIT_DOXYGEN([bifrost])
 
-#
+AS_IF([test x${HAVE_PYTHON} == x1],
+      [AX_WITH_PROG(PYTHON_SPHINXB, sphinx-build)
+       AX_WITH_PROG(PYTHON_SPHINXA, sphinx-apidoc)
+       AX_WITH_PROG(PYTHON_BREATHE, breathe-apidoc)])
+
+AC_SUBST(HAVE_CXX_DOCS, 0)
+AC_SUBST(HAVE_PYTHON_DOCS, 0)
+AS_IF([test x${DX_DOXYGEN} == x],
+      [AC_MSG_WARN([missing doxygen, documentation cannot be built])],
+      [AC_SUBST(HAVE_CXX_DOCS, 1)
+       AS_IF([test x${PYTHON} != xno],
+             [AS_IF([test x${PYTHON_SPHINXB} = x],
+                    [AC_MSG_WARN([missing the sphinx-build, python documentation cannot not be built])],
+                    [AS_IF([test x${PYTHON_SPHINXA} = x],
+                            [AC_MSG_WARN([missing the sphinx-apidoc, python documentation cannot not be built])],
+                            [AS_IF([test x${PYTHON_BREATHE} = x],
+                                   [AC_MSG_WARN([missing the breathe-apidoc, python documentation cannot not be built])],
+                                   [AC_SUBST(HAVE_PYTHON_DOCS, 1)])])])])])
+
+
 # Version splitting
 #
 
@@ -428,7 +447,7 @@ AS_IF([test x$HAVE_CUDA != x0],
        CPPFLAGS="$CPPFLAGS -I$CUDA_HOME/include"
       ])
 
-AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile share/bifrost.pc src/bifrost/config.h])
+AC_CONFIG_FILES([config.mk Makefile src/Makefile python/Makefile docs/Makefile share/bifrost.pc src/bifrost/config.h])
 
 AC_OUTPUT
 

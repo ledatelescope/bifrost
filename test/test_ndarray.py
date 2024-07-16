@@ -31,6 +31,7 @@ import bifrost as bf
 import ctypes
 
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED
+from bifrost.DataType import DataType
 
 class NDArrayTest(unittest.TestCase):
     def setUp(self):
@@ -152,6 +153,47 @@ class NDArrayTest(unittest.TestCase):
         np.testing.assert_equal(g.copy('system'), np.array([[99,88],[2,3],[4,5]]))
         g[:,1] = [77,66,55]
         np.testing.assert_equal(g.copy('system'), np.array([[99,77],[2,66],[4,55]]))
+    def run_type_conversion(self, space='system'):
+        # Real
+        for dtype_in in (np.int8, np.int16, np.int32, np.float32, np.float64):
+            a = np.array(self.known_vals, dtype=dtype_in)
+            c = bf.ndarray(a, dtype=dtype_in, space=space)
+            for dtype in ('i8', 'i16', 'i32', 'i64', 'f64', 'ci8', 'ci16', 'ci32', 'cf32', 'cf64'):
+                np_dtype = DataType(dtype).as_numpy_dtype()
+                try:
+                    ## Catch for the complex integer types
+                    len(np_dtype)
+                    b = np.zeros(a.shape, dtype=np_dtype)
+                    b['re'] = a
+                except (IndexError, TypeError):
+                    b = a.astype(np_dtype)
+                d = c.astype(dtype)
+                d = d.copy(space='system')
+                np.testing.assert_equal(b, d)
+        # Complex
+        for dtype_in,dtype_in_cmplx in zip((np.float32,np.float64), ('cf32', 'cf64')):
+            a = np.array(self.known_vals, dtype=dtype_in)
+            a = np.stack([a,a[::-1]], axis=0)
+            a = a.view(np.complex64)
+            c = bf.ndarray(a, dtype=dtype_in_cmplx, space=space)
+            for dtype in ('ci8', 'ci16', 'ci32', 'cf32', 'cf64', 'i8', 'i16', 'i32', 'i64', 'f64'):
+                np_dtype = DataType(dtype).as_numpy_dtype()
+                try:
+                    ## Catch for the complex integer types
+                    len(np_dtype)
+                    b = np.zeros(a.shape, dtype=np_dtype)
+                    b['re'] = a.real
+                    b['im'] = a.imag
+                except (IndexError, TypeError):
+                    b = a.astype(np_dtype)
+                d = c.astype(dtype)
+                d = d.copy(space='system')
+                np.testing.assert_equal(b, d)
+    def test_type_conversion(self):
+        self.run_type_conversion()
+    @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
+    def test_space_type_conversion(self):
+        self.run_type_conversion(space='cuda')
     def test_BFarray(self):
         """ Test ndarray.as_BFarray() roundtrip """
         a = bf.ndarray(np.arange(100), dtype='i32')
