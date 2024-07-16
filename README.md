@@ -101,6 +101,8 @@ If using Ubuntu or another Debian-based linux distribution:
     
     $ sudo apt-get install exuberant-ctags
 
+Otherwise check https://ctags.sourceforge.net/ for install instructions.
+
 ### Python Dependencies
 
  * numpy
