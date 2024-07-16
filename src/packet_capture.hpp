@@ -147,15 +147,16 @@ public:
 	inline T const& operator[](size_t i) const { return _buf[i];    }
 };
 
-class PacketCaptureMethod {
+class PacketCaptureMethod: public BoundThread {
 protected:
     int                    _fd;
     size_t                 _pkt_size_max;
-	AlignedBuffer<uint8_t> _buf;
+    AlignedBuffer<uint8_t> _buf;
     BFiomethod             _io_method;
+    int                    _core;
 public:
-	PacketCaptureMethod(int fd, size_t pkt_size_max=9000, BFiomethod io_method=BF_IO_GENERIC)
-	 : _fd(fd), _pkt_size_max(pkt_size_max), _buf(pkt_size_max), _io_method(io_method) {}
+	PacketCaptureMethod(int fd, size_t pkt_size_max=9000, BFiomethod io_method=BF_IO_GENERIC, int core=-1)
+	 : BoundThread(core), _fd(fd), _pkt_size_max(pkt_size_max), _buf(pkt_size_max), _io_method(io_method), _core(core) {}
 	virtual int recv_packet(uint8_t** pkt_ptr, int flags=0) {
 	    return 0;
 	}
@@ -168,8 +169,8 @@ public:
 
 class DiskPacketReader : public PacketCaptureMethod {
 public:
-    DiskPacketReader(int fd, size_t pkt_size_max=9000)
-     : PacketCaptureMethod(fd, pkt_size_max, BF_IO_DISK) {}
+    DiskPacketReader(int fd, size_t pkt_size_max=9000, int core=-1)
+     : PacketCaptureMethod(fd, pkt_size_max, BF_IO_DISK, core) {}
     int recv_packet(uint8_t** pkt_ptr, int flags=0) {
         *pkt_ptr = &_buf[0];
         return ::read(_fd, &_buf[0], _buf.size());
@@ -234,8 +235,8 @@ class UDPPacketReceiver : public PacketCaptureMethod {
     VMAReceiver            _vma;
 #endif
 public:
-    UDPPacketReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
-        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_UDP)
+    UDPPacketReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE, int core=-1)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_UDP, core)
 #if BF_VMA_ENABLED
         , _vma(fd)
 #endif
@@ -262,8 +263,8 @@ class UDPPacketSniffer : public PacketCaptureMethod {
     VMAReceiver            _vma;
 #endif
 public:
-    UDPPacketSniffer(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
-        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_SNIFFER)
+    UDPPacketSniffer(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE, int core=-1)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_SNIFFER, core)
 #if BF_VMA_ENABLED
         , _vma(fd)
 #endif
@@ -292,8 +293,8 @@ public:
 class UDPVerbsReceiver : public PacketCaptureMethod {
     Verbs                  _ibv;
 public:
-    UDPVerbsReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
-        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_VERBS), _ibv(fd, pkt_size_max) {}
+    UDPVerbsReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE, int core=-1)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_VERBS, core), _ibv(fd, pkt_size_max) {}
     inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
         *pkt_ptr = 0;
         return _ibv.recv_packet(pkt_ptr, flags);
@@ -328,7 +329,7 @@ public:
 		CAPTURE_NO_DATA     = 1 << 3,
 		CAPTURE_ERROR       = 1 << 4
 	};
-	PacketCaptureThread(PacketCaptureMethod* method, int nsrc, int core=0)
+	PacketCaptureThread(PacketCaptureMethod* method, int nsrc, int core=-1)
      : BoundThread(core), _method(method), _src_stats(nsrc),
 	   _have_pkt(false), _core(core) {
 		this->reset_stats();
@@ -1446,14 +1447,14 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
     
     PacketCaptureMethod* method;
     if( backend == BF_IO_DISK ) {
-        method = new DiskPacketReader(fd, max_payload_size);
+        method = new DiskPacketReader(fd, max_payload_size, core);
     } else if( backend == BF_IO_UDP ) {
-        method = new UDPPacketReceiver(fd, max_payload_size);
+        method = new UDPPacketReceiver(fd, max_payload_size, core);
     } else if( backend == BF_IO_SNIFFER ) {
-        method = new UDPPacketSniffer(fd, max_payload_size);
+        method = new UDPPacketSniffer(fd, max_payload_size, core);
 #if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
     } else if( backend == BF_IO_VERBS ) {
-        method = new UDPVerbsReceiver(fd, max_payload_size);
+        method = new UDPVerbsReceiver(fd, max_payload_size, core);
 #endif
     } else {
         return BF_STATUS_UNSUPPORTED;

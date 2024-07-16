@@ -92,14 +92,15 @@ public:
   }
 };
 
-class PacketWriterMethod {
+class PacketWriterMethod: public BoundThread {
 protected:
     int         _fd;
     size_t      _max_burst_size;
     RateLimiter _limiter;
+    int         _core;
 public:
-    PacketWriterMethod(int fd, size_t max_burst_size=BF_SEND_NPKTBURST)
-     : _fd(fd), _max_burst_size(max_burst_size), _limiter(0) {}
+    PacketWriterMethod(int fd, size_t max_burst_size=BF_SEND_NPKTBURST, int core=-1)
+     : BoundThread(core), _fd(fd), _max_burst_size(max_burst_size), _limiter(0), _core(core) {}
     virtual ssize_t send_packets(char* hdrs, 
                                  int   hdr_size,
                                  char* data, 
@@ -116,8 +117,8 @@ public:
 
 class DiskPacketWriter : public PacketWriterMethod {
 public:
-    DiskPacketWriter(int fd, size_t max_burst_size=BF_SEND_NPKTBURST)
-     : PacketWriterMethod(fd, max_burst_size) {}
+    DiskPacketWriter(int fd, size_t max_burst_size=BF_SEND_NPKTBURST, int core=-1)
+     : PacketWriterMethod(fd, max_burst_size, core) {}
     ssize_t send_packets(char* hdrs, 
                          int   hdr_size,
                          char* data, 
@@ -154,8 +155,8 @@ class UDPPacketSender : public PacketWriterMethod {
   mmsghdr* _mmsg;
   iovec*   _iovs;
 public:
-    UDPPacketSender(int fd, size_t max_burst_size=BF_SEND_NPKTBURST)
-     : PacketWriterMethod(fd, max_burst_size), _last_count(0), _mmsg(NULL), _iovs(NULL) {}
+    UDPPacketSender(int fd, size_t max_burst_size=BF_SEND_NPKTBURST, int core=-1)
+     : PacketWriterMethod(fd, max_burst_size, core), _last_count(0), _mmsg(NULL), _iovs(NULL) {}
     ~UDPPacketSender() {
       if( _mmsg ) {
         free(_mmsg);
@@ -240,8 +241,8 @@ class UDPVerbsSender : public PacketWriterMethod {
     mmsghdr*        _mmsg;
     iovec*          _iovs;
 public:
-    UDPVerbsSender(int fd, size_t max_burst_size=BF_VERBS_SEND_NPKTBURST)
-        : PacketWriterMethod(fd, max_burst_size), _ibv(fd, JUMBO_FRAME_SIZE), _last_size(0),
+    UDPVerbsSender(int fd, size_t max_burst_size=BF_VERBS_SEND_NPKTBURST, int core=-1)
+        : PacketWriterMethod(fd, max_burst_size, core), _ibv(fd, JUMBO_FRAME_SIZE), _last_size(0),
           _last_count(0), _mmsg(NULL), _iovs(NULL) {}
     ~UDPVerbsSender() {
       if( _mmsg ) {
@@ -330,7 +331,7 @@ private:
     int                  _core;
     
 public:
-    PacketWriterThread(PacketWriterMethod* method, int core=0)
+    PacketWriterThread(PacketWriterMethod* method, int core=-1)
      : BoundThread(core), _method(method), _core(core) {
         this->reset_stats();
     }
@@ -614,12 +615,12 @@ BFstatus BFpacketwriter_create(BFpacketwriter* obj,
     
     PacketWriterMethod* method;
     if( backend == BF_IO_DISK ) {
-        method = new DiskPacketWriter(fd);
+        method = new DiskPacketWriter(fd, core=core);
     } else if( backend == BF_IO_UDP ) {
-        method = new UDPPacketSender(fd);
+        method = new UDPPacketSender(fd, core=core);
 #if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
     } else if( backend == BF_IO_VERBS ) {
-        method = new UDPVerbsSender(fd);
+        method = new UDPVerbsSender(fd, core=core);
 #endif
     } else {
         return BF_STATUS_UNSUPPORTED;
