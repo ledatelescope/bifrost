@@ -177,12 +177,12 @@ your machine.
 
 Install breathe using pip:
 
-    $ python -m pip install breathe sphinx
+    $ sudo pip install breathe sphinx
 
 Also install Doxygen using your package manager. 
 In Ubuntu, for example:
 
-    $ sudo apt install Doxygen
+    $ sudo apt-get install doxygen
 
 Otherwise check https://www.doxygen.nl/ for Doxygen install instructions.
     
