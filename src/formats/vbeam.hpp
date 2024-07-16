@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2017, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2017, The University of New Mexico. All rights reserved.
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,30 +26,31 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_UDP_TRANSMIT_H_INCLUDE_GUARD_
-#define BF_UDP_TRANSMIT_H_INCLUDE_GUARD_
+#pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "base.hpp"
 
-typedef struct BFudptransmit_impl* BFudptransmit;
+struct __attribute__((packed)) vbeam_hdr_type {
+    uint64_t sync_word;
+    uint64_t sync_time;
+    uint64_t time_tag;
+    double   bw_hz;
+    double   sfreq;
+    uint32_t nchan;
+    uint32_t chan0;
+    uint32_t npol;
+};
 
-typedef enum BFudptransmit_status_ {
-	BF_TRANSMIT_CONTINUED,
-	BF_TRANSMIT_INTERRUPTED,
-	BF_TRANSMIT_ERROR
-} BFudptransmit_status;
-
-BFstatus bfUdpTransmitCreate(BFudptransmit* obj,
-                            int           fd,
-                            int           core);
-BFstatus bfUdpTransmitDestroy(BFudptransmit obj);
-BFstatus bfUdpTransmitSend(BFudptransmit obj, char* packet, unsigned int len);
-BFstatus bfUdpTransmitSendMany(BFudptransmit obj, char* packets, unsigned int len, unsigned int npackets);
-
-#ifdef __cplusplus
-} // extern "C"
-#endif
-
-#endif // BF_UDP_TRANSMIT_H_INCLUDE_GUARD_
+class VBeamHeaderFiller : virtual public PacketHeaderFiller {
+public:
+    inline int get_size() { return sizeof(vbeam_hdr_type); }
+    inline void operator()(const PacketDesc* hdr_base,
+                           BFoffset          framecount,
+                           char*             hdr) {
+        vbeam_hdr_type* header = reinterpret_cast<vbeam_hdr_type*>(hdr);
+        memset(header, 0, sizeof(vbeam_hdr_type));
+        
+        header->sync_word        = 0xAABBCCDD00000000L;
+        header->time_tag         = htobe64(hdr_base->seq);
+    }
+};
