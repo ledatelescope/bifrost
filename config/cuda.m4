@@ -39,10 +39,12 @@ AC_DEFUN([AX_CHECK_CUDA],
     CXXFLAGS_save="$CXXFLAGS"
     LDFLAGS_save="$LDFLAGS"
     LIBS_save="$LIBS"
+    ac_ext_save="$ac_ext"
     
     ac_compile='$NVCC -c $NVCCFLAGS conftest.$ac_ext >&5'
     LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
     LIBS="$LIBS -lcuda -lcudart"
+    ac_ext="cu"
 
     ac_link='$NVCC -o conftest$ac_exeext $NVCCFLAGS $LDFLAGS $LIBS conftest.$ac_ext >&5'
     AC_LINK_IFELSE([
@@ -63,6 +65,7 @@ AC_DEFUN([AX_CHECK_CUDA],
     CXXFLAGS="$CXXFLAGS_save"
     LDFLAGS="$LDFLAGS_save"
     LIBS="$LIBS_save"
+    ac_ext="$ac_ext_save"
   fi
   
   if test "$HAVE_CUDA" = "1"; then
@@ -151,9 +154,11 @@ AC_DEFUN([AX_CHECK_CUDA],
       CXXFLAGS_save="$CXXFLAGS"
       LDFLAGS_save="$LDFLAGS"
       LIBS_save="$LIBS"
+      ac_ext_save="$ac_ext"
       
       LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
       LIBS="-lcuda -lcudart"
+      ax_ext="cu"
       ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS conftest.$ac_ext>&5'
       AC_RUN_IFELSE([
         AC_LANG_PROGRAM([[
@@ -205,6 +210,7 @@ AC_DEFUN([AX_CHECK_CUDA],
       CXXFLAGS="$CXXFLAGS_save"
       LDFLAGS="$LDFLAGS_save"
       LIBS="$LIBS_save"
+      ac_ext="$ac_ext_save"
     else
       AC_SUBST([GPU_ARCHS], [$with_gpu_archs])
     fi
@@ -235,9 +241,11 @@ AC_DEFUN([AX_CHECK_CUDA],
       CXXFLAGS_save="$CXXFLAGS"
       LDFLAGS_save="$LDFLAGS"
       LIBS_save="$LIBS"
+      ac_ext_save="$ac_ext"
       
       LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
       LIBS="-lcuda -lcudart"
+      ac_ext="cu"
       ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS conftest.$ac_ext>&5'
       AC_RUN_IFELSE([
         AC_LANG_PROGRAM([[
@@ -276,6 +284,7 @@ AC_DEFUN([AX_CHECK_CUDA],
       CXXFLAGS="$CXXFLAGS_save"
       LDFLAGS="$LDFLAGS_save"
       LIBS="$LIBS_save"
+      ac_ext="$ac_ext_save"
     else
       AC_SUBST([GPU_SHAREDMEM], [$with_shared_mem])
     fi
@@ -294,9 +303,11 @@ AC_DEFUN([AX_CHECK_CUDA],
     CXXFLAGS_save="$CXXFLAGS"
     LDFLAGS_save="$LDFLAGS"
     LIBS_save="$LIBS"
+    ac_ext_save="$ac_ext"
     
     LDFLAGS="-L$CUDA_HOME/lib64 -L$CUDA_HOME/lib"
     LIBS="-lcuda -lcudart"
+    ac_ext="cu"
     ac_run='$NVCC -o conftest$ac_ext $LDFLAGS $LIBS conftest.$ac_ext>&5'
     AC_RUN_IFELSE([
       AC_LANG_PROGRAM([[
@@ -312,5 +323,6 @@ AC_DEFUN([AX_CHECK_CUDA],
     CXXFLAGS="$CXXFLAGS_save"
     LDFLAGS="$LDFLAGS_save"
     LIBS="$LIBS_save"
+    ac_ext="$ac_ext_save"
   fi
 ])
