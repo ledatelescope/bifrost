@@ -235,7 +235,7 @@ AC_DEFUN([AX_CHECK_CUDA],
                            [default GPU shared memory per block in bytes (default=detect)])],
            [],
            [with_shared_mem='auto'])
-    if test "$with_gpu_archs" = "auto"; then
+    if test "$with_shared_mem" = "auto"; then
       AC_MSG_CHECKING([for minimum shared memory per block])
 
       CXXFLAGS_save="$CXXFLAGS"

@@ -21429,7 +21429,6 @@ fi
   fi
 
   if test "$HAVE_CUDA" = "1"; then
-
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for a working CUDA 10+ installation" >&5
 printf %s "checking for a working CUDA 10+ installation... " >&6; }
 
@@ -21716,7 +21715,7 @@ else $as_nop
   with_shared_mem='auto'
 fi
 
-    if test "$with_gpu_archs" = "auto"; then
+    if test "$with_shared_mem" = "auto"; then
       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for minimum shared memory per block" >&5
 printf %s "checking for minimum shared memory per block... " >&6; }
 
