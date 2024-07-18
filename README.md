@@ -95,6 +95,12 @@ print "All done"
 **For a quick demo which you can run in-browser without installation,
 go to the following [link](https://colab.research.google.com/github/ledatelescope/bifrost/blob/master/BifrostDemo.ipynb).**
 
+### CUDA
+
+CUDA is available at [link](https://developer.nvidia.com/cuda-downloads). You can check 
+[link](http://ledatelescope.github.io/bifrost/Getting-started-guide.html) to see 
+which versions of the CUDA toolkit have been confirmed to work with Bifrost. 
+
 ### C Dependencies
 
 If using Ubuntu or another Debian-based linux distribution:
