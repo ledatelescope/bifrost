@@ -98,8 +98,8 @@ go to the following [link](https://colab.research.google.com/github/ledatelescop
 ### CUDA
 
 CUDA is available at https://developer.nvidia.com/cuda-downloads. You can check the
-[Getting Started section](http://ledatelescope.github.io/bifrost/Getting-started-guide.html) 
-of the docs to see which versions of the CUDA toolkit have been confirmed to work with Bifrost. 
+["Getting Started guide"](http://ledatelescope.github.io/bifrost/Getting-started-guide.html) 
+in the docs to see which versions of the CUDA toolkit have been confirmed to work with Bifrost. 
 
 ### C Dependencies
 
