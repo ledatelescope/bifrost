@@ -69,7 +69,7 @@ Bifrost and confirmed to be working.
 
    "Ubuntu 20.04","5.4.0-177-generic","520.61.05","RTX 2080Ti","11.0.3","Working"
    "Ubuntu 20.04","5.4.0-177-generic","520.61.05","RTX 2080Ti","11.1.1","Working"
-   "Ubuntu 20.04","5.4.0-177-generic","520.61.05","RTX 2080Ti","11.2.2","Likely working"                       
+   "Ubuntu 20.04","5.4.0-177-generic","520.61.05","RTX 2080Ti","11.2.2","Working"                       
    "Ubuntu 20.04","5.4.0-177-generic","520.61.05","RTX 2080Ti","11.3.1","Working"
    "Ubuntu 20.04","5.4.0-186-generic","470.239.06","Quadro K2200","11.4.4","Likely Working"
    "Ubuntu 20.04","5.4.0-186-generic","470.239.06","Quadro K2200","11.5.2","CUDA_ERROR_UNSUPPORTED_PTX_VERSION"
