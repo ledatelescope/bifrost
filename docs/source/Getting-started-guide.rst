@@ -77,7 +77,7 @@ Bifrost and confirmed to be working.
    "Ubuntu 18.04","4.15.0-88-generic","510.85.02","A4000","11.6.124","Working"
    "Ubuntu 18.04","4.15.0-88-generic","510.85.02","RTX 2080Ti","11.6.124","Working"
    "Ubuntu 20.04","4.4.0-174-generic","525.147.05","Titan RTX","11.6.55","Working"
-   "Debian 12","6.1.0-21-amd64","525.147.05 ","Quadro K2200","11.8.0","Won't Install CUDA"
+   "Debian 12","6.1.0-21-amd64","525.147.05 ","Quadro K2200","11.8.0","CUDA Install Failed"
    "Ubuntu 20.04","5.4.0-186-generic","520.61.05","Quadro K2200","11.8.0","Likely Working"
    "Debian 12","6.1.0-21-amd64","525.147.05 ","Quadro K2200","12.0.0","Likely Working"
    "Ubuntu 20.04","5.4.0-147-generic","525.125.06","A5000","12.0.140","Working"
