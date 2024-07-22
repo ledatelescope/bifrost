@@ -64,7 +64,7 @@ the table below indicating what CUDA versions have been tested with
 Bifrost and confirmed to be working.
 
 .. csv-table::
-   :header: "OS","Linux Kernel","Driver Verson","GPU","Toolkit","Status"
+   :header: "OS","Linux Kernel","Driver Version","GPU","Toolkit","Status"
    :widths: 15,18,12,18,12,35
 
    "Ubuntu 20.04","5.4.0-177-generic","520.61.05","RTX 2080Ti","11.0.3","Working"
