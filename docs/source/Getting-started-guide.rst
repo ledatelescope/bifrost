@@ -59,9 +59,12 @@ experience, you can come back here for a speedup.
 
 If you are ready to work with a GPU, you will want to get the newest
 `CUDA toolkit <https://developer.nvidia.com/cuda-downloads>`__. Follow 
-the operating system-specific instructions to install. Note
-the table below indicating what CUDA versions have been tested with
-Bifrost and confirmed to be working.
+the operating system-specific instructions to install. Be sure to install a
+kernel driver that works with the version of toolkit that you are using since 
+version mismatches can lead to runtime errors.
+
+The table below indicates which CUDA toolkit and kernel driver versions Bifrost
+has been tested against.
 
 .. csv-table::
    :header: "OS","Linux Kernel","Driver Version","GPU","Toolkit","Status"
