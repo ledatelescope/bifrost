@@ -146,6 +146,7 @@ BFstatus transpose(int           ndim,
 	                    sizes[0]*out_strides[0] <
 	                    (long)std::numeric_limits<int>::max());
 #if BF_CUDA_ENABLED
+#if BF_GPU_MIN_ARCH < 40
 	if( ELEMENT_SIZE ==  6 ||
 	    ELEMENT_SIZE ==  8 ||
 	    ELEMENT_SIZE == 16 ) {
@@ -155,6 +156,7 @@ BFstatus transpose(int           ndim,
 	else {
 		cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeFourByte);
 	}
+#endif
 	if( can_use_int ) {
 		kernel::transpose
 			<TILE_DIM,BLOCK_ROWS,CONDITIONAL_WRITE,
