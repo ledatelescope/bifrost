@@ -21,7 +21,7 @@ but higher ones should also work.
 Python dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-*Bifrost is compatible with both in Python 2.7. and Python 3.x.*
+*Bifrost is compatible with Python >3.6.*
 
 `pip <https://pip.pypa.io/en/stable/>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
