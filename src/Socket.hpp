@@ -125,9 +125,19 @@ client.send/recv_block/packet(...);
 #include <net/if.h>
 #include <ifaddrs.h>
 
+#if defined __linux__ && __linux__
+
+//#include <linux/net.h>
+#include <linux/if_ether.h>
+#include <linux/if_packet.h>
+
+#endif
+
+
 #if defined __APPLE__ && __APPLE__
 
 #include <fcntl.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 
 #define SOCK_NONBLOCK O_NONBLOCK
@@ -208,7 +218,9 @@ public:
 	static int              discover_mtu(sockaddr_storage const& remote_address);
 	
 	// Server initialisation
-	void bind(sockaddr_storage const& local_address,
+	void bind(sockaddr_storage& local_address,
+	          int              max_conn_queue=DEFAULT_MAX_CONN_QUEUE);
+	void sniff(sockaddr_storage const& local_address,
 	          int              max_conn_queue=DEFAULT_MAX_CONN_QUEUE);
 	// Client initialisation
 	void connect(sockaddr_storage const& remote_address);
@@ -297,8 +309,11 @@ public:
 		timeval timeout = self->get_option<timeval>(SO_RCVTIMEO);
 		return timeout.tv_sec + timeout.tv_usec*1e-6;
 	}
+	void set_promiscuous(int state);
+	int get_promiscuous();
+	
 private:
-	void open(sa_family_t family);
+	void open(sa_family_t family, int protocol=0);
 	void set_default_options();
 	void check_error(int retval, std::string what) {
 		if( retval < 0 ) {
@@ -326,6 +341,10 @@ private:
 	static int addr_from_interface(const char* ifname,
 	                               sockaddr*   address,
 	                               sa_family_t family=AF_UNSPEC);
+	static int interface_from_addr(sockaddr*   address,
+	                               char* ifname,
+	                               sa_family_t family=AF_UNSPEC);
+	                                                              
 	int         _fd;
 	int         _type;
 	sa_family_t _family;

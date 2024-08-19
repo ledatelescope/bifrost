@@ -21,7 +21,7 @@ but higher ones should also work.
 Python dependencies
 ~~~~~~~~~~~~~~~~~~~
 
-*Bifrost is compatible with both in Python 2.7. and Python 3.x.*
+*Bifrost is compatible with Python >3.6.*
 
 `pip <https://pip.pypa.io/en/stable/>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -58,8 +58,37 @@ try out a CPU-only version of Bifrost. Then, once you have that first
 experience, you can come back here for a speedup.
 
 If you are ready to work with a GPU, you will want to get the newest
-`CUDA toolkit <https://developer.nvidia.com/cuda-downloads>`__. Follow
-the operating system-specific instructions to install.
+`CUDA toolkit <https://developer.nvidia.com/cuda-downloads>`__. Follow 
+the operating system-specific instructions to install. Be sure to install a
+kernel driver that works with the version of toolkit that you are using since 
+version mismatches can lead to runtime errors.
+
+The table below indicates which CUDA toolkit and kernel driver versions Bifrost
+has been tested against.
+
+.. csv-table::
+   :header: "OS","Linux Kernel","Driver Version","GPU","Toolkit","Status"
+   :widths: 15,18,12,18,12,35
+
+   "Ubuntu 20.04","5.4.0-177-generic","520.61.05","RTX 2080Ti","11.0.3","Working"
+   "Ubuntu 20.04","5.4.0-177-generic","520.61.05","RTX 2080Ti","11.1.1","Working"
+   "Ubuntu 20.04","5.4.0-177-generic","520.61.05","RTX 2080Ti","11.2.2","Working"                       
+   "Ubuntu 20.04","5.4.0-177-generic","520.61.05","RTX 2080Ti","11.3.1","Working"
+   "Ubuntu 20.04","5.4.0-186-generic","470.239.06","Quadro K2200","11.4.4","Working"
+   "Ubuntu 20.04","5.4.0-186-generic","495.29.05","Quadro K2200","11.5.2","Working"
+   "Ubuntu 18.04","4.15.0-88-generic","510.85.02","A4000","11.6.124","Working"
+   "Ubuntu 18.04","4.15.0-88-generic","510.85.02","RTX 2080Ti","11.6.124","Working"
+   "Ubuntu 20.04","4.4.0-174-generic","525.147.05","Titan RTX","11.6.55","Working"
+   "Ubuntu 20.04","5.4.0-186-generic","520.61.05","Quadro K2200","11.8.0","Known FIR and FFT Problems"
+   "Debian 12","6.1.0-21-amd64","525.147.05 ","Quadro K2200","12.0.0","Working"
+   "Ubuntu 20.04","5.4.0-147-generic","525.125.06","A5000","12.0.140","Working"
+   "Ubuntu 20.04","5.4.0-144-generic","525.125.06","A5000","12.0.140","Working"
+   "Ubuntu 20.04","5.4.0-144-generic","525.147.05","A4000","12.0.140","Working"
+   "Debian 12","6.1.0-21-amd64","530.30.02","Quadro K2200","12.1.1","Working"
+   "Debian 12","6.1.0-21-amd64","535.104.05","Quadro K2200","12.2.2","FFT bug: zeroed out data"
+   "Debian 12","6.1.0-21-amd64","545.23.08","Quadro K2200","12.3.2","Working"
+   "Debian 12","6.1.0-21-amd64","550.54.15","Quadro K2200","12.4.1","Working"
+   "Ubuntu 22.04","5.15.0-106-generic","555.42.06","GTX 980","12.5","Working"
 
 Other Dependencies
 ^^^^^^^^^^^^^^^^^^
