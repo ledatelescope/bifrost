@@ -30,12 +30,13 @@ from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
 
 from copy import deepcopy
+from typing import Optional, Union
 
 from bifrost import telemetry
 telemetry.track_module()
 
 class DetectBlock(TransformBlock):
-    def __init__(self, iring, mode, axis=None,
+    def __init__(self, iring, mode: str, axis: Optional[Union[int,str]] = None,
                  *args, **kwargs):
         super(DetectBlock, self).__init__(iring, *args, **kwargs)
         self.specified_axis = axis
@@ -56,7 +57,7 @@ class DetectBlock(TransformBlock):
               self.mode != 'scalar' and
               'pol' in itensor['labels']):
             self.axis = itensor['labels'].index('pol')
-        elif isinstance(self.axis, str):
+        elif isinstance(self.axis, basestring):
             self.axis = itensor['labels'].index(self.axis)
         # Note: axis may be None here, which indicates single-pol mode
         ohdr = deepcopy(ihdr)
@@ -65,8 +66,10 @@ class DetectBlock(TransformBlock):
             self.npol = otensor['shape'][self.axis]
             if self.npol not in [1, 2]:
                 raise ValueError("Axis must have length 1 or 2")
-            if self.mode == 'stokes' and self.npol == 2:
+            if (self.mode == 'stokes' or self.mode == 'coherence') and self.npol == 2:
                 otensor['shape'][self.axis] = 4
+            if self.mode == 'stokes_i' and self.npol == 2:
+                otensor['shape'][self.axis] = 1
             if 'labels' in otensor:
                 otensor['labels'][self.axis] = 'pol'
         else:
@@ -109,32 +112,47 @@ class DetectBlock(TransformBlock):
                 b(%s) = -2*xy.imag;
                 """ % (inds_[0], inds_[1],
                        inds_[0], inds_[1], inds_[2], inds_[3])
+            elif self.mode == 'stokes_i':
+                func = """
+                Complex<b_type> x = a(%s);
+                Complex<b_type> y = a(%s);
+                auto xx = x.mag2();
+                auto yy = y.mag2();
+                b(%s) = xx + yy;
+                """ % (inds_[0], inds_[1],
+                       inds_[0])
+            elif self.mode == 'coherence':
+                func = """
+                Complex<b_type> x = a(%s);
+                Complex<b_type> y = a(%s);
+                auto xx = x.mag2();
+                auto yy = y.mag2();
+                auto xy = x.conj()*y;
+                b(%s) = xx;
+                b(%s) = yy;
+                b(%s) = xy.real;
+                b(%s) = xy.imag;
+                """ % (inds_[0], inds_[1],
+                       inds_[0], inds_[1], inds_[2], inds_[3])
             bf_map(func, shape=shape, axis_names=inds,
                    data={'a': ispan.data, 'b': ospan.data})
 
-def detect(iring, mode, axis=None, *args, **kwargs):
+def detect(iring, mode: str, axis: Optional[Union[int,str]] = None, *args, **kwargs):
     """Apply square-law detection to create polarization products.
-
     Args:
         iring (Ring or Block): Input data source.
         mode (string):
-
            ``'scalar': x   -> real x.x*``
-
            ``'jones':  x,y -> complex x.x* + 1j*y.y*, x.y*``
-
            ``'stokes': x,y -> real I, Q, U, V``
-
+           ``'stokes_I': x,y -> x.x* + y.y* (Stokes I)``
         axis: Integer or string specifying the polarization axis. Defaults to
                 'pol'. Not used if mode = 'scalar'.
         *args: Arguments to ``bifrost.pipeline.TransformBlock``.
         **kwargs: Keyword Arguments to ``bifrost.pipeline.TransformBlock``.
-
     **Tensor semantics**::
-
         Input:  [..., 'pol', ...], dtype = any complex, space = CUDA
         Output: [..., 'pol', ...], dtype = real or complex, space = CUDA
-
     Returns:
         DetectBlock: A new block instance.
     """

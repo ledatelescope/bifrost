@@ -275,7 +275,7 @@ BFstatus BFfft_impl::execute_impl(BFarray const* in,
 	//         We could potentially use a CUDA event as a lighter-weight
 	//           solution.
 	cudaStreamSynchronize(g_cuda_stream);
-	CallbackData* h_callback_data = &_hv_callback_data[0];
+	CallbackData* h_callback_data = thrust::raw_pointer_cast(&_hv_callback_data[0]);
 	// WAR for CUFFT insisting that pointer be aligned to sizeof(cufftComplex)
 	int alignment = (_nbit == 32 ?
 	                 sizeof(cufftComplex) :

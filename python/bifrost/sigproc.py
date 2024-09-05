@@ -114,8 +114,17 @@ _TELESCOPES = defaultdict(lambda: 'unknown',
                            6:  'GBT',
                            7:  'GMRT',
                            8:  'Effelsberg',
+                           9: 'Effelsberg LOFAR',
+                           11: 'Unknown',
+                           12: 'MWA',
+                           20: 'CHIME',
                            52: 'LWA-OV',
-                           53: 'LWA-SV'})
+                           53: 'LWA-SV',
+                           64: 'MeerKAT',
+                           65: 'KAT-7',
+                           82: 'eMerlin'})
+ 
+
 #the machine_id parameter names' translation
 _MACHINES = defaultdict(lambda: 'unknown',
                         {0:  'FAKE',
@@ -127,6 +136,8 @@ _MACHINES = defaultdict(lambda: 'unknown',
                          6:  'SCAMP',
                          7:  'GMRTFB',
                          8:  'PULSAR2000',
+                         9:  'UNKNOWN',
+                         20: 'CHIME',
                          52: 'LWA-DP',
                          53: 'LWA-ADP'})
 
@@ -248,7 +259,7 @@ def pack(data: np.ndarray, nbit: int) -> np.ndarray:
         outdata += data[index::8 // nbit] // (2**nbit)**index
     return outdata
 
-def _write_data(data: np.ndarray, nbit: int, file_object: IO[bytes]) -> np.ndarray:
+def _write_data(data: np.ndarray, nbit: int, file_object: IO[bytes]):
     """Writes given data to an open file, also packing if needed"""
     file_object.seek(0, 2)
     if nbit < 8:
