@@ -57,7 +57,7 @@ jobs:
       - name: "Software Install - Python"
         run: python -m pip install \
                setuptools \
-               numpy \
+               "numpy<2" \
                matplotlib \
                contextlib2 \
                simplejson \
