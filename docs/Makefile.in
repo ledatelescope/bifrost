@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SPHINXBUILD   = sphinx-build
+SPHINXBUILD   = @PYTHON_SPHINXB@
 SPHINXPROJ    = bifrost
 SOURCEDIR     = source
 BUILDDIR      = build
@@ -20,15 +20,15 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 generate_python_reference:
-	sphinx-apidoc -o source -d 5 --force ../python/bifrost/
+	@PYTHON_SPHINXA@ -o source -d 5 --force ../python/bifrost/
 	rm source/modules.rst
-	sed -i '1s/.*/Python Reference/' source/bifrost.rst
-	sed -i '2s/.*/================/' source/bifrost.rst
-	sed -i '1s/.*/Block Library Reference/' source/bifrost.blocks.rst
-	sed -i '2s/.*/=======================/' source/bifrost.blocks.rst
+	@SED@ -i '1s/.*/Python Reference/' source/bifrost.rst
+	@SED@ -i '2s/.*/================/' source/bifrost.rst
+	@SED@ -i '1s/.*/Block Library Reference/' source/bifrost.blocks.rst
+	@SED@ -i '2s/.*/=======================/' source/bifrost.blocks.rst
 .PHONY: generate_python_reference
 
 generate_cpp_reference:
-	breathe-apidoc -o source -p bifrost --force ./doxygen/xml/
+	@PYTHON_BREATHE@ -o source -p bifrost --force ./doxygen/xml/
 	rm -rf source/file
 .PHONY: generate_cpp_reference

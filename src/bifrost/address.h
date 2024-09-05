@@ -44,6 +44,7 @@ BFstatus bfAddressCreate(BFaddress*  addr,
 BFstatus bfAddressDestroy(BFaddress addr);
 BFstatus bfAddressGetFamily(BFaddress addr, unsigned* family);
 BFstatus bfAddressGetPort(BFaddress addr, int* port);
+BFstatus bfAddressIsMulticast(BFaddress addr, int* multicast);
 BFstatus bfAddressGetMTU(BFaddress addr, int* mtu);
 BFstatus bfAddressGetString(BFaddress addr,
                             BFsize    bufsize, // 128 should always be enough

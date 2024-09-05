@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2022, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2022, The University of New Mexico. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,50 +27,38 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BF_UDP_CAPTURE_H_INCLUDE_GUARD_
-#define BF_UDP_CAPTURE_H_INCLUDE_GUARD_
+#ifndef BF_RDMA_H_INCLUDE_GUARD_
+#define BF_RDMA_H_INCLUDE_GUARD_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <bifrost/address.h>
-#include <bifrost/ring.h>
+#include <bifrost/array.h>
 
-typedef struct BFudpcapture_impl* BFudpcapture;
+typedef struct BFrdma_impl* BFrdma;
 
-typedef int (*BFudpcapture_sequence_callback)(BFoffset, int, int, int,
-                                              BFoffset*, void const**, size_t*);
-
-typedef enum BFudpcapture_status_ {
-	BF_CAPTURE_STARTED,
-	BF_CAPTURE_ENDED,
-	BF_CAPTURE_CONTINUED,
-	BF_CAPTURE_CHANGED,
-	BF_CAPTURE_NO_DATA,
-	BF_CAPTURE_INTERRUPTED,
-	BF_CAPTURE_ERROR
-} BFudpcapture_status;
-
-BFstatus bfUdpCaptureCreate(BFudpcapture* obj,
-                            const char*   format,
-                            int           fd,
-                            BFring        ring,
-                            BFsize        nsrc,
-                            BFsize        src0,
-                            BFsize        max_payload_size,
-                            BFsize        buffer_ntime,
-                            BFsize        slot_ntime,
-                            BFudpcapture_sequence_callback sequence_callback,
-                            int           core);
-BFstatus bfUdpCaptureDestroy(BFudpcapture obj);
-BFstatus bfUdpCaptureRecv(BFudpcapture obj, BFudpcapture_status* result);
-BFstatus bfUdpCaptureFlush(BFudpcapture obj);
-BFstatus bfUdpCaptureEnd(BFudpcapture obj);
-// TODO: bfUdpCaptureGetXX
+BFstatus bfRdmaCreate(BFrdma* obj,
+                      int     fd,
+                      size_t  message_size,
+                      int     is_server);
+BFstatus bfRdmaDestroy(BFrdma obj);
+BFstatus bfRdmaSendHeader(BFrdma obj,
+                          BFoffset    time_tag,
+                          BFsize      header_size,
+                          const void* header,
+                          BFoffset    offset_from_head);
+BFstatus bfRdmaSendSpan(BFrdma         obj,
+                        BFarray const* span);
+BFstatus bfRdmaReceive(BFrdma    obj,
+                       BFoffset* time_tag,
+                       BFsize*   header_size,
+                       BFoffset* offset_from_head,
+                       BFsize*   span_size,
+                       void*     contents);
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif // BF_UDP_CAPTURE_H_INCLUDE_GUARD_
+#endif // BF_RDMA_H_INCLUDE_GUARD_

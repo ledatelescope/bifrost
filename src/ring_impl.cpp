@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -45,6 +45,7 @@
 //         Work out whether/how to support independent specification of
 //           buffer_factor.
 
+#include "hw_locality.hpp"
 #include "ring_impl.hpp"
 #include "utils.hpp"
 #include "assert.hpp"
@@ -53,10 +54,6 @@
 
 #include <bifrost/cuda.h>
 #include "cuda.hpp"
-
-#if BF_NUMA_ENABLED
-#include <numa.h>
-#endif
 
 // This implements a lock with the condition that no reads or writes
 //   can be open while it is held.
@@ -151,23 +148,22 @@ void BFring_impl::resize(BFsize contiguous_span,
 	BFsize  new_stride = new_span + new_ghost_span;
 	BFsize  new_nbyte  = new_stride*new_nringlet;
 	//pointer new_buf    = (pointer)bfMalloc(new_nbyte, _space);
-	//std::cout << "new_buf = " << (void*)new_buf << std::endl; // HACK TESTING
+	//std::std::cout << "new_buf = " << (void*)new_buf << std::endl; // HACK TESTING
 	pointer new_buf = nullptr;
-	//std::cout << "contig_span:    " << contiguous_span << std::endl;
-	//std::cout << "total_span:     " << total_span << std::endl;
-	//std::cout << "new_span:       " << new_span << std::endl;
-	//std::cout << "new_ghost_span: " << new_ghost_span << std::endl;
-	//std::cout << "new_nringlet:   " << new_nringlet << std::endl;
-	//std::cout << "new_stride:     " << new_stride << std::endl;
-	//std::cout << "Allocating " << new_nbyte << std::endl;
+	//std::std::cout << "contig_span:    " << contiguous_span << std::endl;
+	//std::std::cout << "total_span:     " << total_span << std::endl;
+	//std::std::cout << "new_span:       " << new_span << std::endl;
+	//std::std::cout << "new_ghost_span: " << new_ghost_span << std::endl;
+	//std::std::cout << "new_nringlet:   " << new_nringlet << std::endl;
+	//std::std::cout << "new_stride:     " << new_stride << std::endl;
+	//std::std::cout << "Allocating " << new_nbyte << std::endl;
 	BF_ASSERT_EXCEPTION(bfMalloc((void**)&new_buf, new_nbyte, _space) == BF_STATUS_SUCCESS,
 	                    BF_STATUS_MEM_ALLOC_FAILED);
-#if BF_NUMA_ENABLED
+#if BF_HWLOC_ENABLED
 	if( _core != -1 ) {
-		BF_ASSERT_EXCEPTION(numa_available() != -1, BF_STATUS_UNSUPPORTED);
-		int node = numa_node_of_cpu(_core);
+		int node = _hwloc.get_numa_node_of_core(_core);
 		BF_ASSERT_EXCEPTION(node != -1, BF_STATUS_INVALID_ARGUMENT);
-		numa_tonode_memory(new_buf, new_nbyte, node);
+		_hwloc.bind_memory_area_to_numa_node(new_buf, new_nbyte, node);
 	}
 #endif
 	if( _buf ) {
@@ -479,7 +475,7 @@ void BFring_impl::finish_sequence(BFsequence_sptr sequence,
 
 void BFring_impl::_write_proclog_entry() {
 	char cinfo[32]="";
-	#if BF_NUMA_ENABLED
+	#if BF_HWLOC_ENABLED
 	snprintf(cinfo, 31, "binding   : %i\n", _core);
 	#endif
 	_size_log.update("space     : %s\n"
@@ -591,7 +587,7 @@ void BFring_impl::commit_span(BFoffset begin, BFsize reserve_size, BFsize commit
 	//         in which case they will block here until they are
 	//         in order (i.e., they will automatically synchronise).
 	//         This is useful for multithreading with OpenMP
-	//std::cout << "(1) begin, head, rhead: " << begin << ", " << _head << ", " << _reserve_head << std::endl;
+	//std::std::cout << "(1) begin, head, rhead: " << begin << ", " << _head << ", " << _reserve_head << std::endl;
 	_write_close_condition.wait(lock, [&]() {
 			return (begin == _head);
 		});
@@ -606,7 +602,7 @@ void BFring_impl::commit_span(BFoffset begin, BFsize reserve_size, BFsize commit
 		// There are reservations in front of this one, so we
 		//   are not allowed to commit less than size.
 		// TODO: How to deal with error here?
-		//std::cout << "BFRING ERROR: Must commit whole wspan when other spans are reserved" << std::endl;
+		//std::std::cout << "BFRING ERROR: Must commit whole wspan when other spans are reserved" << std::endl;
 		//return;
 		BF_ASSERT_EXCEPTION(false, BF_STATUS_INVALID_STATE);
 	}

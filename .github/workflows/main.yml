@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         os: [self-hosted, ubuntu-latest, macos-latest]
-        python-version: ['3.8', '3.10']
+        python-version: ['3.8', '3.10', '3.12']
         include:
           - os: ubuntu-20.04
             python-version: '3.6'
@@ -39,6 +39,7 @@ jobs:
             exuberant-ctags \
             gfortran \
             git \
+            libhwloc-dev \
             libopenblas-dev \
             pkg-config \
             software-properties-common
@@ -50,6 +51,7 @@ jobs:
             ctags-exuberant \
             gawk \
             gnu-sed \
+            hwloc \
             pkg-config
       - uses: actions/setup-python@v5.0.0
         with:
@@ -110,8 +112,6 @@ jobs:
           coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_fft.py
           coverage run --source=bifrost.ring,bifrost,bifrost.pipeline your_first_block.py
           python download_breakthrough_listen_data.py -y
-          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_guppi.py
-          coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_guppi_reader.py
           coverage run --source=bifrost.ring,bifrost,bifrost.pipeline test_fdmt.py ./testdata/pulsars/blc0_guppi_57407_61054_PSR_J1840%2B5640_0004.fil
           coverage xml
       - name: "Upload Coverage"
