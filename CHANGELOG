@@ -5,6 +5,9 @@
  * Improved documentation about CUDA support
  * Improved documentation build process
  * Various fixes for CUDA 12.x releases
+ * Added support for gcc 13
+ * Changed the file locking so that the user is warned if a block is waiting to acquire the lock
+ * Various deprecation cleanups
 
 0.10.1
  * Cleaned up the Makefile outputs
