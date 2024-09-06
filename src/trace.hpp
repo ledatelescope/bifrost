@@ -32,7 +32,11 @@
 #include "cuda.hpp"
 
 #if BF_CUDA_ENABLED
+#if __has_include(<nvtx3/nvToolsExt.h> )
+#include <nvtx3/nvToolsExt.h>
+#else
 #include <nvToolsExt.h>
+#endif
 #endif
 
 #include <map>
