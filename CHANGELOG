@@ -1,3 +1,11 @@
+0.11.0
+ * Dropped support for Python2
+ * Merged the ibverb-support branch that brings in a new, more flexible packet capture interface
+ * Improved documentation about packet capture
+ * Improved documentation about CUDA support
+ * Improved documentation build process
+ * Various fixes for CUDA 12.x releases
+
 0.10.1
  * Cleaned up the Makefile outputs
  * Added a disk cache for bifrost.map calls
