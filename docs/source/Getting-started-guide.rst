@@ -93,11 +93,11 @@ has been tested against.
 Other Dependencies
 ^^^^^^^^^^^^^^^^^^
 
-- exuberant-ctags
+- universal-ctags
 - Basic build tools (make, gcc, etc.)
 
 On Ubuntu, the following command should grab everything you need: 
-    ``sudo apt-get install build-essential software-properties-common exuberant-ctags``
+    ``sudo apt-get install build-essential software-properties-common universal-ctags``
 
 Bifrost install
 ~~~~~~~~~~~~~~~
