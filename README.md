@@ -105,7 +105,11 @@ in the docs to see which versions of the CUDA toolkit have been confirmed to wor
 
 If using Ubuntu or another Debian-based linux distribution:
     
-    $ sudo apt-get install exuberant-ctags
+    $ sudo apt-get install universal-ctags
+
+If using Redhat or another Redhat-based linux distribution:
+
+    $ sudo dnf install ctags
 
 Otherwise check https://ctags.sourceforge.net/ for install instructions.
 
