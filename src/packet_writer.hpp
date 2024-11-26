@@ -203,6 +203,13 @@ public:
                          int   npackets,
                          int   flags=0) {
         if( npackets > _last_count ) {
+          if( _max_burst_size > 0 ) {
+            _max_burst_size = std::min(_max_burst_size, (size_t) IOV_MAX);
+          } else {
+             // Divide by two since there is a header and a payload
+            _max_burst_size = IOV_MAX;
+          }
+          
           if( _mmsg ) {
             ::munlock(_mmsg, sizeof(struct mmsghdr)*_last_count);
             free(_mmsg);
@@ -237,11 +244,7 @@ public:
         ssize_t nsend, nsent_batch, nsent = 0;
         while(npackets > 0) {
             _limiter.begin();
-            if( _max_burst_size > 0 ) {
-                nsend = std::min(_max_burst_size, (size_t) npackets);
-            } else {
-                nsend = npackets;
-            }
+            nsend = std::min(_max_burst_size, (size_t) npackets);
             nsent_batch = ::sendmmsg(_fd, _mmsg+i, nsend, flags);
             if( nsent_batch > 0 ) {
                 nsent += nsent_batch;
@@ -290,6 +293,13 @@ public:
                          int   npackets,
                          int   flags=0) {
         if( npackets > _last_count ) {
+          if( _max_burst_size > 0 ) {
+            _max_burst_size = std::min(_max_burst_size, (size_t) BF_VERBS_SEND_NPKTBUF);
+          } else {
+             // Divide by two since there is a header and a payload
+            _max_burst_size = BF_VERBS_SEND_NPKTBUF;
+          }
+          
           if( _mmsg ) {
             ::munlock(_mmsg, sizeof(struct mmsghdr)*_last_count);
             free(_mmsg);
@@ -333,12 +343,22 @@ public:
             _iovs[3*i+2].iov_len = data_size;
         }
         
-        ssize_t nsent = _ibv.sendmmsg(_mmsg, npackets, flags);
-        /*
-        if( nsent == -1 ) {
-            std::cout << "sendmmsg failed: " << std::strerror(errno) << " with " << hdr_size << " and " << data_size << std::endl;
+        int i = 0;
+        ssize_t nsend, nsent_batch, nsent = 0;
+        while(npackets > 0) {
+            nsend = std::min(_max_burst_size, (size_t) npackets);
+            nsent_batch = _ibv.sendmmsg(_mmsg+i, nsend, flags);
+            if( nsent_batch > 0 ) {
+                nsent += nsent_batch;
+            }
+            /*
+            if( nsent_batch == -1 ) {
+                std::cout << "sendmmsg failed: " << std::strerror(errno) << " with " << hdr_size << " and " << data_size << std::endl;
+            }
+            */
+            i += nsend;
+            npackets -= nsend;
         }
-        */
         
         return nsent;
     }
