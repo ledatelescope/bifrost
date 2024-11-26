@@ -206,7 +206,6 @@ public:
           if( _max_burst_size > 0 ) {
             _max_burst_size = std::min(_max_burst_size, (size_t) IOV_MAX);
           } else {
-             // Divide by two since there is a header and a payload
             _max_burst_size = IOV_MAX;
           }
           
@@ -296,7 +295,6 @@ public:
           if( _max_burst_size > 0 ) {
             _max_burst_size = std::min(_max_burst_size, (size_t) BF_VERBS_SEND_NPKTBUF);
           } else {
-             // Divide by two since there is a header and a payload
             _max_burst_size = BF_VERBS_SEND_NPKTBUF;
           }
           
