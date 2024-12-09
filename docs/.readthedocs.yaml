@@ -13,6 +13,9 @@ build:
     - make
   tools:
     python: "mambaforge-22.9"
+  jobs:
+    post_create_environment:
+      - bash ./docs/.rtd_helper.sh
 
 conda:
   environment: docs/.rtd_environment.yaml
@@ -20,7 +23,7 @@ conda:
 python:
   install:
     - method: pip
-      path: .
+      path: python
 
 sphinx:
   configuration: docs/source/conf.py
