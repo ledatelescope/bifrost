@@ -33,6 +33,8 @@ jobs:
         run: |
           sudo apt-get update && \
           sudo apt-get install -y \
+            autoconf \
+            automake \
             build-essential \
             ca-certificates \
             curl \
@@ -41,6 +43,7 @@ jobs:
             git \
             libhwloc-dev \
             libopenblas-dev \
+            libtool \
             pkg-config \
             software-properties-common
       - name: "Software Install - MacOS"
@@ -84,6 +87,16 @@ jobs:
                jupyter_client \
                nbformat \
                nbconvert
+      - name: "Software Install - PSRDADA"
+        if: ${{ matrix.os == 'ubuntu-20.04' || matrix.os == 'self-hosted' }}
+        run: |
+          git clone git://git.code.sf.net/p/psrdada/code psrdada
+          cd psrdada
+          ./bootstrap
+          ./configure
+          make -j all
+          sudo make install
+          cd ..
       - uses: actions/checkout@v3
       - name: "Build and Install"
         run: |
