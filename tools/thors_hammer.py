@@ -33,7 +33,6 @@ import numpy as np
 import argparse
 
 import bifrost.ndarray as BFArray
-from bifrost.ndarray import copy_array
 from bifrost.packet_writer import HeaderInfo, DiskWriter
 
 def data_size(string):
@@ -86,9 +85,8 @@ def main(args):
         file_flags |= os.O_DIRECT | os.O_SYNC
         
         ## Make sure that the request write width matches what O_DIRECT expects
-        if args.npacket*args.packet_size % 512 != 0:
-            write_width = args.npacket*args.packet_size
-            raise RuntimeError(f"npacket x packet_size ({write_width}) % 512 != 0")
+        if args.packet_size % 512 != 0:
+            raise RuntimeError(f"packet_size % 512 != 0")
             
     # Header descriptor (not populated in the case of 'generic'
     desc = HeaderInfo()
