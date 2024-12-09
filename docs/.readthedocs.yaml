@@ -5,7 +5,7 @@ build:
   apt_packages:
     - autoconf
     - doxygen
-    - exuberant-ctags
+    - universal-ctags
     - gawk
     - gfortran
     - grep

@@ -17662,12 +17662,12 @@ then :
   as_fn_error $? "Required program ctags was not found" "$LINENO" 5
 fi
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether ${CTAGS} is exuberant" >&5
-printf %s "checking whether ${CTAGS} is exuberant... " >&6; }
+printf %s "checking whether ${CTAGS} is sufficiently exuberant... " >&6; }
 if ! ${CTAGS} --version | grep -q Exuberant
 then :
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
-       as_fn_error $? "exuberant ctags is required, but ${CTAGS} is a different version" "$LINENO" 5
+       as_fn_error $? "exuberant/universal ctags is required, but ${CTAGS} is a different version" "$LINENO" 5
 else $as_nop
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 printf "%s\n" "yes" >&6; }
