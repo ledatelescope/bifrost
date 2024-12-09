@@ -7,11 +7,11 @@ dependencies:
   - numpy
   - python
   - scipy
-  - sphinx
   - pip
   - simplejson
   - ctypesgen
   - setuptools
-  - breathe
   - pip:
     - pint
+    - breathe
+    - sphinx
