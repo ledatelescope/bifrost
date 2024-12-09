@@ -1,0 +1,26 @@
+version: 2
+
+build:
+  os: ubuntu-22.04
+  apt_packages:
+    - autoconf
+    - exuberant-ctags
+    - gawk
+    - gfortran
+    - grep
+    - g++
+    - libtool
+    - make
+  tools:
+    python: "mambaforge-22.9"
+
+conda:
+  environment: docs/.rtd_environment.yaml
+
+python:
+  install:
+    - method: pip
+      path: .
+
+sphinx:
+  configuration: docs/source/conf.py
