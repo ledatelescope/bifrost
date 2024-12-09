@@ -56,8 +56,28 @@ def data_size(string):
         try:
             value = int(string)
         except ValueError:
-            raise ArgumentTypeError(f"Cannot parse '{string}' as a data size")
+            raise argparse.ArgumentTypeError(f"Cannot parse '{string}' as a data size")
     return value
+
+def inverse_data_size(value, include_space=True):
+    """
+    Invert the data_size() function to convert a size in bytes into a
+    data size string.
+    """
+    
+    if value >= 1024**4:
+        string = f"{value/1024**4:.1f} TiB"
+    elif value >= 1024**3:
+        string = f"{value/1024**3:.1f} GiB"
+    elif value >= 1024**2:
+        string = f"{value/1024**2:.1f} MiB"
+    elif value >= 1024:
+        string = f"{value/1024:.1f} kiB"
+    else:
+        string = f"{value:.1f} B"
+    if not include_space:
+        string = string.replace(' ', '')
+    return string
 
 class DummyFileHandle:
     """
@@ -114,13 +134,13 @@ def main(args):
         
         ## Report the throughput for this file
         t1F = time.time()
-        print(f"  #{i+1} in {t1F-t0F:.3f}s -> {nbyteF/1024**3/(t1F-t0F):.1f} GiB/s")
+        print(f"  #{i+1} in {t1F-t0F:.3f}s -> {inverse_data_size(nbyteF/(t1F-t0F))}/s")
         
         nbyte += nbyteF
         
     # Final throughput report across all file_count files
     t1 = time.time()
-    print(f"Finished in {t1-t0:.3f}s -> {nbyte/1024**3/(t1-t0):.1f} GiB/s")
+    print(f"Finished in {t1-t0:.3f}s -> {inverse_data_size(nbyte/(t1-t0))}/s")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
