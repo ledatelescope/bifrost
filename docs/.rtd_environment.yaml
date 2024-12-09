@@ -1,0 +1,17 @@
+name: ledatelescope_bifrost_doc_env
+
+channels:
+  - conda-forge
+
+dependencies:
+  - numpy
+  - python
+  - scipy
+  - pip
+  - simplejson
+  - ctypesgen
+  - setuptools
+  - pip:
+    - pint
+    - breathe
+    - sphinx

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,9 +27,6 @@
 
 # **TODO: Write tests for this class
 
-# Python2 compatibility
-from __future__ import absolute_import
-
 from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
 from bifrost import telemetry
@@ -40,6 +37,8 @@ class UDPSocket(BifrostObject):
         BifrostObject.__init__(self, _bf.bfUdpSocketCreate, _bf.bfUdpSocketDestroy)
     def bind(self, local_addr):
         _check( _bf.bfUdpSocketBind(self.obj, local_addr.obj) )
+    def sniff(self, local_addr):
+        _check( _bf.bfUdpSocketSniff(self.obj, local_addr.obj) )
     def connect(self, remote_addr):
         _check( _bf.bfUdpSocketConnect(self.obj, remote_addr.obj) )
     def shutdown(self):
@@ -57,3 +56,9 @@ class UDPSocket(BifrostObject):
     @timeout.setter
     def timeout(self, secs):
         _check( _bf.bfUdpSocketSetTimeout(self.obj, secs) )
+    @property
+    def promisc(self):
+        return _get(_bf.bfUdpSocketGetPromiscuous, self.obj)
+    @promisc.setter
+    def promisc(self, state):
+        _check( _bf.bfUdpSocketSetPromiscuous(self.obj, state) )

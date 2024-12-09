@@ -28,6 +28,8 @@
 
 #include "fileutils.hpp"
 #include <sstream>
+#include <iostream>
+#include <cstring> // strerror
 
 #if defined(HAVE_CXX_FILESYSTEM) && HAVE_CXX_FILESYSTEM
 #include <filesystem>
@@ -187,28 +189,90 @@ std::string get_dirname(std::string filename) {
 #endif
 }
 
-/* NOTE: In case of abnormal exit (such as segmentation fault or other signal),
-   the lock file will not be removed, and the next attempt to lock might busy-
-   wait until the file is manually deleted. If this is a common issue, we could
-   potentially write the PID into the lock file to help with tracking whether
-   the process died. */
 LockFile::LockFile(std::string lockfile) : _lockfile(lockfile) {
-	while( true ) {
-		_fd = open(_lockfile.c_str(), O_CREAT, 600);
-		flock(_fd, LOCK_EX);
-		struct stat fd_stat, lockfile_stat;
-		fstat(_fd, &fd_stat);
-		stat(_lockfile.c_str(), &lockfile_stat);
-		// Compare inodes
-		if( fd_stat.st_ino == lockfile_stat.st_ino ) {
-			// Got the lock
-			break;
-		}
-		close(_fd);
-	}
+  time_t start = time(NULL), elapsed = 0;
+  long busycount = 0;
+  long busyinterval = 1 << 17;
+  pid_t pid = getpid();
+  while( true ) {
+    _fd = open(_lockfile.c_str(), O_CREAT|O_RDWR, S_IRUSR|S_IWUSR);
+    if( _fd == -1 ) {
+      if(busycount == 0) {
+        std::cerr << "ERROR: could not create " << lockfile << ": "
+                  << strerror(errno) << std::endl;
+      }
+    }
+    else {
+      if( flock(_fd, LOCK_EX | LOCK_NB) == 0 ) {
+        struct stat fd_stat, lockfile_stat;
+        fstat(_fd, &fd_stat);
+        stat(_lockfile.c_str(), &lockfile_stat);
+        if( fd_stat.st_ino == lockfile_stat.st_ino ) {
+          // We acquired the lock. Announce it only if we announced waiting.
+          if(elapsed > 0) {
+            std::cerr << "NOTE: acquired " << lockfile << std::endl;
+          }
+          // Exit the busy loop
+          break;
+        }
+        // Locking succeeded, but inodes were different so try again.
+        flock(_fd, LOCK_UN);
+      }
+      close(_fd);
+    }
+    busycount++;
+    if(busycount % busyinterval == 0) {
+      elapsed = time(NULL) - start;
+      if(elapsed >= 5) {
+        std::cerr << "NOTE: waiting " << elapsed
+                  << "s for " << lockfile << std::endl;
+        busyinterval = busycount;
+      }
+    }
+  }
+  // We have the lock, so try writing PID.
+  if(ftruncate(_fd, 0) == -1) {
+    std::cerr << "WARNING: could not truncate " << lockfile << ": "
+              << strerror(errno) << std::endl;
+  }
+  else {
+    std::ostringstream ss;
+    ss << pid << '\n';
+    std::string buf = ss.str();
+    if(write(_fd, buf.c_str(), buf.size()) != (ssize_t)buf.size()) {
+      std::cerr << "WARNING: could not write to " << lockfile << ": "
+                << strerror(errno) << std::endl;
+    }
+  }
 }
 
 LockFile::~LockFile() {
-	unlink(_lockfile.c_str());
-	flock(_fd, LOCK_UN);
+  unlink(_lockfile.c_str());
+  flock(_fd, LOCK_UN);
+  close(_fd);
 }
+
+
+#ifdef FILEUTILS_LOCKFILE_TEST
+// This is a little test program for LockFile. Run it in two terminals
+// to simulate race conditions, or kill one to leave a a leftover lock file.
+// Output should look something like this:
+
+//    Initiating lock...
+//    NOTE: waiting 5s for ./myfile.lock
+//    NOTE: waiting 9s for ./myfile.lock
+//    NOTE: waiting 17s for ./myfile.lock
+//    NOTE: waiting 34s for ./myfile.lock
+//    [Delete the file from another terminal]
+//    NOTE: acquired ./myfile.lock
+//    Lock acquired... exiting
+
+int main() {
+  std::cerr << "Initiating lock..." << std::endl;
+  LockFile lock("./myfile.lock");
+  std::cerr << "Lock acquired, 'working' for 15s..." << std::endl;
+  sleep(15);
+  std::cerr << "Work finished, releasing lock..." << std::endl;
+  return 0;
+}
+#endif

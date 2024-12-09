@@ -34,6 +34,7 @@
   TODO: Implicitly padded/cropped transforms using load callback
 */
 
+#include <bifrost/config.h>
 #include <bifrost/fft.h>
 #include "assert.hpp"
 #include "utils.hpp"
@@ -44,7 +45,11 @@
 #include "ArrayIndexer.cuh"
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+#if defined(BF_GPU_EXP_PINNED_ALLOC) && BF_GPU_EXP_PINNED_ALLOC
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
+#else
+#include <thrust/system/cuda/memory.h>
+#endif
 
 #include <cufft.h>
 #include <cufftXt.h>
@@ -63,7 +68,11 @@ class BFfft_impl {
 	bool             _using_load_callback;
 	thrust::device_vector<char> _dv_tmp_storage;
 	thrust::device_vector<CallbackData> _dv_callback_data;
+#if defined(BF_GPU_EXP_PINNED_ALLOC) && BF_GPU_EXP_PINNED_ALLOC
 	typedef thrust::cuda::experimental::pinned_allocator<CallbackData> pinned_allocator_type;
+#else
+	using pinned_allocator_type = thrust::mr::stateless_resource_allocator<CallbackData, thrust::universal_host_pinned_memory_resource>;
+#endif
 	thrust::host_vector<CallbackData, pinned_allocator_type> _hv_callback_data;
 	
 	BFstatus execute_impl(BFarray const* in,
@@ -266,7 +275,7 @@ BFstatus BFfft_impl::execute_impl(BFarray const* in,
 	//         We could potentially use a CUDA event as a lighter-weight
 	//           solution.
 	cudaStreamSynchronize(g_cuda_stream);
-	CallbackData* h_callback_data = &_hv_callback_data[0];
+	CallbackData* h_callback_data = thrust::raw_pointer_cast(&_hv_callback_data[0]);
 	// WAR for CUFFT insisting that pointer be aligned to sizeof(cufftComplex)
 	int alignment = (_nbit == 32 ?
 	                 sizeof(cufftComplex) :

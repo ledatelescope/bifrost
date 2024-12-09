@@ -1,5 +1,5 @@
 
-# Copyright (c) 2018-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2018-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,11 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-
 from bifrost.libbifrost import _bf, _check, BifrostObject
 from bifrost.ndarray import asarray
+from bifrost.ndarray import ndarray
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -37,19 +35,19 @@ telemetry.track_module()
 class Romein(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfRomeinCreate, _bf.bfRomeinDestroy)
-    def init(self, positions, kernels, ngrid, polmajor=True):
+    def init(self, positions: ndarray, kernels: ndarray, ngrid: int, polmajor: bool=True) -> None:
         _check( _bf.bfRomeinInit(self.obj, 
                                  asarray(positions).as_BFarray(), 
                                  asarray(kernels).as_BFarray(),
                                  ngrid,
                                  polmajor) )
-    def set_positions(self, positions):
+    def set_positions(self, positions: ndarray) -> None:
         _check( _bf.bfRomeinSetPositions(self.obj, 
                                          asarray(positions).as_BFarray()) )
-    def set_kernels(self, kernels):
+    def set_kernels(self, kernels: ndarray) -> None:
         _check( _bf.bfRomeinSetKernels(self.obj, 
                                        asarray(kernels).as_BFarray()) )
-    def execute(self, idata, odata):
+    def execute(self, idata: ndarray, odata: ndarray) -> ndarray:
         # TODO: Work out how to integrate CUDA stream
         _check( _bf.bfRomeinExecute(self.obj,
                                     asarray(idata).as_BFarray(),

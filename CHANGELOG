@@ -1,3 +1,14 @@
+0.11.0
+ * Dropped support for Python2
+ * Merged the ibverb-support branch that brings in a new, more flexible packet capture interface
+ * Improved documentation about packet capture
+ * Improved documentation about CUDA support
+ * Improved documentation build process
+ * Various fixes for CUDA 12.x releases
+ * Added support for gcc 13
+ * Changed the file locking so that the user is warned if a block is waiting to acquire the lock
+ * Various deprecation cleanups
+
 0.10.1
  * Cleaned up the Makefile outputs
  * Added a disk cache for bifrost.map calls
@@ -8,6 +19,7 @@
  * Added set_stream and get_stream to bifrost.device to help control which CUDA stream is used
  * Added bifrost.device.ExternalStream as a context manager to help with mixing Bifrost and cupy/pycuda
  * Fixed a problem calling bifrost.reduce on a slice of an array
+ * Added the astype() method to `bifrost.ndarray`
 
 0.10.0
  * Switched over to an autotools-based build system

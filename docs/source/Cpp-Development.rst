@@ -81,3 +81,78 @@ Create a Ring Buffer and Load Data
    bfRingSpanRelease(my_read_span);
    bfRingSequenceClose(my_read_sequence);
    bfRingDestroy(my_ring); //delete the ring from memory
+
+Adding New Packet Formats
+------------------------
+
+A wide variety of packet formats are already included in Bifrost. 
+For simplicity, it is likely preferable to make use of these pre-existing
+formats. In the case that this becomes infeasible, here are some of what 
+is necessary in order to add a new format to Bifrost.
+
+Files to edit:
+
+1. ``python/bifrost/packet_capture.py``
+
+   * Add ``set_mypacket`` to the ``PacketCaptureCallback`` class. It will likely look
+     very similar to the ``set_chips`` method.
+
+2. ``src/bifrost/packet_capture.h``
+
+   * This is for ctypesgen. Add a typedef for the sequence callback. This typedef
+     corresponds to the sequence callback used in the packet reader, see the sections
+     on ``test_udp_io.py`` and ``test_disk_io.py`` for examples of writing the packet reader. 
+   * Also declare the capture callback. 
+
+3. ``src/formats/format.hpp``
+
+   * Add a one-line ``#include "mypacket.hpp"``
+
+4. `src/formats/mypacket.hpp`
+
+   * This is the only file that will need to be fully written from scratch. The
+     easiest way to proceed is to copy the most similar existing packet format and
+     modify it accordingly. One will need to make sure that the header is defined
+     properly and that the correct information is going into it, and one will need
+     to make sure that the `memcpy` operation is properly filling the packet with
+     data. 
+
+5. ``src/packet_capture.cpp``
+
+   * Need to add a call to the packet capture callback. 
+
+6. ``src/packet_capture.hpp``
+
+   * This is where you will spend most of your time. Add your packet capture sequence
+     callback to the ``BFpacketcapture_callback_impl`` initialization list. Immediately
+     after the initialization list, add the ``set_mypacket`` and ``get_mypacket`` methods. 
+   * Add a new class: ``BFpacketcapture_mypacket_impl``. In the case of simpler packet
+     formats, this may be very close to the already written ``BFpacketcapture_chips_impl``. 
+     It's probably best to start by copying the format that is closest to the format
+     you are writing and modify it. 
+   * In ``BFpacketcapture_create``, add the format to the first long if-else if statement.
+     This section tells the disk writer the size of the packet to expect. Then add your
+     packet to the second if-else if statement.
+
+7. ``src/packet_writer.hpp``
+
+   * After the ``BFpacketwriter_generic_impl``, add a class ``BFpacketwriter_mypacket_impl``.
+     Take care to choose the correct BF\_DTYPE\_???. 
+   * In ``BFpacketwriter_create``, add your packet to the first if-else if statement.
+     Note that nsamples needs to correspond to the number elements in the data portion
+     of the packet. Then add your packet to the third if-else if statement along all
+     the other formats. 
+
+8. ``test/test_disk_io.py``
+
+   * Add a reader for your packet format. This reader will be what is used in the actual
+     code as well. It contains the sequence callback that we declared in the ``src/bifrost/packet_capture.h``
+     file. Note that the header in this sequence callback is the ring header not the
+     packet header. 
+   * You will also need to add a ``_get_mypacket_data``, ``test_write_mypacket``,
+     and ``test_read_mypacket``. 
+
+9. ``test/test_udp_io.py``
+
+   * The UDP version of ``test_disk_io``. Once you have written the disk I/O test, this
+     test is fairly simple to implement, provided you wrote it correctly.

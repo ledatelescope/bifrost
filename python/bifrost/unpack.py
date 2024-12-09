@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,16 +25,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-
 from bifrost.libbifrost import _bf, _check
 from bifrost.ndarray import asarray
+from bifrost.ndarray import ndarray
 
 from bifrost import telemetry
 telemetry.track_module()
 
-def unpack(src, dst, align_msb=False):
+def unpack(src: ndarray, dst: ndarray, align_msb: bool=False) -> ndarray:
     src_bf = asarray(src).as_BFarray()
     dst_bf = asarray(dst).as_BFarray()
     _check(_bf.bfUnpack(src_bf, dst_bf, align_msb))

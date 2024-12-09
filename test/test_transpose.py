@@ -57,7 +57,9 @@ class TransposeTest(unittest.TestCase):
         for perm in permutations(range(3)):
             for shape in [(23,37,51),
                           (100, 200, 2),
-                          (2, 200, 100)]:
+                          (2, 200, 100),
+                          (100, 200, 1),
+                          (1, 200, 100)]:
                 self.run_simple_test(perm, dtype, shape)
     def test_1byte(self):
         self.run_simple_test_shmoo(np.uint8)

@@ -26,8 +26,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import print_function
-
 import argparse
 
 from bifrost import __version__, __copyright__, __license__
@@ -46,9 +44,10 @@ if args.config:
     print("\nConfiguration:")
     print(" Memory alignment: %i B" % BF_ALIGNMENT)
     print(" OpenMP support: %s" % _yes_no(BF_OPENMP_ENABLED))
-    print(" NUMA support %s" % _yes_no(BF_NUMA_ENABLED))
     print(" Hardware locality support: %s" % _yes_no(BF_HWLOC_ENABLED))
     print(" Mellanox messaging accelerator (VMA) support: %s" % _yes_no(BF_VMA_ENABLED))
+    print(" Infiniband verbs support: %s" % _yes_no(BF_VERBS_ENABLED))
+    print(" RDMA ring transport support: %s" % _yes_no(BF_RDMA_ENABLED))
     print(" Logging directory: %s" % BF_PROCLOG_DIR)
     print(" Debugging: %s" % _yes_no(BF_DEBUG_ENABLED))
     print(" CUDA support: %s" % _yes_no(BF_CUDA_ENABLED))

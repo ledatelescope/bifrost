@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,36 +25,29 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-
 from ctypes import c_ulong, pointer as c_pointer
 from bifrost.libbifrost import _bf, _check, _get
+from typing import Union
 
 from bifrost import telemetry
 telemetry.track_module()
 
-def set_device(device):
+def set_device(device: Union[int,str]) -> None:
     if isinstance(device, int):
         _check(_bf.bfDeviceSet(device))
     else:
-        try:
-            device = device.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
-        _check(_bf.bfDeviceSetById(device))
+        _check(_bf.bfDeviceSetById(device.encode()))
 
-def get_device():
+def get_device() -> int:
     return _get(_bf.bfDeviceGet)
 
-def set_stream(stream):
+def set_stream(stream: int) -> bool:
     """Set the CUDA stream to the provided stream handle"""
     stream = c_ulong(stream)
     _check(_bf.bfStreamSet(c_pointer(stream)))
     return True
     
-def get_stream():
+def get_stream() -> int:
     """Get the current CUDA stream and return its address"""
     stream = c_ulong(0)
     _check(_bf.bfStreamGet(c_pointer(stream)))
@@ -90,10 +83,10 @@ class ExternalStream(object):
         set_stream(self._orig_stream)
         del self._orig_stream
 
-def stream_synchronize():
+def stream_synchronize() -> None:
     _check(_bf.bfStreamSynchronize())
 
-def set_devices_no_spin_cpu():
+def set_devices_no_spin_cpu() -> None:
     """Sets a flag on all GPU devices that tells them not to spin the CPU when
     synchronizing. This is useful for reducing CPU load in GPU pipelines.
 

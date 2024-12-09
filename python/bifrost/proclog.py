@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,16 +25,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import print_function, absolute_import
-import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 from bifrost.libbifrost import _bf, _check, BifrostObject
 
 import os
 import time
+
+from typing import Any, Dict, Union
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -42,15 +38,10 @@ telemetry.track_module()
 PROCLOG_DIR = _bf.BF_PROCLOG_DIR
 
 class ProcLog(BifrostObject):
-    def __init__(self, name):
-        try:
-            name = name.encode('utf-8')
-        except AttributeError:
-            # Python2 catch
-            pass
+    def __init__(self, name: str):
         BifrostObject.__init__(
-            self, _bf.bfProcLogCreate, _bf.bfProcLogDestroy, name)
-    def update(self, contents):
+            self, _bf.bfProcLogCreate, _bf.bfProcLogDestroy, name.encode())
+    def update(self, contents: Union[Dict[str,Any],str]):
         """Updates (replaces) the contents of the log
         contents: string or dict containing data to write to the log
         """
@@ -59,12 +50,7 @@ class ProcLog(BifrostObject):
         if isinstance(contents, dict):
             contents = '\n'.join(['%s : %s' % item
                                   for item in contents.items()])
-        try:
-            contents = contents.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
-        _check(_bf.bfProcLogUpdate(self.obj, contents))
+        _check(_bf.bfProcLogUpdate(self.obj, contents.encode()))
 
 def _multi_convert(value):
     """
@@ -80,7 +66,7 @@ def _multi_convert(value):
             pass
     return value
 
-def load_by_filename(filename):
+def load_by_filename(filename: str) -> Dict[str,Any]:
     """
     Function to read in a ProcLog file and return the contents as a 
     dictionary.
@@ -113,7 +99,7 @@ def load_by_filename(filename):
     # Done
     return contents
 
-def load_by_pid(pid, include_rings=False):
+def load_by_pid(pid: int, include_rings: bool=False) -> Dict[str,Any]:
     """
     Function to read in and parse all ProcLog files associated with a given 
     process ID.  The contents of these files are returned as a collection of
@@ -127,7 +113,7 @@ def load_by_pid(pid, include_rings=False):
     # Make sure we have a directory to load from
     baseDir = os.path.join(PROCLOG_DIR, str(pid))
     if not os.path.isdir(baseDir):
-        raise RuntimeError("Cannot find log directory associated with PID %s" % pid)
+        raise RuntimeError(f"Cannot find log directory associated with PID {pid}")
 
     # Load
     contents = {}

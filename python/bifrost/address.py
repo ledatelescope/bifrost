@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,52 +25,41 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-import sys
-if sys.version_info > (3,):
-    long = int
-
 from bifrost.libbifrost import _bf, _check, _get, BifrostObject
 
 import ctypes
-from socket import AF_UNSPEC
+from socket import AddressFamily, AF_UNSPEC
+from typing import Optional
 
 from bifrost import telemetry
 telemetry.track_module()
 
 class Address(BifrostObject):
-    def __init__(self, address, port, family=None):
-        try:
-            address = address.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
-        assert(isinstance(port, (int, long)))
+    def __init__(self, address: str, port: int, family: Optional[AddressFamily]=None):
+        address = address.encode()
+        assert(isinstance(port, int))
         if family is None:
             family = AF_UNSPEC
         BifrostObject.__init__(
             self, _bf.bfAddressCreate, _bf.bfAddressDestroy,
             address, port, family)
     @property
-    def family(self):
+    def family(self) -> int:
         return _get(_bf.bfAddressGetFamily, self.obj)
     @property
-    def port(self):
+    def port(self) -> int:
         return _get(_bf.bfAddressGetPort, self.obj)
     @property
-    def mtu(self):
+    def is_multicast(self) -> bool:
+        return True if _get(_bf.bfAddressIsMulticast, self.obj) else False
+    @property
+    def mtu(self) -> int:
         return _get(_bf.bfAddressGetMTU, self.obj)
     @property
-    def address(self):
+    def address(self) -> str:
         buflen = 128
         buf = ctypes.create_string_buffer(buflen)
         _check(_bf.bfAddressGetString(self.obj, buflen, buf))
-        try:
-            value = buf.value.decode()
-        except AttributeError:
-            # Python2 catch
-            value = buf.value
-        return value
-    def __str__(self):
-        return "%s:%i" % (self.address, self.port)
+        return buf.value.decode()
+    def __str__(self) -> str:
+        return f"{self.address}:{self.port}"

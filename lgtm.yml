@@ -1,0 +1,10 @@
+extraction:
+  cpp:
+    prepare:
+      packages:
+        - exuberant-ctags
+    before_index:
+      - export NOCUDA=1
+    index:
+      build_command:
+        - make -e libbifrost

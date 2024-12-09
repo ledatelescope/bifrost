@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,27 +25,29 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import absolute_import
-
 from bifrost.unpack import unpack as bf_unpack
 from bifrost.pipeline import TransformBlock
 from bifrost.DataType import DataType
+from bifrost.ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 
 from copy import deepcopy
+import numpy as np
+
+from typing import Any, Dict, Union, Tuple
 
 from bifrost import telemetry
 telemetry.track_module()
 
 class UnpackBlock(TransformBlock):
-    def __init__(self, iring, dtype, align_msb=False,
+    def __init__(self, iring: Ring, dtype: Union[str,np.dtype], align_msb: bool=False,
                  *args, **kwargs):
         super(UnpackBlock, self).__init__(iring, *args, **kwargs)
         self.dtype     = dtype
         self.align_msb = align_msb
-    def define_valid_input_spaces(self):
+    def define_valid_input_spaces(self) -> Tuple[str]:
         """Return set of valid spaces (or 'any') for each input"""
-        return ('system',)
-    def on_sequence(self, iseq):
+        return ('any',)
+    def on_sequence(self, iseq: ReadSequence) -> Dict[str,Any]:
         ihdr = iseq.header
         ohdr = deepcopy(ihdr)
         itype = DataType(ihdr['_tensor']['dtype'])
@@ -58,12 +60,12 @@ class UnpackBlock(TransformBlock):
             otype = self.dtype
         ohdr['_tensor']['dtype'] = otype
         return ohdr
-    def on_data(self, ispan, ospan):
+    def on_data(self, ispan: ReadSpan, ospan: WriteSpan) -> None:
         idata = ispan.data
         odata = ospan.data
         bf_unpack(idata, odata, self.align_msb)
 
-def unpack(iring, dtype, *args, **kwargs):
+def unpack(iring: Ring, dtype: Union[str,np.dtype], *args, **kwargs) -> UnpackBlock:
     """Unpack data to a larger data type.
 
     Args:
@@ -74,8 +76,8 @@ def unpack(iring, dtype, *args, **kwargs):
 
     **Tensor semantics**::
 
-        Input:  [...], dtype = one of: i/u2, i/u4, ci2, ci4, space = SYSTEM
-        Output: [...], dtype = i8 or ci8 (matching input), space = SYSTEM
+        Input:  [...], dtype = one of: i/u2, i/u4, ci2, ci4, space = SYSTEM or CUDA
+        Output: [...], dtype = i8 or ci8 (matching input), space = SYSTEM or CUDA
 
     Returns:
         UnpackBlock: A new block instance.

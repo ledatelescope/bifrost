@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2024, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,26 +36,15 @@ TODO: Some calls result in segfault with space=cuda (e.g., __getitem__
 
 """
 
-# Python2 compatibility
-from __future__ import absolute_import
 import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 import ctypes
 import numpy as np
 from bifrost.memory import raw_malloc, raw_free, raw_get_space, space_accessible
-from bifrost.libbifrost import _bf, _check, _space2string
+from bifrost.libbifrost import _bf, _th, _check, _array, _space2string
 from bifrost import device
-from bifrost.dtype import bifrost2string
 from bifrost.DataType import DataType
 from bifrost.Space import Space
 from bifrost.libbifrost_generated import struct_BFarray_
-
-try:
-    from bifrost._pypy3_compat import PyMemoryView_FromMemory
-except ImportError:
-    pass
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -75,23 +64,11 @@ def _address_as_buffer(address, nbyte, readonly=False):
     # Note: This works as a buffer in regular python and pypy
     # Note: int_asbuffer is undocumented; see here:
     # https://mail.scipy.org/pipermail/numpy-discussion/2008-January/030938.html
-    try:
-        int_asbuffer = ctypes.pythonapi.PyMemoryView_FromMemory
-        int_asbuffer.restype = ctypes.py_object
-        int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
-        return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
-    except AttributeError:
-        try:
-            # Python2 catch
-            return np.core.multiarray.int_asbuffer(address,
-                                                   nbyte,
-                                                   readonly=readonly,
-                                                   check=False)
-        except AttributeError:
-            # PyPy3 catch
-            int_asbuffer = PyMemoryView_FromMemory
-            return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
-
+    int_asbuffer = ctypes.pythonapi.PyMemoryView_FromMemory
+    int_asbuffer.restype = ctypes.py_object
+    int_asbuffer.argtypes = (ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int)
+    return int_asbuffer(address, nbyte, 0x100 if readonly else 0x200)
+        
 def asarray(arr, space=None):
     if isinstance(arr, ndarray) and (space is None or space == arr.bf.space):
         return arr
@@ -193,7 +170,7 @@ class ndarray(np.ndarray):
                 shape = list(base.shape)[:ndim]
                 strides = list(base.strides)[:ndim]
                 space = _space2string(base.space)
-                dtype = bifrost2string(base.dtype)
+                dtype = _th.BFdtype_enum(base.dtype)
 
                 return ndarray.__new__(cls,
                     space=space,
@@ -227,9 +204,8 @@ class ndarray(np.ndarray):
                     base = base.astype(dtype.as_numpy_dtype())
                 base = ndarray(base) # View base as bf.ndarray
                 if dtype is not None and base.bf.dtype != dtype:
-                    raise TypeError('Unable to convert type %s to %s during '
-                                    'array construction' %
-                                    (base.bf.dtype, dtype))
+                    raise TypeError(f"Unable to convert type {base.bf.dtype} to {dtype} during "
+                                    "array construction")
                 #base = base.view(cls
                 #if dtype is not None:
                 #    base = base.astype(DataType(dtype).as_numpy_dtype())
@@ -376,13 +352,47 @@ class ndarray(np.ndarray):
             v.bf.dtype = dtype_bf
             v._update_BFarray()
             return v
-    #def astype(self, dtype):
-    #    dtype_bf = DataType(dtype)
-    #    dtype_np = dtype_bf.as_numpy_dtype()
-    #    # TODO: This segfaults for cuda space; need type conversion support in backend
-    #    a = super(ndarray, self).astype(dtype_np)
-    #    a.bf.dtype = dtype_bf
-    #    return a
+    def astype(self, dtype):
+        dtype_bf = DataType(dtype)
+        if space_accessible(self.bf.space, ['system']):
+            ## For arrays that can be accessed from the system space, use
+            ## numpy.ndarray.copy() to do the heavy lifting
+            dtype_np = dtype_bf.as_numpy_dtype()
+            if self.bf.space == 'cuda_managed':
+                ## TODO: Decide where/when these need to be called
+                device.stream_synchronize()
+            if dtype_bf.is_complex and dtype_bf.is_integer:
+                ## Catch for the complex integer types
+                a = ndarray(shape=self.shape, dtype=dtype_bf)
+                a['re'] = self.real.astype(dtype_bf.as_real())
+                a['im'] = self.imag.astype(dtype_bf.as_real())
+            else:
+                a = super(ndarray, self).astype(dtype_np)
+            a.bf.dtype = dtype_bf
+        else:
+            ## For arrays that can be access from CUDA, use bifrost.map
+            ## to do the heavy lifting
+            ## TODO: Would it be better to use quantize/unpack instead of map?
+            a = ndarray(shape=self.shape, dtype=dtype_bf, space=self.bf.space)
+            if dtype_bf.is_complex:
+                if self.bf.dtype.is_complex:
+                    ## complex in -> complex out
+                    func_string = b'a.real = b.real; a.imag = b.imag'
+                else:
+                    ## real in -> complex out
+                    func_string = b'a.real = b; a.imag = 0'
+            else:
+                if self.bf.dtype.is_complex:
+                    ## complex in -> real out (plus the standard "drop imag part" warning)
+                    np.ComplexWarning()
+                    func_string = b'a = b.real'
+                else:
+                    ## real in -> real out
+                    func_string = b'a = b'
+            _check(_bf.bfMap(0, _array(None, dtype=ctypes.c_long), _array(None),
+                     2, _array([a.as_BFarray(), self.as_BFarray()]), _array(['a', 'b']),
+                     None, func_string, None, _array(None), _array(None)))
+        return a
     def _system_accessible_copy(self):
         if space_accessible(self.bf.space, ['system']):
             return self

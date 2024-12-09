@@ -1,7 +1,5 @@
-
 /*
- * Copyright (c) 2021, The Bifrost Authors. All rights reserved.
- * Copyright (c) 2021, The University of New Mexico. All rights reserved.
+ * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,44 +26,31 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*! \file pypy3_compat.c
- *  \brief Compatibility layer for PyPy3
- */
- 
-#include "Python.h"
-#include <stdio.h>
+#pragma once
 
-static PyObject* PyMemoryView_FromAddressAndSize(PyObject *self, PyObject *args, PyObject *kwds) {
-    PyObject *address, *nbyte, *flags, *view;
-    if(!PyArg_ParseTuple(args, "OOO", &address, &nbyte, &flags)) {
-        PyErr_Format(PyExc_RuntimeError, "Invalid parameters");
-        return NULL;
-    }
-    
-    long addr, size, flgs;
-    addr = PyLong_AsLong(address);
-    size = PyLong_AsLong(nbyte);
-    flgs = PyLong_AsLong(flags);
-    
-    char *buf = (char *) addr;
-    
-    view = PyMemoryView_FromMemory(buf, size, flgs | PyBUF_READ);
-    return view;
-}
+#include "base.hpp"
 
-static PyMethodDef CompatMethods[] = {
-  {"PyMemoryView_FromMemory", (PyCFunction) PyMemoryView_FromAddressAndSize, METH_VARARGS, NULL},
-  {NULL,                      NULL,                                          0,            NULL}
+struct __attribute__((packed)) vbeam_hdr_type {
+    uint64_t sync_word;
+    uint64_t sync_time;
+    uint64_t time_tag;
+    double   bw_hz;
+    double   sfreq;
+    uint32_t nchan;
+    uint32_t chan0;
+    uint32_t npol;
 };
 
-static struct PyModuleDef Compat = {
-  PyModuleDef_HEAD_INIT, "_pypy3_compat", NULL, -1, CompatMethods,};
-
-PyMODINIT_FUNC PyInit__pypy3_compat(void) {
-  PyObject *m;
-  m = PyModule_Create(&Compat);
-  if(m == NULL) {
-    return NULL;
-  }
-  return m;
-}
+class VBeamHeaderFiller : virtual public PacketHeaderFiller {
+public:
+    inline int get_size() { return sizeof(vbeam_hdr_type); }
+    inline void operator()(const PacketDesc* hdr_base,
+                           BFoffset          framecount,
+                           char*             hdr) {
+        vbeam_hdr_type* header = reinterpret_cast<vbeam_hdr_type*>(hdr);
+        memset(header, 0, sizeof(vbeam_hdr_type));
+        
+        header->sync_word        = 0xAABBCCDD00000000L;
+        header->time_tag         = htobe64(hdr_base->seq);
+    }
+};

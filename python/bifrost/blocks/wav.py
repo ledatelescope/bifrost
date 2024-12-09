@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,40 +25,26 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import absolute_import
-import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 from bifrost.pipeline import SourceBlock, SinkBlock
 from bifrost.DataType import DataType
 from bifrost.units import convert_units
+from bifrost.ring2 import Ring, ReadSequence, ReadSpan, WriteSpan
 
 import struct
 import os
 
+from typing import Any, Dict, IO, List, Optional, Tuple
+
 from bifrost import telemetry
 telemetry.track_module()
 
-def wav_read_chunk_desc(f):
+def wav_read_chunk_desc(f: IO[bytes]) -> Tuple[str,int,str]:
     id_, size, fmt = struct.unpack('<4sI4s', f.read(12))
-    try:
-        id_ = id_.decode()
-        fmt = fmt.decode()
-    except AttributeError:
-        # Catch for Python2
-        pass
-    return id_, size, fmt
-def wav_read_subchunk_desc(f):
+    return id_.decode(), size, fmt.decode()
+def wav_read_subchunk_desc(f: IO[bytes]) -> Tuple[str,int]:
     id_, size = struct.unpack('<4sI', f.read(8))
-    try:
-        id_ = id_.decode()
-    except AttributeError:
-        # Catch for Python2
-        pass
-    return id_, size
-def wav_read_subchunk_fmt(f, size):
+    return id_.decode(), size
+def wav_read_subchunk_fmt(f: IO[bytes], size: int) -> Dict[str,int]:
     assert(size >= 16)
     packed = f.read(16)
     f.seek(size - 16, 1)
@@ -67,7 +53,7 @@ def wav_read_subchunk_fmt(f, size):
     vals = struct.unpack('<HHIIHH', packed)
     info = {k: v for k, v in zip(keys, vals)}
     return info
-def wav_read_header(f):
+def wav_read_header(f: IO[bytes]) -> Tuple[Dict[str,int],int]:
     # **TODO: Some files actually have extra subchunks _after_ the data as well
     #           This is rather annoying :/
     chunk_id, chunk_size, chunk_fmt = wav_read_chunk_desc(f)
@@ -83,7 +69,7 @@ def wav_read_header(f):
         subchunk_id, subchunk_size = wav_read_subchunk_desc(f)
     data_size = subchunk_size
     return hdr, data_size
-def wav_write_header(f, hdr, chunk_size=0, data_size=0):
+def wav_write_header(f: IO[bytes], hdr:Dict[str,int], chunk_size: int=0, data_size: int=0) -> None:
     # Note: chunk_size = file size - 8
     f.write(struct.pack('<4sI4s4sIHHIIHH4sI',
                         'RIFF', chunk_size, 'WAVE',
@@ -93,9 +79,9 @@ def wav_write_header(f, hdr, chunk_size=0, data_size=0):
                         'data', data_size))
 
 class WavSourceBlock(SourceBlock):
-    def create_reader(self, sourcename):
+    def create_reader(self, sourcename: str) -> IO[bytes]:
         return open(sourcename, 'rb')
-    def on_sequence(self, reader, sourcename):
+    def on_sequence(self, reader: IO[bytes], sourcename: str) -> List[Dict[str,Any]]:
         hdr, self.bytes_remaining = wav_read_header(reader)
         ohdr = {
             '_tensor': {
@@ -111,7 +97,7 @@ class WavSourceBlock(SourceBlock):
         }
         return [ohdr]
 
-    def on_data(self, reader, ospans):
+    def on_data(self, reader: IO[bytes], ospans: List[WriteSpan]) -> List[int]:
         ospan = ospans[0]
         nbyte = reader.readinto(ospan.data)
         if nbyte % ospan.frame_nbyte:
@@ -126,7 +112,8 @@ class WavSourceBlock(SourceBlock):
         nframe = nbyte // ospan.frame_nbyte
         return [nframe]
 
-def read_wav(sourcefiles, gulp_nframe, *args, **kwargs):
+def read_wav(sourcefiles: List[str], gulp_nframe: int,
+             *args, **kwargs) -> WavSourceBlock:
     """Read Wave files (.wav).
 
     Args:
@@ -146,12 +133,12 @@ def read_wav(sourcefiles, gulp_nframe, *args, **kwargs):
     return WavSourceBlock(sourcefiles, gulp_nframe, *args, **kwargs)
 
 class WavSinkBlock(SinkBlock):
-    def __init__(self, iring, path=None, *args, **kwargs):
+    def __init__(self, iring: Ring, path: Optional[str]=None, *args, **kwargs):
         super(WavSinkBlock, self).__init__(iring, *args, **kwargs)
         if path is None:
             path = ''
         self.path = path
-    def on_sequence(self, iseq):
+    def on_sequence(self, iseq: ReadSequence) -> None:
         ihdr = iseq.header
         itensor = ihdr['_tensor']
 
@@ -188,14 +175,14 @@ class WavSinkBlock(SinkBlock):
         else:
             raise ValueError("Incompatible axes: " + str(axnames))
 
-    def on_sequence_end(self, iseq):
+    def on_sequence_end(self, iseq: ReadSequence) -> None:
         if hasattr(self, 'ofile'):
             self.ofile.close()
         elif hasattr(self, 'ofiles'):
             for ofile in self.ofiles:
                 ofile.close()
 
-    def on_data(self, ispan):
+    def on_data(self, ispan: ReadSpan) -> None:
         idata = ispan.data
         if idata.ndim == 2:
             idata.tofile(self.ofile)
@@ -205,7 +192,8 @@ class WavSinkBlock(SinkBlock):
         else:
             raise ValueError("Internal error: Unknown data format!")
 
-def write_wav(iring, path=None, *args, **kwargs):
+def write_wav(iring: Ring, path: Optional[str]=None,
+              *args, **kwargs) -> WavSinkBlock:
     """Write data as Wave files (.wav).
 
     Args:

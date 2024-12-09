@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
  * Copyright (c) 2016, NVIDIA CORPORATION. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -63,14 +63,15 @@ BFstatus bfGetSpace(const void* ptr, BFspace* space) {
 #if defined(CUDA_VERSION) && CUDA_VERSION >= 10000
     } else {
         switch( ptr_attrs.type ) {
-		case cudaMemoryTypeHost:    *space = BF_SPACE_SYSTEM;       break;
-		case cudaMemoryTypeDevice:  *space = BF_SPACE_CUDA;         break;
-		case cudaMemoryTypeManaged: *space = BF_SPACE_CUDA_MANAGED; break;
-		default: {
-			// This should never be reached
-			BF_FAIL("Valid memoryType", BF_STATUS_INTERNAL_ERROR);
-		}
-		}
+        		case cudaMemoryTypeUnregistered: *space = BF_SPACE_SYSTEM;       break;
+        		case cudaMemoryTypeHost:         *space = BF_SPACE_CUDA_HOST;    break;
+        		case cudaMemoryTypeDevice:       *space = BF_SPACE_CUDA;         break;
+        		case cudaMemoryTypeManaged:      *space = BF_SPACE_CUDA_MANAGED; break;
+        		default: {
+        			// This should never be reached
+        			BF_FAIL("Valid memoryType", BF_STATUS_INTERNAL_ERROR);
+        		}
+        }
 	}
 #else
 	} else if( ptr_attrs.isManaged ) {

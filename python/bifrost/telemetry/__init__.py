@@ -1,6 +1,6 @@
 
-# Copyright (c) 2021-2022, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2021-2022, The University of New Mexico. All rights reserved.
+# Copyright (c) 2021-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2021-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,22 +26,16 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import print_function, division, absolute_import
-
 import os
+import sys
 import time
 import uuid
 import atexit
 import socket
 import inspect
 import warnings
-try:
-    from urllib2 import urlopen
-    from urllib import urlencode
-except ImportError:
-    from urllib.request import urlopen
-    from urllib.parse import urlencode
+from urllib.request import urlopen
+from urllib.parse import urlencode
 from threading import RLock
 from functools import wraps
 
@@ -99,6 +93,7 @@ class _TelemetryClient(object):
         # Setup
         self.key = key
         self.version = version
+        self.py_version = "%i.%i" % (sys.version_info.major, sys.version_info.minor)
         
         # Session reference
         self._session_start = time.time()
@@ -154,13 +149,10 @@ class _TelemetryClient(object):
                     payload = urlencode({'timestamp'   : int(tNow),
                                          'key'         : self.key, 
                                          'version'     : self.version,
+                                         'py_version'  : self.py_version,
                                          'session_time': "%.6f" % ((tNow-self._session_start) if final else 0.0,),
                                          'payload'     : payload})
-                    try:
-                        payload = payload.encode()
-                    except AttributeError:
-                        pass
-                    uh = urlopen('https://fornax.phys.unm.edu/telemetry/bifrost.php', payload, 
+                    uh = urlopen('https://fornax.phys.unm.edu/telemetry/bifrost.php', payload.encode(), 
                                  timeout=TELEMETRY_TIMEOUT)
                     status = uh.read()
                     if status == '':

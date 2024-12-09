@@ -7,7 +7,11 @@ DAT_DIR = share
 SRC_DIR = src
 
 HAVE_PYTHON = @HAVE_PYTHON@
+
 HAVE_DOCKER = @HAVE_DOCKER@
+
+CAN_BUILD_CXX_DOCS = @HAVE_CXX_DOCS@
+CAN_BUILD_PYTHON_DOCS = @HAVE_PYTHON_DOCS@
 
 BIFROST_PYTHON_DIR = python
 
@@ -18,10 +22,23 @@ libbifrost:
 	$(MAKE) -C $(SRC_DIR) all
 .PHONY: libbifrost
 
+check:
+ifeq ($(HAVE_PYTHON),1)
+	MYPYPATH=$(BIFROST_PYTHON_DIR) mypy --follow-imports=silent \
+	    python/bifrost/blocks/detect.py \
+	    python/bifrost/blocks/quantize.py \
+	    python/bifrost/blocks/unpack.py \
+	    python/bifrost/sigproc.py \
+	    python/bifrost/sigproc2.py \
+	    test/test_sigproc.py \
+	    testbench/test_fft_detect.py
+endif
+.PHONY: check
+
 test:
 	#$(MAKE) -C $(SRC_DIR) test
 ifeq ($(HAVE_PYTHON),1)
-	cd test && ./download_test_data.sh ; python -m unittest discover
+	cd test && ./download_test_data.sh ; @PYTHON@ -m unittest discover -v
 endif
 .PHONY: test
 clean:
@@ -63,8 +80,13 @@ ifeq ($(HAVE_PYTHON),1)
 endif
 .PHONY: uninstall
 
-doc: $(INC_DIR)/bifrost/*.h Doxyfile
+doc: $(INC_DIR)/bifrost/*.h Doxyfile docs/source/*.rst docs/source/*.py
+ifeq ($(CAN_BUILD_CXX_DOCS),1)
 	@DX_DOXYGEN@ Doxyfile
+endif
+ifeq ($(CAN_BUILD_PYTHON_DOCS),1)
+	$(MAKE) -C docs singlehtml
+endif
 .PHONY: doc
 
 python: libbifrost

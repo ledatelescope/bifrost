@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -52,13 +52,13 @@ period:        <delete>
 data:          [time][pol][nbit] (General case: [time][if/pol][chan][nbit])
 """
 
-from __future__ import print_function
-
 import struct
 import warnings
 import numpy as np
 from collections import defaultdict
 import os
+
+from typing import IO, Optional
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -114,8 +114,17 @@ _TELESCOPES = defaultdict(lambda: 'unknown',
                            6:  'GBT',
                            7:  'GMRT',
                            8:  'Effelsberg',
+                           9: 'Effelsberg LOFAR',
+                           11: 'Unknown',
+                           12: 'MWA',
+                           20: 'CHIME',
                            52: 'LWA-OV',
-                           53: 'LWA-SV'})
+                           53: 'LWA-SV',
+                           64: 'MeerKAT',
+                           65: 'KAT-7',
+                           82: 'eMerlin'})
+ 
+
 #the machine_id parameter names' translation
 _MACHINES = defaultdict(lambda: 'unknown',
                         {0:  'FAKE',
@@ -127,6 +136,8 @@ _MACHINES = defaultdict(lambda: 'unknown',
                          6:  'SCAMP',
                          7:  'GMRTFB',
                          8:  'PULSAR2000',
+                         9:  'UNKNOWN',
+                         20: 'CHIME',
                          52: 'LWA-DP',
                          53: 'LWA-ADP'})
 
@@ -134,12 +145,7 @@ def _header_write_string(file_object, key):
     """Writes a single key name to the header,
     which will be followed by the value"""
     file_object.write(struct.pack('=i', len(key)))
-    try:
-        key = key.encode()
-    except AttributeError:
-        # Catch for Python2
-        pass
-    file_object.write(key)
+    file_object.write(key.encode())
 
 def _header_write_value(file_object, key, value):
     """Writes a single parameter value to the header"""
@@ -160,12 +166,7 @@ def _header_read_one_parameter(file_object):
     if length <= 0 or length >= 80:
         return None
     s = file_object.read(length)
-    try:
-        s = s.decode()
-    except AttributeError:
-        # Python2 catch
-        pass
-    return s
+    return s.decode()
 
 def _write_header(hdr, file_object):
     """write the entire header to the current position of a file"""
@@ -181,8 +182,8 @@ def _write_header(hdr, file_object):
         elif key == "header_size":
             pass
         else:
-            #raise KeyError("Unknown sigproc header key: %s"%key)
-            warnings.warn("Unknown sigproc header key: '%s'" % key, RuntimeWarning)
+            #raise KeyError(f"Unknown sigproc header key: {key}")
+            warnings.warn(f"Unknown sigproc header key: '{key}'", RuntimeWarning)
     _header_write_string(file_object, "HEADER_END")
 
 def _read_header(file_object):
@@ -211,13 +212,13 @@ def _read_header(file_object):
             header[expecting] = key
             expecting = None
         else:
-            warnings.warn("Unknown header key: '%s'" % key, RuntimeWarning)
+            warnings.warn(f"Unknown header key: '{key}'", RuntimeWarning)
     if 'nchans' not in header:
         header['nchans'] = 1
     header['header_size'] = file_object.tell()
     return header
 
-def seek_to_data(file_object):
+def seek_to_data(file_object: IO[bytes]) -> None:
     """Go the the location in the file where the data begins"""
     file_object.seek(0)
     if _header_read_one_parameter(file_object) != "HEADER_START":
@@ -243,10 +244,10 @@ def seek_to_data(file_object):
             header[expecting] = key
             expecting = None
         else:
-            warnings.warn("Unknown header key: '%s'" % key, RuntimeWarning)
+            warnings.warn(f"Unknown header key: '{key}'", RuntimeWarning)
     return
 
-def pack(data, nbit):
+def pack(data: np.ndarray, nbit: int) -> np.ndarray:
     """downgrade data from 8bits to nbits (per value)"""
     data = data.flatten()
     if 8 % nbit != 0:
@@ -258,7 +259,7 @@ def pack(data, nbit):
         outdata += data[index::8 // nbit] // (2**nbit)**index
     return outdata
 
-def _write_data(data, nbit, file_object):
+def _write_data(data: np.ndarray, nbit: int, file_object: IO[bytes]):
     """Writes given data to an open file, also packing if needed"""
     file_object.seek(0, 2)
     if nbit < 8:
@@ -266,7 +267,7 @@ def _write_data(data, nbit, file_object):
     data.tofile(file_object)
 
 # TODO: Move this elsewhere?
-def unpack(data, nbit):
+def unpack(data: np.ndarray, nbit: int) -> np.ndarray:
     """upgrade data from nbits to 8bits"""
     if nbit > 8:
         raise ValueError("unpack: nbit must be <= 8")
@@ -305,7 +306,7 @@ class SigprocSettings(object):
         self.dtype = np.uint8
         self.nbits = 8
         self.header = {}
-    def interpret_header(self):
+    def interpret_header(self) -> None:
         """redefine variables from header dictionary"""
         self.nifs = self.header['nifs']
         self.nchans = self.header['nchans']
@@ -332,18 +333,18 @@ class SigprocFile(SigprocSettings):
         self.file_object = None
         self.mode = ''
         self.data = np.array([])
-    def open(self, filename, mode):
+    def open(self, filename: str, mode: str) -> "SigprocFile":
         """open the filename, and read the header and data from it"""
         if 'b' not in mode:
             raise NotImplementedError("No support for non-binary files")
         self.mode = mode
         self.file_object = open(filename, mode)
         return self
-    def clear(self):
+    def clear(self) -> None:
         """Erases file contents"""
         self.file_object.seek(0)
         self.file_object.truncate()
-    def close(self):
+    def close(self) -> None:
         """closes file object"""
         self.file_object.close()
     def __enter__(self):
@@ -357,7 +358,7 @@ class SigprocFile(SigprocSettings):
         frame_bits = self.header['nifs'] * self.header['nchans'] * self.header['nbits']
         nframe = (self.file_object.tell() - curpos) * 8 // frame_bits
         return nframe
-    def get_nframe(self):
+    def get_nframe(self) -> int:
         """calculate the number of frames from the data"""
         if self.data.size % self.nifs != 0:
             raise ValueError
@@ -365,11 +366,11 @@ class SigprocFile(SigprocSettings):
             raise ValueError
         nframe = self.data.size // self.nifs // self.nchans
         return nframe
-    def read_header(self):
+    def read_header(self) -> None:
         """reads in a header from the file and sets local settings"""
         self.header = _read_header(self.file_object)
         self.interpret_header()
-    def read_data(self, start=None, end=None):
+    def read_data(self, start: Optional[int]=None, end: Optional[int]=None) -> np.ndarray:
         """read data from file and store it locally"""
         nframe = self._find_nframe_from_file()
         seek_to_data(self.file_object)
@@ -394,12 +395,12 @@ class SigprocFile(SigprocSettings):
             data = unpack(data, self.nbits)
         self.data = data
         return self.data
-    def write_to(self, filename):
+    def write_to(self, filename: str) -> None:
         """writes data and header to a different file"""
         with open(filename, 'wb') as file_object:
             _write_header(self.header, file_object)
             _write_data(self.data, self.nbits, file_object)
-    def append_data(self, input_data):
+    def append_data(self, input_data: np.ndarray) -> None:
         """append data to local data and file"""
         input_frames = input_data.size // self.nifs // self.nchans
         input_shape = (input_frames, self.nifs, self.nchans)

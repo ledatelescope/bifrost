@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -53,12 +53,12 @@ data:          [time][pol][nbit] (General case: [time][if/pol][chan][nbit])
 # See here for details of the different data formats:
 #   https://github.com/SixByNine/sigproc
 
-from __future__ import print_function, division
-
 import struct
 import warnings
 import numpy as np
 from collections import defaultdict
+
+from typing import Any, Dict, IO, Optional
 
 from bifrost import telemetry
 telemetry.track_module()
@@ -113,11 +113,17 @@ _telescopes = defaultdict(lambda: 'unknown',
                            6:  'GBT',
                            7:  'GMRT',
                            8:  'Effelsberg',
-                           9:  'ATA',
+                           9:  'Effelsberg LOFAR',
+                           11: 'Unknown',
+                           12: 'MWA',
+                           20: 'CHIME',
                            10: 'UTR-2',
                            11: 'LOFAR',
                            52: 'LWA-OV',
-                           53: 'LWA-SV'})
+                           53: 'LWA-SV',
+                           64: 'MeerKAT',
+                           65: 'KAT-7',
+                           82: 'eMerlin'})
 _machines   = defaultdict(lambda: 'unknown',
                           {0:  'FAKE',
                            1:  'PSPM',
@@ -128,31 +134,28 @@ _machines   = defaultdict(lambda: 'unknown',
                            6:  'SCAMP',
                            7:  'GMRTFB', # aka GBT Pulsar Spigot, SPIGOT
                            8:  'PULSAR2000',
+                           9:  'UNKNOWN',
+                           20: 'CHIME',
                            11: 'BG/P',
                            12: "PDEV",
                            20: 'GUPPI',
                            52: 'LWA-DP',
                            53: 'LWA-ADP'})
 
-def id2telescope(id_):
+def id2telescope(id_: int) -> str:
     return _telescopes[id_]
-def telescope2id(name):
+def telescope2id(name: str) -> int:
     # TODO: Would be better to use a pre-made reverse lookup dict
     return list(_telescopes.keys())[list(_telescopes.values()).index(name)]
-def id2machine(id_):
+def id2machine(id_: int) -> str:
     return _machines[id_]
-def machine2id(name):
+def machine2id(name: str) -> int:
     # TODO: Would be better to use a pre-made reverse lookup dict
     return list(_machines.keys())[list(_machines.values()).index(name)]
 
 def _header_write_string(f, key):
     f.write(struct.pack('=i', len(key)))
-    try:
-        key = key.encode('ascii')
-    except AttributeError:
-        # Catch for Python2
-        pass
-    f.write(key)
+    f.write(key.encode())
 def _header_write(f, key, value, fmt=None):
     if fmt is not None:
         pass
@@ -172,14 +175,9 @@ def _header_read(f):
     if length < 0 or length >= 80:
         return None
     s = f.read(length)
-    try:
-        s = s.decode()
-    except AttributeError:
-        # Python2 catch
-        pass
-    return s
+    return s.decode()
 
-def write_header(hdr, f):
+def write_header(hdr: Dict[str,Any], f: IO[bytes]):
     _header_write_string(f, "HEADER_START")
     for key, val in hdr.items():
         if val is None:
@@ -195,8 +193,8 @@ def write_header(hdr, f):
         elif key in _character_values:
             _header_write(f, key, int(val), fmt='=b')
         else:
-            #raise KeyError("Unknown sigproc header key: %s"%key)
-            warnings.warn("Unknown sigproc header key: '%s'" % key, RuntimeWarning)
+            #raise KeyError(f"Unknown sigproc header key: {key}")
+            warnings.warn(f"Unknown sigproc header key: '{key}'", RuntimeWarning)
     _header_write_string(f, "HEADER_END")
 
 def _read_header(f):
@@ -223,7 +221,7 @@ def _read_header(f):
             header[expecting] = key
             expecting = None
         else:
-            warnings.warn("Unknown header key: '%s'" % key, RuntimeWarning)
+            warnings.warn(f"Unknown header key: '{key}'", RuntimeWarning)
     if 'nchans' not in header:
         header['nchans'] = 1
     header['header_size'] = f.tell()
@@ -235,7 +233,7 @@ def _read_header(f):
     return header
 
 # TODO: Move this elsewhere?
-def unpack(data, nbit):
+def unpack(data: np.ndarray, nbit: int) -> np.ndarray:
     if nbit > 8:
         raise ValueError("unpack: nbit must be <= 8")
     if 8 % nbit != 0:
@@ -264,15 +262,15 @@ def unpack(data, nbit):
         x = x << 7 # Shift into high bits to induce sign-extension
         return x.view(data.dtype) >> 7
     else:
-        raise ValueError("unpack: unexpected nbit! (%i)" % nbit)
+        raise ValueError(f"unpack: unexpected nbit! ({nbit})")
 
 # TODO: Add support for writing
 #       Add support for data_type != filterbank
 class SigprocFile(object):
-    def __init__(self, filename=None):
+    def __init__(self, filename: Optional[str]=None):
         if filename is not None:
             self.open(filename)
-    def open(self, filename):
+    def open(self, filename: str) -> "SigprocFile":
         # Note: If nbit < 8, pack_factor = 8 // nbit and the last dimension
         #         is divided by pack_factor, with dtype set to uint8.
         self.f = open(filename, 'rb')
@@ -285,10 +283,11 @@ class SigprocFile(object):
         self.signed = bool(self.header['signed'])
         if self.nbit >= 8:
             if self.signed:
-                self.dtype  = { 8: np.int8,
-                               16: np.int16,
-                               32: np.float32,
-                               64: np.float64}[self.nbit]
+                self.dtype : Optional[type] = {
+                    8: np.int8,
+                    16: np.int16,
+                    32: np.float32,
+                    64: np.float64}[self.nbit]
             else:
                 self.dtype  = { 8: np.uint8,
                                16: np.uint16,
@@ -315,7 +314,7 @@ class SigprocFile(object):
         self.frame_nbit  = self.frame_size * self.nbit
         self.frame_nbyte = self.frame_nbit // 8
         return self
-    def close(self):
+    def close(self) -> None:
         self.f.close()
     def __enter__(self):
         return self
@@ -325,14 +324,14 @@ class SigprocFile(object):
         if whence == 0:
             offset += self.header_size
         self.f.seek(offset, whence)
-    def bandwidth(self):
+    def bandwidth(self) -> float:
         return self.header['nchans'] * self.header['foff']
-    def cfreq(self):
+    def cfreq(self) -> float:
         return (self.header['fch1'] +
                 0.5 * (self.header['nchans'] - 1) * self.header['foff'])
-    def duration(self):
+    def duration(self) -> float:
         return self.header['tsamp'] * self.nframe()
-    def nframe(self):
+    def nframe(self) -> int:
         if 'nsamples' not in self.header or self.header['nsamples'] == 0:
             curpos = self.f.tell()
             self.f.seek(0, 2) # Seek to end of file
@@ -342,12 +341,12 @@ class SigprocFile(object):
             self.header['nsamples'] = nframe
             self.f.seek(curpos, 0) # Seek back to where we were
         return self.header['nsamples']
-    def read(self, nframe_or_start, end=None):
+    def read(self, nframe_or_start: int, end: Optional[int]=None) -> np.ndarray:
         if end is not None:
             start = nframe_or_start or 0
             if start * self.frame_size * self.nbit % 8 != 0:
                 raise ValueError("Start index must be aligned with byte boundary " +
-                                 "(idx=%i, nbit=%i)" % (start, self.nbit))
+                                 f"(idx={start}, nbit={self.nbit})")
             self.seek(start * self.frame_size * self.nbit // 8)
             if end == -1:
                 end = self.nframe()
@@ -357,18 +356,18 @@ class SigprocFile(object):
         if self.nbit < 8:
             if nframe * self.frame_size * self.nbit % 8 != 0:
                 raise ValueError("No. frames must correspond to whole number of bytes " +
-                                 "(idx=%i, nbit=%i)" % (nframe, self.nbit))
+                                 f"(idx={nframe}, nbit={self.nbit})")
             #data = np.fromfile(self.f, np.uint8,
             #                   nframe * self.frame_size * self.nbit // 8)
             #requested_nbyte = nframe * self.frame_nbyte
             requested_nbyte = nframe * self.frame_nbyte * self.nbit // 8
             if self.buf.nbytes != requested_nbyte:
-                self.buf.resize(requested_nbyte)
+                self.buf = np.resize(self.buf, requested_nbyte)
             nbyte = self.f.readinto(self.buf)
             if nbyte * 8 % self.frame_nbit != 0:
                 raise IOError("File read returned incomplete frame (truncated file?)")
             if nbyte < self.buf.nbytes:
-                self.buf.resize(nbyte)
+                self.buf = np.resize(self.buf, nbyte)
             nframe = nbyte * 8 // (self.frame_size * self.nbit)
             data = self.buf
             data = unpack(data, self.nbit)
@@ -380,17 +379,17 @@ class SigprocFile(object):
             nframe = data.size // self.frame_size
         data = data.reshape((nframe,) + self.frame_shape)
         return data
-    def readinto(self, buf):
+    def readinto(self, buf: Any) -> int:
         """Fills buf with raw bytes straight from the file"""
         return self.f.readinto(buf)
     def __str__(self):
         hmod = self.header.copy()
         d = hmod['data_type']
-        hmod['data_type'] = "%i (%s)" % (d, _data_types[d])
+        hmod['data_type'] = f"{d} ({_data_types[d]})"
         t = hmod['telescope_id']
-        hmod['telescope_id'] = "%i (%s)" % (t, _telescopes[t])
+        hmod['telescope_id'] = f"{t} ({_telescopes[t]})"
         m = hmod['machine_id']
-        hmod['machine_id']   = "%i (%s)" % (m, _machines[m])
+        hmod['machine_id']   = f"{m} ({_machines[m]})"
         return '\n'.join(['% 16s: %s' % (key, val)
                           for (key, val) in hmod.items()])
     def __getitem__(self, key):
