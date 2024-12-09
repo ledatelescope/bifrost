@@ -99,7 +99,7 @@ def main(args):
         nbyteF = 0
         
         ## Open the i-th file
-        fd = os.open(f"{args.filename}_{i+1}", file_flags, mode=0o664)
+        fd = os.open(f"{args.filename}.{i+1}", file_flags, mode=0o664)
         fh = DummyFileHandle(fd)
         udt = DiskWriter(f"generic_{args.packet_size}", fh)
         
