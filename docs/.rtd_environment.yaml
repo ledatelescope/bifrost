@@ -11,5 +11,6 @@ dependencies:
   - pip
   - simplejson
   - ctypesgen
+  - setuptools
   - pip:
     - pint

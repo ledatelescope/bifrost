@@ -6,3 +6,4 @@ INSTALL_PREFIX=`python -c "import os,sys; print(os.path.dirname(os.path.dirname(
 ./configure --prefix=${INSTALL_PREFIX}
 make -j all
 make install
+make docs

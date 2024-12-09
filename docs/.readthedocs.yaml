@@ -4,6 +4,7 @@ build:
   os: ubuntu-22.04
   apt_packages:
     - autoconf
+    - doxygen
     - exuberant-ctags
     - gawk
     - gfortran
