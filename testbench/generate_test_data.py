@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,9 +31,6 @@
 
 Generate test data that can be used with a testbench
 """
-
-# Python2 compatibility
-from __future__ import print_function
 
 import os
 import numpy as np

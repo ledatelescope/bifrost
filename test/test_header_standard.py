@@ -1,4 +1,4 @@
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -48,9 +48,9 @@ class TestHeaderStandardHandlesGoodHeaders(unittest.TestCase):
     def test_numpy_types(self):
         """Same values, but some are numpy types"""
         self.header_dict = {
-            'nchans': np.int(1), 'nifs': 1, 'nbits': 8,
-            'fch1': np.float(100.0), 'foff': np.float(1e-5),
-            'tstart': 1e5, 'tsamp': np.float(1e-5)}
+            'nchans': np.int64(1), 'nifs': 1, 'nbits': 8,
+            'fch1': np.float64(100.0), 'foff': np.float64(1e-5),
+            'tstart': 1e5, 'tsamp': np.float64(1e-5)}
     def test_extra_parameters(self):
         """Add some extra parameters"""
         self.header_dict = {

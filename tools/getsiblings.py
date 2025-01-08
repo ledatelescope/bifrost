@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,13 +27,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import print_function
-
-import os
-import sys
 import glob
 import argparse
+
+from bifrost import telemetry
+telemetry.track_script()
 
 
 def read_siblings():
@@ -78,4 +76,3 @@ if __name__ == '__main__':
                         help='core to query')
     args = parser.parse_args()
     main(args)
-    

@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,20 +27,19 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import print_function
-
 import os
 import sys
 import glob
-import time
 import argparse
 import subprocess
 
-from bifrost.proclog import load_by_pid
+from bifrost.proclog import PROCLOG_DIR, load_by_pid
+
+from bifrost import telemetry
+telemetry.track_script()
 
 
-BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
+BIFROST_STATS_BASE_DIR = PROCLOG_DIR
 
 
 def get_process_details(pid):
@@ -63,10 +62,8 @@ def get_process_details(pid):
 
     data = {'user':'', 'cpu':0.0, 'mem':0.0, 'etime':'00:00', 'threads':0}
     try:
-        output = subprocess.check_output('ps o user,pcpu,pmem,etime,nlwp %i' % pid, shell=True)
-        if sys.version_info.major > 2 and isinstance(output, bytes):
-            # decode the output to utf-8 in python 3
-            output = output.decode("utf-8")
+        output = subprocess.check_output(['ps', 'o', 'user,pcpu,pmem,etime,nlwp', str(pid)])
+        output = output.decode()
         output = output.split('\n')[1]
         fields = output.split(None, 4)
         data['user'] = fields[0]
@@ -89,10 +86,9 @@ def get_command_line(pid):
     cmd = ''
 
     try:
-        with open('/proc/%i/cmdline' % pid, 'r') as fh:
+        with open(f"/proc/{pid}/cmdline", 'r') as fh:
             cmd = fh.read()
             cmd = cmd.replace('\0', ' ')
-            fh.close()
     except IOError:
         pass
     return cmd
@@ -158,36 +154,36 @@ def get_data_flows(blocks):
                 refBlock = block
                 refROuts = routs
 
-                for block in blocks.keys():
-                    rins, routs = [], []
+                for other_block in blocks.keys():
+                    other_rins, other_routs = [], []
                     dtype = None
-                    for log in blocks[block].keys():
+                    for log in blocks[other_block].keys():
                         if log.startswith('sequence'):
                             try:
-                                bits = blocks[block][log]['nbit']
-                                if blocks[block][log]['complex']:
+                                bits = blocks[other_block][log]['nbit']
+                                if blocks[other_block][log]['complex']:
                                     bits *= 2
-                                name = 'cplx' if  blocks[block][log]['complex'] else 'real'
-                                dtype = '%s%i' % (name, bits)
+                                name = 'cplx' if  blocks[other_block][log]['complex'] else 'real'
+                                dtype = f"{name}{bits}"
                             except KeyError:
                                 pass
                         elif log not in ('in', 'out'):
                             continue
 
-                        for key in blocks[block][log]:
+                        for key in blocks[other_block][log]:
                             if key[:4] == 'ring':
-                                value = blocks[block][log][key]
+                                value = blocks[other_block][log][key]
                                 if log == 'in':
-                                    if value not in rins:
-                                        rins.append( value )
+                                    if value not in other_rins:
+                                        other_rins.append( value )
                                 else:
-                                    if value not in routs:
-                                        routs.append( value )
+                                    if value not in other_routs:
+                                        other_routs.append( value )
 
-                    for ring in rins:
+                    for ring in other_rins:
                         if ring in refROuts:
                             #print(refRing, rins, block)
-                            chains.append( {'link':(refBlock,block), 'dtype':dtype} )
+                            chains.append( {'link':(refBlock,other_block), 'dtype':dtype} )
 
     # Find out the associations (based on core binding)
     associations = []
@@ -196,32 +192,32 @@ def get_data_flows(blocks):
         refCores = []
         for i in range(32):
             try:
-                refCores.append( blocks[block]['bind']['core%i' % i] )
+                refCores.append( blocks[block]['bind'][f"core{i}"] )
             except KeyError:
                 break
 
         if len(refCores) == 0:
             continue
 
-        for block in blocks:
-            if block == refBlock:
+        for other_block in blocks:
+            if other_block == refBlock:
                 continue
 
-            cores = []
+            other_cores = []
             for i in range(32):
                 try:
-                    cores.append( blocks[block]['bind']['core%i' % i] )
+                    other_cores.append( blocks[other_block]['bind'][f"core{i}"] )
                 except KeyError:
                     break
 
-            if len(cores) == 0:
+            if len(other_cores) == 0:
                 continue
 
-            for core in cores:
+            for core in other_cores:
                 if core in refCores:
-                    if (refBlock,block) not in associations:
-                        if (block,refBlock) not in associations:
-                            associations.append( (refBlock, block) )
+                    if (refBlock,other_block) not in associations:
+                        if (other_block,refBlock) not in associations:
+                            associations.append( (refBlock, other_block) )
 
     return sources, sinks, chains, associations
 
@@ -351,4 +347,3 @@ if __name__ == "__main__":
                         help='exclude associated blocks')
     args = parser.parse_args()
     main(args)
-    

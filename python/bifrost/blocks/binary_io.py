@@ -1,4 +1,4 @@
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,10 +31,11 @@
 Basic file I/O blocks for reading and writing data.
 """
 import numpy as np
-import time
-import bifrost as bf
 import bifrost.pipeline as bfp
-from bifrost.dtype import name_nbit2numpy
+from bifrost.DataType import DataType
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class BinaryFileRead(object):
     """ Simple file-like reading object for pipeline testing
@@ -59,7 +60,7 @@ class BinaryFileRead(object):
         return self
 
     def close(self):
-        pass
+        self.file_obj.close()
 
     def __exit__(self, type, value, tb):
         self.close()
@@ -75,7 +76,7 @@ class BinaryFileReadBlock(bfp.SourceBlock):
         # Do a lookup on bifrost datatype to numpy datatype
         dcode = self.dtype.rstrip('0123456789')
         nbits = int(self.dtype[len(dcode):])
-        np_dtype = name_nbit2numpy(dcode, nbits)
+        np_dtype = DataType(dcode+str(nbits)).as_numpy_dtype()
 
         return BinaryFileRead(filename, self.gulp_size, np_dtype)
 
@@ -106,6 +107,12 @@ class BinaryFileWriteBlock(bfp.SinkBlock):
         super(BinaryFileWriteBlock, self).__init__(iring, *args, **kwargs)
         self.current_fileobj = None
         self.file_ext = file_ext
+
+    def __del__(self):
+        try:
+            self.current_fileobj.close()
+        except AttributeError:
+            pass
 
     def on_sequence(self, iseq):
         if self.current_fileobj is not None:

@@ -32,6 +32,7 @@ Implements the Romein convolutional algorithm onto a GPU using CUDA.
 
 */
 #include <iostream>
+#include <bifrost/config.h>
 #include <bifrost/romein.h>
 #include "romein_kernels.cuh"
 
@@ -366,7 +367,7 @@ public:
         BF_TRACE();
         BF_TRACE_STREAM(_stream);
         BF_ASSERT_EXCEPTION(kernels->dtype == BF_DTYPE_CF32 \
-                                              || BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
+                                              || kernels->dtype == BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
         
         int nkernels = kernels->shape[0];
         for(int i=1; i<kernels->ndim-4; ++i) {
@@ -385,7 +386,7 @@ public:
 	BF_ASSERT_EXCEPTION(_z != NULL, BF_STATUS_INVALID_STATE);
         BF_ASSERT_EXCEPTION(_kernels != NULL, BF_STATUS_INVALID_STATE);
         BF_ASSERT_EXCEPTION(out->dtype == BF_DTYPE_CF32 \
-                                          || BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
+                                          || out->dtype == BF_DTYPE_CF64, BF_STATUS_UNSUPPORTED_DTYPE);
         
         BF_CHECK_CUDA_EXCEPTION(cudaGetLastError(), BF_STATUS_INTERNAL_ERROR);
         

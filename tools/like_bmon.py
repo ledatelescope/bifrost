@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,9 +27,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Python2 compatibility
-from __future__ import print_function
-
 import os
 import sys
 import glob
@@ -39,16 +36,16 @@ import socket
 import argparse
 import traceback
 from datetime import datetime
-try:
-    import cStringIO as StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
 
 os.environ['VMA_TRACELEVEL'] = '0'
-from bifrost.proclog import load_by_pid
+from bifrost.proclog import PROCLOG_DIR, load_by_pid
+
+from bifrost import telemetry
+telemetry.track_script()
 
 
-BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
+BIFROST_STATS_BASE_DIR = PROCLOG_DIR
 
 
 def get_transmit_receive():
@@ -82,11 +79,11 @@ def get_transmit_receive():
             except KeyError:
                 good, missing, invalid, late, nvalid = 0, 0, 0, 0, 0
 
-            blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 
-                                          'time':t, 
-                                          'good': good, 'missing': missing, 
-                                          'invalid': invalid, 'late': late, 
-                                          'nvalid': nvalid}
+            blockList[f"{pid}-{block}"] = {'pid': pid, 'name':block, 
+                                           'time':t, 
+                                           'good': good, 'missing': missing, 
+                                           'invalid': invalid, 'late': late, 
+                                           'nvalid': nvalid}
     return blockList
 
 
@@ -100,10 +97,9 @@ def get_command_line(pid):
     cmd = ''
 
     try:
-        with open('/proc/%i/cmdline' % pid, 'r') as fh:
+        with open(f"/proc/{pid}/cmdline", 'r') as fh:
             cmd = fh.read()
             cmd = cmd.replace('\0', ' ')
-            fh.close()
     except IOError:
         pass
     return cmd
@@ -118,7 +114,9 @@ def get_statistics(blockList, prevList):
     # Loop over the blocks to find udp_capture and udp_transmit blocks
     output = {'updated': datetime.now()}
     for block in blockList:
-        if block.find('udp_capture') != -1 or block.find('udp_sniffer') != -1:
+        if block.find('udp_capture') != -1 \
+           or block.find('udp_sniffer') != -1 \
+           or block.find('udp_verbs_capture') != -1:
             ## udp_capture is RX
             good = True
             type = 'rx'
@@ -245,6 +243,7 @@ def main(args):
 
     try:
         sel = 0
+        off = 0
 
         while True:
             t = time.time()
@@ -258,6 +257,10 @@ def main(args):
                 sel -= 1
             elif c == curses.KEY_DOWN:
                 sel += 1
+            elif c == curses.KEY_LEFT:
+                off -= 8
+            elif c == curses.KEY_RIGHT:
+                off += 8
 
             ## Find the current selected process and see if it has changed
             newSel = min([nPID-1, max([0, sel])])
@@ -294,7 +297,13 @@ def main(args):
             ## For sel to be valid - this takes care of any changes between when 
             ## we get what to select and when we polled the bifrost logs
             sel = min([nPID-1, sel])
-
+            
+            ## Deal with more pipelines than there is screen space by skipping
+            ## over some at the beginning of the list
+            to_skip = 0
+            if sel > size[0] - 13:
+                to_skip = sel - size[0] + 13
+                
             ## Display
             k = 0
             ### General - selected
@@ -308,12 +317,15 @@ def main(args):
             k = _add_line(scr, k, 0, output, std)
             ### General - header
             k = _add_line(scr, k, 0, ' ', std)
-            output = '%6s        %9s        %6s        %9s        %6s' % ('PID', 'RX Rate', 'RX #/s', 'TX Rate', 'TX #/s')
+            output = '%7s       %9s        %6s        %9s        %6s' % ('PID', 'RX Rate', 'RX #/s', 'TX Rate', 'TX #/s')
             output += ' '*(size[1]-len(output))
             output += '\n'
             k = _add_line(scr, k, 0, output, rev)
             ### Data
-            for o in order:
+            for i,o in enumerate(order):
+                if i < to_skip:
+                    continue
+                    
                 curr = stats[o]
                 if o == order[sel]:
                     act = curr
@@ -325,7 +337,7 @@ def main(args):
                 drateT, drateuT = _set_units(drateT)
 
 
-                output = '%6i        %7.2f%2s        %6i        %7.2f%2s        %6i\n' % (o, drateR, drateuR, prateR, drateT, drateuT, prateT)
+                output = '%7i       %7.2f%2s        %6i        %7.2f%2s        %6i\n' % (o, drateR, drateuR, prateR, drateT, drateuT, prateT)
                 try:
                     if o == order[sel]:
                         sty = std|curses.A_BOLD
@@ -335,7 +347,7 @@ def main(args):
                     sty = std
                 k = _add_line(scr, k, 0, output, sty)
 
-                if k > size[0]-9:
+                if k > size[0]-10:
                     break
             while k < size[0]-9:
                 output = ' '
@@ -347,6 +359,8 @@ def main(args):
             output += '\n'
             k = _add_line(scr, k, 0, output, rev)
             if act is not None:
+                off = min([max([0, len(act['cmd'])-size[1]+23]), max([0, off])])
+
                 output = 'Good:                  %18iB           %18iB\n' % (act['rx']['good'   ], act['tx']['good'   ])
                 k = _add_line(scr, k, 0, output, std)
                 output = 'Missing:               %18iB           %18iB\n' % (act['rx']['missing'], act['tx']['missing'])
@@ -359,7 +373,7 @@ def main(args):
                 k = _add_line(scr, k, 0, output, std)
                 output = 'Current Missing:       %18.2f%%           %18.2f%%\n' % (act['rx']['closs'  ], act['tx']['closs'  ])
                 k = _add_line(scr, k, 0, output, std)
-                output = 'Command:               %s' % act['cmd']
+                output = 'Command:               %s' % act['cmd'][off:]
                 k = _add_line(scr, k, 0, output[:size[1]], std)
 
             ### Clear to the bottom
@@ -400,4 +414,3 @@ if __name__ == "__main__":
         )
     args = parser.parse_args()
     main(args)
-    

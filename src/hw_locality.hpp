@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2022, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#pragma once
+
 #include <bifrost/affinity.h>
+#include <bifrost/config.h>
 
 #if BF_HWLOC_ENABLED
 #include <hwloc.h>
@@ -42,7 +45,9 @@ public:
     ~HardwareLocality() {
         hwloc_topology_destroy(_topo);
     }
-    int bind_memory_to_core(int core);
+    int get_numa_node_of_core(int core);
+    int bind_thread_memory_to_core(int core);
+    int bind_memory_area_to_numa_node(const void* addr, size_t size, int node);
 };
 #endif // BF_HWLOC_ENABLED
 
@@ -54,7 +59,7 @@ public:
     BoundThread(int core) {
         bfAffinitySetCore(core);
 #if BF_HWLOC_ENABLED
-        assert(_hwloc.bind_memory_to_core(core) == 0);
+        assert(_hwloc.bind_thread_memory_to_core(core) == 0);
 #endif
     }
 };

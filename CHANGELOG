@@ -1,0 +1,56 @@
+0.11.0
+ * Dropped support for Python2
+ * Merged the ibverb-support branch that brings in a new, more flexible packet capture interface
+ * Improved documentation about packet capture
+ * Improved documentation about CUDA support
+ * Improved documentation build process
+ * Various fixes for CUDA 12.x releases
+ * Added support for gcc 13
+ * Changed the file locking so that the user is warned if a block is waiting to acquire the lock
+ * Various deprecation cleanups
+
+0.10.1
+ * Cleaned up the Makefile outputs
+ * Added a disk cache for bifrost.map calls
+ * Added support for configurable, reproducible builds with nix
+ * Added horizontal scrolling for long command names to like_bmon.py
+ * Use std::filesystem for where possible for file and directory management
+ * Fixed a problem in bifrost.ndarray.copy with arrays that are not C contiguous
+ * Added set_stream and get_stream to bifrost.device to help control which CUDA stream is used
+ * Added bifrost.device.ExternalStream as a context manager to help with mixing Bifrost and cupy/pycuda
+ * Fixed a problem calling bifrost.reduce on a slice of an array
+ * Added the astype() method to `bifrost.ndarray`
+
+0.10.0
+ * Switched over to an autotools-based build system
+ * Added a .m4 file to help other autotools-based software find Bifrost
+ * Added a pkg-config file for Bifrost
+ * Made the Python API compatible with PEP479
+ * Added support for the cuda_managed space on Pascal and later GPUs
+ * Added support for ci32 in bf.map
+ * Added support for converting a bifrost.ndarray to/from a cupy.ndarray
+ * Switched to ctypesgen 1.0.2
+ * Added an example Python notebook that can run on Google Colab
+ * Added support for 'python -m bifrost.version'
+ * Removed bifrost_telemetry.py in favor of 'python -m bifrost.telemetry'
+
+0.9.1
+ * Fixed a problem with like_bmon.py crashing when there are a large number of pipelines
+ * Added a CHANGELOG file
+ * Added a lightweight telemetry client for the Python API
+
+0.9.0
+ * Added support for Python3
+ * Migrate from getopt to argparse for the scripts in tools
+ * Improve the test suite coverage
+ * Fixed a problem with proclog cleanup on multi-user systems
+ * Added a new bifrost.romein module for gridding data
+
+0.8.0
+ * Switched from PyCLibrary to ctypesgen for Python bindings
+ * Added tutorials for bifrost.map and bifrost.views to the documentation
+ * Switched to pretty print for bifrost.blocks.print_header
+ * Added new benchmarking tests
+ 
+0.7.0
+ * Initial release

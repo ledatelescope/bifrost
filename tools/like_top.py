@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,14 +26,9 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-# Python2 compatibility
-from __future__ import print_function
-import sys
-if sys.version_info < (3,):
-    range = xrange
     
 import os
+import sys
 import glob
 import time
 import curses
@@ -42,16 +37,16 @@ import argparse
 import traceback
 import subprocess
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
 
 os.environ['VMA_TRACELEVEL'] = '0'
-from bifrost.proclog import load_by_pid
+from bifrost.proclog import PROCLOG_DIR, load_by_pid
+
+from bifrost import telemetry
+telemetry.track_script()
 
 
-BIFROST_STATS_BASE_DIR = '/dev/shm/bifrost/'
+BIFROST_STATS_BASE_DIR = PROCLOG_DIR
 
 
 def get_load_average():
@@ -78,7 +73,6 @@ def get_load_average():
         data['lastPID'] = fields[4]
     return data
 
-global _CPU_STATE
 _CPU_STATE = {}
 def get_processor_usage():
     """
@@ -92,13 +86,14 @@ def get_processor_usage():
     NOTE::  Many of these details could be avoided by using something like the
           Python 'psutil' module.
     """
-
+    
+    global _CPU_STATE
+    
     data = {'avg': {'user':0.0, 'nice':0.0, 'sys':0.0, 'idle':0.0, 'wait':0.0, 'irq':0.0, 'sirq':0.0, 'steal':0.0, 'total':0.0}}
 
     with open('/proc/stat', 'r') as fh:
         lines = fh.read()
-        fh.close()
-
+        
         for line in lines.split('\n'):
             if line[:3] == 'cpu':
                 fields = line.split(None, 10)
@@ -151,8 +146,7 @@ def get_memory_swap_usage():
 
     with open('/proc/meminfo', 'r') as fh:
         lines = fh.read()
-        fh.close()
-
+        
         for line in lines.split('\n'):
             fields = line.split(None, 2)
             if fields[0] == 'MemTotal:':
@@ -222,10 +216,9 @@ def get_command_line(pid):
 
     cmd = ''
     try:
-        with open('/proc/%i/cmdline' % pid, 'r') as fh:
+        with open(f"/proc/{pid}/cmdline", 'r') as fh:
             cmd = fh.read()
             cmd = cmd.replace('\0', ' ')
-            fh.close()
     except IOError:
         pass
     return cmd
@@ -339,7 +332,7 @@ def main(args):
                         except KeyError:
                             ac, pr, re = 0.0, 0.0, 0.0
 
-                        blockList['%i-%s' % (pid, block)] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re, 'total':ac+pr+re}
+                        blockList[f"{pid}-{block}"] = {'pid': pid, 'name':block, 'cmd': cmd, 'core': cr, 'acquire': ac, 'process': pr, 'reserve': re, 'total':ac+pr+re}
 
                 ## Sort
                 order = sorted(blockList, key=lambda x: blockList[x][sort_key], reverse=sort_rev)
@@ -379,6 +372,8 @@ def main(args):
             k = _add_line(scr, k, 0, ' ', std)
             output = '%6s  %15s  %4s  %5s  %7s  %7s  %7s  %7s  Cmd' % ('PID', 'Block', 'Core', '%CPU', 'Total', 'Acquire', 'Process', 'Reserve')
             csize = size[1]-len(output)
+            if csize < 0:
+                csize = 0
             output += ' '*csize
             output += '\n'
             k = _add_line(scr, k, 0, output, rev)
@@ -419,7 +414,6 @@ def main(args):
         for j in range(x):
             d = scr.inch(i,j)
             c = d&0xFF
-            a = (d>>8)&0xFF
             contents += chr(c)
 
     # Tear down curses
@@ -446,4 +440,3 @@ if __name__ == "__main__":
         )
     args = parser.parse_args()
     main(args)
-    

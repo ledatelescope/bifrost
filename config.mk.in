@@ -1,0 +1,33 @@
+ifndef OS
+  OS := $(shell uname -s)
+endif
+
+ifeq ($(OS),Linux)
+  SO_EXT      = .so
+  SHARED_FLAG = -shared
+  SONAME_FLAG = -soname
+else ifeq ($(OS),Darwin)
+  SO_EXT      = .dylib
+  SHARED_FLAG = -dynamiclib
+  SONAME_FLAG = -install_name
+#else ifeq ($(OS),Windows_NT)
+#  SO_EXT = .dll
+else
+  $(error Unsupported OS)
+endif
+
+
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+INSTALL_LIB_DIR = @libdir@
+INSTALL_INC_DIR = @includedir@
+INSTALL_DAT_DIR = @datarootdir@
+
+BIFROST_NAME          = bifrost
+LIBBIFROST_NAME       = lib$(BIFROST_NAME)
+LIBBIFROST_MAJOR      = @PACKAGE_VERSION_MAJOR@
+LIBBIFROST_MINOR      = @PACKAGE_VERSION_MINOR@
+LIBBIFROST_PATCH      = @PACKAGE_VERSION_MICRO@
+LIBBIFROST_SO         = $(LIBBIFROST_NAME)$(SO_EXT)
+LIBBIFROST_SO_MAJ     = $(LIBBIFROST_SO).$(LIBBIFROST_MAJOR)
+LIBBIFROST_SO_MAJ_MIN = $(LIBBIFROST_SO_MAJ).$(LIBBIFROST_MINOR)

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -24,8 +24,6 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-from __future__ import absolute_import
 
 from bifrost.blocks.copy import copy, CopyBlock
 from bifrost.blocks.transpose import transpose, TransposeBlock
@@ -53,10 +51,10 @@ from bifrost.blocks.convert_visibilities import convert_visibilities, ConvertVis
 
 try: # Avoid error if portaudio library not installed
     from bifrost.blocks.audio import read_audio, AudioSourceBlock
-except:
+except (ImportError, OSError):
     pass
 
 try: # Avoid error if psrdada library not installed
     from bifrost.blocks.psrdada import read_psrdada_buffer, PsrDadaSourceBlock
-except:
+except (ImportError, OSError):
     pass

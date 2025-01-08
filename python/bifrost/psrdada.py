@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -39,30 +39,35 @@ lib_LTLIBRARIES = libpsrdada.la
 libtest_la_LDFLAGS = -version-info 0:0:0
 """
 
-from __future__ import absolute_import, print_function
-
-from bifrost.pipeline import SourceBlock, SinkBlock
-from bifrost.DataType import DataType
 import bifrost.libpsrdada_generated as _dada
 import numpy as np
 from bifrost.ndarray import _address_as_buffer
 
-from copy import deepcopy
-import os
 import ctypes
+
+from bifrost import telemetry
+telemetry.track_module()
 
 def get_pointer_value(ptr):
     return ctypes.c_void_p.from_buffer(ptr).value
+
+def _cast_to_bytes(unknown):
+    """ handle the difference between python 2 and 3 """
+    if type(unknown) is str:
+        return unknown.encode("utf-8")
+    elif type(unknown) is bytes:
+        return unknown
 
 class MultiLog(object):
     count = 0
     def __init__(self, name=None):
         if name is None:
-            name = "MultiLog%i" % MultiLog.count
+            name = f"MultiLog{MultiLog.count}"
             MultiLog.count += 1
-        self.obj = _dada.multilog_open(name, '\0')
+        self.obj = _dada.multilog_open(_cast_to_bytes(name), _cast_to_bytes('\0'))
     def __del__(self):
-        _dada.multilog_close(self.obj)
+        if hasattr(self, 'obj'):
+            _dada.multilog_close(self.obj)
 
 class IpcBufBlock(object):
     def __init__(self, buf, mutable=False):
@@ -119,7 +124,7 @@ class IpcBaseBuf(object):
         else:
             del block
             self.reset()
-            raise StopIteration()
+            raise EndOfDataStop('IpcBufBlock empty')
     def next(self):
         return self.__next__()
     def open(self):
@@ -202,39 +207,51 @@ class IpcWriteDataBuf(IpcBaseIO):
 
 class Hdu(object):
     def __init__(self):
+        self.connected = False
+        self.registered = False
         self._dada = _dada
         self.log = MultiLog()
         self.hdu = _dada.dada_hdu_create(self.log.obj)
-        self.connected = False
     def __del__(self):
         self.disconnect()
-        _dada.dada_hdu_destroy(self.hdu)
+        if hasattr(self, "hdu"):
+            _dada.dada_hdu_destroy(self.hdu)
     def _connect(self, buffer_key=0xDADA):
         self.buffer_key = buffer_key
         _dada.dada_hdu_set_key(self.hdu, self.buffer_key)
         if _dada.dada_hdu_connect(self.hdu) < 0:
-            raise IOError("Could not connect to buffer '%x'" % self.buffer_key)
+            raise IOError(f"Could not connect to buffer '{self.buffer_key:x}'")
     def _disconnect(self):
         if _dada.dada_hdu_disconnect(self.hdu) < 0:
-            raise IOError("Could not disconnect from buffer '%x'" % self.buffer_key)
+            raise IOError(f"Could not disconnect from buffer '{self.buffer_key:x}'")
     def _lock(self, mode):
         self.mode = mode
         if mode == 'read':
             if _dada.dada_hdu_lock_read(self.hdu) < 0:
-                raise IOError("Could not lock buffer '%x' for reading" % self.buffer_key)
+                raise IOError(f"Could not lock buffer '{self.buffer_key:x}' for reading")
         else:
             if _dada.dada_hdu_lock_write(self.hdu) < 0:
-                raise IOError("Could not lock buffer '%x' for writing" % self.buffer_key)
+                raise IOError(f"Could not lock buffer '{self.buffer_key:x}' for writing")
     def _unlock(self):
         if self.mode == 'read':
             if _dada.dada_hdu_unlock_read(self.hdu) < 0:
-                raise IOError("Could not unlock buffer '%x' for reading" % self.buffer_key)
+                raise IOError(f"Could not unlock buffer '{self.buffer_key:x}' for reading")
         else:
             if _dada.dada_hdu_unlock_write(self.hdu) < 0:
-                raise IOError("Could not unlock buffer '%x' for writing" % self.buffer_key)
+                raise IOError(f"Could not unlock buffer '{self.buffer_key:x}' for writing")
     def relock(self):
         self._unlock()
         self._lock(self.mode)
+    def _register(self):
+        if not self.registered:
+            if _dada.dada_cuda_dbregister(self.hdu) < 0:
+                raise IOError("Failed to register memory with CUDA driver")
+            self.registered = True
+    def _unregister(self):
+        if self.registered:
+            if _dada.dada_cuda_dbunregister(self.hdu) < 0:
+                raise IOError("Failed to unregister memory with CUDA driver")
+            self.registered = False
     def open_HACK(self):
         if _dada.ipcio_open(self.data_block.io, 'w') < 0:
             raise IOError("ipcio_open failed")
@@ -244,6 +261,7 @@ class Hdu(object):
         self.header_block = IpcReadHeaderBuf(self.hdu.contents.header_block)
         self.data_block   = IpcReadDataBuf(self.hdu.contents.data_block)
         self.connected = True
+        self._register()
     def connect_write(self, buffer_key=0xDADA):
         self._connect(buffer_key)
         self._lock('write')
@@ -252,6 +270,7 @@ class Hdu(object):
         self.connected = True
     def disconnect(self):
         if self.connected:
+            self._unregister()
             self._unlock()
             self._disconnect()
             self.connected = False

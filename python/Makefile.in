@@ -1,0 +1,83 @@
+
+include ../config.mk
+
+INC_DIR = ../src
+
+BIFROST_PYTHON_VERSION_FILE  = bifrost/version/__init__.py
+BIFROST_PYTHON_BINDINGS_FILE = bifrost/libbifrost_generated.py
+
+PSRHOME ?= /usr/local
+PSRDADA_PYTHON_BINDINGS_FILE = bifrost/libpsrdada_generated.py
+PSRDADA_HEADERS = \
+	$(PSRHOME)/include/dada_hdu.h \
+	$(PSRHOME)/include/ipcio.h \
+	$(PSRHOME)/include/ipcbuf.h \
+	$(PSRHOME)/include/multilog.h
+
+all: build
+.PHONY: all
+
+$(BIFROST_PYTHON_VERSION_FILE): ../config.mk
+	@echo "__version__ = \"$(LIBBIFROST_MAJOR).$(LIBBIFROST_MINOR).$(LIBBIFROST_PATCH)\"" > $@
+
+define run_ctypesgen
+        # Build the libbifrost wrapper
+	@PYTHON@ -c 'from ctypesgen import main as ctypeswrap; ctypeswrap.main()' -l$1 -I$2 $^ -o $@
+	# WAR for 'const char**' being generated as POINTER(POINTER(c_char)) instead of POINTER(c_char_p)
+	@SED@ -i.orig -e 's/POINTER(c_char)/c_char_p/g' $@
+	# WAR for a buggy WAR in ctypesgen that breaks type checking and auto-byref functionality
+	@SED@ -i.orig -e 's/def POINTER/def POINTER_not_used/' $@
+	# WAR for a buggy WAR in ctypesgen that breaks string buffer arguments (e.g., as in address.py)
+	@SED@ -i.orig -e 's/class String/String = c_char_p\nclass String_not_used/' $@
+	@SED@ -i.orig -e 's/String.from_param/String_not_used.from_param/g' $@
+	@SED@ -i.orig -e 's/def ReturnString/ReturnString = c_char_p\ndef ReturnString_not_used/' $@
+	@SED@ -i.orig -e '/errcheck = ReturnString/s/^/#/' $@
+endef
+
+define run_typehinting
+        # Build the libbifrost typing hinting
+  @PYTHON@ -c 'from typehinting import build_typehinting; build_typehinting("$@")'
+endef
+
+ifeq "$(wildcard $(PSRDADA_HEADERS))" ""
+PSRDADA_PYTHON_BINDINGS_FILE =
+endif
+
+$(PSRDADA_PYTHON_BINDINGS_FILE): $(PSRDADA_HEADERS)
+	$(call run_ctypesgen,psrdada,$(PSRHOME)/include)
+	# WAR for psrdada API using char* instead of void* for buffer pointers, which
+	#   otherwise get inadvertently converted to Python strings.
+	@SED@ -i.orig -e 's/c_char_p/POINTER(c_char)/g' $@
+
+$(BIFROST_PYTHON_BINDINGS_FILE): $(INC_DIR)/bifrost/*.h
+	$(call run_ctypesgen,$(BIFROST_NAME),$(INC_DIR))
+	$(call run_typehinting,$(BIFROST_NAME),$(INC_DIR))
+
+build: bifrost/*.py Makefile $(BIFROST_PYTHON_VERSION_FILE) $(BIFROST_PYTHON_BINDINGS_FILE) $(PSRDADA_PYTHON_BINDINGS_FILE)
+	@PYTHON@ setup.py build @PYBUILDFLAGS@
+.PHONY: build
+
+install: build
+	@@PYTHON@ -m pip install @PYINSTALLFLAGS@ .
+	@echo "*************************************************************************"
+	@echo "By default Bifrost installs with basic Python telemetry enabled in order"
+	@echo "to help inform how the software is used for future development.  You can"
+	@echo "opt out of telemetry collection using:"
+	@echo "python -m bifrost.telemetry --disable"
+	@echo "*************************************************************************"
+	@echo ""
+	@echo "If you have trouble importing Bifrost from Python you may need"
+	@echo "to set LD_LIBRARY_PATH to $(INSTALL_LIB_DIR) or have your"
+	@echo "system administrator add this directory to '/etc/ld.so.conf'."
+	@echo ""
+.PHONY: install
+
+clean:
+	@PYTHON@ setup.py clean --all
+	rm -f $(BIFROST_PYTHON_VERSION_FILE)
+	rm -f $(BIFROST_PYTHON_BINDINGS_FILE)
+	rm -f $(PSRDADA_PYTHON_BINDINGS_FILE)
+.PHONY: clean
+
+uninstall:
+	@PYTHON@ -m pip uninstall bifrost

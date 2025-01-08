@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2021, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,7 +38,11 @@ extern "C" {
 
 // Callback setup
 
+typedef int (*BFpacketcapture_simple_sequence_callback)(BFoffset, int, int, int,
+                                                       BFoffset*, void const**, size_t*);
 typedef int (*BFpacketcapture_chips_sequence_callback)(BFoffset, int, int, int,
+                                                       BFoffset*, void const**, size_t*);
+typedef int (*BFpacketcapture_snap2_sequence_callback)(BFoffset, int, int, int,
                                                        BFoffset*, void const**, size_t*);
 typedef int (*BFpacketcapture_ibeam_sequence_callback)(BFoffset, int, int, int,
                                                        BFoffset*, void const**, size_t*);
@@ -52,13 +56,19 @@ typedef int (*BFpacketcapture_tbn_sequence_callback)(BFoffset, BFoffset, int, in
                                                      int, void const**, size_t*);
 typedef int (*BFpacketcapture_drx_sequence_callback)(BFoffset, BFoffset, int, int, int, 
                                                      int, void const**, size_t*);
+typedef int (*BFpacketcapture_drx8_sequence_callback)(BFoffset, BFoffset, int, int, int, 
+                                                    int, void const**, size_t*);
 
 typedef struct BFpacketcapture_callback_impl* BFpacketcapture_callback;
 
 BFstatus bfPacketCaptureCallbackCreate(BFpacketcapture_callback* obj);
 BFstatus bfPacketCaptureCallbackDestroy(BFpacketcapture_callback obj);
+BFstatus bfPacketCaptureCallbackSetSIMPLE(BFpacketcapture_callback obj,
+                                         BFpacketcapture_simple_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
                                          BFpacketcapture_chips_sequence_callback callback);
+BFstatus bfPacketCaptureCallbackSetSNAP2(BFpacketcapture_callback obj,
+                                         BFpacketcapture_snap2_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetIBeam(BFpacketcapture_callback obj,
                                          BFpacketcapture_ibeam_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetPBeam(BFpacketcapture_callback obj,
@@ -71,6 +81,8 @@ BFstatus bfPacketCaptureCallbackSetTBN(BFpacketcapture_callback obj,
                                        BFpacketcapture_tbn_sequence_callback callback);
 BFstatus bfPacketCaptureCallbackSetDRX(BFpacketcapture_callback obj,
                                        BFpacketcapture_drx_sequence_callback callback);
+BFstatus bfPacketCaptureCallbackSetDRX8(BFpacketcapture_callback obj,
+                                       BFpacketcapture_drx8_sequence_callback callback);
 
 // Capture setup
 
@@ -118,6 +130,17 @@ BFstatus bfUdpSnifferCreate(BFpacketcapture* obj,
                             BFsize           slot_ntime,
                             BFpacketcapture_callback sequence_callback,
                             int              core);
+BFstatus bfUdpVerbsCaptureCreate(BFpacketcapture* obj,
+                                 const char*      format,
+                                 int              fd,
+                                 BFring           ring,
+                                 BFsize           nsrc,
+                                 BFsize           src0,
+                                 BFsize           max_payload_size,
+                                 BFsize           buffer_ntime,
+                                 BFsize           slot_ntime,
+                                 BFpacketcapture_callback sequence_callback,
+                                 int              core);
 BFstatus bfPacketCaptureDestroy(BFpacketcapture obj);
 BFstatus bfPacketCaptureRecv(BFpacketcapture         obj,
                              BFpacketcapture_status* result);

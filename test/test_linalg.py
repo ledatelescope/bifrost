@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -27,15 +27,14 @@
 
 # **TODO: Add tests with beta != 0
 
-# Python2 compatibility
-from __future__ import print_function
-
 import ctypes
 import unittest
 import numpy as np
 from numpy import matmul as gold_matmul
 from bifrost.linalg import LinAlg
 import bifrost as bf
+
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 import time
 
@@ -45,6 +44,7 @@ ATOL = 1e-5
 def H(c):
     return np.swapaxes(c, -1, -2).conj()
 
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestLinAlg(unittest.TestCase):
     def setUp(self):
         self.linalg = LinAlg()

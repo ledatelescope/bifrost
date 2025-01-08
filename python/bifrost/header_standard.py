@@ -1,4 +1,4 @@
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -43,20 +43,27 @@ Optional parameters (which some blocks require):
 
 """
 
+import numpy as np
+
+from typing import Dict, Any
+
+from bifrost import telemetry
+telemetry.track_module()
+
 # Define a header which we can check passed
 # dictionaries with
 # Format:
 # 'parameter name':(type, minimum)
 STANDARD_HEADER = {
-    'nchans': (int, 1),
-    'nifs': (int, 1, ),
-    'nbits': (int, 1),
-    'fch1': (float, 0),
-    'foff': (float, None),
-    'tstart': (float, 0),
-    'tsamp': (float, 0)}
+    'nchans': ((int, np.int64),     1),
+    'nifs':   ((int, np.int64),     1),
+    'nbits':  ((int, np.int64),     1),
+    'fch1':   ((float, np.float64), 0),
+    'foff':   ((float, np.float64), None),
+    'tstart': ((float, np.float64), 0),
+    'tsamp':  ((float, np.float64), 0)}
 
-def enforce_header_standard(header_dict):
+def enforce_header_standard(header_dict: Dict[str,Any]) -> bool:
     """Raise an error if the header dictionary passed
         does not fit the standard specified above."""
     if type(header_dict) != dict:
@@ -64,7 +71,7 @@ def enforce_header_standard(header_dict):
     for parameter, standard in STANDARD_HEADER.items():
         if parameter not in header_dict:
             return False
-        if type(header_dict[parameter]) != standard[0]:
+        if not isinstance(header_dict[parameter], standard[0]):
             return False
         if standard[1] is not None and \
            header_dict[parameter] < standard[1]:

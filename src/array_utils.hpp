@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -56,15 +56,19 @@ inline std::string dtype2ctype_string(BFdtype dtype) {
 	case BF_DTYPE_U64:   return "unsigned long long";
 	case BF_DTYPE_F32:   return "float";
 	case BF_DTYPE_F64:   return "double";
+#if defined BF_FLOAT128_ENABLED && BF_FLOAT128_ENABLED
 	//case BF_DTYPE_F128:  return "long double"; // TODO: This doesn't seem to work properly in CUDA
+#endif
 	case BF_DTYPE_CI4:   return "Complex<FourBit>";
 	case BF_DTYPE_CI8:   return "Complex<signed char>";
 	case BF_DTYPE_CI16:  return "Complex<short>";
-	//case BF_DTYPE_CI32:  return "complex<int>";
+	case BF_DTYPE_CI32:  return "Complex<int>";
 	//case BF_DTYPE_CI64:  return "complex<long long>";
 	case BF_DTYPE_CF32:  return "Complex<float>";//complex<float>";
 	case BF_DTYPE_CF64:  return "Complex<double>";
+#if defined BF_FLOAT128_ENABLED && BF_FLOAT128_ENABLED
 	//case BF_DTYPE_CF128: return "complex<long double>";
+#endif
 	default: return "";
 	}
 }

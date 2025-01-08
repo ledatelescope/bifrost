@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -37,6 +37,8 @@ from numpy.fft import rfftn as gold_rfftn, irfftn as gold_irfftn
 from bifrost.fft import Fft
 import bifrost as bf
 
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED, BF_CUDA_VERSION
+
 MTOL = 1e-6 # Relative tolerance at the mean magnitude
 RTOL = 1e-1
 
@@ -48,6 +50,7 @@ def compare(result, gold):
     absmean = np.abs(gold).mean()
     np.testing.assert_allclose(result, gold, rtol=RTOL, atol=MTOL * absmean)
 
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestFFT(unittest.TestCase):
     def setUp(self):
         np.random.seed(1234)
@@ -113,22 +116,24 @@ class TestFFT(unittest.TestCase):
             self.run_test_r2c_dtype(shape, axes, np.int16, (1 << 15) - 1, misalign=misalign)
         for misalign in range(8):
             self.run_test_r2c_dtype(shape, axes, np.int8,  (1 << 7 ) - 1, misalign=misalign)
-    def run_test_c2r_impl(self, shape, axes, fftshift=False):
+    def run_test_c2r_impl(self, shape, axes):
         ishape = list(shape)
         oshape = list(shape)
         ishape[axes[-1]] = shape[axes[-1]] // 2 + 1
         oshape[axes[-1]] = (ishape[axes[-1]] - 1) * 2
         ishape[-1] *= 2 # For complex
-        known_data = np.random.normal(size=ishape).astype(np.float32).view(np.complex64)
+        # Note: We need to make a set of known_data that are consistent with a
+        # a real real-to-complex FFT.
+        known_data_real = np.random.normal(size=oshape).astype(np.float32)
+        known_data = gold_rfftn(known_data_real, axes=axes)
+        known_data = known_data.copy().astype(np.complex64)
         idata = bf.ndarray(known_data, space='cuda')
         odata = bf.ndarray(shape=oshape, dtype='f32', space='cuda')
         fft = Fft()
-        fft.init(idata, odata, axes=axes, apply_fftshift=fftshift)
+        fft.init(idata, odata, axes=axes)
         fft.execute(idata, odata)
         # Note: Numpy applies normalization while CUFFT does not
         norm = reduce(lambda a, b: a * b, [shape[d] for d in axes])
-        if fftshift:
-            known_data = np.fft.ifftshift(known_data, axes=axes)
         known_result = gold_irfftn(known_data, axes=axes) * norm
         compare(odata.copy('system'), known_result)
     def run_test_c2c(self, shape, axes):
@@ -138,7 +143,6 @@ class TestFFT(unittest.TestCase):
         self.run_test_c2c_impl(shape, axes, inverse=True, fftshift=True)
     def run_test_c2r(self, shape, axes):
         self.run_test_c2r_impl(shape, axes)
-        self.run_test_c2r_impl(shape, axes, fftshift=True)
 
     def test_1D(self):
         self.run_test_c2c(self.shape1D, [0])

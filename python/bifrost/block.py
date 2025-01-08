@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,12 +31,6 @@ Right now the only possible block type is one
 of a simple transform which works on a span by span basis.
 """
 
-# Python2 compatibility
-from __future__ import print_function, division, absolute_import
-import sys
-if sys.version_info < (3,):
-    range = xrange
-    
 import json
 import threading
 import time
@@ -45,10 +39,13 @@ try:
 except ImportError:
     from contextlib2 import ExitStack
 import numpy as np
-import bifrost
-from bifrost import affinity
+from bifrost import affinity, memory
 from bifrost.ring import Ring
 from bifrost.sigproc import SigprocFile, unpack
+from bifrost.libbifrost import EndOfDataStop
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class Pipeline(object):
     """Class which connects blocks linearly, with
@@ -133,7 +130,7 @@ def insert_zeros_evenly(input_data, number_zeros):
     insert_index = np.floor(
         np.arange(
             number_zeros,
-            step=1.0) * float(input_data.size) / number_zeros)
+            step=1.0) * float(input_data.size) / number_zeros).astype(int)
     output_data = np.insert(
         input_data, insert_index,
         np.zeros(number_zeros))
@@ -225,7 +222,7 @@ class SinkBlock(object):
         self.core = -1
     def load_settings(self, input_header):
         """Load in settings from input ring header"""
-        self.header = json.loads(input_header.tostring())
+        self.header = json.loads(input_header.tobytes())
     def iterate_ring_read(self, input_ring):
         """Iterate through one input ring
         @param[in] input_ring Ring to read through"""
@@ -281,8 +278,11 @@ class MultiTransformBlock(object):
         into a single list generator"""
         iterators = [iter(iterable) for iterable in iterables]
         while True:
-            next_set = [next(iterator) for iterator in iterators]
-            yield self.flatten(*next_set)
+            try:
+                next_set = [next(iterator) for iterator in iterators]
+                yield self.flatten(*next_set)
+            except (EndOfDataStop, StopIteration):
+                return
     def load_settings(self):
         """Set by user to interpret input rings"""
         pass
@@ -293,7 +293,7 @@ class MultiTransformBlock(object):
                                      for ring_name in args]):
             # sequences is a tuple of all sequences
             for ring_name, sequence in self.izip(args, sequences):
-                self.header[ring_name] = json.loads(sequence.header.tostring())
+                self.header[ring_name] = json.loads(sequence.header.tobytes())
             self.load_settings()
             # resize all rings
             for ring_name in args:
@@ -371,11 +371,11 @@ class SplitterBlock(MultiTransformBlock):
         self.header['out_2']['shape'] = sections[1]
     def load_settings(self):
         """Set the gulp sizes appropriate to the input ring"""
-        self.gulp_size['in'] = np.product(self.header['in']['shape']) * self.header['in']['nbit'] // 8
-        self.gulp_size['out_1'] = (self.gulp_size['in'] * np.product(self.header['out_1']['shape']) //
-                                   np.product(self.header['in']['shape']))
-        self.gulp_size['out_2'] = (self.gulp_size['in'] * np.product(self.header['out_2']['shape']) //
-                                   np.product(self.header['in']['shape']))
+        self.gulp_size['in'] = np.prod(self.header['in']['shape']) * self.header['in']['nbit'] // 8
+        self.gulp_size['out_1'] = (self.gulp_size['in'] * np.prod(self.header['out_1']['shape']) //
+                                   np.prod(self.header['in']['shape']))
+        self.gulp_size['out_2'] = (self.gulp_size['in'] * np.prod(self.header['out_2']['shape']) //
+                                   np.prod(self.header['in']['shape']))
     def main(self):
         """Split the incoming ring into the outputs rings"""
         for inspan, outspan1, outspan2 in self.izip(
@@ -448,8 +448,8 @@ class WriteHeaderBlock(SinkBlock):
     def load_settings(self, input_header):
         """Load the header from json
         @param[in] input_header The header from the ring"""
-        write_file = open(self.filename, 'w')
-        write_file.write(str(json.loads(input_header.tostring())))
+        with open(self.filename, 'w') as write_file:
+            write_file.write(str(json.loads(input_header.tobytes())))
     def main(self, input_ring):
         """Put the header into the file
         @param[in] input_ring Contains the header in question"""
@@ -464,7 +464,7 @@ class FFTBlock(TransformBlock):
         self.dtype = np.uint8
         self.shape = (1, 1)
     def load_settings(self, input_header):
-        header = json.loads(input_header.tostring())
+        header = json.loads(input_header.tobytes())
         self.nbit = header['nbit']
         self.dtype = np.dtype(header['dtype'].split()[1].split(".")[1].split("'")[0]).type
         if 'frame_shape' in header:
@@ -504,7 +504,7 @@ class IFFTBlock(TransformBlock):
         self.nbit = 8
         self.dtype = np.uint8
     def load_settings(self, input_header):
-        header = json.loads(input_header.tostring())
+        header = json.loads(input_header.tobytes())
         self.nbit = header['nbit']
         try:
             self.dtype = np.dtype(header['dtype']).type
@@ -549,7 +549,7 @@ class WriteAsciiBlock(SinkBlock):
         self.dtype = np.uint8
         open(self.filename, "w").close() # erase file
     def load_settings(self, input_header):
-        header_dict = json.loads(input_header.tostring())
+        header_dict = json.loads(input_header.tobytes())
         self.nbit = header_dict['nbit']
         try:
             self.dtype = np.dtype(header_dict['dtype']).type
@@ -577,9 +577,8 @@ class WriteAsciiBlock(SinkBlock):
                 data_accumulate = np.concatenate((data_accumulate, unpacked_data[0]))
             else:
                 data_accumulate = unpacked_data[0]
-        text_file = open(self.filename, 'a')
-        np.savetxt(text_file, data_accumulate.reshape((1, -1)))
-        text_file.close()
+        with open(self.filename, 'a') as text_file:
+            np.savetxt(text_file, data_accumulate.reshape((1, -1)))
 class CopyBlock(TransformBlock):
     """Copies input ring's data to the output ring"""
     def __init__(self, gulp_size=1048576):
@@ -589,7 +588,7 @@ class CopyBlock(TransformBlock):
         input_ring = input_rings[0]
         for output_ring in output_rings:
             for ispan, ospan in self.ring_transfer(input_ring, output_ring):
-                bifrost.memory.memcpy2D(ospan.data, ispan.data)
+                memory.memcpy2D(ospan.data, ispan.data)
 class SigprocReadBlock(SourceBlock):
     """This block reads in a sigproc filterbank
     (.fil) file into a ring buffer"""
@@ -654,7 +653,7 @@ class KurtosisBlock(TransformBlock):
         self.dtype = np.uint8
     def load_settings(self, input_header):
         self.output_header = input_header
-        self.settings = json.loads(input_header.tostring())
+        self.settings = json.loads(input_header.tobytes())
         self.nchan = self.settings["frame_shape"][0]
         dtype_str = self.settings["dtype"].split()[1].split(".")[1].split("'")[0]
         self.dtype = np.dtype(dtype_str)
@@ -804,7 +803,7 @@ class FoldBlock(TransformBlock):
         self.out_gulp_size = self.bins * 4
         out_span_generator = self.iterate_ring_write(output_rings[0])
         out_span = next(out_span_generator)
-        bifrost.memory.memcpy(
+        memory.memcpy(
             out_span.data_view(dtype=np.float32),
             histogram)
 
@@ -911,8 +910,8 @@ class NumpyBlock(MultiTransformBlock):
             @param[in] outputs The number of output rings and the number of output
                 numpy arrays from the function."""
         super(NumpyBlock, self).__init__()
-        self.inputs = ['in_%d' % (i + 1) for i in range(inputs)]
-        self.outputs = ['out_%d' % (i + 1) for i in range(outputs)]
+        self.inputs = [f"in_{i + 1}" for i in range(inputs)]
+        self.outputs = [f"out_{i + 1}" for i in range(outputs)]
         self.ring_names = {}
         self.create_ring_names()
         self.function = function
@@ -1011,7 +1010,7 @@ class NumpySourceBlock(MultiTransformBlock):
                 equal to the number of outgoing rings attached to this block.
             @param[in] changing Whether or not the arrays will be different in shape"""
         super(NumpySourceBlock, self).__init__()
-        outputs = ['out_%d' % (i + 1) for i in range(outputs)]
+        outputs = [f"out_{i + 1}" for i in range(outputs)]
         self.ring_names = {}
         for output_name in outputs:
             ring_description = "Output number " + output_name[4:]
@@ -1027,7 +1026,7 @@ class NumpySourceBlock(MultiTransformBlock):
             @param[in] arrays The arrays outputted by self.generator"""
         for index in range(len(self.ring_names)):
             assert isinstance(arrays[index], np.ndarray)
-            ring_name = 'out_%d' % (index + 1)
+            ring_name = f"out_{index + 1}"
             self.header[ring_name] = {
                 'dtype': str(arrays[index].dtype),
                 'shape': list(arrays[index].shape),
@@ -1039,7 +1038,7 @@ class NumpySourceBlock(MultiTransformBlock):
             @param[in] headers List of dictionaries from self.generator
                 for each ring's sequence header"""
         for i, header in enumerate(headers):
-            ring_name = 'out_%d' % (i + 1)
+            ring_name = f"out_{i + 1}"
             for parameter in header:
                 self.header[ring_name][parameter] = header[parameter]
             if 'dtype' in header:
@@ -1062,9 +1061,9 @@ class NumpySourceBlock(MultiTransformBlock):
         if self.grab_headers:
             self.load_user_headers(headers, arrays)
 
-        for outspans in self.write(*['out_%d' % (i + 1) for i in range(len(self.ring_names))]):
+        for outspans in self.write(*[f"out_{i + 1}" for i in range(len(self.ring_names))]):
             for i in range(len(self.ring_names)):
-                dtype = self.header['out_%d' % (i + 1)]['dtype']
+                dtype = self.header[f"out_{i + 1}"]['dtype']
                 outspans[i][:] = arrays[i].astype(np.dtype(dtype).type).ravel()
 
             try:
@@ -1078,7 +1077,7 @@ class NumpySourceBlock(MultiTransformBlock):
                         arrays = [output_data]
                     else:
                         arrays = output_data
-            except StopIteration:
+            except (EndOfDataStop, StopIteration):
                 break
 
             if self.changing:

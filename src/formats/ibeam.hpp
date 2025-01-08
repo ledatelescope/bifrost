@@ -112,9 +112,17 @@ public:
 	    int chan, beam;
 	    for(chan=0; chan<pkt->nchan; ++chan ) {
 		    for(beam=0; beam<_nbeam; ++beam) {
+#if defined BF_SSE_ENABLED && BF_SSE_ENABLED
+			    const unaligned128_type* dsrc = (const unaligned128_type*) &in[chan*_nbeam + beam];
+			    aligned128_type* ddst = (aligned128_type*) &out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam];
+			    
+			    __m128i mtemp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc));
+			    _mm_stream_si128(reinterpret_cast<__m128i*>(ddst), mtemp);
+#else
 			    ::memcpy(&out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam], 
 			 	     &in[chan*_nbeam + beam], sizeof(otype));
                 	    //out[pkt->src*pkt->nchan*_nbeam + chan*_nbeam + beam] = in[chan*_nbeam + beam];
+#endif
 		    }
 	    }
     }
@@ -127,12 +135,19 @@ public:
 	    typedef aligned128_type otype;
 	    otype* __restrict__ aligned_data = (otype*)data;
 	    for( int t=0; t<nseq; ++t ) {
-		for( int c=0; c<nchan; ++c ) {
-                	for( int b=0; b<_nbeam; ++b ) {
-                    		::memset(&aligned_data[t*nsrc*nchan*_nbeam + src*nchan*_nbeam + c*_nbeam + b],
-			                 0, sizeof(otype));
-                	}
-		}
+				for( int c=0; c<nchan; ++c ) {
+					for( int b=0; b<_nbeam; ++b ) {
+#if defined BF_SSE_ENABLED && BF_SSE_ENABLED
+						aligned128_type* ddst = (aligned128_type*) &aligned_data[t*nsrc*nchan*_nbeam + src*nchan*_nbeam + c*_nbeam + b];
+						
+						__m128i mtemp = _mm_setzero_si128();
+						_mm_stream_si128(reinterpret_cast<__m128i*>(ddst), mtemp);
+#else
+						::memset(&aligned_data[t*nsrc*nchan*_nbeam + src*nchan*_nbeam + c*_nbeam + b],
+							       0, sizeof(otype));
+#endif
+          }
+		    }
 	    }
     }
 };

@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,12 +28,13 @@
 # TODO: Consider merging with detect_block
 #         Seems easy, but may end up somewhat complicated
 
-from __future__ import absolute_import
-
+from bifrost.reduce import reduce as bf_reduce
 from bifrost.pipeline import TransformBlock
-import bifrost as bf
 
 from copy import deepcopy
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class ReduceBlock(TransformBlock):
     def __init__(self, iring, axis, factor=None, op='sum', *args, **kwargs):
@@ -79,7 +80,7 @@ class ReduceBlock(TransformBlock):
         return output_nframe
     def on_data(self, ispan, ospan):
         idata, odata = ispan.data, ospan.data
-        bf.reduce(idata, odata, self.op)
+        bf_reduce(idata, odata, self.op)
         
         # TODO: Support system space using Numpy
         #ishape = list(idata.shape)

@@ -1,0 +1,80 @@
+{
+  "nodes": {
+    "ctypesgen": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1575761084,
+        "narHash": "sha256-0VuIufvB1TYK8EXSFr8EegNxxRxnoHsxEKQX9y7LOdY=",
+        "owner": "ctypesgen",
+        "repo": "ctypesgen",
+        "rev": "b7ccd0764ef7d74e9ad5816924950d05b47ecc8c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ctypesgen",
+        "ref": "ctypesgen-1.0.2",
+        "repo": "ctypesgen",
+        "type": "github"
+      }
+    },
+    "flake-utils": {
+      "locked": {
+        "lastModified": 1644229661,
+        "narHash": "sha256-1YdnJAsNy69bpcjuoKdOYQX0YxZBiCYZo4Twxerqv7k=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "3cecb5b042f7f209c56ffd8371b2711a290ec797",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1658937758,
+        "narHash": "sha256-FxQB/tWX15Faq3GBM+qTfVzd9qJqy/3CEgBp2zpHeNc=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "8f73de28e63988da02426ebb17209e3ae07f103b",
+        "type": "github"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "type": "indirect"
+      }
+    },
+    "pre-commit-hooks": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1658611562,
+        "narHash": "sha256-jktQ3mRrFAiFzzmVxQXh+8IxZOEE4hfr7St3ncXeVy4=",
+        "owner": "cachix",
+        "repo": "pre-commit-hooks.nix",
+        "rev": "f436e6dbc10bb3500775785072a40eefe057b18e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cachix",
+        "repo": "pre-commit-hooks.nix",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "ctypesgen": "ctypesgen",
+        "nixpkgs": "nixpkgs",
+        "pre-commit-hooks": "pre-commit-hooks"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2021, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2023, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -125,10 +125,24 @@ BFstatus bfPacketCaptureCallbackDestroy(BFpacketcapture_callback obj) {
     return BF_STATUS_SUCCESS;
 }
 
+BFstatus bfPacketCaptureCallbackSetSIMPLE(BFpacketcapture_callback obj,
+                                         BFpacketcapture_simple_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_simple(callback);
+    return BF_STATUS_SUCCESS;
+}
+
 BFstatus bfPacketCaptureCallbackSetCHIPS(BFpacketcapture_callback obj,
                                          BFpacketcapture_chips_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_chips(callback);
+    return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketCaptureCallbackSetSNAP2(BFpacketcapture_callback obj,
+                                         BFpacketcapture_snap2_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_snap2(callback);
     return BF_STATUS_SUCCESS;
 }
 
@@ -171,6 +185,13 @@ BFstatus bfPacketCaptureCallbackSetDRX(BFpacketcapture_callback obj,
                                        BFpacketcapture_drx_sequence_callback callback) {
     BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
     obj->set_drx(callback);
+    return BF_STATUS_SUCCESS;
+}
+
+BFstatus bfPacketCaptureCallbackSetDRX8(BFpacketcapture_callback obj,
+                                        BFpacketcapture_drx8_sequence_callback callback) {
+    BF_ASSERT(obj, BF_STATUS_INVALID_HANDLE);
+    obj->set_drx8(callback);
     return BF_STATUS_SUCCESS;
 }
 
@@ -292,6 +313,7 @@ BFstatus bfDiskReaderCreate(BFpacketcapture* obj,
                                   ring,
                                   nsrc,
                                   src0,
+                                  9000,
                                   buffer_ntime,
                                   slot_ntime,
                                   sequence_callback,
@@ -316,6 +338,7 @@ BFstatus bfUdpCaptureCreate(BFpacketcapture* obj,
                                   ring,
                                   nsrc,
                                   src0,
+                                  max_payload_size,
                                   buffer_ntime,
                                   slot_ntime,
                                   sequence_callback,
@@ -340,11 +363,37 @@ BFstatus bfUdpSnifferCreate(BFpacketcapture* obj,
                                   ring,
                                   nsrc,
                                   src0,
+                                  max_payload_size,
                                   buffer_ntime,
                                   slot_ntime,
                                   sequence_callback,
                                   core,
                                   BF_IO_SNIFFER);
+}
+
+BFstatus bfUdpVerbsCaptureCreate(BFpacketcapture* obj,
+                                 const char*      format,
+                                 int              fd,
+                                 BFring           ring,
+                                 BFsize           nsrc,
+                                 BFsize           src0,
+                                 BFsize           max_payload_size,
+                                 BFsize           buffer_ntime,
+                                 BFsize           slot_ntime,
+                                 BFpacketcapture_callback sequence_callback,
+                                 int              core) {
+    return BFpacketcapture_create(obj,
+                                  format,
+                                  fd,
+                                  ring,
+                                  nsrc,
+                                  src0,
+                                  max_payload_size,
+                                  buffer_ntime,
+                                  slot_ntime,
+                                  sequence_callback,
+                                  core,
+                                  BF_IO_VERBS);
 }
 
 BFstatus bfPacketCaptureDestroy(BFpacketcapture obj) {

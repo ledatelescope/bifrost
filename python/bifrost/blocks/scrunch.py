@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,11 +28,12 @@
 # TODO: This is a bit hacky and inflexible, and has no CUDA backend yet
 #         **DEPRECATE it in favour of ReduceBlock
 
-from __future__ import absolute_import
-
 from bifrost.pipeline import TransformBlock
 
 from copy import deepcopy
+
+from bifrost import telemetry
+telemetry.track_module()
 
 class ScrunchBlock(TransformBlock):
     def __init__(self, iring, factor, *args, **kwargs):

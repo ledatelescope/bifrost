@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016-2020, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2023, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -54,12 +54,12 @@ Binary data:
 
 """
 
-# Python2 compatibility
-from __future__ import division
+from typing import Any, Dict, IO
 
-import numpy as np
+from bifrost import telemetry
+telemetry.track_module()
 
-def read_header(f):
+def read_header(f: IO[str]) -> Dict[str,Any]:
     RECORD_LEN = 80
     DIRECTIO_ALIGN_NBYTE = 512
     buf = bytearray(RECORD_LEN)
@@ -69,12 +69,8 @@ def read_header(f):
         if len(record) < RECORD_LEN:
             raise IOError("EOF reached in middle of header")
 
-        try:
-            record = record.decode()
-        except AttributeError:
-            # Python2 catch
-            pass
-        if record.startswith(b'END'):
+        record = record.decode()
+        if record.startswith('END'):
             break
         key, val = record.split('=', 1)
         key, val = key.strip(), val.strip()
@@ -101,12 +97,3 @@ def read_header(f):
         hdr['NTIME'] = hdr['BLOCSIZE'] * 8 // (hdr['OBSNCHAN'] * hdr['NPOL'] *
                                               2 * hdr['NBITS'])
     return hdr
-
-# def read_data(f, hdr):
-#    assert(hdr['NBITS'] == 8)
-#    count = hdr['BLOCSIZE']
-#    shape = (hdr['OBSNCHAN'], hdr['NTIME'], hdr['NPOL'])
-#    data = np.fromfile(f, dtype=np.int8, count=count)
-#    data = data.astype(np.float32).view(np.complex64)
-#    data = data.reshape(shape)
-#    return data

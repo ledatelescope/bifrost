@@ -1,6 +1,6 @@
 
-# Copyright (c) 2017-2020, The Bifrost Authors. All rights reserved.
-# Copyright (c) 2017-2020, The University of New Mexico. All rights reserved.
+# Copyright (c) 2017-2023, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2017-2023, The University of New Mexico. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,8 +28,6 @@
 
 """This set of unit tests check the functionality
 on the bifrost FIR filter."""
-# Python2 compatibility
-from __future__ import division
 
 import ctypes
 import unittest
@@ -37,6 +35,8 @@ import numpy as np
 from scipy.signal import lfilter, lfiltic
 from bifrost.fir import Fir
 import bifrost as bf
+
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 MTOL = 1e-6 # Relative tolerance at the mean magnitude
 RTOL = 1e-1
@@ -49,6 +49,7 @@ def compare(result, gold):
     absmean = np.abs(gold).mean()
     np.testing.assert_allclose(result, gold, rtol=RTOL, atol=MTOL * absmean)
 
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class TestFIR(unittest.TestCase):
     def setUp(self):
         np.random.seed(1234)

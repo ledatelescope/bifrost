@@ -1,5 +1,5 @@
 
-# Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2016-2022, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,6 +30,9 @@ import numpy as np
 import bifrost as bf
 import bifrost.quantize
 
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
+
+@unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
 class QuantizeTest(unittest.TestCase):
     def run_quantize_from_cf32_test(self, out_dtype):
         iarray = bf.ndarray([[0.4 + 0.5j, 1.4 + 1.5j],
@@ -41,7 +44,7 @@ class QuantizeTest(unittest.TestCase):
                                    [(2,2), (3,4)],
                                    [(4,4), (5,6)]],
                                   dtype=out_dtype)
-        bf.quantize.quantize(iarray.copy(space='cuda'), oarray)
+        bf.quantize(iarray.copy(space='cuda'), oarray)
         oarray = oarray.copy(space='system')
         np.testing.assert_equal(oarray, oarray_known)
     def test_cf32_to_ci8(self):

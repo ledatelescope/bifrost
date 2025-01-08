@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2016-2021, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,15 +26,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <bifrost/config.h>
 #include <bifrost/proclog.h>
 #include "trace.hpp"
 #include "proclog.hpp"
+#include "fileutils.hpp"
 
 #include <fstream>
 #include <cstdlib>     // For system
 #include <cstdarg>     // For va_start, va_list, va_end
-#include <sys/file.h>  // For flock
-#include <sys/stat.h>  // For fstat
 #include <sys/types.h> // For getpid
 #include <dirent.h>    // For opendir, readdir, closedir
 #include <unistd.h>    // For getpid
@@ -42,66 +42,8 @@
 #include <set>
 #include <mutex>
 
-void make_dir(std::string path, int perms=775) {
-	if( std::system(("mkdir -p "+path+" -m "+std::to_string(perms)).c_str()) ) {
-		throw std::runtime_error("Failed to create path: "+path);
-	}
-}
-void remove_all(std::string path) {
-	if( std::system(("rm -rf "+path).c_str()) ) {
-		throw std::runtime_error("Failed to remove all: "+path);
-	}
-}
-void remove_dir(std::string path) {
-	if( std::system(("rmdir "+path+" 2> /dev/null").c_str()) ) {
-		throw std::runtime_error("Failed to remove dir: "+path);
-	}
-}
-void remove_file(std::string path) {
-	if( std::system(("rm -f "+path).c_str()) ) {
-		throw std::runtime_error("Failed to remove file: "+path);
-	}
-}
-bool process_exists(pid_t pid) {
-	struct stat s;
-	return !(stat(("/proc/"+std::to_string(pid)).c_str(), &s) == -1
-	         && errno == ENOENT);
-}
-
-std::string get_dirname(std::string filename) {
-	// TODO: This is crude, but works for our proclog use-case
-	return filename.substr(0, filename.find_last_of("/"));
-}
-
-class LockFile {
-	std::string _lockfile;
-	int         _fd;
-public:
-	LockFile(LockFile const& ) = delete;
-	LockFile& operator=(LockFile const& ) = delete;
-	LockFile(std::string lockfile) : _lockfile(lockfile) {
-		while( true ) {
-			_fd = open(_lockfile.c_str(), O_CREAT, 600);
-			flock(_fd, LOCK_EX);
-			struct stat fd_stat, lockfile_stat;
-			fstat(_fd, &fd_stat);
-			stat(_lockfile.c_str(), &lockfile_stat);
-			// Compare inodes
-			if( fd_stat.st_ino == lockfile_stat.st_ino ) {
-				// Got the lock
-				break;
-			}
-			close(_fd);
-		}
-	}
-	~LockFile() {
-		unlink(_lockfile.c_str());
-		flock(_fd, LOCK_UN);
-	}
-};
-
 class ProcLogMgr {
-	static constexpr const char* base_logdir = "/dev/shm/bifrost";
+	static constexpr const char* base_logdir = BF_PROCLOG_DIR;
 	std::string            _logdir;
 	std::set<std::string>  _logs;
 	std::set<std::string>  _created_dirs;
@@ -117,28 +59,28 @@ class ProcLogMgr {
 				pid_t pid = atoi(ep->d_name);
 				if( pid && !process_exists(pid) ) {
 					try {
-						remove_all(std::string(base_logdir) + "/" +
-							   std::to_string(pid));
-					} catch( std::exception ) {}
+						remove_files_recursively(std::string(base_logdir) + "/" +
+									 std::to_string(pid));
+					} catch( std::exception& ) {}
 				}
 			}
 			closedir(dp);
 		}
 		// Remove the base_logdir if it's empty
 		try { remove_dir(base_logdir); }
-		catch( std::exception ) {}
+		catch( std::exception& ) {}
 	}
 	ProcLogMgr()
 		: _logdir(std::string(base_logdir) + "/" + std::to_string(getpid())) {
 		this->try_base_logdir_cleanup();
-		make_dir(base_logdir, 777);
+		make_dir(base_logdir, 0777);
 		make_dir(_logdir);
 	}
 	~ProcLogMgr() {
 		try {
-			remove_all(_logdir);
+			remove_files_recursively(_logdir);
 			this->try_base_logdir_cleanup();
-		} catch( std::exception ) {}
+		} catch( std::exception& ) {}
 	}
 	FILE* open_file(std::string filename) {
 		// Note: Individual log dirs and files are only created if they are

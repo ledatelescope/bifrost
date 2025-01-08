@@ -30,8 +30,6 @@
 
 #include "base.hpp"
 
-//#include <immintrin.h> // SSE
-
 struct __attribute__((packed)) chips_hdr_type {
 	uint8_t  roach;    // Note: 1-based
 	uint8_t  gbe;      // (AKA tuning)
@@ -107,47 +105,30 @@ public:
 	    otype*       __restrict__ out = (otype*      )&obufs[obuf_idx][obuf_offset];
 	
 	    int chan = 0;
-	    //cout << pkt->src << ", " << pkt->nsrc << endl;
-	    //cout << pkt->nchan << endl;
-	    /*
-	      // HACK TESTING disabled
-	    for( ; chan<pkt->nchan/4*4; chan+=4 ) {
-		    __m128i tmp0 = ((__m128i*)&in[chan])[0];
-		    __m128i tmp1 = ((__m128i*)&in[chan])[1];
-		    __m128i tmp2 = ((__m128i*)&in[chan+1])[0];
-		    __m128i tmp3 = ((__m128i*)&in[chan+1])[1];
-		    __m128i tmp4 = ((__m128i*)&in[chan+2])[0];
-		    __m128i tmp5 = ((__m128i*)&in[chan+2])[1];
-		    __m128i tmp6 = ((__m128i*)&in[chan+3])[0];
-		    __m128i tmp7 = ((__m128i*)&in[chan+3])[1];
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*chan])[0], tmp0);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*chan])[1], tmp1);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+1)])[0], tmp2);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+1)])[1], tmp3);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+2)])[0], tmp4);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+2)])[1], tmp5);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+3)])[0], tmp6);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*(chan+3)])[1], tmp7);
-	    }
-	    */
-	    //for( ; chan<pkt->nchan; ++chan ) {
-	    /*
-	    for( ; chan<10; ++chan ) { // HACK TESTING
-		    __m128i tmp0 = ((__m128i*)&in[chan])[0];
-		    __m128i tmp1 = ((__m128i*)&in[chan])[1];
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*chan])[0], tmp0);
-		    _mm_store_si128(&((__m128i*)&out[pkt->src + pkt->nsrc*chan])[1], tmp1);
-	    }
-	    */
-	    //if( pkt->src < 8 ) { // HACK TESTING
-	    //for( ; chan<32; ++chan ) { // HACK TESTING
-	    for( ; chan<pkt->nchan; ++chan ) { // HACK TESTING
-		    ::memcpy(&out[pkt->src + pkt->nsrc*chan], 
-		             &in[chan], sizeof(otype));
-		    //out[pkt->src + pkt->nsrc*chan] = in[chan];
-		    //::memset(
-	    }
-	    //}
+			//cout << pkt->src << ", " << pkt->nsrc << endl;
+		  //cout << pkt->nchan << endl;
+			for( ; chan<pkt->nchan; ++chan ) {
+#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
+           const unaligned256_type* dsrc = (const unaligned256_type*) &in[chan];
+           aligned256_type* ddst = (aligned256_type*) &out[pkt->src + pkt->nsrc*chan];
+           
+           __m256 mtemp = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(dsrc));
+           _mm256_stream_si256(reinterpret_cast<__m256i*>(ddst), mtemp);
+#else
+#if defined BF_SSE_ENABLED && BF_SSE_ENABLED
+           const unaligned128_type* dsrc = (const unaligned128_type*) &in[chan];
+           aligned128_type* ddst = (aligned128_type*) &out[pkt->src + pkt->nsrc*chan];
+           
+					 __m128i mtemp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc));
+           _mm_stream_si128(reinterpret_cast<__m128i*>(ddst), mtemp);
+					 mtemp = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dsrc+1));
+           _mm_stream_si128(reinterpret_cast<__m128i*>(ddst+1), mtemp);
+#else
+						::memcpy(&out[pkt->src + pkt->nsrc*chan],
+						      	 &in[chan], sizeof(otype));
+#endif
+#endif
+      }
     }
 
     inline void blank_out_source(uint8_t* data,
@@ -159,8 +140,23 @@ public:
 	    otype* __restrict__ aligned_data = (otype*)data;
 	    for( int t=0; t<nseq; ++t ) {
 		    for( int c=0; c<nchan; ++c ) {
+#if defined BF_AVX_ENABLED && BF_AVX_ENABLED
+			    aligned256_type* ddst = (aligned156_type*) &aligned_data[src + nsrc*(c + nchan*t)];
+					
+					__m256i mtemp = _mm256_setzero_si256()
+			    _mm256_stream_si256(reinterpret_cast<__m256i*>(ddst), mtemp);
+#else
+#if defined BF_SSE_ENABLED && BF_SSE_ENABLED
+			    aligned128_type* ddst = (aligned128_type*) &aligned_data[src + nsrc*(c + nchan*t)];
+					
+					__m128i mtemp = _mm_setzero_si128();
+					_mm_stream_si128(reinterpret_cast<__m128i*>(ddst), mtemp);
+					_mm_stream_si128(reinterpret_cast<__m128i*>(ddst+1), mtemp);
+#else
 			    ::memset(&aligned_data[src + nsrc*(c + nchan*t)],
 			             0, sizeof(otype));
+#endif
+#endif
 		    }
 	    }
     }

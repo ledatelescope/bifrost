@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020, The Bifrost Authors. All rights reserved.
+ * Copyright (c) 2019-2024, The Bifrost Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +37,7 @@ using bifrost::ring::RingWriter;
 using bifrost::ring::WriteSpan;
 using bifrost::ring::WriteSequence;
 #include "proclog.hpp"
+#include "Socket.hpp"
 #include "formats/formats.hpp"
 #include "hw_locality.hpp"
 
@@ -54,6 +55,12 @@ using bifrost::ring::WriteSequence;
 #include <unistd.h>
 #include <fstream>
 #include <chrono>
+
+#if defined __APPLE__ && __APPLE__
+
+#define lseek64 lseek
+
+#endif
 
 #ifndef BF_HWLOC_ENABLED
 #define BF_HWLOC_ENABLED 0
@@ -140,15 +147,16 @@ public:
 	inline T const& operator[](size_t i) const { return _buf[i];    }
 };
 
-class PacketCaptureMethod {
+class PacketCaptureMethod: public BoundThread {
 protected:
     int                    _fd;
     size_t                 _pkt_size_max;
-	AlignedBuffer<uint8_t> _buf;
+    AlignedBuffer<uint8_t> _buf;
     BFiomethod             _io_method;
+    int                    _core;
 public:
-	PacketCaptureMethod(int fd, size_t pkt_size_max=9000, BFiomethod io_method=BF_IO_GENERIC)
-	 : _fd(fd), _pkt_size_max(pkt_size_max), _buf(pkt_size_max), _io_method(io_method) {}
+	PacketCaptureMethod(int fd, size_t pkt_size_max=9000, BFiomethod io_method=BF_IO_GENERIC, int core=-1)
+	 : BoundThread(core), _fd(fd), _pkt_size_max(pkt_size_max), _buf(pkt_size_max), _io_method(io_method), _core(core) {}
 	virtual int recv_packet(uint8_t** pkt_ptr, int flags=0) {
 	    return 0;
 	}
@@ -161,8 +169,8 @@ public:
 
 class DiskPacketReader : public PacketCaptureMethod {
 public:
-    DiskPacketReader(int fd, size_t pkt_size_max=9000)
-     : PacketCaptureMethod(fd, pkt_size_max, BF_IO_DISK) {}
+    DiskPacketReader(int fd, size_t pkt_size_max=9000, int core=-1)
+     : PacketCaptureMethod(fd, pkt_size_max, BF_IO_DISK, core) {}
     int recv_packet(uint8_t** pkt_ptr, int flags=0) {
         *pkt_ptr = &_buf[0];
         return ::read(_fd, &_buf[0], _buf.size());
@@ -176,7 +184,6 @@ public:
 // TODO: The VMA API is returning unaligned buffers, which prevents use of SSE
 #ifndef BF_VMA_ENABLED
 #define BF_VMA_ENABLED 0
-//#define BF_VMA_ENABLED 1
 #endif
 
 #if BF_VMA_ENABLED
@@ -228,13 +235,14 @@ class UDPPacketReceiver : public PacketCaptureMethod {
     VMAReceiver            _vma;
 #endif
 public:
-    UDPPacketReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
-        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_UDP)
+    UDPPacketReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE, int core=-1)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_UDP, core)
 #if BF_VMA_ENABLED
         , _vma(fd)
 #endif
     {}
     inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
+
 #if BF_VMA_ENABLED
         if( _vma ) {
             *pkt_ptr = 0;
@@ -255,8 +263,8 @@ class UDPPacketSniffer : public PacketCaptureMethod {
     VMAReceiver            _vma;
 #endif
 public:
-    UDPPacketSniffer(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE)
-        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_SNIFFER)
+    UDPPacketSniffer(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE, int core=-1)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_SNIFFER, core)
 #if BF_VMA_ENABLED
         , _vma(fd)
 #endif
@@ -278,6 +286,22 @@ public:
     }
     inline const char* get_name() { return "udp_sniffer"; }
 };
+
+#if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
+#include "ib_verbs.hpp"
+
+class UDPVerbsReceiver : public PacketCaptureMethod {
+    Verbs                  _ibv;
+public:
+    UDPVerbsReceiver(int fd, size_t pkt_size_max=JUMBO_FRAME_SIZE, int core=-1)
+        : PacketCaptureMethod(fd, pkt_size_max, BF_IO_VERBS, core), _ibv(fd, pkt_size_max) {}
+    inline int recv_packet(uint8_t** pkt_ptr, int flags=0) {
+        *pkt_ptr = 0;
+        return _ibv.recv_packet(pkt_ptr, flags);
+    }
+    inline const char* get_name() { return "udp_verbs_capture"; }
+};
+#endif // BF_VERBS_ENABLED
 
 struct PacketStats {
 	size_t ninvalid;
@@ -305,7 +329,7 @@ public:
 		CAPTURE_NO_DATA     = 1 << 3,
 		CAPTURE_ERROR       = 1 << 4
 	};
-	PacketCaptureThread(PacketCaptureMethod* method, int nsrc, int core=0)
+	PacketCaptureThread(PacketCaptureMethod* method, int nsrc, int core=-1)
      : BoundThread(core), _method(method), _src_stats(nsrc),
 	   _have_pkt(false), _core(core) {
 		this->reset_stats();
@@ -349,23 +373,39 @@ inline uint64_t round_nearest(uint64_t val, uint64_t mult) {
 }
 
 class BFpacketcapture_callback_impl {
+    BFpacketcapture_simple_sequence_callback _simple_callback;
     BFpacketcapture_chips_sequence_callback _chips_callback;
+    BFpacketcapture_snap2_sequence_callback _snap2_callback;
     BFpacketcapture_ibeam_sequence_callback _ibeam_callback;
     BFpacketcapture_pbeam_sequence_callback _pbeam_callback;
     BFpacketcapture_cor_sequence_callback   _cor_callback;
     BFpacketcapture_vdif_sequence_callback  _vdif_callback;
     BFpacketcapture_tbn_sequence_callback   _tbn_callback;
     BFpacketcapture_drx_sequence_callback   _drx_callback;
+		BFpacketcapture_drx8_sequence_callback  _drx8_callback;
 public:
     BFpacketcapture_callback_impl()
-     : _chips_callback(NULL), _ibeam_callback(NULL), _pbeam_callback(NULL), 
-		    _cor_callback(NULL), _vdif_callback(NULL), _tbn_callback(NULL), 
-				_drx_callback(NULL) {}
+     : _simple_callback(NULL), _chips_callback(NULL), _ibeam_callback(NULL), 
+       _pbeam_callback(NULL),  _cor_callback(NULL), _vdif_callback(NULL), 
+       _tbn_callback(NULL), _drx_callback(NULL), _drx8_callback(NULL),
+			 _snap2_callback(NULL) {}
+    inline void set_simple(BFpacketcapture_simple_sequence_callback callback) {
+        _simple_callback = callback;
+    }
+    inline BFpacketcapture_simple_sequence_callback get_simple() {
+        return _simple_callback;
+    } 
     inline void set_chips(BFpacketcapture_chips_sequence_callback callback) {
         _chips_callback = callback;
     }
     inline BFpacketcapture_chips_sequence_callback get_chips() {
         return _chips_callback;
+    }
+    inline void set_snap2(BFpacketcapture_snap2_sequence_callback callback) {
+        _snap2_callback = callback;
+    }
+    inline BFpacketcapture_snap2_sequence_callback get_snap2() {
+        return _snap2_callback;
     }
     inline void set_ibeam(BFpacketcapture_ibeam_sequence_callback callback) {
         _ibeam_callback = callback;
@@ -402,6 +442,12 @@ public:
     }
     inline BFpacketcapture_drx_sequence_callback get_drx() {
         return _drx_callback;
+    }
+		inline void set_drx8(BFpacketcapture_drx8_sequence_callback callback) {
+        _drx8_callback = callback;
+    }
+		inline BFpacketcapture_drx8_sequence_callback get_drx8() {
+        return _drx8_callback;
     }
 };
 
@@ -560,6 +606,66 @@ public:
 	BFpacketcapture_status recv();
 };
 
+class BFpacketcapture_simple_impl : public BFpacketcapture_impl {
+	ProcLog            _type_log;
+	ProcLog            _chan_log;
+	
+	BFpacketcapture_simple_sequence_callback _sequence_callback;
+	
+	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
+        // TODO: Might be safer to round to nearest here, but the current firmware
+		//         always starts things ~3 seq's before the 1sec boundary anyway.
+		//seq = round_up(pkt->seq, _slot_ntime);
+		//*_seq          = round_nearest(pkt->seq, _slot_ntime);
+		_seq          = round_up(pkt->seq, _slot_ntime);
+		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
+    }
+    void on_sequence_active(const PacketDesc* pkt) {
+	}
+	inline bool has_sequence_changed(const PacketDesc* pkt) {
+	    return 0;
+	}
+	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+	    _payload_size = pkt->payload_size;
+
+	    if( _sequence_callback ) {
+	        int status = (*_sequence_callback)(*seq0,
+			                                   _chan0,
+			                                   _nchan,
+			                                   _nsrc,
+			                                   time_tag,
+			                                   hdr,
+			                                   hdr_size);
+			if( status != 0 ) {
+			    // TODO: What to do here? Needed?
+				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
+			}
+		} else {
+			// Simple default for easy testing
+			*time_tag = *seq0;
+			*hdr      = NULL;
+			*hdr_size = 0;
+		}
+        
+    }
+public:
+	inline BFpacketcapture_simple_impl(PacketCaptureThread* capture,
+	                                   BFring               ring,
+	                                   int                  nsrc,
+	                                   int                  src0,
+	                                   int                  buffer_ntime,
+	                                   int                  slot_ntime,
+	                                   BFpacketcapture_callback sequence_callback)
+		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+		  _type_log((std::string(capture->get_name())+"/type").c_str()),
+		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
+		  _sequence_callback(sequence_callback->get_simple()) {
+		_decoder = new SIMPLEDecoder(nsrc, src0);
+		_processor = new SIMPLEProcessor();
+		_type_log.update("type : %s\n", "simple");
+	}
+};
 class BFpacketcapture_chips_impl : public BFpacketcapture_impl {
 	ProcLog            _type_log;
 	ProcLog            _chan_log;
@@ -588,9 +694,9 @@ class BFpacketcapture_chips_impl : public BFpacketcapture_impl {
 	}
 	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
 	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
-        _chan0 = pkt->chan0;
-        _nchan = pkt->nchan;
-        _payload_size = pkt->payload_size;
+	    _chan0 = pkt->chan0;
+	    _nchan = pkt->nchan;
+	    _payload_size = pkt->payload_size;
         
 	    if( _sequence_callback ) {
 	        int status = (*_sequence_callback)(*seq0,
@@ -630,6 +736,95 @@ public:
 		_decoder = new CHIPSDecoder(nsrc, src0);
 		_processor = new CHIPSProcessor();
 		_type_log.update("type : %s\n", "chips");
+	}
+};
+
+class BFpacketcapture_snap2_impl : public BFpacketcapture_impl {
+	ProcLog            _type_log;
+	ProcLog            _chan_log;
+    BFoffset           _last_seq;
+    BFoffset           _last_time_tag;
+	
+	BFpacketcapture_snap2_sequence_callback _sequence_callback;
+	
+	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
+		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
+    }
+    void on_sequence_active(const PacketDesc* pkt) {
+        if( pkt ) {
+		    //cout << "Latest nchan, chan0 = " << pkt->nchan << ", " << pkt->chan0 << endl;
+		}
+		else {
+			//cout << "No latest packet" << endl;
+		}
+	}
+    // Has the configuration changed? I.e., different channels being sent.
+	inline bool has_sequence_changed(const PacketDesc* pkt) {
+        // TODO: Decide what a sequence actually is!
+        // Currently a new sequence starts whenever a block finishes and the next
+        // packet isn't from the next block
+        // TODO. Is this actually reasonable? Does it recover from upstream resyncs?
+        bool is_new_seq = false;
+        if ( (_last_time_tag != pkt->time_tag) || (pkt->seq != _last_seq + _nseq_per_buf) ) {
+	    	// We could have a packet sequence number which isn't what we expect
+	    	// but is only wrong because of missing packets. Set an upper bound on
+	    	// two slots of loss
+	    	if (pkt->seq > _last_seq + 2*_slot_ntime) {
+			    is_new_seq = true;
+				this->flush();
+	    	}
+        }
+        _last_seq = pkt->seq;
+	    return is_new_seq;
+	}
+	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+		_seq          = round_up(pkt->seq, _slot_ntime);
+        *time_tag      = (BFoffset) pkt->time_tag;
+        _last_time_tag = pkt->time_tag;
+        _last_seq      = _seq;
+	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+        _chan0 = pkt->chan0;
+        _nchan = pkt->nchan;
+        _payload_size = pkt->payload_size;
+        
+	    if( _sequence_callback ) {
+	        int status = (*_sequence_callback)(*seq0,
+			                                   pkt->tuning, // Hacked to contain chan0
+			                                   _nchan,
+			                                   _nsrc,
+			                                   time_tag,
+			                                   hdr,
+			                                   hdr_size);
+			if( status != 0 ) {
+			    // TODO: What to do here? Needed?
+				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
+			}
+		} else {
+			// Simple default for easy testing
+			*time_tag = *seq0;
+			*hdr      = NULL;
+			*hdr_size = 0;
+		}
+        
+		_chan_log.update() << "chan0        : " << _chan0 << "\n"
+		                   << "nchan        : " << _nchan << "\n"
+		                   << "payload_size : " << _payload_size << "\n";
+    }
+public:
+	inline BFpacketcapture_snap2_impl(PacketCaptureThread* capture,
+	                                  BFring               ring,
+	                                  int                  nsrc,
+	                                  int                  src0,
+	                                  int                  buffer_ntime,
+	                                  int                  slot_ntime,
+	                                  BFpacketcapture_callback sequence_callback)
+		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+		  _type_log((std::string(capture->get_name())+"/type").c_str()),
+		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
+		  _sequence_callback(sequence_callback->get_snap2()) {
+		_decoder = new SNAP2Decoder(nsrc, src0);
+		_processor = new SNAP2Processor();
+		_type_log.update("type : %s\n", "snap2");
 	}
 };
 
@@ -1108,12 +1303,96 @@ public:
 	}
 };
 
+class BFpacketcapture_drx8_impl : public BFpacketcapture_impl {
+	ProcLog          _type_log;
+	ProcLog          _chan_log;
+	
+	BFpacketcapture_drx8_sequence_callback _sequence_callback;
+	
+	BFoffset _time_tag;
+    uint16_t _decim;
+	int      _chan1;
+	
+	void on_sequence_start(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size ) {
+		_seq          = round_nearest(pkt->seq, _nseq_per_buf);
+		this->on_sequence_changed(pkt, seq0, time_tag, hdr, hdr_size);
+    }
+    void on_sequence_active(const PacketDesc* pkt) {
+        if( pkt ) {
+            //cout << "Latest nchan, chan0 = " << pkt->nchan << ", " << pkt->chan0 << endl;
+        }
+		else {
+			//cout << "No latest packet" << endl;
+		}
+	}
+	inline bool has_sequence_changed(const PacketDesc* pkt) {
+	    return (   (pkt->tuning  != _chan0)
+	            || (pkt->tuning1 != _chan1)
+                || (pkt->decimation != _decim) );
+	}
+	void on_sequence_changed(const PacketDesc* pkt, BFoffset* seq0, BFoffset* time_tag, const void** hdr, size_t* hdr_size) {
+	    *seq0 = _seq;// + _nseq_per_buf*_bufs.size();
+	    *time_tag = pkt->time_tag;
+        _time_tag     = pkt->time_tag;
+        _chan0        = pkt->tuning;
+        _chan1        = pkt->tuning1;
+        if( _nsrc == 2 ) {
+            _chan0        = std::max(_chan0, _chan1);
+            _chan1        = 0;
+        }
+        _decim        = pkt->decimation;
+        _payload_size = pkt->payload_size;
+        
+	    if( _sequence_callback ) {
+	        int status = (*_sequence_callback)(*seq0,
+	                                        *time_tag,
+                                            _decim,
+			                                _chan0,
+			                                _chan1,
+			                                _nsrc,
+			                                hdr,
+			                                hdr_size);
+			if( status != 0 ) {
+			    // TODO: What to do here? Needed?
+				throw std::runtime_error("BAD HEADER CALLBACK STATUS");
+			}
+		} else {
+			// Simple default for easy testing
+			*time_tag = *seq0;
+			*hdr      = NULL;
+			*hdr_size = 0;
+		}
+        
+        _chan_log.update() << "chan0        : " << _chan0 << "\n"
+					       << "chan1        : " << _chan1 << "\n"
+					       << "payload_size : " << _payload_size << "\n";
+    }
+public:
+	inline BFpacketcapture_drx8_impl(PacketCaptureThread* capture,
+	                                 BFring               ring,
+	                                 int                  nsrc,
+	                                 int                  src0,
+	                                 int                  buffer_ntime,
+	                                 int                  slot_ntime,
+	                                 BFpacketcapture_callback sequence_callback)
+		: BFpacketcapture_impl(capture, nullptr, nullptr, ring, nsrc, buffer_ntime, slot_ntime), 
+		  _type_log((std::string(capture->get_name())+"/type").c_str()),
+		  _chan_log((std::string(capture->get_name())+"/chans").c_str()),
+		  _sequence_callback(sequence_callback->get_drx8()), 
+		  _decim(0), _chan1(0) {
+		_decoder = new DRX8Decoder(nsrc, src0);
+		_processor = new DRX8Processor();
+		_type_log.update("type : %s\n", "drx8");
+	}
+};
+
 BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                 const char*      format,
                                 int              fd,
                                 BFring           ring,
                                 BFsize           nsrc,
                                 BFsize           src0,
+                                BFsize           max_payload_size,
                                 BFsize           buffer_ntime,
                                 BFsize           slot_ntime,
                                 BFpacketcapture_callback sequence_callback,
@@ -1121,8 +1400,13 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                 BFiomethod       backend) {
     BF_ASSERT(obj, BF_STATUS_INVALID_POINTER);
     
-    size_t max_payload_size = JUMBO_FRAME_SIZE;
-    if( std::string(format).substr(0, 5) == std::string("chips") ) {
+    if( std::string(format).substr(0, 6) == std::string("simple") ) {
+        if( backend == BF_IO_DISK ) {
+            // Need to know how much to read at a time
+            int nchan = 1;
+            max_payload_size = 8200;
+        }
+    } else if( std::string(format).substr(0, 5) == std::string("chips") ) {
         if( backend == BF_IO_DISK ) {
             // Need to know how much to read at a time
             int nchan = std::atoi((std::string(format).substr(6, std::string(format).length())).c_str());
@@ -1157,22 +1441,38 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
         max_payload_size = TBN_FRAME_SIZE;
     } else if( format == std::string("drx") ) {
         max_payload_size = DRX_FRAME_SIZE;
+    } else if( format == std::string("drx8") ) {
+        max_payload_size = DRX8_FRAME_SIZE;
     }
     
     PacketCaptureMethod* method;
     if( backend == BF_IO_DISK ) {
-        method = new DiskPacketReader(fd, max_payload_size);
+        method = new DiskPacketReader(fd, max_payload_size, core);
     } else if( backend == BF_IO_UDP ) {
-        method = new UDPPacketReceiver(fd, max_payload_size);
+        method = new UDPPacketReceiver(fd, max_payload_size, core);
     } else if( backend == BF_IO_SNIFFER ) {
-        method = new UDPPacketSniffer(fd, max_payload_size);
+        method = new UDPPacketSniffer(fd, max_payload_size, core);
+#if defined BF_VERBS_ENABLED && BF_VERBS_ENABLED
+    } else if( backend == BF_IO_VERBS ) {
+        method = new UDPVerbsReceiver(fd, max_payload_size, core);
+#endif
     } else {
         return BF_STATUS_UNSUPPORTED;
     }
     PacketCaptureThread* capture = new PacketCaptureThread(method, nsrc, core);
+    if (std::string(format).substr(0, 6) == std::string("simple") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_simple_impl(capture, ring, nsrc, src0,
+                                                                  buffer_ntime, slot_ntime,
+                                                                  sequence_callback),
+                                                                  *obj = 0);
     
-    if( std::string(format).substr(0, 5) == std::string("chips") ) {
+    } else if( std::string(format).substr(0, 5) == std::string("chips") ) {
         BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_chips_impl(capture, ring, nsrc, src0,
+                                                                 buffer_ntime, slot_ntime,
+                                                                 sequence_callback),
+                           *obj = 0);
+    } else if( std::string(format).substr(0, 5) == std::string("snap2") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_snap2_impl(capture, ring, nsrc, src0,
                                                                  buffer_ntime, slot_ntime,
                                                                  sequence_callback),
                            *obj = 0);
@@ -1212,6 +1512,11 @@ BFstatus BFpacketcapture_create(BFpacketcapture* obj,
                                                                buffer_ntime, slot_ntime,
                                                                sequence_callback),
                            *obj = 0);
+	  } else if( format == std::string("drx8") ) {
+        BF_TRY_RETURN_ELSE(*obj = new BFpacketcapture_drx8_impl(capture, ring, nsrc, src0,
+                                                                buffer_ntime, slot_ntime,
+                                                                sequence_callback),
+                           *obj = 0);		     
     } else {
         return BF_STATUS_UNSUPPORTED;
     }
