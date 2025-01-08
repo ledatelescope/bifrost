@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2021, The Bifrost Authors. All rights reserved.
+# Copyright (c) 2018-2025, The Bifrost Authors. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 from __future__ import absolute_import, print_function, division
 
 from bifrost.libbifrost import _bf, _check, _get, BifrostObject, _string2space
-from bifrost.ndarray import ndarray, zeros, asarray, memset_array, copy_array
+from bifrost.ndarray import ndarray, zeros, empty_like, asarray, memset_array, copy_array
 
 from bifrost.fft import Fft
 from bifrost.map import map
@@ -41,7 +41,7 @@ import time
 
 from bifrost.device import stream_synchronize as BFSync
 
-class Orville(BifrostObject):
+class Orville2(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfOrvilleCreate, _bf.bfOrvilleDestroy)
     def init(self, positions, weights, kernel, gridsize, gridres, gridwres=0.5, oversample=1, polmajor=True, space='cuda'):
@@ -70,6 +70,7 @@ class Orville(BifrostObject):
         self._oversample = oversample
         self._dtype = kernel.dtype
         self._space = space
+        self._update_beam = True
         
         # Build the image correction kernel and the gridding kernels
         self._set_image_correction_kernel()
@@ -173,20 +174,45 @@ class Orville(BifrostObject):
         _check( _bf.bfOrvilleSetPositions(self.obj, 
                                           asarray(positions).as_BFarray()) )
         self._set_projection_kernels(force=True)
+        self._update_beam = True
         
     def set_weights(self, weights):
         weights = numpy.fft.fftshift(weights)
         _check( _bf.bfOrvilleSetWeights(self.obj, 
                                        asarray(weights).as_BFarray()) )
+        self._update_beam = True
         
     def set_kernel(self, kernel):
         self._kernel = kernel
         _check( _bf.bfOrvilleSetKernel(self.obj, 
                                        asarray(kernel).as_BFarray()) )
         self._set_image_correction_kernel()
+        self._update_beam = True
         
-    def execute(self, idata, odata):
+    def execute(self, idata, odata, weighting='natural'):
         # TODO: Work out how to integrate CUDA stream
+        
+        if self._update_beam:
+            bidata = empty_like(idata)
+            map("bdata = Complex<float>(1,0)", {'bdata': bidata}, shape=bidata.shape)
+            self._raw_beam = zeros(shape=(1,self._ntimechan,self._npol,self._gridsize,self._gridsize),
+                                   dtype=self._stcgrid.dtype, space='cuda')
+            
+            self._update_beam = False
+            try:
+                self._raw_beam = self.execute(bidata, self._raw_beam, weighting='_raw_beam')
+            except Exception as e:
+                self._update_beam = True
+                raise e
+                
+            rb = self._raw_beam.reshape(1,self._ntimechan,self._npol,self._gridsize*self._gridsize)
+            self._wavg = zeros(shape=(1,self._ntimechan,self._npol,1),
+                               dtype='cf32', space='cuda')
+            reduce(rb, self._wavg, op='sum')
+            self._w2avg = zeros(shape=(1,self._ntimechan,self._npol,1),
+                               dtype='f32', space='cuda')
+            reduce(rb, self._w2avg, op='pwrsum')
+            
         # Zero out the subgrids
         memset_array(self._subgrid, 0)
         self._stcgrid = self._stcgrid.reshape(1,self._ntimechan,self._npol,self._gridsize,self._gridsize)
@@ -224,6 +250,41 @@ class Orville(BifrostObject):
         else:
             copy_array(self._stcgrid, self._subgrid)
             
+        # Apply the weighting
+        if weighting == '_raw_beam':
+            copy_array(odata, self._stcgrid)
+            return odata
+            
+        elif weighting == 'natural':
+            pass
+            
+        elif weighting == 'uniform':
+           map("""
+                auto weight = bdata(0,i,j,k,l).real;
+                if( weight != 0.0 ) {
+                  idata(0,i,j,k,l) = idata(0,i,j,k,l) / weight;
+                }
+                """,
+                {'idata': self._stcgrid, 'bdata': self._raw_beam},
+                axis_names=('i','j','k','l'), shape=self._stcgrid.shape[1:]
+               )
+                
+        elif weighting.startswith('briggs'):
+            R = float(weighting.split('@', 1)[1])
+            map("""
+                auto weight = bdata(0,i,j,k,l).real;
+                auto S2 = 25.0 * powf(10.0, -2*{R}) / (w2avg(0,i,j,0) / wavg(0,i,j,0));
+                if( weight != 0.0 ) {{
+                    idata(0,i,j,k,l) = idata(0,i,j,k,l) / (1.0 + weight * S2);
+                }}
+                """.format(R=R),
+                {'idata': self._stcgrid, 'bdata': self._raw_beam, 'wavg': self._wavg, 'w2avg': self._w2avg},
+                axis_names=('i','j','k','l'), shape=self._stcgrid.shape[1:]
+               )
+                
+        else:
+            raise ValueError("Unknown weighting '%s'" % weighting)
+            
         # (u,v) plane -> image
         ## IFFT
         self._stcgrid = self._stcgrid.reshape(-1,self._gridsize,self._gridsize)
@@ -259,7 +320,7 @@ class Orville(BifrostObject):
         oshape = odata.shape
         odata = odata.reshape(-1,odata.shape[-2],odata.shape[-1])
         padding = self._gridsize - self._origsize
-        offset = padding/2# - padding%2
+        offset = padding//2# - padding%2
         map("""
             auto k = i + {offset} - {gridsize}/2;
             auto l = j + {offset} - {gridsize}/2;
