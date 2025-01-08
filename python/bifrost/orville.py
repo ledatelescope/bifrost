@@ -41,7 +41,7 @@ import time
 
 from bifrost.device import stream_synchronize as BFSync
 
-class Orville2(BifrostObject):
+class Orville(BifrostObject):
     def __init__(self):
         BifrostObject.__init__(self, _bf.bfOrvilleCreate, _bf.bfOrvilleDestroy)
     def init(self, positions, weights, kernel, gridsize, gridres, gridwres=0.5, oversample=1, polmajor=True, space='cuda'):
