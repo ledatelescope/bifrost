@@ -36,6 +36,7 @@ import re
 import os
 from tempfile import mkdtemp
 from shutil import rmtree
+from bifrost.libbifrost_generated import BF_CUDA_ENABLED
 
 
 run_tutorial_tests = False
@@ -73,7 +74,7 @@ def run_notebook(notebook_path, run_path=None, kernel_name=None):
     proc.allow_errors = True
     
     proc.preprocess(nb, {'metadata': {'path': run_path}})
-    output_path = os.path.join(dirname, '{}_all_output.ipynb'.format(nb_name))
+    output_path = os.path.join(run_path, '{}_all_output.ipynb'.format(nb_name))
     
     with open(output_path, mode='wt', encoding='utf-8') as f:
         nbformat.write(nb, f)
@@ -133,12 +134,19 @@ def _test_generator(notebook):
 _NOTEBOOKS = glob.glob(os.path.join(os.path.dirname(__file__), '..', 'tutorial', '*.ipynb'))
 _NOTEBOOKS.sort()
 for notebook in _NOTEBOOKS:
-    if notebook.find('06_data_capture') != -1:
+    nb_name = os.path.splitext(os.path.basename(notebook))[0]
+    if nb_name in ['06_data_capture']:
         # Skip this for now
         continue
+    # These notebooks require CUDA
+    if (not BF_CUDA_ENABLED and nb_name in
+        ['00_getting_started', '01_useful_functions',
+         '02_building_complexity']):
+        continue
     test = _test_generator(notebook)
-    name = 'test_%s' % os.path.splitext(os.path.basename(notebook))[0].replace(' ', '_')
-    doc = """Execution of the '%s' notebook.""" % os.path.basename(notebook)
+    assert ' ' not in nb_name
+    name = 'test_%s' % nb_name
+    doc = """Execution of the '%s' notebook.""" % nb_name
     setattr(test, '__doc__', doc)
     setattr(tutorial_tests, name, test)
 

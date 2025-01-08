@@ -32,11 +32,16 @@ on the bifrost FIR filter."""
 import ctypes
 import unittest
 import numpy as np
-from scipy.signal import lfilter, lfiltic
 from bifrost.fir import Fir
 import bifrost as bf
 
 from bifrost.libbifrost_generated import BF_CUDA_ENABLED
+
+try:
+    from scipy.signal import lfilter, lfiltic
+    HAVE_SCIPY = True
+except ImportError:
+    HAVE_SCIPY = False
 
 MTOL = 1e-6 # Relative tolerance at the mean magnitude
 RTOL = 1e-1
@@ -50,6 +55,7 @@ def compare(result, gold):
     np.testing.assert_allclose(result, gold, rtol=RTOL, atol=MTOL * absmean)
 
 @unittest.skipUnless(BF_CUDA_ENABLED, "requires GPU support")
+@unittest.skipUnless(HAVE_SCIPY, "requires scipy")
 class TestFIR(unittest.TestCase):
     def setUp(self):
         np.random.seed(1234)

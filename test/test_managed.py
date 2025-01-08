@@ -143,8 +143,13 @@ class TestManagedFFT(unittest.TestCase):
 # FIR
 #
 
-from scipy.signal import lfilter, lfiltic
 from bifrost.fir import Fir
+
+try:
+    from scipy.signal import lfilter, lfiltic
+    HAVE_SCIPY = True
+except ImportError:
+    HAVE_SCIPY = False
 
 def compare(result, gold):
     #np.testing.assert_allclose(result, gold, RTOL, ATOL)
@@ -155,6 +160,7 @@ def compare(result, gold):
     np.testing.assert_allclose(result, gold, rtol=RTOL, atol=MTOL * absmean)
 
 @unittest.skipUnless(BF_GPU_MANAGEDMEM, "requires GPU managed memory support")
+@unittest.skipUnless(HAVE_SCIPY, "requires scipy")
 class TestManagedFIR(unittest.TestCase):
     def setUp(self):
         np.random.seed(1234)
