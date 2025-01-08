@@ -71,7 +71,8 @@ ifeq ($(HAVE_CUDA),1)
   reduce.o \
   fir.o \
   guantize.o \
-  gunpack.o
+  gunpack.o \
+  orville.o
 endif
 
 JIT_SOURCES ?= \
