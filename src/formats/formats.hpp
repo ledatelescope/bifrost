@@ -40,3 +40,4 @@
 #include "pbeam.hpp"
 #include "simple.hpp"
 #include "vbeam.hpp"
+#include "zcu102.hpp"
