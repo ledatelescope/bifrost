@@ -376,7 +376,7 @@ class BFpacketcapture_callback_impl {
     BFpacketcapture_simple_sequence_callback _simple_callback;
     BFpacketcapture_chips_sequence_callback _chips_callback;
     BFpacketcapture_snap2_sequence_callback _snap2_callback;
-		BFpacketcapture_zcu102_sequence_callback _zcu102_callback;
+    BFpacketcapture_zcu102_sequence_callback _zcu102_callback;
     BFpacketcapture_ibeam_sequence_callback _ibeam_callback;
     BFpacketcapture_pbeam_sequence_callback _pbeam_callback;
     BFpacketcapture_cor_sequence_callback   _cor_callback;
@@ -389,7 +389,7 @@ public:
      : _simple_callback(NULL), _chips_callback(NULL), _ibeam_callback(NULL), 
        _pbeam_callback(NULL),  _cor_callback(NULL), _vdif_callback(NULL), 
        _tbn_callback(NULL), _drx_callback(NULL), _drx8_callback(NULL),
-			 _snap2_callback(NULL), _zcu102_callback(NULL) {}
+       _snap2_callback(NULL), _zcu102_callback(NULL) {}
     inline void set_simple(BFpacketcapture_simple_sequence_callback callback) {
         _simple_callback = callback;
     }
@@ -408,11 +408,11 @@ public:
     inline BFpacketcapture_snap2_sequence_callback get_snap2() {
         return _snap2_callback;
     }
-		inline void set_zcu102(BFpacketcapture_zcu102_sequence_callback callback) {
+    inline void set_zcu102(BFpacketcapture_zcu102_sequence_callback callback) {
         _zcu102_callback = callback;
     }
-		inline BFpacketcapture_snap2_sequence_callback get_zcu102() {
-        return _snap2_callback;
+    inline BFpacketcapture_zcu102_sequence_callback get_zcu102() {
+        return _zcu102_callback;
     }
     inline void set_ibeam(BFpacketcapture_ibeam_sequence_callback callback) {
         _ibeam_callback = callback;
