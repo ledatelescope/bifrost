@@ -2,13 +2,13 @@
 
 | **`CPU/GPU Build`** | **`Coverage`** | 
 |-----------------|----------------|
-|[![GHA](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml/badge.svg)](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml) | [![Codecov Status](https://codecov.io/gh/lwa-project/bifrost/graph/badge.svg?token=ShP5svhXk0)](https://codecov.io/gh/lwa-project/bifrost) |
+|[![GHA](https://github.com/lwa-project/bifrost/actions/workflows/main.yml/badge.svg)](https://github.com/lwa-project/bifrost/actions/workflows/main.yml) | [![Codecov Status](https://codecov.io/gh/lwa-project/bifrost/graph/badge.svg?token=ShP5svhXk0)](https://codecov.io/gh/lwa-project/bifrost) |
 
 A stream processing framework for high-throughput applications.
 
 ### [![Paper](https://img.shields.io/badge/arXiv-1708.00720-blue.svg)](https://arxiv.org/abs/1708.00720)
 
-### [Bifrost Documentation](http://ledatelescope.github.io/bifrost/)
+### [Bifrost Documentation](https://bifrost-htc.readthedocs.org)
 
 See also the [Bifrost tutorial notebooks](tutorial/), which can be run
 on Google Colab or any Jupyter environment where Bifrost is installed
