@@ -167,7 +167,7 @@ To run all CPU and GPU tests:
 
 ## Documentation
 
-### [Online Bifrost Documentation](http://ledatelescope.github.io/bifrost/)
+### [Online Bifrost Documentation](https://bifrost-htc.readthedocs.org)
 
 ### Building the Docs with Docker
 
