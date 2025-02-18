@@ -127,8 +127,9 @@ jobs:
           UNITTEST_OS: ${{ matrix.os }}
           UNITTEST_PY: ${{ matrix.python-version }}
         if: ${{ matrix.os == 'self-hosted' && matrix.python-version == '3.8' }}
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./test/coverage.xml, ./testbench/coverage.xml
           env_vars: UNITTEST_OS,UNITTEST_PY
           fail_ci_if_error: false
