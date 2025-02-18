@@ -2,7 +2,7 @@
 
 | **`CPU/GPU Build`** | **`Coverage`** | 
 |-----------------|----------------|
-|[![GHA](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml/badge.svg)](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml) | [![Coverage Status](https://codecov.io/gh/ledatelescope/bifrost/branch/master/graph/badge.svg?token=f3ge1zWe5P)](https://codecov.io/gh/ledatelescope/bifrost) |
+|[![GHA](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml/badge.svg)](https://github.com/ledatelescope/bifrost/actions/workflows/main.yml) | [![Codecov Status](https://codecov.io/gh/lwa-project/bifrost/graph/badge.svg?token=ShP5svhXk0)](https://codecov.io/gh/lwa-project/bifrost) |
 
 A stream processing framework for high-throughput applications.
 
