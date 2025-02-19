@@ -33,7 +33,7 @@ jobs:
             build-essential \
             ca-certificates \
             curl \
-            exuberant-ctags \
+            universal-ctags \
             gfortran \
             git \
             libhwloc-dev \
@@ -46,11 +46,11 @@ jobs:
         run: |
           brew install \
             curl \
-            ctags-exuberant \
             gawk \
             gnu-sed \
             hwloc \
-            pkg-config
+            pkg-config \
+            universal-ctags
       - uses: actions/setup-python@v5.0.0
         with:
           python-version: ${{ matrix.python-version }}
